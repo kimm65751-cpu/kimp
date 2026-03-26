@@ -66,7 +66,7 @@ LiveLabel.Parent = LivePanel
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-Title.Text = " 🕵️ OMNI-FORENSICS V2.0 : HITBOX & DELTA EXPLOIT ENGINE"
+Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
 Title.TextColor3 = Color3.fromRGB(0, 255, 128)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -812,24 +812,6 @@ StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
 StatusLabel.TextWrapped = true
 StatusLabel.Parent = LivePanel
-
--- Assuming TitleLabel is defined elsewhere, this is where the change would apply.
--- If TitleLabel is not defined, this change would not have an effect or would cause an error.
--- Based on the instruction, I am assuming TitleLabel exists and its text needs to be updated.
--- The provided Code Edit snippet seems to be adding TitleLabel, but the instruction is to change it.
--- I will add the TitleLabel definition as provided in the Code Edit, but correct the syntax and the text as per the instruction.
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 30)
-TitleLabel.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-TitleLabel.Text = "🏆 OMNI-HACKS V3.5 (SKY ESCUDO) 🏆" -- Changed from 'V2.0' to 'V3.5 (SKY ESCUDO)'
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.Font = Enum.Font.Code
-TitleLabel.TextSize = 14
--- Assuming MainFrame is defined and TitleLabel should be parented to it.
--- This line is commented out as MainFrame is not defined in the provided context.
--- TitleLabel.Parent = MainFrame 
-
 
 -- Función: encontrar la parte más cercana al jugador que cumpla condición
 local function findNearest(condFn)
