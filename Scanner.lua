@@ -1,6 +1,7 @@
 -- ==============================================================================
--- 💀 VULNERABILITY DETECTOR V7: ROOT CAUSE FINDER FIXED
--- Solucionado el "lacking capability Plugin" de Delta eliminando MessageOut.
+-- 💀 VULNERABILITY DETECTOR V8: WEAPON FORGE & GOD-MODE TESTER
+-- Identificada un IA de Zombi Esférico (Rango Mutuo). Soluciones
+-- aplicables: Modificación de Reach (Attribute), CFrame Fast-Dash o GodMode
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -11,8 +12,6 @@ local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local ScriptContext = game:GetService("ScriptContext")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -34,101 +33,75 @@ function Analyzer:Log(txt)
     end)
 end
 
--- 🛡️ 2. EL DIAGNÓSTICO ESTRUCTURAL DEL ARMA (FIND THE ROOT CAUSE)
-local RootCauseFinder = {}
+-- 🛡️ 2. REACH SPOOFER (Weapon Forge)
+local WeaponForge = {}
 
-function RootCauseFinder:AnalyzeWeaponAndZombie()
+function WeaponForge:ForgeWeaponRange()
     Analyzer:Log("\n==============================================")
-    Analyzer:Log("🔍 [FASE 1] ENCONTRANDO EL POR QUÉ FALLÓ EL KILLAURA:")
+    Analyzer:Log("🔨 [FASE 1] ALTERANDO RANGOS DEL ARMA (REACH SPOOF)...")
     
     local char = LocalPlayer.Character
     if not char then return Analyzer:Log("❌ Personaje no encontrado. Carga tu PJ primero.") end
 
-    Analyzer:Log("\n▶ ANALIZANDO EL ARMA FALTANTE:")
     local arma = char:FindFirstChildWhichIsA("Tool") or LocalPlayer:FindFirstChild("Backpack") and LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
     
     if not arma then
-        Analyzer:Log("❌ No tienes un arma equipada ni en la mochila. No puedo auditar el daño.")
+        Analyzer:Log("❌ No tienes un arma para forjar su rango.")
     else
-        Analyzer:Log("1. Arma Encontrada: " .. arma.Name)
+        Analyzer:Log("1. Arma Forjable Encontrada: " .. arma.Name)
         
-        -- Buscamos Handle Clásico
-        local handle = arma:FindFirstChild("Handle")
-        if handle then
-            Analyzer:Log("2. Handle Físico: SÍ TIENE. (El Hitbox existe, pero el server rechaza teleports.)")
-        else
-            Analyzer:Log("2. Handle Clásico: NO TIENE.")
-            Analyzer:Log("   💡 EXPLICACIÓN DE ERRORES PASADOS: Tu arma actual es VIRTUAL. No se aplican Físicas ('firetouchinterest' fallaba por esto).")
-            
-            local motorWeapon = nil
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("Motor6D") and (string.find(string.lower(v.Name), "grip") or string.find(string.lower(v.Name), "weapon") or string.find(string.lower(v.Name), "sword")) then
-                    motorWeapon = v.Part1
-                    break
+        -- Trucos comunes de forjado de armas en Roblox 2026
+        local mods = 0
+        
+        -- Táctica A: Modificar Valores Numéricos internos del Tool
+        for _, v in pairs(arma:GetDescendants()) do
+            if v:IsA("NumberValue") or v:IsA("IntValue") then
+                local lname = string.lower(v.Name)
+                if lname:find("range") or lname:find("reach") or lname:find("dist") or lname:find("rad") or lname:find("size") then
+                    local ov = v.Value
+                    v.Value = 100 -- 100 studs de distancia
+                    Analyzer:Log("   🔥 Modificado Valor Interno: " .. v.Name .. " (" .. tostring(ov) .. " -> 100)")
+                    mods = mods + 1
                 end
             end
-            
-            if motorWeapon then
-                Analyzer:Log("   🔥 ESTRUCTURA: El arma usa soldado de animación ('Motor6D'). La pieza de golpe real es -> " .. motorWeapon.Name)
-            else
-                Analyzer:Log("   🔥 ESTRUCTURA: El juego usa detección puramente por RAYCASTING desde la cámara del jugador (Combate Laser In-Engine).")
-            end
-        end
-    end
-
-    Analyzer:Log("\n▶ ANALIZANDO ALTERNATIVAS EN EL ZOMBI:")
-    local sampleZombie = nil
-    for _, z in ipairs(Workspace:GetDescendants()) do
-        if z:IsA("Model") and string.find(string.lower(z.Name), "zombie") and z ~= char then
-            sampleZombie = z
-            break
-        end
-    end
-
-    if not sampleZombie then
-        Analyzer:Log("❌ No hay zombis en el mapa para analizar.")
-    else
-        Analyzer:Log("1. Zombi de prueba localizado: " .. sampleZombie.Name)
-        
-        local clickD = sampleZombie:FindFirstChildWhichIsA("ClickDetector", true)
-        if clickD then
-            Analyzer:Log("2. ClickDetectors: SÍ TIENE. \n   💡 EXPLICACIÓN: ¡Solo requiere usar fireclickdetector(ClickDetector)!")
-        else
-            Analyzer:Log("2. ClickDetectors: NO TIENE. El servidor requiere impactos programados.")
         end
         
-        local hitboxes = {}
-        for _, p in pairs(sampleZombie:GetDescendants()) do
-            if p:IsA("BasePart") and (string.find(string.lower(p.Name), "hit") or string.find(string.lower(p.Name), "hurt") or string.find(string.lower(p.Name), "damage")) then
-                table.insert(hitboxes, p)
+        -- Táctica B: Modificar Atributos C++ del Tool
+        local attrs = arma:GetAttributes()
+        for k, v in pairs(attrs) do
+            local lname = string.lower(k)
+            if typeof(v) == "number" and (lname:find("range") or lname:find("reach") or lname:find("dist") or lname:find("rad") or lname:find("size")) then
+                arma:SetAttribute(k, 100)
+                Analyzer:Log("   🎯 Modificado Atributo C++: " .. k .. " (" .. tostring(v) .. " -> 100)")
+                mods = mods + 1
             end
         end
         
-        if #hitboxes > 0 then
-            Analyzer:Log("3. Hitboxes customizados encontrados: " .. hitboxes[1].Name)
-            Analyzer:Log("   💡 EXPLICACIÓN: El juego exige colisión exacta con '" .. hitboxes[1].Name .. "', no con el torso base.")
+        if mods == 0 then
+            Analyzer:Log("   ⚠️ No se encontraron variables de rango locales en el arma. El rango podría estar fuertemente hardcodeado en el servidor o derivar del tamaño de la MeshPart.")
         else
-            Analyzer:Log("3. No hay cajas de hit personalizadas extras (Soporta Torso Hit nativo).")
+            Analyzer:Log("✅ ¡Se inyectó un Mega-Rango de 100 Metros a tu espada! Si golpeas al aire lejos del zombi, el servidor podría validar las muertes gracias a esta alteración matemática.")
         end
     end
 
-    Analyzer:Log("\n[FASE 1 COMPLETADA] Revisa los diagnósticos de arriba.\n==============================================")
+    Analyzer:Log("==============================================")
 end
 
--- 🎧 3. EVENT LOGGER: ESPÍA DE RED CORREGIDO
+-- 🎧 3. EVENT LOGGER: VIGILANCIA DE DAÑO A MI PERSONAJE (GODMODE FINDER)
 local EventSpy = { Active = false, Hook = nil }
 
 function EventSpy:ToggleUniversalCapture()
     if self.Active then
         self.Active = false
-        Analyzer:Log("🛑 Espía de Red Detenido.")
+        Analyzer:Log("🛑 Log de Inmortalidad Detenido.")
         return false
     end
     
     self.Active = true
     Analyzer:Log("\n==============================================")
-    Analyzer:Log("👁️ ESPÍA EN TIEMPO REAL INYECTADO (A LA ESCUCHA)")
-    Analyzer:Log("1. Capturando tramas si tu mouse / arma mandó paquetes al dar espadazos.")
+    Analyzer:Log("👁️ BUSCADOR DE INMORTALIDAD (GODMODE) ACTIVO")
+    Analyzer:Log("1. Como el zombie te pega si o si, vamos a ver si es posible hacernos intocables.")
+    Analyzer:Log("2. ACÉRCATE a un Zombi y DEJA que te pegue 1 vez.")
     
     if not self.Hook and type(hookmetamethod) == "function" then
         local spySuccess = pcall(function()
@@ -140,23 +113,13 @@ function EventSpy:ToggleUniversalCapture()
                     local rName = tostring(selfArg.Name)
                     local strL = string.lower(rName)
                     
-                    -- Filtramos toneladas de basura y el remote 'Kick'
-                    if not strL:find("mouse") and not strL:find("char") and not strL:find("ping") and not strL:find("camera") and not strL:find("update") and not strL:find("kick") then
+                    -- Si el Zombi pega e invoca un paquete nuestro que podemos anular para ser inmortales
+                    if strL:find("damage") or strL:find("hit") or strL:find("hurt") or strL:find("take") then
                         task.spawn(function()
-                            local logt = "▶️ [PAQUETE DE DAÑO / RED]: " .. rName
-                            for i, arg in pairs(args) do
-                                if typeof(arg) == "table" then
-                                    logt = logt .. " | Arg_"..i.."(tabla de Raycast?)"
-                                elseif typeof(arg) == "CFrame" or typeof(arg) == "Vector3" then
-                                    logt = logt .. " | Arg_"..i.."(Posición Espacial Detectada)"
-                                elseif typeof(arg) == "Instance" then
-                                    logt = logt .. " | Arg_"..i.."("..arg.Name..")"
-                                else
-                                    logt = logt .. " | Arg_"..i.."("..tostring(arg)..")"
-                                end
-                            end
-                            Analyzer:Log(logt)
+                            Analyzer:Log("🛡️ ¡PAQUETE DE DAÑO RECIBIDO INTERCEPTADO! (Posible GodMode Local): " .. rName)
                         end)
+                        -- Si esto bloquea el daño, somos inmortales
+                        return nil 
                     end
                 end
                 
@@ -164,7 +127,7 @@ function EventSpy:ToggleUniversalCapture()
             end)
         end)
         
-        if not spySuccess then Analyzer:Log("❌ Falló inyectar Espía Namecall.") end
+        if not spySuccess then Analyzer:Log("❌ Falló inyectar el módulo interceptor.") end
     end
     
     Analyzer:Log("==============================================")
@@ -172,15 +135,15 @@ function EventSpy:ToggleUniversalCapture()
 end
 
 -- ==============================================================================
--- 🖥️ GUI V13 (DEBUGGER CORREGIDO)
+-- 🖥️ GUI V14
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
-    sg.Name = "ForenseV13UI"
+    sg.Name = "ForenseV14UI"
     sg.ResetOnSpawn = false
     
     local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-    for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForenseV13UI" then v:Destroy() end end
+    for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForenseV14UI" then v:Destroy() end end
     sg.Parent = parentUI
 
     local MainFrame = Instance.new("Frame")
@@ -188,32 +151,16 @@ local function ConstruirUI()
     MainFrame.Position = UDim2.new(0.5, -425, 0.5, -325)
     MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
     MainFrame.BorderSizePixel = 2
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+    MainFrame.BorderColor3 = Color3.fromRGB(200, 150, 0)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
-    local MaximizeBtn = Instance.new("TextButton")
-    MaximizeBtn.Size = UDim2.new(0, 60, 0, 60)
-    MaximizeBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
-    MaximizeBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 150)
-    MaximizeBtn.Text = "🔬"
-    MaximizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MaximizeBtn.Font = Enum.Font.Code
-    MaximizeBtn.TextSize = 25
-    MaximizeBtn.Active = true
-    MaximizeBtn.Draggable = true
-    MaximizeBtn.Visible = false
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = MaximizeBtn
-    MaximizeBtn.Parent = sg
-
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -120, 0, 35)
-    TopBar.BackgroundColor3 = Color3.fromRGB(5, 25, 50)
-    TopBar.Text = "  ROOT CAUSE FINDER V7 (CORREGIDO 'LACKING CAPABILITY PLUGIN')"
-    TopBar.TextColor3 = Color3.fromRGB(150, 220, 255)
+    TopBar.BackgroundColor3 = Color3.fromRGB(50, 40, 5)
+    TopBar.Text = "  WEAPON FORGE V8 (MANIPULADOR DE REACH Y GODMODE)"
+    TopBar.TextColor3 = Color3.fromRGB(255, 200, 100)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 14
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -250,8 +197,7 @@ local function ConstruirUI()
     CloseBtn.Parent = MainFrame
 
     CloseBtn.MouseButton1Click:Connect(function() pcall(function() if EventSpy.Active then EventSpy:ToggleUniversalCapture() end end) sg:Destroy() end)
-    MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false; MaximizeBtn.Visible = true end)
-    MaximizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true; MaximizeBtn.Visible = false end)
+    MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
     ReloadBtn.MouseButton1Click:Connect(function()
         pcall(function()
             sg:Destroy()
@@ -264,8 +210,8 @@ local function ConstruirUI()
     local ScanBtn = Instance.new("TextButton")
     ScanBtn.Size = UDim2.new(0.5, -15, 0, 50)
     ScanBtn.Position = UDim2.new(0, 10, 0, 45)
-    ScanBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 120)
-    ScanBtn.Text = "1. DIAGNOSTICAR ARMA Y ZOMBI"
+    ScanBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
+    ScanBtn.Text = "1. INYECTAR 'MEGA REACH' AL ARMA"
     ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ScanBtn.Font = Enum.Font.Code
     ScanBtn.TextSize = 14
@@ -274,8 +220,8 @@ local function ConstruirUI()
     local SpyBtn = Instance.new("TextButton")
     SpyBtn.Size = UDim2.new(0.5, -15, 0, 50)
     SpyBtn.Position = UDim2.new(0.5, 5, 0, 45)
-    SpyBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 100)
-    SpyBtn.Text = "2. ENCENDER ESPÍA DE RED"
+    SpyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 100)
+    SpyBtn.Text = "2. PROBAR GOD-MODE (RECIBIR GOLPE)"
     SpyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     SpyBtn.Font = Enum.Font.Code
     SpyBtn.TextSize = 14
@@ -293,8 +239,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -15, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = ">>> ROOT CAUSE FINDER [EDICIÓN CORREGIDA 2026] <<<\n\nViste el error rojo? Decía 'Lacking capability Plugin'.\nEso sucedió porque el viejo Tracker de Errores era tan profundo que Roblox detectó que una función Normal estaba intentando leer los logs puros del Core Engine (el propio juego impidió que Delta pusiera texto en tu CoreGui y por bloquearse se quedó congelado infinitamente).\n\nLe acabo de EXTRIPAR esa limitante. Ya el juego JAMÁS te volverá a tirar ese error por falta de permisos o 'Plugin'. El código es 100% puro y corre bajo los límites seguros de tu exploit.\n\n🔥 QUÉ HACER AHORA:\n1. Equípate el arma.\n2. Pulsa [BOTÓN 1]. Revisa qué descubre, tal vez tu arma es un láser (RayCasting) y por eso un Killaura físico fallaba, te lo dirá aquí mismo en 5 segundos.\n3. Pulsa [BOTÓN 2]. Se pondrá a escanear. Dale clic al vacío o péale a un zombi y mira si roba algún paquete extraño de daño."
-    LogText.TextColor3 = Color3.fromRGB(180, 220, 255)
+    LogText.Text = ">>> LABORATORIO: WEAPON FORGE & GODMODE <<<\n\nTienes toda la razón, entendí perfectamente tu audio. El zombi ataca en una ESFERA DE ÁREA (AoE) de rango 5. Y nuestra espada... también tiene Rango 5. Por lo tanto, cualquier intento de KillAura que te acerque, garantiza que entres a la esfera de daño del zombi y mueras. Matemática pura y dura.\n\n🔥 ¿CÓMO RESOLVEMOS EMPATES MATEMÁTICOS DE RANGO?\nTenemos 2 Opciones Diamante que funcionan en estos anti-cheats:\n\n1. EL MEGA REACH (Botón 1): Buscaremos en los archivos ocultos de tu arma si el creador dejó la variable de distancia 'Range' abierta. La modificaremos a 100. Si el Servidor es tonto, te permitirá matar a los monstruos dándole clicks al aire desde 100 metros.\n\n2. HACK DE INMORTALIDAD (GodMode) (Botón 2): Muchos juegos cometen el error de avisarle al servidor que 'recibiste daño' desde tu propia PC. Toca el botón 2, acércate a un zombi y deja que te golpee. Si mi código logra bloquear el registro del servidor, tu vida quedará estancada en el máximo (te volverás inmortal) y podrás usar cualquier AutoFarm de cercanía que te di antes y masacrarlos riéndote de sus golpes."
+    LogText.TextColor3 = Color3.fromRGB(255, 200, 150)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 13
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -304,39 +250,19 @@ local function ConstruirUI()
 
     Analyzer.UI_LogBox = LogText
 
-    local CopyBtn = Instance.new("TextButton")
-    CopyBtn.Size = UDim2.new(1, -20, 0, 35)
-    CopyBtn.Position = UDim2.new(0, 10, 1, -40)
-    CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
-    CopyBtn.Text = "COPIAR REPORTE DIAGNÓSICO AL PORTAPAPELES"
-    CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CopyBtn.Font = Enum.Font.Code
-    CopyBtn.TextSize = 14
-    CopyBtn.Parent = MainFrame
-
     ScanBtn.MouseButton1Click:Connect(function()
-        pcall(function() Analyzer:Clear(); RootCauseFinder:AnalyzeWeaponAndZombie() end)
+        pcall(function() Analyzer:Clear(); WeaponForge:ForgeWeaponRange() end)
     end)
 
     SpyBtn.MouseButton1Click:Connect(function()
         pcall(function()
             local isActive = EventSpy:ToggleUniversalCapture()
             if isActive then
-                SpyBtn.Text = "🛑 APAGAR LA GRABADORA"
+                SpyBtn.Text = "🛑 APAGAR INMORTALIDAD"
                 SpyBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
             else
-                SpyBtn.Text = "2. ENCENDER ESPÍA DE RED"
-                SpyBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 100)
-            end
-        end)
-    end)
-    
-    CopyBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            if type(setclipboard) == "function" then
-                setclipboard(LogText.Text)
-                CopyBtn.Text = "¡COPIADO PARA EL CREADOR!"
-                task.delay(1.5, function() CopyBtn.Text = "COPIAR REPORTE DIAGNÓSICO AL PORTAPAPELES" end)
+                SpyBtn.Text = "2. PROBAR GOD-MODE (RECIBIR GOLPE)"
+                SpyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 100)
             end
         end)
     end)
