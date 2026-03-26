@@ -803,6 +803,49 @@ StatusLabel.TextSize = 11
 StatusLabel.TextWrapped = true
 StatusLabel.Parent = LivePanel
 
+-- Función: encontrar la parte más cercana al jugador que cumpla condición
+local function findNearest(condFn)
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest, closestDist = nil, math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if condFn(obj) then
+            local p = nil
+            pcall(function()
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj
+                if hrp and hrp:IsA("BasePart") then
+                    p = hrp.Position
+                end
+            end)
+            if p then
+                local d = (root.Position - p).Magnitude
+                if d < closestDist then
+                    closestDist = d
+                    closest = obj
+                end
+            end
+        end
+    end
+    return closest, closestDist
+end
+
+-- Función: hacer que el personaje mire hacia una posición
+local function faceTarget(targetPos)
+    pcall(function()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            local origin = root.Position
+            local lookDir = (Vector3.new(targetPos.X, origin.Y, targetPos.Z) - origin)
+            if lookDir.Magnitude > 0.1 then
+                root.CFrame = CFrame.lookAt(origin, origin + lookDir)
+            end
+        end
+    end)
+end
+
 AutoMineBtn.MouseButton1Click:Connect(function()
     AutoMineActivo = not AutoMineActivo
     if AutoMineActivo then
@@ -811,10 +854,25 @@ AutoMineBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while AutoMineActivo do
                 pcall(function()
+                    -- Buscar roca más cercana con atributo Health (pebble, rock, ore)
+                    local rock, dist = findNearest(function(obj)
+                        if obj:IsA("Model") then
+                            local n = string.lower(obj.Name)
+                            local hasHealth = obj:GetAttribute("Health") ~= nil
+                            return hasHealth and (string.find(n,"pebble") or string.find(n,"rock") or string.find(n,"ore") or string.find(n,"stone") or string.find(n,"crystal"))
+                        end
+                        return false
+                    end)
+                    if rock and dist and dist < 30 then
+                        local rootPart = rock:FindFirstChild("HumanoidRootPart") or rock:FindFirstChildWhichIsA("BasePart")
+                        if rootPart then faceTarget(rootPart.Position) end
+                        StatusLabel.Text = "⛏️ Minando: " .. rock.Name .. " (" .. math.floor(dist) .. "m)"
+                    else
+                        StatusLabel.Text = "⛏️ Buscando roca... acércate más"
+                    end
                     ToolRF:InvokeServer("Pickaxe")
                 end)
-                StatusLabel.Text = "⛏️ Minando... " .. tick()
-                task.wait(0.25)
+                task.wait(0.3)
             end
             StatusLabel.Text = "Estado: Inactivo"
         end)
@@ -832,9 +890,24 @@ AutoKillBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while AutoKillActivo do
                 pcall(function()
+                    -- Buscar mob más cercano con Humanoid vivo
+                    local mob, dist = findNearest(function(obj)
+                        if obj:IsA("Model") and obj ~= LocalPlayer.Character then
+                            local hum = obj:FindFirstChildWhichIsA("Humanoid")
+                            local isNpc = obj:GetAttribute("IsNpc")
+                            return hum and hum.Health > 0 and isNpc == true
+                        end
+                        return false
+                    end)
+                    if mob and dist and dist < 25 then
+                        local hrp = mob:FindFirstChild("HumanoidRootPart")
+                        if hrp then faceTarget(hrp.Position) end
+                        StatusLabel.Text = "⚔️ Atacando: " .. mob.Name .. " (" .. math.floor(dist) .. "m)"
+                    else
+                        StatusLabel.Text = "⚔️ Sin enemigos cerca (<25m)"
+                    end
                     ToolRF:InvokeServer("Weapon")
                 end)
-                StatusLabel.Text = "⚔️ Atacando... " .. tick()
                 task.wait(0.2)
             end
             StatusLabel.Text = "Estado: Inactivo"
@@ -844,3 +917,4 @@ AutoKillBtn.MouseButton1Click:Connect(function()
         AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
     end
 end)
+
