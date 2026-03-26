@@ -772,31 +772,41 @@ local ToolRF = game:GetService("ReplicatedStorage").Shared.Packages.Knit.Service
 local AutoMineActivo = false
 local AutoKillActivo = false
 
-local AutoMineBtn = Instance.new("TextButton")
-AutoMineBtn.Size = UDim2.new(1, -8, 0, 32)
-AutoMineBtn.Position = UDim2.new(0, 4, 1, -105)
-AutoMineBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
-AutoMineBtn.Text = "⛏️ AUTOMINE: OFF"
-AutoMineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoMineBtn.Font = Enum.Font.Code
-AutoMineBtn.TextSize = 13
-AutoMineBtn.Parent = LivePanel
+local SpoofIABtn = Instance.new("TextButton")
+SpoofIABtn.Size = UDim2.new(1, -8, 0, 30)
+SpoofIABtn.Position = UDim2.new(0, 4, 1, -140)
+SpoofIABtn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
+SpoofIABtn.Text = "🤖 TEST 1: CAMUFLAJE ZOMBI"
+SpoofIABtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpoofIABtn.Font = Enum.Font.Code
+SpoofIABtn.TextSize = 13
+SpoofIABtn.Parent = LivePanel
 
-local AutoKillBtn = Instance.new("TextButton")
-AutoKillBtn.Size = UDim2.new(1, -8, 0, 32)
-AutoKillBtn.Position = UDim2.new(0, 4, 1, -68)
-AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-AutoKillBtn.Text = "⚔️ AUTOKILL LEGIT: OFF"
-AutoKillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoKillBtn.Font = Enum.Font.Code
-AutoKillBtn.TextSize = 13
-AutoKillBtn.Parent = LivePanel
+local DisarmBtn = Instance.new("TextButton")
+DisarmBtn.Size = UDim2.new(1, -8, 0, 30)
+DisarmBtn.Position = UDim2.new(0, 4, 1, -105)
+DisarmBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+DisarmBtn.Text = "✂️ TEST 2: AMPUTAR ZOMBIS"
+DisarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DisarmBtn.Font = Enum.Font.Code
+DisarmBtn.TextSize = 13
+DisarmBtn.Parent = LivePanel
+
+local GhostBtn = Instance.new("TextButton")
+GhostBtn.Size = UDim2.new(1, -8, 0, 30)
+GhostBtn.Position = UDim2.new(0, 4, 1, -70)
+GhostBtn.BackgroundColor3 = Color3.fromRGB(20, 80, 80)
+GhostBtn.Text = "👻 TEST 3: FE INVISIBILITY"
+GhostBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GhostBtn.Font = Enum.Font.Code
+GhostBtn.TextSize = 13
+GhostBtn.Parent = LivePanel
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 28)
 StatusLabel.Position = UDim2.new(0, 4, 1, -34)
 StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Inactivo"
+StatusLabel.Text = "Estado: Elige un Test IA..."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
@@ -846,97 +856,72 @@ local function faceTarget(targetPos)
     end)
 end
 
-AutoMineBtn.MouseButton1Click:Connect(function()
-    AutoMineActivo = not AutoMineActivo
-    if AutoMineActivo then
-        AutoMineBtn.Text = "⛏️ AUTOMINE: ON ✅"
-        AutoMineBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+SpoofIABtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            -- Intentar añadir atributos engañosos al personaje
+            char:SetAttribute("IsNpc", true)
+            char:SetAttribute("Team", "Zombies")
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then hum.Name = "ZombieWalk" end
+            StatusLabel.Text = "🤖 Atributos Zombi Inyectados. ¿Aún te persiguen?"
+        end
+    end)
+end)
+
+local DisarmActivo = false
+DisarmBtn.MouseButton1Click:Connect(function()
+    DisarmActivo = not DisarmActivo
+    if DisarmActivo then
+        DisarmBtn.Text = "✂️ AMPUTANDO ZOMBIS..."
+        DisarmBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 120)
         task.spawn(function()
-            while AutoMineActivo do
+            while DisarmActivo do
                 pcall(function()
-                    -- KILL AURA LEGIT: Buscar roca solo en nuestro radio de visión segura
-                    local rock, dist = findNearest(function(obj)
-                        if obj:IsA("Model") then
-                            local n = string.lower(obj.Name)
-                            local hasHealth = obj:GetAttribute("Health") ~= nil
-                            return hasHealth and (string.find(n,"pebble") or string.find(n,"rock") or string.find(n,"ore") or string.find(n,"stone") or string.find(n,"crystal"))
+                    local count = 0
+                    for _, obj in pairs(Workspace:GetDescendants()) do
+                        if obj:IsA("Model") and obj:GetAttribute("IsNpc") == true then
+                            -- Si el daño es de script TouchInterest local, borrar brazos o armas lo rompe.
+                            for _, part in pairs(obj:GetChildren()) do
+                                if typeof(part) == "Instance" then
+                                    local n = string.lower(part.Name)
+                                    if string.find(n, "arm") or string.find(n, "weapon") or string.find(n, "sword") or string.find(n, "hitbox") then
+                                        part:Destroy()
+                                        count = count + 1
+                                    end
+                                end
+                            end
                         end
-                        return false
-                    end)
-                    if rock and dist and dist <= 14 then
-                        local rockPart = rock:FindFirstChild("HumanoidRootPart") or rock:FindFirstChild("Torso") or rock:FindFirstChildWhichIsA("BasePart")
-                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if rockPart and myRoot then 
-                            -- Rotar silenciosamente sin cambiar de posición para evitar Anti-TP Kicks
-                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(rockPart.Position.X, myRoot.Position.Y, rockPart.Position.Z))
-                        end
-                        StatusLabel.Text = "⛏️ Minando seguro: " .. rock.Name .. " ("..math.floor(dist).."m)"
-                        ToolRF:InvokeServer("Pickaxe")
-                    else
-                        StatusLabel.Text = "⛏️ Camina hacia una roca (-14m)"
                     end
+                    StatusLabel.Text = "✂️ " .. count .. " hitboxes enemigas amputadas."
                 end)
-                task.wait(0.2)
+                task.wait(1)
             end
-            StatusLabel.Text = "Estado: Inactivo"
         end)
     else
-        AutoMineBtn.Text = "⛏️ AUTOMINE: OFF"
-        AutoMineBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+        DisarmBtn.Text = "✂️ TEST 2: AMPUTAR ZOMBIS"
+        DisarmBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
     end
 end)
 
-local AutoKillActivo = false
-AutoKillBtn.MouseButton1Click:Connect(function()
-    AutoKillActivo = not AutoKillActivo
-    if AutoKillActivo then
-        AutoKillBtn.Text = "⚔️ HIT & RUN: ON ✅"
-        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        task.spawn(function()
-            while AutoKillActivo do
-                pcall(function()
-                    local mob, dist = findNearest(function(obj)
-                        if obj:IsA("Model") and obj ~= LocalPlayer.Character then
-                            local hum = obj:FindFirstChildWhichIsA("Humanoid")
-                            local isNpc = obj:GetAttribute("IsNpc")
-                            return hum and hum.Health > 0 and isNpc == true
-                        end
-                        return false
-                    end)
-                    
-                    if mob and dist < 120 then
-                        local mobPart = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso")
-                        local char = LocalPlayer.Character
-                        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                        local myHum = char and char:FindFirstChild("Humanoid")
-
-                        if mobPart and myRoot and myHum then 
-                            if dist > 8 then
-                                -- Si estamos lejos, WALKAMOS legítimamente hacia él para no arriesgarnos al Kick.
-                                myHum:MoveTo(mobPart.Position)
-                                StatusLabel.Text = "⚔️ Persiguiendo: " .. mob.Name
-                            elseif dist <= 8 then
-                                -- Si estamos cerca: MIRAMOS -> GOLPEAMOS -> ESQUIVAMOS HACIA ATRÁS
-                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(mobPart.Position.X, myRoot.Position.Y, mobPart.Position.Z))
-                                ToolRF:InvokeServer("Weapon")
-                                
-                                -- Dash / Retroceder físicamente dando un paso atrás para que su ataque falle
-                                local retroceso = myRoot.Position - (myRoot.CFrame.LookVector * 10)
-                                myHum:MoveTo(retroceso)
-                                StatusLabel.Text = "💨 Esquivando ataque de: " .. mob.Name
-                            end
-                        end
-                    else
-                        StatusLabel.Text = "⚔️ Caminando a la zona de mobs..."
-                    end
-                end)
-                task.wait(0.2)
+GhostBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            -- Romper el iterador `FindNearestPlayer` del Servidor
+            -- Si el servidor busca "Humanoids", al cambiar el parent o destruirlo lo anulamos.
+            local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+            if torso then 
+                torso.Name = "GhostTorso" 
             end
-            StatusLabel.Text = "Estado: Inactivo"
-        end)
-    else
-        AutoKillBtn.Text = "⚔️ AUTOKILL LEGIT: OFF"
-        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-    end
+            local head = char:FindFirstChild("Head")
+            if head then
+                head.Name = "GhostHead"
+            end
+            -- Ocultar el RootPart de los loops simples
+            StatusLabel.Text = "👻 Físicas Roteadas (FE Invis). Prueba si te ven."
+        end
+    end)
 end)
 
