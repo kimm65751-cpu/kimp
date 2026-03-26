@@ -127,8 +127,8 @@ ESPBtn.Parent = BotFrame
 local ExaminarBtn = Instance.new("TextButton")
 ExaminarBtn.Size = UDim2.new(1, -20, 0, 28)
 ExaminarBtn.Position = UDim2.new(0, 10, 0, 80)
-ExaminarBtn.BackgroundColor3 = Color3.fromRGB(20, 60, 100)
-ExaminarBtn.Text = "🔍 EXAMINAR MOB CERCANO"
+ExaminarBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
+ExaminarBtn.Text = "🕵️ ESCÁNER MASTER VULNERABILIDADES"
 ExaminarBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ExaminarBtn.Font = Enum.Font.Code
 ExaminarBtn.TextSize = 13
@@ -792,136 +792,78 @@ end)
 -- 6. EXAMINAR MOB: Forense Completo
 -- =====================================================================
 ExaminarBtn.MouseButton1Click:Connect(function()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        AddLog("EXAMEN", "❌ Sin personaje cargado.", "")
-        return
-    end
-    local hrp = char.HumanoidRootPart
-    local pService = game:GetService("Players")
+    AddLog("SISTEMA", "⏳ Iniciando Escaneo Master... (El juego podría congelarse 1 segundo)", "")
+    task.wait(0.1)
     
-    -- ===================== ANÁLISIS DEL ARMA EQUIPADA =====================
-    local equippedTool = char:FindFirstChildWhichIsA("Tool")
-    if not equippedTool then
-        for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
-                equippedTool = t; break
-            end
+    local dump = "=== [ REPORTE DE VULNERABILIDADES OMNI-TRACKER ] ===\n\n"
+    
+    -- 1. Anti-Cheat & Scripts Locales
+    dump = dump .. "--- [1] SEGURIDAD CLIENTE (AntiCheats) ---\n"
+    local acStr = ""
+    for _, sc in pairs(game.Players.LocalPlayer.PlayerScripts:GetDescendants()) do
+        if sc:IsA("LocalScript") and (string.find(string.lower(sc.Name), "anti") or string.find(string.lower(sc.Name), "admin") or string.find(sc.Name, "AC")) then
+            acStr = acStr .. sc.Name .. " | "
         end
     end
+    dump = dump .. "AC Detectados: " .. (acStr ~= "" and acStr or "Ninguno visible") .. "\n\n"
     
-    if equippedTool then
-        AddLog("EXAMEN", "🗡️ ARMA: " .. equippedTool.Name, equippedTool:GetFullName())
-        local toolScripts = ""
-        for _, v in pairs(equippedTool:GetDescendants()) do
-            if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("ModuleScript") then
-                toolScripts = toolScripts .. "[" .. v.ClassName .. "] " .. v.Name .. " | "
-            end
+    -- 2. Análisis de ReplicatedStorage & Knit
+    dump = dump .. "--- [2] ARQUITECTURA DE RED (ReplicatedStorage) ---\n"
+    local knit = game.ReplicatedStorage:FindFirstChild("Packages") and "Paquetes Knit Encontrados" or "Sin Knit"
+    dump = dump .. "Framework Frontend: " .. knit .. "\n"
+    local remotes = ""
+    for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            remotes = remotes .. "["..obj.ClassName.."] " .. obj:GetFullName() .. "\n"
         end
-        AddLog("EXAMEN", "📜 Scripts del Arma", toolScripts ~= "" and toolScripts or "Sin scripts")
-        local partsStr = ""
-        for _, v in pairs(equippedTool:GetDescendants()) do
-            if v:IsA("BasePart") then
-                local sz = v.Size
-                partsStr = partsStr .. v.Name .. "(Size:" .. string.format("%.1f,%.1f,%.1f", sz.X, sz.Y, sz.Z) .. " CanTouch:" .. tostring(v.CanTouch) .. ") | "
-            end
-        end
-        AddLog("EXAMEN", "🔷 Parts/Hitbox del Arma", partsStr ~= "" and partsStr or "Sin parts")
-        local toolAttr = ""
-        for k, v in pairs(equippedTool:GetAttributes()) do toolAttr = toolAttr .. k .. "=" .. tostring(v) .. " | " end
-        AddLog("EXAMEN", "🏷️ Atributos del Arma", toolAttr ~= "" and toolAttr or "Sin atributos")
-        local expanded = 0
-        pcall(function()
-            for _, v in pairs(equippedTool:GetDescendants()) do
-                if v:IsA("BasePart") and v.CanTouch then
-                    local oldSz = v.Size
-                    v.Size = Vector3.new(15, 15, 15)
-                    expanded += 1
-                    AddLog("EXAMEN", "✅ Hitbox expandido: " .. v.Name .. " " .. tostring(oldSz) .. "→15x15", v:GetFullName())
+    end
+    dump = dump .. "Catálogo de Remotes: \n" .. remotes .. "\n"
+    
+    -- 3. Análisis del Arma y Atributos (LocalPlayer)
+    dump = dump .. "--- [3] PROTOCOLO DE COMBATE (Tu Arma) ---\n"
+    local char = game.Players.LocalPlayer.Character
+    if char then
+        local targetTool = char:FindFirstChildWhichIsA("Tool") or game.Players.LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
+        if targetTool then
+            dump = dump .. "Espada Base: " .. targetTool.Name .. "\nAtributos VIP:\n"
+            for k, v in pairs(targetTool:GetAttributes()) do dump = dump .. "   " .. k .. " = " .. tostring(v) .. "\n" end
+            dump = dump .. "Scripts Inyectados en el Arma:\n"
+            for _, s in pairs(targetTool:GetDescendants()) do
+                if s:IsA("LocalScript") or s:IsA("Script") or s:IsA("ModuleScript") then
+                    dump = dump .. "   " .. s:GetFullName() .. " (" .. s.ClassName .. ")\n"
                 end
             end
-        end)
-        if expanded == 0 then AddLog("EXAMEN", "⚠️ Hitbox protegido por servidor", "") end
-    else
-        AddLog("EXAMEN", "⚠️ Sin arma en personaje ni mochila", "")
+        else
+            dump = dump .. "Arma: No tienes arma equipada/en mochila para escanear.\n"
+        end
+    end
+    dump = dump .. "\n"
+    
+    -- 4. Estructura de Objetivos (Mobs/Living)
+    dump = dump .. "--- [4] INGENIERÍA INVERSA DE MOBS ---\n"
+    local living = workspace:FindFirstChild("Living")
+    if living then
+        local firstMob
+        for _, obj in pairs(living:GetChildren()) do
+            if obj:IsA("Model") and obj ~= char and obj.Name ~= game.Players.LocalPlayer.Name then
+                firstMob = obj; break
+            end
+        end
+        if firstMob then
+            dump = dump .. "Sujeto de Prueba: " .. firstMob.Name .. "\n"
+            dump = dump .. "Atributos Vitales:\n"
+            for k, v in pairs(firstMob:GetAttributes()) do dump = dump .. "   " .. k .. " = " .. tostring(v) .. "\n" end
+            dump = dump .. "Mecánicas Duras (Scripts):\n"
+            for _, s in pairs(firstMob:GetDescendants()) do
+                if s:IsA("Script") or s:IsA("LocalScript") then dump = dump .. "   " .. s.Name .. "\n" end
+            end
+        else
+             dump = dump .. "No hay entidades en la carpeta Living para analizar.\n"
+        end
     end
     
-    -- ===================== ESCANEO workspace.Proximity =====================
-    local proximity = workspace:FindFirstChild("Proximity")
-    if proximity then
-        AddLog("EXAMEN", "🔴 workspace.Proximity encontrado - sistema de daño server", "")
-        local proxStr = ""
-        for _, obj in pairs(proximity:GetDescendants()) do
-            if obj:IsA("Script") or obj:IsA("LocalScript") then
-                proxStr = proxStr .. "[" .. obj.ClassName .. "] " .. obj.Name .. " @ " .. obj:GetFullName() .. " | "
-            end
-        end
-        AddLog("EXAMEN", "📡 Scripts Proximity", proxStr ~= "" and proxStr or "Sin scripts visibles")
-    end
-    -- ===================== SCAN ReplicatedStorage (Remotes de Combate) =====================
-    local rs = game:GetService("ReplicatedStorage")
-    local rsRemotes = ""
-    for _, v in pairs(rs:GetDescendants()) do
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-            local n = string.lower(v.Name)
-            if string.find(n, "attack") or string.find(n, "damage") or string.find(n, "item") or
-               string.find(n, "use") or string.find(n, "weapon") or string.find(n, "hit") or
-               string.find(n, "mob") or string.find(n, "combat") or string.find(n, "kill") then
-                rsRemotes = rsRemotes .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
-            end
-        end
-    end
-    if rsRemotes ~= "" then
-        AddLog("EXAMEN", "🎯 Remotes COMBATE en RS", rsRemotes)
-    else
-        -- Listar TODOS los remotes si no hay específicos de combate
-        local allRemotes = ""
-        for _, v in pairs(rs:GetDescendants()) do
-            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                allRemotes = allRemotes .. v.Name .. " | "
-            end
-        end
-        AddLog("EXAMEN", "📡 TODOS los Remotes RS", allRemotes ~= "" and allRemotes or "Sin remotes en RS")
-    end
-    AddLog("EXAMEN", "─────────────────────────────", "")
-    
-    -- ===================== ANÁLISIS DEL MOB MÁS CERCANO =====================
-    local bestMob, bestDist = nil, math.huge
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not pService:GetPlayerFromCharacter(obj) then
-            local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-            if root then
-                local d = (root.Position - hrp.Position).Magnitude
-                if d < bestDist then bestDist = d; bestMob = obj end
-            end
-        end
-    end
-    if not bestMob then AddLog("EXAMEN", "❌ No hay mobs cerca.", ""); return end
-    AddLog("EXAMEN", "🎯 Mob: " .. bestMob.Name .. " a " .. math.floor(bestDist) .. "m", bestMob:GetFullName())
-    local hum = bestMob:FindFirstChildOfClass("Humanoid")
-    if hum then
-        AddLog("EXAMEN", "❤️ Stats: " .. string.format("HP:%.0f/%.0f | Speed:%.1f | Jump:%.1f", hum.Health, hum.MaxHealth, hum.WalkSpeed, hum.JumpPower), "")
-    end
-    local attrStr = ""
-    for k, v in pairs(bestMob:GetAttributes()) do attrStr = attrStr .. k .. "=" .. tostring(v) .. " | " end
-    AddLog("EXAMEN", "🏷️ Atributos Mob", attrStr ~= "" and attrStr or "Sin atributos")
-    local scriptStr, remoteStr = "", ""
-    for _, v in pairs(bestMob:GetDescendants()) do
-        if v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") then
-            scriptStr = scriptStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
-        end
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") then
-            remoteStr = remoteStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
-        end
-    end
-    AddLog("EXAMEN", "📜 Scripts en Mob", scriptStr ~= "" and scriptStr or "Sin scripts")
-    AddLog("EXAMEN", "📡 Remotes en Mob", remoteStr ~= "" and remoteStr or "Sin remotes")
-    if getconnections and hum then
-        pcall(function()
-            AddLog("EXAMEN", "🔗 HealthChanged: " .. #getconnections(hum.HealthChanged) .. " conexiones", "")
-        end)
-    end
-    AddLog("EXAMEN", "✅ Examen completo. Equipa tu arma antes de examinar.", "")
+    -- Imprimir en GUI el gigante Dump
+    AddLog("EXAMEN", "✅ REPORTE CREADO: Cópialo completo haciendo CLIC AQUI ->", dump)
 end)
 
 local EspElements = {}
