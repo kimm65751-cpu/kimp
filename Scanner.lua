@@ -543,69 +543,89 @@ task.spawn(function()
             
             if bestTarget then
                 ToggleNoclip(true)
-                -- ☠️ MÉTODO MOLE: Posicionarse BAJO TIERRA del objetivo
-                -- Los mobs no tienen excavadora, así que no te golpean
-                -- Tu arma sigue activándose y dañando al objetivo desde abajo
-                local offset = targetType == "Mob" and Vector3.new(0, -6, 0) or Vector3.new(0, 3.5, 0)
-                local attackPos = bestTarget.Position + offset
-                
-                if (hrp.Position - attackPos).Magnitude > 2 then
-                    TweenToPosition(attackPos)
-                end
-                
-                hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
-                hrp.AssemblyLinearVelocity = Vector3.zero
-                
-                -- BÚSQUEDA TÁCTICA DE ARMAS EN LA MOCHILA
-                local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                local targetTool = nil
-                local invItems = LocalPlayer.Backpack:GetChildren()
-                for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                    if t:IsA("Tool") then table.insert(invItems, t) end
-                end
                 
                 if targetType == "Mob" then
-                    -- Arma 2: Cualquier herramienta ofensiva que NO sea un pico
+                    -- ⚡ MODO HIT-AND-RUN: CFrame instantáneo (sin Tween = sin latencia)
+                    -- 1. Calcular punto de ataque: al lado del zombie pero no encima
+                    local attackPos = bestTarget.Position + Vector3.new(3, 0, 3)
+                    
+                    -- 2. Teletransporte INSTANTÁNEO al punto de ataque
+                    hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    
+                    -- 3. Seleccionar y equipar arma de combate
+                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local targetTool = nil
+                    local invItems = LocalPlayer.Backpack:GetChildren()
+                    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                        if t:IsA("Tool") then table.insert(invItems, t) end
+                    end
                     for _, t in pairs(invItems) do
                         if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
-                            targetTool = t
-                            break
+                            targetTool = t; break
                         end
                     end
                     if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                    if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                        hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
+                    end
+                    
+                    -- 4. DISPARAR el golpe
+                    local camera = workspace.CurrentCamera
+                    if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
+                    local cx = camera.ViewportSize.X / 2
+                    local cy = camera.ViewportSize.Y / 2
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                    task.wait()
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                    if activeTool then pcall(function() activeTool:Activate() end) end
+                    
+                    -- 5. ⚡ ESCAPE INSTANTÁNEO: Salir del rango melee ANTES de que el zombie responda
+                    local escapeDir = (hrp.Position - bestTarget.Position).Unit
+                    local escapePos = hrp.Position + escapeDir * 20
+                    hrp.CFrame = CFrame.new(escapePos)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    task.wait(0.15) -- Esperar que el servidor procese la animación del zombie
+                    
                 else
-                    -- Arma 1: El Pico para minar Ores
+                    -- MODO MINERÍA: TweenService suave para ores
+                    local offset = Vector3.new(0, 3.5, 0)
+                    local attackPos = bestTarget.Position + offset
+                    if (hrp.Position - attackPos).Magnitude > 3 then
+                        TweenToPosition(attackPos)
+                    end
+                    hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    
+                    -- Equipar Pico
+                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local targetTool = nil
+                    local invItems = LocalPlayer.Backpack:GetChildren()
+                    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                        if t:IsA("Tool") then table.insert(invItems, t) end
+                    end
                     for _, t in pairs(invItems) do
                         if t:IsA("Tool") and string.find(string.lower(t.Name), "pickaxe") then
-                            targetTool = t
-                            break
+                            targetTool = t; break
                         end
                     end
                     if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                    if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                        hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
+                    end
+                    
+                    local camera = workspace.CurrentCamera
+                    if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
+                    local cx = camera.ViewportSize.X / 2
+                    local cy = camera.ViewportSize.Y / 2
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                    task.wait()
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                    if activeTool then pcall(function() activeTool:Activate() end) end
+                    task.wait()
                 end
-                
-                -- EQUIPAR ARMA TÁCTICA
-                if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
-                    hum:UnequipTools()
-                    task.wait(0.05)
-                    hum:EquipTool(targetTool)
-                    task.wait(0.1)
-                end
-                
-                local camera = workspace.CurrentCamera
-                if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
-                
-                -- AUTO-CLICKER LETAL MIENTRAS APUNTA
-                local cx = camera.ViewportSize.X / 2
-                local cy = camera.ViewportSize.Y / 2
-                VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                task.wait()
-                VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                
-                local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                if activeTool then pcall(function() activeTool:Activate() end) end
-                
-                task.wait()
             else
                 ToggleNoclip(false)
             end
