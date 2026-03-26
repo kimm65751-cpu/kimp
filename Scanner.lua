@@ -592,19 +592,21 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ COMBATE VERTICAL (DEATH FROM ABOVE): Volamos sobre el mob
-                    -- Bajamos de 7.5 a 5.0 studs. A 5 studs, tus pies están exactamente tocando su cabeza.
-                    -- Tu Gladius Dagger ahora llegará perfectamente al golpe, pero él seguirá pegando abajo.
-                    local attackPos = bestTarget.Position + Vector3.new(0, 5, 0)
+                    -- ⚔️ AURA KILL DEFINITIVO (Hitbox Expander)
+                    -- Distancia ultra-lejana (15 studs): El zombie nunca jamás te podrá tocar.
+                    local diff = hrp.Position - bestTarget.Position
+                    local flatDir = Vector3.new(diff.X, 0, diff.Z)
+                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(15, 0, 0) end
                     
-                    -- Volamos hacia esa posición rápida y suavemente
+                    local attackPos = bestTarget.Position + (flatDir.Unit * 15)
+                    
                     if (hrp.Position - attackPos).Magnitude > 2 then
                         TweenToPosition(attackPos, bestTarget.Position)
                     end
                     
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
-                    -- Equipamos tu arma
+                    -- Equipar Arma
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                     local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
                     if not targetTool then
@@ -621,18 +623,20 @@ task.spawn(function()
                         hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- Mantenemos flotando congelando gravedad
-                    local bg = hrp:FindFirstChild("CombatHover")
-                    if not bg then
-                        bg = Instance.new("BodyVelocity")
-                        bg.Name = "CombatHover"
-                        bg.MaxForce = Vector3.new(100000, 100000, 100000)
-                        bg.Velocity = Vector3.zero
-                        bg.Parent = hrp
-                        task.delay(0.5, function() if bg and bg.Parent then bg:Destroy() end end)
-                    end
+                    -- 🔥 INFLAR ZOMBIE LOCALMENTE (HITBOX EXPANDER MAGIA) 🔥
+                    local originalSizes = {}
+                    pcall(function()
+                        for _, part in pairs(bestTarget:GetChildren()) do
+                            if part:IsA("BasePart") and (part.Name == "HumanoidRootPart" or part.Name == "Head" or part.Name == "Torso") then
+                                originalSizes[part] = part.Size
+                                -- Un cuadrado de 25x25 studs es inmenso. Y el servidor lo aprueba porque el centro del zombie no se ha movido
+                                part.Size = Vector3.new(25, 25, 25)
+                                part.Transparency = 0.8 -- Semi-invisible pero con colisión letal
+                                part.CanCollide = false
+                            end
+                        end
+                    end)
                     
-                    -- Apuntar la cámara y el cuerpo hacia abajo (al zombie)
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     
@@ -641,15 +645,20 @@ task.spawn(function()
                     
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
-                    
                     for _ = 1, 3 do
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
                         task.wait()
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                        task.wait(0.1)
+                        task.wait(0.05)
                     end
                     
-                else
+                    -- Regresarlo a la normalidad para no glitchearlo
+                    pcall(function()
+                        for part, oSize in pairs(originalSizes) do
+                            part.Size = oSize
+                            part.Transparency = 0 -- O si el bicho era transparente por base, no es tan vital
+                        end
+                    end)
                     -- MODO MINERÍA: TweenService suave para ores
                     local offset = Vector3.new(0, 3.5, 0)
                     local attackPos = bestTarget.Position + offset
