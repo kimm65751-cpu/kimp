@@ -1,12 +1,13 @@
 -- =====================================================================
--- DELTA OMNI-TRACKER v3.0 (GUI FORENSE EN VIVO)
+-- DELTA OMNI-TRACKER v3.5 (GUI FORENSE EN VIVO)
 -- Registra Coordenadas, Economía, Herramientas, Toques y Red.
--- Actualizable vía GitHub 2026. Indetectable (CoreGui).
+-- Con Botón Flotante, Hotkey (RightControl) y Refresh Github.
 -- =====================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local TrackerRunning = true
@@ -14,7 +15,6 @@ local TrackerRunning = true
 -- =====================================================================
 -- 1. CREACIÓN DE LA INTERFAZ GRÁFICA (GUI FANTASMA)
 -- =====================================================================
--- Destruir GUI anterior si existe para evitar duplicados
 if CoreGui:FindFirstChild("OmniTrackerGUI") then
     CoreGui.OmniTrackerGUI:Destroy()
 end
@@ -22,6 +22,21 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "OmniTrackerGUI"
 ScreenGui.Parent = CoreGui -- Oculto del juego
+
+-- Botón Flotante para re-abrir (Minimizado)
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 20, 0.5, -25)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenBtn.BorderSizePixel = 2
+OpenBtn.BorderColor3 = Color3.fromRGB(0, 120, 200)
+OpenBtn.Text = "👁️"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.TextSize = 25
+OpenBtn.Visible = false -- Oculto al inicio
+OpenBtn.Draggable = true
+OpenBtn.Active = true
+OpenBtn.Parent = ScreenGui
 
 -- Marco Principal
 local MainFrame = Instance.new("Frame")
@@ -37,17 +52,28 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = " 🕵️ OMNI-TRACKER V3.0 (LIVE LOGS)"
+Title.Text = " 🕵️ OMNI-TRACKER V3.5 (RCTRL para ocultar)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.Code
-Title.TextSize = 18
+Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
+-- Botón Minimizar (-)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+MinimizeBtn.Position = UDim2.new(1, -145, 0, 5)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 50)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.Code
+MinimizeBtn.TextSize = 20
+MinimizeBtn.Parent = MainFrame
+
 -- Botón Refrescar (Github)
 local RefreshBtn = Instance.new("TextButton")
-RefreshBtn.Size = UDim2.new(0, 100, 0, 30)
-RefreshBtn.Position = UDim2.new(1, -105, 0, 5)
+RefreshBtn.Size = UDim2.new(0, 105, 0, 30)
+RefreshBtn.Position = UDim2.new(1, -110, 0, 5)
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 RefreshBtn.Text = "Refrescar (.lua)"
 RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -69,11 +95,35 @@ UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- =====================================================================
+-- 1.5. LÓGICA DE MINIMIZAR Y HOTKEY
+-- =====================================================================
+local function ToggleMenu()
+    if MainFrame.Visible then
+        MainFrame.Visible = false
+        OpenBtn.Visible = true
+    else
+        MainFrame.Visible = true
+        OpenBtn.Visible = false
+    end
+end
+
+MinimizeBtn.MouseButton1Click:Connect(ToggleMenu)
+OpenBtn.MouseButton1Click:Connect(ToggleMenu)
+
+-- Tecla RCTRL (Control Derecho) para abrir/cerrar invisiblemente
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.RightControl then
+            ToggleMenu()
+        end
+    end
+end)
+
+-- =====================================================================
 -- 2. MOTOR DE REGISTRO (LOGGING ENGINE)
 -- =====================================================================
 local LogIndex = 0
 
--- Función para añadir entradas ordenadas al menú
 local function AddLog(category, message, copiableData)
     LogIndex = LogIndex + 1
     
@@ -107,7 +157,6 @@ local function AddLog(category, message, copiableData)
     LogMessage.TextSize = 12
     LogMessage.Parent = LogEntry
     
-    -- Botón de Copiar Portapapeles (Executor Only)
     if copiableData then
         local CopyBtn = Instance.new("TextButton")
         CopyBtn.Size = UDim2.new(0, 50, 0, 30)
@@ -129,7 +178,6 @@ local function AddLog(category, message, copiableData)
         end)
     end
     
-    -- Auto-Scroll al fondo
     LogScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 20)
     LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
 end
@@ -137,8 +185,6 @@ end
 -- =====================================================================
 -- 3. MÓDULOS DE RASTREO EN VIVO (LIVE SPY HOOKS)
 -- =====================================================================
-
---- A. REMOTE SPY (Todo lo que envías al servidor)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if TrackerRunning and not checkcaller() then
@@ -156,15 +202,12 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     return oldNamecall(self, ...)
 end))
 
---- B. TRACKER DE FÍSICA Y COORDENADAS (Donde pisas y caminas)
 local lastPos = nil
 RunService.Heartbeat:Connect(function()
     if not TrackerRunning then return end
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local pos = char.HumanoidRootPart.Position
-        
-        -- Si me moví de manera significativa o si toco algo nuevo (Log cada 15 studs)
         if not lastPos or (pos - lastPos).Magnitude > 15 then
             lastPos = pos
             local coordStr = string.format("X: %.1f, Y: %.1f, Z: %.1f", pos.X, pos.Y, pos.Z)
@@ -173,7 +216,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
---- C. TRACKER DE CONTACTO (Qué pisamos / Trampas invisibles)
 local touchedDebounce = {}
 local function SetupTouchSpy(character)
     local root = character:WaitForChild("HumanoidRootPart", 5)
@@ -189,7 +231,6 @@ local function SetupTouchSpy(character)
     end
 end
 
---- D. TRACKER DE HERRAMIENTAS Y BOTONES (Qué equipamos)
 local function SetupToolSpy(character)
     character.ChildAdded:Connect(function(child)
         if TrackerRunning and child:IsA("Tool") then
@@ -210,7 +251,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     SetupToolSpy(char)
 end)
 
---- E. TRACKER DE ECONOMÍA / STATS (Monedas, Vida, Experiencia)
 local function SetupStatSpy()
     local leaderstats = LocalPlayer:WaitForChild("leaderstats", 5)
     if leaderstats then
@@ -229,10 +269,9 @@ task.spawn(SetupStatSpy)
 -- =====================================================================
 RefreshBtn.MouseButton1Click:Connect(function()
     AddLog("SISTEMA", "Descargando actualización desde GitHub...", "")
-    TrackerRunning = false -- Apaga los hooks
-    ScreenGui:Destroy() -- Se autodestruye
-    -- Ejecuta la versión cruda nuevamente desde la fuente 
+    TrackerRunning = false
+    ScreenGui:Destroy()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"))()
 end)
 
-AddLog("SISTEMA", "Omni-Tracker V3 cargado con éxito. Escuchando en vivo.", "¡OmniTracker Listo!")
+AddLog("SISTEMA", "Omni-Tracker V3.5 cargado con éxito. Escuchando en vivo.", "¡OmniTracker Listo!")
