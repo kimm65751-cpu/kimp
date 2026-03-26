@@ -1,23 +1,21 @@
 -- =====================================================================
--- DELTA OMNI-TRACKER v4.0 (GUI FORENSE EN VIVO)
--- Registra Coordenadas, Físicas, Combate Global y Atributos.
--- Supera Armas Falsas (No-Tools) y Caché de GitHub.
+-- DELTA OMNI-TRACKER v5.0 (TRACKER + AUTO-FARM BOT TÁCTICO)
+-- Incluye algoritmos de Noclip, Vuelo-Tween y Búsqueda Espacial.
 -- =====================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local TrackerRunning = true
 
 -- =====================================================================
--- 1. CREACIÓN DE LA INTERFAZ GRÁFICA
+-- 1. CREACIÓN DE LA INTERFAZ GRÁFICA (Añadido Menú BOT)
 -- =====================================================================
-if CoreGui:FindFirstChild("OmniTrackerGUI") then
-    CoreGui.OmniTrackerGUI:Destroy()
-end
+if CoreGui:FindFirstChild("OmniTrackerGUI") then CoreGui.OmniTrackerGUI:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "OmniTrackerGUI"
@@ -38,7 +36,7 @@ OpenBtn.Active = true
 OpenBtn.Parent = ScreenGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 400)
+MainFrame.Size = UDim2.new(0, 500, 0, 430) -- Más grande para el BOT
 MainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.BorderSizePixel = 0
@@ -49,7 +47,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = " 🕵️ OMNI-TRACKER V4.0 (RCTRL para ocultar)"
+Title.Text = " 🕵️ OMNI-TRACKER V5.0 (RCTRL para ocultar)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.Code
 Title.TextSize = 16
@@ -68,7 +66,6 @@ MinimizeBtn.Parent = MainFrame
 
 local RefreshBtn = Instance.new("TextButton")
 RefreshBtn.Size = UDim2.new(0, 105, 0, 30)
--- Posicionado a la izquierda del botón de minimizar
 RefreshBtn.Position = UDim2.new(1, -145, 0, 5) 
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
 RefreshBtn.Text = "Refrescar (.lua)"
@@ -78,7 +75,7 @@ RefreshBtn.TextSize = 12
 RefreshBtn.Parent = MainFrame
 
 local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -20, 1, -60)
+LogScroll.Size = UDim2.new(1, -20, 1, -110) -- Achicado para dar espacio
 LogScroll.Position = UDim2.new(0, 10, 0, 50)
 LogScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 LogScroll.ScrollBarThickness = 6
@@ -89,6 +86,23 @@ UIListLayout.Parent = LogScroll
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
+-- ⚡ Menú BOT (Auto-Farm) ⚡
+local BotFrame = Instance.new("Frame")
+BotFrame.Size = UDim2.new(1, -20, 0, 50)
+BotFrame.Position = UDim2.new(0, 10, 1, -55)
+BotFrame.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+BotFrame.Parent = MainFrame
+
+local AutoPebbleBtn = Instance.new("TextButton")
+AutoPebbleBtn.Size = UDim2.new(0, 200, 0, 30)
+AutoPebbleBtn.Position = UDim2.new(0.5, -100, 0.5, -15)
+AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
+AutoPebbleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoPebbleBtn.Font = Enum.Font.Code
+AutoPebbleBtn.TextSize = 14
+AutoPebbleBtn.Parent = BotFrame
+
 local function ToggleMenu()
     if MainFrame.Visible then
         MainFrame.Visible = false
@@ -98,12 +112,11 @@ local function ToggleMenu()
         OpenBtn.Visible = false
     end
 end
-
 MinimizeBtn.MouseButton1Click:Connect(ToggleMenu)
 OpenBtn.MouseButton1Click:Connect(ToggleMenu)
 
 -- =====================================================================
--- 2. MOTOR DE REGISTRO (LOGGING ENGINE)
+-- 2. MOTOR DE LOGS
 -- =====================================================================
 local function AddLog(category, message, copiableData)
     local LogEntry = Instance.new("Frame")
@@ -156,13 +169,138 @@ local function AddLog(category, message, copiableData)
             end
         end)
     end
-    
     LogScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 20)
     LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
 end
 
 -- =====================================================================
--- 3. MÓDULOS DE RASTREO (RED Y FÍSICA)
+-- 3. ALGORITMOS DE MOVIMIENTO TÁCTICO PARA BOT (PATHFINDING / NOCLIP)
+-- =====================================================================
+local autoFarmPebble = false
+local noclipConn
+
+-- Activa modo fantasma: Atraviesa paredes y puertas mágicamente.
+local function ToggleNoclip(state)
+    if state then
+        if not noclipConn then
+            noclipConn = RunService.Stepped:Connect(function()
+                local char = LocalPlayer.Character
+                if char then
+                    for _, v in pairs(char:GetDescendants()) do
+                        if v:IsA("BasePart") and v.CanCollide then
+                            v.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end
+    else
+        if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
+    end
+end
+
+-- Algoritmo de vuelo suave. Interpolación anti-caídas (TweenService).
+local function TweenToPosition(targetPos)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+    
+    local dist = (hrp.Position - targetPos).Magnitude
+    local speed = 40 -- Studs por segundo (Velocidad prudente Anti-Baneo)
+    local time = dist / speed
+    if time < 0.1 then time = 0.1 end
+    
+    -- Ajuste: Anulamos la gravedad localmente flotando
+    local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.lookAt(targetPos, targetPos + Vector3.new(0, -1, 0))})
+    
+    tween:Play()
+    tween.Completed:Wait()
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+end
+
+-- Táctico del Auto-Pebble
+task.spawn(function()
+    while task.wait(0.2) do
+        if autoFarmPebble and LocalPlayer.Character then
+            local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+            
+            -- 1. Radar Geológico: Buscar la piedra más cercana viva
+            local bestPebble = nil
+            local minDist = math.huge
+            
+            for _, obj in pairs(workspace:GetDescendants()) do
+                -- Buscar el modelo Pebble
+                if obj.Name == "Pebble" then
+                    local hp = obj:GetAttribute("Health") or obj:GetAttribute("HP")
+                    -- Si tiene más de 0 vida, es minable
+                    if hp and hp > 0 then
+                        local hitbox = obj:FindFirstChild("Hitbox") or obj:FindFirstChildWhichIsA("BasePart")
+                        if hitbox then
+                            local dist = (hrp.Position - hitbox.Position).Magnitude
+                            if dist < minDist then
+                                minDist = dist
+                                bestPebble = hitbox
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- 2. Algoritmo de Caza y Minería
+            if bestPebble then
+                ToggleNoclip(true) -- Apagar choques
+                
+                -- Posicionarse estratégicamente 3 aros arriba de la piedra para no caer al vacío
+                local atackPos = bestPebble.Position + Vector3.new(0, 4, 0)
+                
+                -- Volar hacia ella si estamos a más de 5 studs
+                if (hrp.Position - atackPos).Magnitude > 5 then
+                    TweenToPosition(atackPos)
+                end
+                
+                -- Detener el cuerpo justo encima de la piedra
+                hrp.CFrame = CFrame.lookAt(atackPos, bestPebble.Position)
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                
+                -- 3. Equipar y Picar (Uso forzado de herramienta)
+                local pickaxe = LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")
+                if pickaxe and pickaxe.Parent == LocalPlayer.Backpack then
+                    pickaxe.Parent = LocalPlayer.Character
+                end
+                
+                if pickaxe then
+                    pickaxe:Activate()
+                    -- Algunas veces se requiere simular el click del teclado (Executor nativo)
+                    if mouse1click then mouse1click() end 
+                end
+                
+                task.wait(0.3) -- Esperar cooldown del golpe
+            else
+                -- Ya no hay piedras vivas (Descanzar y tocar el suelo)
+                ToggleNoclip(false)
+            end
+        end
+    end
+end)
+
+AutoPebbleBtn.MouseButton1Click:Connect(function()
+    autoFarmPebble = not autoFarmPebble
+    if autoFarmPebble then
+        AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: ON"
+        AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
+        AddLog("SISTEMA", "Iniciando algoritmo de vuelo y cacería de rocas...", "")
+    else
+        AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
+        AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        ToggleNoclip(false)
+    end
+end)
+
+-- =====================================================================
+-- 4. Tracker Network
 -- =====================================================================
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
@@ -172,188 +310,25 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
             local args = {...}
             task.spawn(function()
                 local success, selfName = pcall(function() return self.Name end)
-                if not success then selfName = "Remote_Desconocido" end
+                if not success then selfName = "Remote_Unk" end
                 local argStr = ""
-                for i,v in pairs(args) do
-                    local strVal = typeof(v) == "Instance" and v.Name or tostring(v)
-                    argStr = argStr .. "Arg" .. i .. ":" .. strVal .. " | "
-                end
-                AddLog("RED", "Paquete: " .. tostring(selfName), "Remote: " .. tostring(selfName) .. "\nArgs: " .. argStr)
+                for i,v in pairs(args) do argStr = argStr .. typeof(v).. ":" ..tostring(v).." | " end
+                AddLog("RED", tostring(selfName), argStr)
             end)
         end
     end
     return oldNamecall(self, ...)
 end))
 
-local lastPos = nil
-RunService.Heartbeat:Connect(function()
-    if not TrackerRunning then return end
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local pos = char.HumanoidRootPart.Position
-        if not lastPos or (pos - lastPos).Magnitude > 15 then
-            lastPos = pos
-            AddLog("FISICA", string.format("Ruta: X:%.1f Y:%.1f Z:%.1f", pos.X, pos.Y, pos.Z), string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z))
-        end
-    end
-end)
-
 -- =====================================================================
--- 4. MOTOR DE SALUD Y COMBATE GLOBAL (LECTOR MULTI-CAPA)
--- =====================================================================
-local function GetHealthInfo(obj)
-    local target = obj
-    local loopCount = 0
-    while target and target ~= workspace and loopCount < 4 do
-        local hum = target:FindFirstChildOfClass("Humanoid")
-        if hum then return "❤️ Vida: " .. math.floor(hum.Health), hum, target.Name end
-        
-        for _, child in pairs(target:GetChildren()) do
-            if child:IsA("NumberValue") or child:IsA("IntValue") then
-                local name = string.lower(child.Name)
-                if name == "health" or name == "hp" or name == "vida" then
-                    return "❤️ " .. child.Name .. ": " .. math.floor(child.Value), child, target.Name
-                end
-            end
-        end
-        
-        local attr = target:GetAttribute("HP") or target:GetAttribute("Health")
-        if attr then return "❤️ Atributo Vida: " .. math.floor(attr), target, target.Name end
-        
-        for _, child in pairs(target:GetDescendants()) do
-            if child:IsA("TextLabel") and (string.find(string.lower(child.Text), "hp") or string.match(child.Text, "%d+/%d+")) then
-                return "❤️ UI Vida: " .. child.Text, child, target.Name
-            end
-        end
-        
-        target = target.Parent
-        loopCount = loopCount + 1
-    end
-    
-    local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _, gui in pairs(playerGui:GetDescendants()) do
-            if gui:IsA("TextLabel") and gui.Visible and gui.TextTransparency < 1 then
-                local text = string.lower(gui.Text)
-                -- Lector Visual más estricto: rechaza tooltips con HTML (<font>) o textos inmensamente largos
-                if string.find(text, "hp") and string.match(text, "[%d%.]+") and not string.find(text, "<font") and string.len(text) < 30 then
-                    return "❤️ ScreenGui HP: " .. gui.Text, gui, "Objetivo en Pantalla"
-                end
-            end
-        end
-    end
-    
-    return "❓ Sin vida interna/visual", nil, obj.Name
-end
-
-local Mouse = LocalPlayer:GetMouse()
-local dmgDebounce = {}
-local touchedDebounce = {}
-
--- RASTREO TACTIL
-local function SetupTouchSpy(character)
-    local root = character:WaitForChild("HumanoidRootPart", 5)
-    if root then
-        root.Touched:Connect(function(hit)
-            if TrackerRunning and hit.Parent ~= character and not touchedDebounce[hit] then
-                touchedDebounce[hit] = true
-                if hit.Name == "Baseplate" or string.find(string.lower(hit.Name), "terrain") then 
-                    task.delay(1, function() touchedDebounce[hit] = nil end); return 
-                end
-                local hpString, _, objName = GetHealthInfo(hit)
-                AddLog("FISICA", "Tocaste: " .. objName .. " ("..hit.Name..") | " .. hpString, hit:GetFullName())
-                task.delay(5, function() touchedDebounce[hit] = nil end)
-            end
-        end)
-    end
-end
-
-if LocalPlayer.Character then SetupTouchSpy(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(function(char) SetupTouchSpy(char) end)
-
--- RASTREO COMBATE GLOBAL (Supera armas falsas que no usan clase "Tool")
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not TrackerRunning then return end
-    
-    -- Manejo del Panel
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then ToggleMenu() end
-    
-    -- Clic de Combate (Izquierdo)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        task.delay(0.1, function() -- Dejar que la interfaz del juego cargue
-            local target = Mouse.Target
-            local targetName = target and target.Name or "Aire"
-            if target and LocalPlayer.Character and not target:IsDescendantOf(LocalPlayer.Character) then
-                local hpString, healthObj, objName = GetHealthInfo(target)
-                
-                if healthObj and not dmgDebounce[healthObj] then
-                    dmgDebounce[healthObj] = true
-                    AddLog("COMBATE", "Apuntando a: " .. objName .. " | " .. hpString, target:GetFullName())
-                    
-                    local startHp = 0
-                    local conn
-                    
-                    if healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase") then
-                        startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                        conn = (healthObj:IsA("Humanoid") and healthObj.HealthChanged or healthObj.Changed):Connect(function()
-                            local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                            if typeof(newHp) == "number" and newHp < startHp then
-                                local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Real: " .. string.format("%.1f", damage) .. " | ❤️ Quedan: " .. string.format("%.1f", newHp), "Daño: " .. damage)
-                            end
-                            startHp = newHp
-                        end)
-                        
-                    elseif healthObj:GetAttribute("Health") or healthObj:GetAttribute("HP") then
-                        local attrName = healthObj:GetAttribute("Health") and "Health" or "HP"
-                        startHp = healthObj:GetAttribute(attrName)
-                        conn = healthObj:GetAttributeChangedSignal(attrName):Connect(function()
-                            local newHp = healthObj:GetAttribute(attrName)
-                            if typeof(newHp) == "number" and newHp < startHp then
-                                local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Atributo: " .. string.format("%.1f", damage) .. " | ❤️ Quedan: " .. string.format("%.2f", newHp), "Daño: " .. damage)
-                            end
-                            startHp = newHp
-                        end)
-                        
-                    elseif healthObj:IsA("TextLabel") then
-                        startHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
-                        conn = healthObj:GetPropertyChangedSignal("Text"):Connect(function()
-                            local newHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
-                            if newHp > 0 and newHp < startHp then
-                                local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Visual: " .. string.format("%.2f", damage) .. " | ❤️ Quedan: " .. string.format("%.2f", newHp), "Daño: " .. damage)
-                            end
-                            startHp = newHp
-                        end)
-                    end
-                    
-                    if conn then task.delay(5, function() conn:Disconnect() end) end
-                    task.delay(1, function() dmgDebounce[healthObj] = nil end)
-                end
-            end
-        end)
-    end
-end)
-
-local leaderstats = LocalPlayer:WaitForChild("leaderstats", 5)
-if leaderstats then
-    leaderstats.DescendantChanged:Connect(function(stat)
-        if TrackerRunning and (stat:IsA("IntValue") or stat:IsA("NumberValue")) then
-            AddLog("STAT", "Economía: " .. stat.Name .. " = " .. tostring(stat.Value), stat.Name)
-        end
-    end)
-end
-
--- =====================================================================
--- 5. CONECTOR GITHUB (BOTÓN DE REFRESCO)
+-- 5. CONECTOR GITHUB REFRESH
 -- =====================================================================
 RefreshBtn.MouseButton1Click:Connect(function()
     AddLog("SISTEMA", "Descargando actualización desde GitHub...", "")
     TrackerRunning = false
+    autoFarmPebble = false
     ScreenGui:Destroy()
-    -- Agregamos un número aleatorio para evadir por completo el "Caché de GitHub"
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua?v=" .. tostring(math.random(1000, 9999))))()
 end)
 
-AddLog("SISTEMA", "Omni-Tracker V4.0 en vivo. Clic Izquierdo = Rastreo de Atributos/Salud", "Tracker V4")
+AddLog("SISTEMA", "Omni-Tracker V5.0 (BotEdition) En línea.", "")
