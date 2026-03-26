@@ -562,13 +562,12 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- Mismo sistema que Ores (funciona sin kick ni oscilación)
-                    -- El Noclip ya activo evita obstáculos
-                    local attackPos = bestTarget.Position + Vector3.new(0, 3.5, 0)
-                    if (hrp.Position - attackPos).Magnitude > 3 then
-                        TweenToPosition(attackPos)
-                    end
-                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    -- 🕳️ MÉTODO SUBTERRÁNEO: Noclip primero → ir bajo el zombie → golpear hacia arriba
+                    -- El zombie no puede agacharse ni excavar, nosotros sí
+                    
+                    -- Paso 1: Noclip ya activo (ToggleNoclip(true) se llama arriba)
+                    -- Esperar 2 frames para que el Stepped loop deshabilite TODAS las colisiones
+                    task.wait(0.1)
                     
                     -- Equipar espada/arma (no pico)
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -587,8 +586,20 @@ task.spawn(function()
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
                     
+                    -- Paso 2: Ir DEBAJO del zombie (3 studs bajo sus pies)
+                    -- Noclip ya desactivó colisiones → atravesamos el suelo sin problema
+                    local underPos = Vector3.new(bestTarget.Position.X, bestTarget.Position.Y - 3, bestTarget.Position.Z)
+                    TweenToPosition(underPos)
+                    
+                    -- Paso 3: Apuntar la cámara HACIA ARRIBA al zombie desde abajo
                     local camera = workspace.CurrentCamera
-                    if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
+                    if camera then
+                        -- Mirar desde nuestra posición bajo tierra HACIA ARRIBA al zombie
+                        camera.CFrame = CFrame.lookAt(hrp.Position, bestTarget.Position)
+                    end
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    
+                    -- Paso 4: Golpear desde abajo (click al centro de pantalla apuntando al zombie)
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
                     VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
