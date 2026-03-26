@@ -704,7 +704,10 @@ AutoMobBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ===================================================================ExaminarBtn.MouseButton1Click:Connect(function()
+-- =====================================================================
+-- 6. EXAMINAR MOB: Forense Completo
+-- =====================================================================
+ExaminarBtn.MouseButton1Click:Connect(function()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then
         AddLog("EXAMEN", "❌ Sin personaje cargado.", "")
@@ -756,22 +759,21 @@ end)
         end)
         if expanded == 0 then AddLog("EXAMEN", "⚠️ Hitbox protegido por servidor", "") end
     else
-        AddLog("EXAMEN", "⚠️ Sin arma: equipa tu espada primero", "")
+        AddLog("EXAMEN", "⚠️ Sin arma en personaje ni mochila", "")
     end
     
     -- ===================== ESCANEO workspace.Proximity =====================
     local proximity = workspace:FindFirstChild("Proximity")
     if proximity then
-        AddLog("EXAMEN", "🔴 workspace.Proximity existe - aqui está el sistema de daño del mob", "")
+        AddLog("EXAMEN", "🔴 workspace.Proximity encontrado - sistema de daño server", "")
         local proxStr = ""
         for _, obj in pairs(proximity:GetDescendants()) do
             if obj:IsA("Script") or obj:IsA("LocalScript") then
                 proxStr = proxStr .. "[" .. obj.ClassName .. "] " .. obj.Name .. " @ " .. obj:GetFullName() .. " | "
             end
         end
-        AddLog("EXAMEN", "📡 Scripts en Proximity", proxStr ~= "" and proxStr or "Sin scripts visibles")
+        AddLog("EXAMEN", "📡 Scripts Proximity", proxStr ~= "" and proxStr or "Sin scripts visibles")
     end
-    
     AddLog("EXAMEN", "─────────────────────────────", "")
     
     -- ===================== ANÁLISIS DEL MOB MÁS CERCANO =====================
@@ -786,7 +788,6 @@ end)
         end
     end
     if not bestMob then AddLog("EXAMEN", "❌ No hay mobs cerca.", ""); return end
-    
     AddLog("EXAMEN", "🎯 Mob: " .. bestMob.Name .. " a " .. math.floor(bestDist) .. "m", bestMob:GetFullName())
     local hum = bestMob:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -804,12 +805,6 @@ end)
             remoteStr = remoteStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
         end
     end
-            for i, c in pairs(dmgConns) do
-                if c.Function then
-                    local ok, info = pcall(function() return debug.getinfo(c.Function) end)
-                    if ok and info then connStr = connStr .. "[" .. i .. "] src=" .. tostring(info.source) .. " | " end
-                end
-            end
             AddLog("EXAMEN", "🔗 Listeners HP", connStr)
         end)
     end
