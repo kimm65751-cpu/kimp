@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.6 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -772,35 +772,35 @@
     local AutoMineActivo = false
     local AutoKillActivo = false
 
-    local GlassBtn = Instance.new("TextButton")
-    GlassBtn.Size = UDim2.new(1, -8, 0, 30)
-    GlassBtn.Position = UDim2.new(0, 4, 1, -140)
-    GlassBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 120)
-    GlassBtn.Text = "🛡️ CREAR PISO FLOTANTE (SAFE ZONE)"
-    GlassBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    GlassBtn.Font = Enum.Font.Code
-    GlassBtn.TextSize = 12
-    GlassBtn.Parent = LivePanel
+    local BoxBtn = Instance.new("TextButton")
+    BoxBtn.Size = UDim2.new(1, -8, 0, 30)
+    BoxBtn.Position = UDim2.new(0, 4, 1, -140)
+    BoxBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+    BoxBtn.Text = "🛡️ CAJA DE FUERZA (NOCLIP BOX)"
+    BoxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BoxBtn.Font = Enum.Font.Code
+    BoxBtn.TextSize = 12
+    BoxBtn.Parent = LivePanel
 
-    local InjectBtn = Instance.new("TextButton")
-    InjectBtn.Size = UDim2.new(1, -8, 0, 30)
-    InjectBtn.Position = UDim2.new(0, 4, 1, -105)
-    InjectBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-    InjectBtn.Text = "💉 INYECTAR SÚPER DAÑO/STATS"
-    InjectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    InjectBtn.Font = Enum.Font.Code
-    InjectBtn.TextSize = 12
-    InjectBtn.Parent = LivePanel
+    local GhostToggleBtn = Instance.new("TextButton")
+    GhostToggleBtn.Size = UDim2.new(1, -8, 0, 30)
+    GhostToggleBtn.Position = UDim2.new(0, 4, 1, -105)
+    GhostToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 150)
+    GhostToggleBtn.Text = "👻 FANTASMA INVIS: OFF (TIRADO)"
+    GhostToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    GhostToggleBtn.Font = Enum.Font.Code
+    GhostToggleBtn.TextSize = 11
+    GhostToggleBtn.Parent = LivePanel
 
-    local SafeAuraBtn = Instance.new("TextButton")
-    SafeAuraBtn.Size = UDim2.new(1, -8, 0, 30)
-    SafeAuraBtn.Position = UDim2.new(0, 4, 1, -70)
-    SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
-    SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL)"
-    SafeAuraBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SafeAuraBtn.Font = Enum.Font.Code
-    SafeAuraBtn.TextSize = 11
-    SafeAuraBtn.Parent = LivePanel
+    local NinjaBtn = Instance.new("TextButton")
+    NinjaBtn.Size = UDim2.new(1, -8, 0, 30)
+    NinjaBtn.Position = UDim2.new(0, 4, 1, -70)
+    NinjaBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+    NinjaBtn.Text = "⚔️ AUTO-ESPALDA (NINJA ORBIT)"
+    NinjaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NinjaBtn.Font = Enum.Font.Code
+    NinjaBtn.TextSize = 11
+    NinjaBtn.Parent = LivePanel
 
     local StatusLabel = Instance.new("TextLabel")
     StatusLabel.Size = UDim2.new(1, -8, 0, 28)
@@ -856,152 +856,128 @@
         end)
     end
 
-    local GlassActivo = false
-    local MyGlass = nil
+    local BoxActivo = false
+    local MyBox = nil
 
-    GlassBtn.MouseButton1Click:Connect(function()
-        GlassActivo = not GlassActivo
-        if GlassActivo then
-            GlassBtn.Text = "🛡️ SISTEMA DE ESCUDO AÉREO: ON ✅"
-            GlassBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 255)
+    BoxBtn.MouseButton1Click:Connect(function()
+        BoxActivo = not BoxActivo
+        if BoxActivo then
+            BoxBtn.Text = "🛡️ CAJA DE FUERZA: ON ✅"
+            BoxBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 200)
             
-            MyGlass = Instance.new("Part")
-            MyGlass.Name = "EscudoAntiZombies"
-            MyGlass.Size = Vector3.new(30, 1, 30)
-            MyGlass.Transparency = 0.5
-            MyGlass.Material = Enum.Material.ForceField
-            MyGlass.BrickColor = BrickColor.new("Cyan")
-            MyGlass.Anchored = true
-            MyGlass.CanCollide = true
-            MyGlass.Parent = Workspace
-            
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                -- Mover inicial
-                MyGlass.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3, hrp.Position.Z)
-            end
+            MyBox = Instance.new("Part")
+            MyBox.Name = "MuroDefensivo"
+            MyBox.Size = Vector3.new(16, 16, 16)
+            MyBox.Transparency = 0.5
+            MyBox.Material = Enum.Material.ForceField
+            MyBox.BrickColor = BrickColor.new("Bright blue")
+            MyBox.Anchored = true
+            MyBox.CanCollide = true
+            MyBox.Parent = Workspace
             
             task.spawn(function()
-                while GlassActivo and MyGlass do
+                while BoxActivo and MyBox do
                     pcall(function()
                         local char = LocalPlayer.Character
                         local myRoot = char and char:FindFirstChild("HumanoidRootPart")
                         if myRoot then
-                            -- Encontrar el piso real debajo del jugador ignorando el escudo y el propio jugador
-                            local rayParams = RaycastParams.new()
-                            rayParams.FilterDescendantsInstances = {char, MyGlass}
-                            rayParams.FilterType = Enum.RaycastFilterType.Exclude
-
-                            local rayResult = Workspace:Raycast(myRoot.Position, Vector3.new(0, -100, 0), rayParams)
-                            local groundY = rayResult and rayResult.Position.Y or (myRoot.Position.Y - 6.4)
-                            
-                            -- Hoverboard: Mantener el cristal EXACTAMENTE a 6.4 metros sobre el piso verdadero. 
-                            -- (Los brazos del zombi llegan a 3m, tu espada llega a 7m). ¡Muerte impecable!
-                            MyGlass.CFrame = CFrame.new(myRoot.Position.X, groundY + 6.4, myRoot.Position.Z)
-                            
-                            -- Auto-empujar al jugador encima si se resbala por un glitch de animacion
-                            if myRoot.Position.Y < MyGlass.Position.Y then
-                                myRoot.CFrame = myRoot.CFrame * CFrame.new(0, 5, 0)
-                            end
+                            -- El cristal de fuerza envuelve al jugador. Zombis locales o bajo Network Ownership chocan con él.
+                            MyBox.CFrame = CFrame.new(myRoot.Position)
                         end
                     end)
                     task.wait(0.05)
                 end
             end)
-            StatusLabel.Text = "🛡️ Hoverboard listo a 6.4m fijos. Súbete, colócate sobre él y activa el Aura."
+            StatusLabel.Text = "🛡️ Caja lista. Zombis se estrellarán contra sus paredes invisibles."
         else
-            GlassBtn.Text = "🛡️ CREAR PISO FLOTANTE (SAFE ZONE)"
-            GlassBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 120)
-            if MyGlass then MyGlass:Destroy() MyGlass = nil end
+            BoxBtn.Text = "🛡️ CAJA DE FUERZA (NOCLIP BOX)"
+            BoxBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+            if MyBox then MyBox:Destroy() MyBox = nil end
         end
     end)
 
-    InjectBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char then
-                -- Inyectando estadísticas monstruosas que aprendimos del Scanner para romper la economía de daño
-                char:SetAttribute("DamageBoost", 99999)
-                char:SetAttribute("MiningBoost", 99999)
-                char:SetAttribute("LuckBoost", 99999)
-                char:SetAttribute("Health", 99999)
-                char:SetAttribute("RequiredDamage", 0)
-                char:SetAttribute("IsNpc", nil) -- Aseguramos perder el rasgo negativo de camuflaje
-                
-                local tool = char:FindFirstChildWhichIsA("Tool")
-                if tool then
-                    tool:SetAttribute("Damage", 99999)
-                    tool:SetAttribute("Range", 999)
-                end
-                
-                StatusLabel.Text = "💉 Sobredosis de Atributos inyectados. Daño/Minería Max"
+    local GhostActivo = false
+    local originalTorsoName = ""
+    GhostToggleBtn.MouseButton1Click:Connect(function()
+        GhostActivo = not GhostActivo
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        if GhostActivo then
+            GhostToggleBtn.Text = "👻 FANTASMA INVIS: ON ✅"
+            GhostToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 200)
+            
+            -- Aplicamos FE Invis renombrando Torso
+            local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+            if torso then
+                originalTorsoName = torso.Name
+                torso.Name = "GhostTorsoFake"
             end
-        end)
+            StatusLabel.Text = "👻 Eres indetectable pero estás en el piso. Pega así y luego apágalo."
+        else
+            GhostToggleBtn.Text = "👻 FANTASMA INVIS: OFF (TIRADO)"
+            GhostToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 150)
+            
+            -- Restauramos Torso para que el player vuelva a caminar
+            local fakeTorso = char:FindFirstChild("GhostTorsoFake")
+            if fakeTorso and originalTorsoName ~= "" then
+                fakeTorso.Name = originalTorsoName
+            end
+            StatusLabel.Text = "🧍🏼‍♂️ Te has levantado del piso."
+        end
     end)
 
-    local SafeAuraActivo = false
-    SafeAuraBtn.MouseButton1Click:Connect(function()
-        SafeAuraActivo = not SafeAuraActivo
-        if SafeAuraActivo then
-            SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL): ON ✅"
-            SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    local NinjaActivo = false
+    NinjaBtn.MouseButton1Click:Connect(function()
+        NinjaActivo = not NinjaActivo
+        if NinjaActivo then
+            NinjaBtn.Text = "⚔️ AUTO-ESPALDA (NINJA): ON ✅"
+            NinjaBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+            
             task.spawn(function()
-                while SafeAuraActivo do
+                while NinjaActivo do
                     pcall(function()
+                        local myHum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if not myRoot then return end
+                        if not myRoot or not myHum then return end
 
                         local targetPart = nil
-                        local method = "Weapon"
-                        local tName = ""
-                        
-                        local _, dist = findNearest(function(obj)
-                            if obj:IsA("Model") and obj ~= LocalPlayer.Character then
-                                -- Chequear si es NPC (Zombi)
-                                local hum = obj:FindFirstChildWhichIsA("Humanoid")
-                                local isNpc = obj:GetAttribute("IsNpc")
-                                if hum and hum.Health > 0 and isNpc == true then
-                                    targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
-                                    method = "Weapon"
-                                    tName = obj.Name
-                                    return true
-                                end
-                                -- Chequear si es Roca/Mena
-                                local n = string.lower(obj.Name)
-                                local hasHealth = obj:GetAttribute("Health") ~= nil
-                                if hasHealth and (string.find(n,"pebble") or string.find(n,"rock") or string.find(n,"ore") or string.find(n,"stone") or string.find(n,"crystal")) then
-                                    targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
-                                    method = "Pickaxe"
-                                    tName = obj.Name
-                                    return true
-                                end
+                        local obj, dist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= LocalPlayer.Character then
+                                local h = o:FindFirstChildWhichIsA("Humanoid")
+                                return h and h.Health > 0 and o:GetAttribute("IsNpc") == true
                             end
                             return false
                         end)
 
-                        if targetPart and dist and dist < 25 then
-                            local origin = myRoot.CFrame
-                            -- Magia negra: Curvamos la espina dorsal apuntando abajo directamente al zombi/roca
-                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, targetPart.Position)
-                            
-                            -- El servidor lee tu CFrame curvo y dispara verticalmente hacia abajo
-                            ToolRF:InvokeServer(method)
-                            
-                            -- Restauramos la vista al instante para que no caigas de cara o el personaje bugee
-                            myRoot.CFrame = origin
-                            
-                            StatusLabel.Text = "🛸 Bombardeando: " .. tName
+                        if obj and dist and dist < 22 then
+                            targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+                            if targetPart then
+                                -- Moverse directamente detrás del Zombi (3 studs atrás de su cara)
+                                local espaldaZombi = (targetPart.CFrame * CFrame.new(0, 0, 3)).Position
+                                
+                                if (myRoot.Position - espaldaZombi).Magnitude > 1.5 then
+                                    myHum:MoveTo(espaldaZombi)
+                                end
+                                
+                                -- Rotar forzosamente para mirar hacia la nuca del zombi
+                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, targetPart.Position)
+                                
+                                -- Golpear a la nuca legalmente
+                                ToolRF:InvokeServer("Weapon")
+                                StatusLabel.Text = "⚔️ Apuñalando por detrás a: " .. obj.Name
+                            end
                         else
-                            StatusLabel.Text = "🛸 Esperando blanco bajo el cristal..."
+                            StatusLabel.Text = "⚔️ Modo Ninja: Camina hacia un monstruo."
                         end
                     end)
-                    task.wait(0.2)
+                    task.wait(0.1)
                 end
                 StatusLabel.Text = "Estado: Inactivo"
             end)
         else
-            SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL)"
-            SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+            NinjaBtn.Text = "⚔️ AUTO-ESPALDA (NINJA ORBIT)"
+            NinjaBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
         end
     end)
 
