@@ -474,16 +474,25 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
     if autoPump then
         AutoPumpBtn.Text = "BOMBEO AUTOMÁTICO: ON"
         AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        AddLog("SISTEMA", "🔥 Modo Bombeo Activado. ¡Pon el mouse X sobre el fuelle, yo haré el resto!", "")
+        AddLog("SISTEMA", "🔥 Modo Bombeo Activado. ¡Tienes 3 SEG para mover el ratón al fuelle!", "")
         
         task.spawn(function()
-            AddLog("SISTEMA", "🔥 Modo Bombeo (Físico) Iniciado.", "")
+            task.wait(3) -- Tiempo táctico para mover el ratón real a la posición deseada
+            if not autoPump then return end
             
-            -- Aseguramos de hacer el clic sostenido al iniciar
+            AddLog("SISTEMA", "🔥 Bombeo Iniciado. (MANTÉN PRESIONADO 'Q' PARA APAGAR DE EMERGENCIA)", "")
+            
             if mouse1click then mouse1click() end 
             if mouse1press then mouse1press() end
             
+            local uis = game:GetService("UserInputService")
+            
             while autoPump do
+                if uis:IsKeyDown(Enum.KeyCode.Q) then
+                    autoPump = false
+                    break
+                end
+                
                 -- Baja el ratón físico 300 píxeles relativos
                 for i = 1, 10 do
                     if not autoPump then break end
@@ -500,7 +509,9 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
             end
             
             if mouse1release then mouse1release() end
-            AddLog("SISTEMA", "Bombeo Físico Terminado.", "")
+            AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
+            AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+            AddLog("SISTEMA", "Bombeo Físico Terminado o Cancelado.", "")
         end)
     else
         AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
