@@ -470,45 +470,98 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Lógica del Auto-Fuelle (Vibrador de Mouse Virtual)
+-- Lógica del Auto-Fuelle (Ancla Inteligente y Auto-Apagado)
 local autoPump = false
 local pumpConn
 
 AutoPumpBtn.MouseButton1Click:Connect(function()
     autoPump = not autoPump
     if autoPump then
-        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): ON"
+        AutoPumpBtn.Text = "AUTO MINIGAME: ON"
         AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
-        AddLog("SISTEMA", "¡Fuelle ON! Pon tu ratón sobre la flecha verde.", "")
+        AddLog("SISTEMA", "¡Apunta a la flecha verde! Escaneando UI en 5...", "")
         
-        if not pumpConn then
+        task.spawn(function()
+            task.wait(5) -- Aumentado a 5 segundos a petición
+            if not autoPump then return end
+            
             local vim = game:GetService("VirtualInputManager")
             local Mouse = LocalPlayer:GetMouse()
+            local X, Y = Mouse.X, Mouse.Y
+            local targetUI = nil
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            
+            -- ¡ESCÁNER ESPÍA DE GUI! (Modo 1: Detecta qué menú estás apuntando)
+            if playerGui then
+                local foundGuis = playerGui:GetGuiObjectsAtPosition(X, Y)
+                if foundGuis and #foundGuis > 0 then
+                    targetUI = foundGuis[1] 
+                end
+            end
+            
+            -- ¡CACERÍA DE GUI AUTÓNOMA! (Modo 2: Si no lo apuntaste, lo busca solo)
+            if not targetUI and playerGui then
+                for _, ui in pairs(playerGui:GetDescendants()) do
+                    if (ui:IsA("ImageButton") or ui:IsA("Frame") or ui:IsA("TextButton")) and ui.Visible and ui.AbsoluteSize.X > 5 then
+                        local n = string.lower(ui.Name)
+                        if string.find(n, "drag") or string.find(n, "arrow") or string.find(n, "slider") or string.find(n, "bellow") or string.find(n, "pump") or string.find(n, "mini") then
+                            -- Evitar que agarre botones del sistema o de chat
+                            if not string.find(n, "chat") and not string.find(n, "touch") then
+                                targetUI = ui
+                                -- Calcula el centro geográfico del botón y toma el control de las coordenadas
+                                X = targetUI.AbsolutePosition.X + (targetUI.AbsoluteSize.X / 2)
+                                Y = targetUI.AbsolutePosition.Y + (targetUI.AbsoluteSize.Y / 2) + 36 -- +36 por la barra superior de Roblox
+                                AddLog("SISTEMA", "🎯 ¡Objetivo Auto-Detectado!: " .. targetUI.Name, targetUI:GetFullName())
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if targetUI then
+                AddLog("SISTEMA", "📍 Anclado exitosamente a: " .. targetUI.Name, targetUI:GetFullName())
+            else
+                AddLog("SISTEMA", "⚠️ Advertencia: No detecté un botón UI especial, sacudiendo a ciegas.", "")
+            end
+            
+            AddLog("SISTEMA", "¡Bomba Iniciada! Se apagará sola al terminar.", "")
             local toggled = false
             
-            pumpConn = RunService.RenderStepped:Connect(function()
-                local X, Y = Mouse.X, Mouse.Y
-                -- Mantiene el ratón presionado artificialmente
-                vim:SendMouseButtonEvent(X, Y, 0, true, game, 1)
-                
-                -- Sacude la coordenada Y violentamente para rellenar la barra
-                if toggled then
-                    vim:SendMouseMovementEvent(X, Y + 150, game)
-                else
-                    vim:SendMouseMovementEvent(X, Y - 150, game)
-                end
-                toggled = not toggled
-            end)
-        end
+            if not pumpConn then
+                pumpConn = RunService.RenderStepped:Connect(function()
+                    -- ¿El minijuego desapareció de la pantalla o se hizo invisible? = Victoria.
+                    if targetUI then
+                        if not targetUI:IsDescendantOf(game) or not targetUI.Visible then
+                            AddLog("SISTEMA", "✅ ¡Minijuego completado/cerrado! Apagando Auto-Fuelle.", "")
+                            autoPump = false
+                            AutoPumpBtn.Text = "AUTO MINIGAME: OFF"
+                            AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+                            
+                            vim:SendMouseButtonEvent(X, Y, 0, false, game, 1)
+                            if pumpConn then pumpConn:Disconnect(); pumpConn = nil end
+                            return
+                        end
+                    end
+                    
+                    vim:SendMouseButtonEvent(X, Y, 0, true, game, 1)
+                    if toggled then
+                        vim:SendMouseMovementEvent(X, Y + 150, game)
+                    else
+                        vim:SendMouseMovementEvent(X, Y - 150, game)
+                    end
+                    toggled = not toggled
+                end)
+            end
+        end)
     else
-        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): OFF"
+        AutoPumpBtn.Text = "AUTO MINIGAME: OFF"
         AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-        AddLog("SISTEMA", "Auto-Fuelle apagado.", "")
+        AddLog("SISTEMA", "Auto-Fuelle apagado manualmente.", "")
         
         if pumpConn then
             pumpConn:Disconnect()
             pumpConn = nil
-            -- Asegurarnos de soltar el fantasma del ratón
             local vim = game:GetService("VirtualInputManager")
             local Mouse = LocalPlayer:GetMouse()
             vim:SendMouseButtonEvent(Mouse.X, Mouse.Y, 0, false, game, 1)
