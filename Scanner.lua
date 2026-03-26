@@ -235,7 +235,7 @@ InterceptBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Hook para outgoing (Tu PC -> Servidor)
+-- Hook de Red: Namecall Clásico
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local methodStr = string.lower(tostring(method))
@@ -246,53 +246,73 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         pcall(function() selfName = self.Name end)
         local nLow = string.lower(selfName)
         
-        -- Ignoramos basura de movimiento o cámara
         if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
-            -- MODO EDICIÓN EN TIEMPO REAL:
-            -- Si detectamos que nos quitan vida, mandamos "0"
-            if string.find(nLow, "takedamage") then
-                args[1] = 0 -- Bajar nuestro daño a 0
-            end
-            
-            -- Hacemos el volcado de texto asíncrono y protegido para NUNCA romper tu ataque en el juego
             task.spawn(function()
                 pcall(function()
                     local fullPath = "Unknown"
                     pcall(function() fullPath = self:GetFullName() end)
-                    
-                    local argDump = "--- PAQUETE SALIENTE --- \nDestino: " .. fullPath .. "\nMétodo: " .. methodStr .. "\nArgumentos:\n"
-                    for i, v in ipairs(args) do
-                        local extraInfo = ""
-                        if typeof(v) == "Instance" then
-                            local vP, vIsPart, vName = "nil", false, "unknown"
-                            pcall(function() vP = tostring(v.Parent); vIsPart = v:IsA("BasePart"); vName = v.Name end)
-                            extraInfo = " | Padre: " .. vP .. " | Es BasePart: " .. tostring(vIsPart)
-                            
-                            if vIsPart and string.find(string.lower(vName), "hitbox") then
-                                extraInfo = extraInfo .. " 🎯 ¡ALERTA HITBOX! Usa este argument en FireServer."
-                            end
-                        elseif typeof(v) == "Vector3" then
-                            extraInfo = " | Posición Mundo (Raycast / HitPos)"
-                        elseif typeof(v) == "CFrame" then
-                            extraInfo = " | Coordenadas/Rotación Orientada"
-                        end
-
-                        argDump = argDump .. "["..i.."] ("..typeof(v)..") = " .. tostring(v) .. extraInfo .. "\n"
-                        
-                        if typeof(v) == "table" then
-                            pcall(function() argDump = argDump .. "   Tabla: " .. HttpService:JSONEncode(v) .. "\n" end)
-                        end
+                    local argDump = "--- MODO NAMECALL ---\nDestino: " .. fullPath .. "\nArgs:\n"
+                    for i, v in pairs(args) do
+                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
                     end
                     AddLog("C->S", selfName, argDump)
                 end)
             end)
-            
-            if string.find(nLow, "takedamage") then
-                return oldNamecall(self, unpack(args)) -- Enviamos args hackeados solo en daño propio
-            end
         end
     end
     return oldNamecall(self, ...)
+end))
+
+-- Hook de Red: FireServer Directo (Obligatorio para Knit / Comm Frameworks)
+local originalFireServer
+originalFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+    if InterceptorActivo then
+        local args = {...}
+        local selfName = "UnknownRemote"
+        pcall(function() selfName = self.Name end)
+        local nLow = string.lower(selfName)
+        
+        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
+            task.spawn(function()
+                pcall(function()
+                    local fullPath = "Unknown"
+                    pcall(function() fullPath = self:GetFullName() end)
+                    local argDump = "--- MODO FIRESERVER ---\nDestino: " .. fullPath .. "\nArgs:\n"
+                    for i, v in pairs(args) do
+                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
+                    end
+                    AddLog("C->S", selfName, argDump)
+                end)
+            end)
+        end
+    end
+    return originalFireServer(self, ...)
+end))
+
+-- Hook de Red: InvokeServer Directo
+local originalInvokeServer
+originalInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+    if InterceptorActivo then
+        local args = {...}
+        local selfName = "UnknownRemote"
+        pcall(function() selfName = self.Name end)
+        local nLow = string.lower(selfName)
+        
+        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
+            task.spawn(function()
+                pcall(function()
+                    local fullPath = "Unknown"
+                    pcall(function() fullPath = self:GetFullName() end)
+                    local argDump = "--- MODO INVOKESERVER ---\nDestino: " .. fullPath .. "\nArgs:\n"
+                    for i, v in pairs(args) do
+                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
+                    end
+                    AddLog("C->S", selfName, argDump)
+                end)
+            end)
+        end
+    end
+    return originalInvokeServer(self, ...)
 end))
 
 -- Hook para incoming (Servidor -> Tu PC)
