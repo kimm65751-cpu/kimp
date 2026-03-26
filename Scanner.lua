@@ -224,7 +224,8 @@ local function GetHealthInfo(obj)
         for _, gui in pairs(playerGui:GetDescendants()) do
             if gui:IsA("TextLabel") and gui.Visible and gui.TextTransparency < 1 then
                 local text = string.lower(gui.Text)
-                if string.find(text, "hp") and string.match(text, "[%d%.]+") then
+                -- Lector Visual más estricto: rechaza tooltips con HTML (<font>) o textos inmensamente largos
+                if string.find(text, "hp") and string.match(text, "[%d%.]+") and not string.find(text, "<font") and string.len(text) < 30 then
                     return "❤️ ScreenGui HP: " .. gui.Text, gui, "Objetivo en Pantalla"
                 end
             end
@@ -287,7 +288,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                             local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
                             if typeof(newHp) == "number" and newHp < startHp then
                                 local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Numérico: " .. string.format("%.1f", damage), "Daño: " .. damage)
+                                AddLog("COMBATE", "💥 Daño Real: " .. string.format("%.1f", damage) .. " | ❤️ Quedan: " .. string.format("%.1f", newHp), "Daño: " .. damage)
                             end
                             startHp = newHp
                         end)
@@ -299,7 +300,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                             local newHp = healthObj:GetAttribute(attrName)
                             if typeof(newHp) == "number" and newHp < startHp then
                                 local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Atributo: " .. string.format("%.1f", damage), "Daño: " .. damage)
+                                AddLog("COMBATE", "💥 Daño Atributo: " .. string.format("%.1f", damage) .. " | ❤️ Quedan: " .. string.format("%.2f", newHp), "Daño: " .. damage)
                             end
                             startHp = newHp
                         end)
@@ -310,7 +311,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                             local newHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
                             if newHp > 0 and newHp < startHp then
                                 local damage = startHp - newHp
-                                AddLog("COMBATE", "💥 Daño Visual GUI: " .. string.format("%.2f", damage), "Daño: " .. damage)
+                                AddLog("COMBATE", "💥 Daño Visual: " .. string.format("%.2f", damage) .. " | ❤️ Quedan: " .. string.format("%.2f", newHp), "Daño: " .. damage)
                             end
                             startHp = newHp
                         end)
