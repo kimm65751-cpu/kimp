@@ -716,6 +716,63 @@ ExaminarBtn.MouseButton1Click:Connect(function()
     local hrp = char.HumanoidRootPart
     local pService = game:GetService("Players")
     
+    -- ===================== ANÁLISIS DEL ARMA EQUIPADA =====================
+    local equippedTool = char:FindFirstChildWhichIsA("Tool")
+    if equippedTool then
+        AddLog("EXAMEN", "🗡️ ARMA: " .. equippedTool.Name, equippedTool:GetFullName())
+        
+        -- Scripts dentro del arma
+        local toolScripts = ""
+        for _, v in pairs(equippedTool:GetDescendants()) do
+            if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("ModuleScript") then
+                toolScripts = toolScripts .. "[" .. v.ClassName .. "] " .. v.Name .. " | "
+            end
+        end
+        AddLog("EXAMEN", "📜 Scripts del Arma", toolScripts ~= "" and toolScripts or "Sin scripts")
+        
+        -- Todas las BaseParts del arma (posibles hitboxes)
+        local partsStr = ""
+        for _, v in pairs(equippedTool:GetDescendants()) do
+            if v:IsA("BasePart") then
+                local sz = v.Size
+                partsStr = partsStr .. v.Name .. "(Size:" .. string.format("%.1f,%.1f,%.1f", sz.X, sz.Y, sz.Z) .. " CanTouch:" .. tostring(v.CanTouch) .. ") | "
+            end
+        end
+        AddLog("EXAMEN", "🔷 Parts/Hitbox del Arma", partsStr ~= "" and partsStr or "Sin parts")
+        
+        -- Atributos del arma
+        local toolAttr = ""
+        for k, v in pairs(equippedTool:GetAttributes()) do toolAttr = toolAttr .. k .. "=" .. tostring(v) .. " | " end
+        AddLog("EXAMEN", "🏷️ Atributos del Arma", toolAttr ~= "" and toolAttr or "Sin atributos")
+        
+        -- Remotes dentro del arma
+        local toolRemotes = ""
+        for _, v in pairs(equippedTool:GetDescendants()) do
+            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") then
+                toolRemotes = toolRemotes .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
+            end
+        end
+        AddLog("EXAMEN", "📡 Remotes del Arma", toolRemotes ~= "" and toolRemotes or "Sin remotes en arma")
+        
+        -- INTENTO: Expandir hitbox del arma para golpear desde lejos
+        AddLog("EXAMEN", "⚙️ Intentando expandir hitbox del arma...", "")
+        local expanded = 0
+        pcall(function()
+            for _, v in pairs(equippedTool:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanTouch then
+                    local oldSize = v.Size
+                    v.Size = Vector3.new(15, 15, 15) -- Hitbox gigante de 15x15x15 studs
+                    expanded += 1
+                    AddLog("EXAMEN", "✅ Expandido: " .. v.Name .. " " .. tostring(oldSize) .. " → 15x15x15", v:GetFullName())
+                end
+            end
+        end)
+        if expanded == 0 then AddLog("EXAMEN", "⚠️ No se pudo expandir hitbox (server protegido)", "") end
+    else
+        AddLog("EXAMEN", "⚠️ No tienes arma equipada. Equipa tu espada primero.", "")
+    end
+    AddLog("EXAMEN", "─────────────────────────────", "")
+    
     -- Buscar mob más cercano
     local bestMob = nil
     local bestDist = math.huge
