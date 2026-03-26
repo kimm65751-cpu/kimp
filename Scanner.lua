@@ -776,21 +776,21 @@
     ShieldBtn.Size = UDim2.new(1, -8, 0, 30)
     ShieldBtn.Position = UDim2.new(0, 4, 1, -140)
     ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
-    ShieldBtn.Text = "🛡️ ESCUDO FRONTAL (CRISTAL)"
+    ShieldBtn.Text = "🛡️ MURO TRAMPA (GLITCH ZOMBI)"
     ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ShieldBtn.Font = Enum.Font.Code
     ShieldBtn.TextSize = 12
     ShieldBtn.Parent = LivePanel
 
-    local FreezeBtn = Instance.new("TextButton")
-    FreezeBtn.Size = UDim2.new(1, -8, 0, 30)
-    FreezeBtn.Position = UDim2.new(0, 4, 1, -105)
-    FreezeBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 200)
-    FreezeBtn.Text = "❄️ STUN-LOCK (CONGELAR ZOMBIS)"
-    FreezeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FreezeBtn.Font = Enum.Font.Code
-    FreezeBtn.TextSize = 11
-    FreezeBtn.Parent = LivePanel
+    local BunkerBtn = Instance.new("TextButton")
+    BunkerBtn.Size = UDim2.new(1, -8, 0, 30)
+    BunkerBtn.Position = UDim2.new(0, 4, 1, -105)
+    BunkerBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+    BunkerBtn.Text = "🔮 BÚNKER ESFERA (ANTI-AoE)"
+    BunkerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BunkerBtn.Font = Enum.Font.Code
+    BunkerBtn.TextSize = 11
+    BunkerBtn.Parent = LivePanel
 
     local KiteBtn = Instance.new("TextButton")
     KiteBtn.Size = UDim2.new(1, -8, 0, 30)
@@ -862,12 +862,13 @@
     ShieldBtn.MouseButton1Click:Connect(function()
         ShieldActivo = not ShieldActivo
         if ShieldActivo then
-            ShieldBtn.Text = "🛡️ ESCUDO FRONTAL: ON ✅"
+            ShieldBtn.Text = "🛡️ MURO TRAMPA: ON ✅"
             ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
             
             MyShield = Instance.new("Part")
             MyShield.Name = "MuroDefensivo"
-            MyShield.Size = Vector3.new(12, 12, 2) -- Una Tapa o Muro Plano
+            -- Hecho muchísimo más grueso y obscenamente ANCHO
+            MyShield.Size = Vector3.new(30, 12, 5) 
             MyShield.Transparency = 0.5
             MyShield.Material = Enum.Material.ForceField
             MyShield.BrickColor = BrickColor.new("Cyan")
@@ -881,7 +882,7 @@
                         local char = LocalPlayer.Character
                         local myRoot = char and char:FindFirstChild("HumanoidRootPart")
                         if myRoot then
-                            -- Crear y actualizar restricciones de colisión para que el jugador pase como fantasma 100% legal (Cero TP Kick)
+                            -- Fasear al jugador para CERO Kicks por TP
                             for _, v in pairs(char:GetDescendants()) do
                                 if v:IsA("BasePart") then
                                     local cName = "NCC_" .. v.Name
@@ -894,64 +895,72 @@
                                     end
                                 end
                             end
-                            -- Colocar el escudo bloqueador perpendicularmente 3.5 metros hacia enfrente
-                            MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
+                            -- Al centrarlo un poco más hacia nosotros con tanto grosor, el hitbox del muro traga completamente la AI de pathing del Zombi
+                            MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -4.5)
                         end
                     end)
                     task.wait(0.05)
                 end
             end)
-            StatusLabel.Text = "🛡️ Escudo físico Anti-Zombis montado al frente (Libre de Anti-TP Kicks)."
+            StatusLabel.Text = "🛡️ Muro Trampa masivo activado. Zombis ignorarán tu hitbox para rodear al infinito."
         else
-            ShieldBtn.Text = "🛡️ ESCUDO FRONTAL (CRISTAL)"
+            ShieldBtn.Text = "🛡️ MURO TRAMPA (GLITCH ZOMBI)"
             ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
             if MyShield then MyShield:Destroy() MyShield = nil end
         end
     end)
 
-    local FreezeActivo = false
-    FreezeBtn.MouseButton1Click:Connect(function()
-        FreezeActivo = not FreezeActivo
-        if FreezeActivo then
-            FreezeBtn.Text = "❄️ STUN-LOCK: ON ✅"
-            FreezeBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 255)
+    local BunkerActivo = false
+    local MyBunker = nil
+    
+    BunkerBtn.MouseButton1Click:Connect(function()
+        BunkerActivo = not BunkerActivo
+        if BunkerActivo then
+            BunkerBtn.Text = "🔮 BÚNKER ESFERA: ON ✅"
+            BunkerBtn.BackgroundColor3 = Color3.fromRGB(160, 60, 220)
+            
+            MyBunker = Instance.new("Part")
+            MyBunker.Name = "BunkerEsfera"
+            MyBunker.Shape = Enum.PartType.Ball
+            MyBunker.Size = Vector3.new(16, 16, 16) -- Una burbuja gigante de 8 studs de radio
+            MyBunker.Transparency = 0.4
+            MyBunker.Material = Enum.Material.ForceField
+            MyBunker.BrickColor = BrickColor.new("Magenta")
+            MyBunker.Anchored = true
+            MyBunker.CanCollide = true
+            MyBunker.Parent = Workspace
             
             task.spawn(function()
-                while FreezeActivo do
+                while BunkerActivo and MyBunker do
                     pcall(function()
-                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        local char = LocalPlayer.Character
+                        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
                         if myRoot then
-                            local fZombis = 0
-                            -- Anclar brutalmente (congelar) las físicas localmente usando Network Ownership exploit
-                            for _, obj in pairs(Workspace:GetDescendants()) do
-                                if obj:IsA("Model") and obj:GetAttribute("IsNpc") == true then
-                                    local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
-                                    if hrp and (hrp.Position - myRoot.Position).Magnitude < 40 then
-                                        hrp.Anchored = true
-                                        fZombis = fZombis + 1
+                            -- Fantasmizar el jugador para que pueda flotar mágicamente dentro del cristal sólido 
+                            for _, v in pairs(char:GetDescendants()) do
+                                if v:IsA("BasePart") then
+                                    local cName = "NCC_" .. v.Name
+                                    if not MyBunker:FindFirstChild(cName) then
+                                        local nc = Instance.new("NoCollisionConstraint")
+                                        nc.Name = cName
+                                        nc.Part0 = v
+                                        nc.Part1 = MyBunker
+                                        nc.Parent = MyBunker
                                     end
                                 end
                             end
-                            StatusLabel.Text = "❄️ " .. fZombis .. " Zombis paralizados como estatuas."
+                            -- Centrado de manera permanente en el núcleo del jugador
+                            MyBunker.CFrame = myRoot.CFrame
                         end
                     end)
-                    task.wait(0.5)
+                    task.wait(0.05)
                 end
-                
-                -- Limpiar y descongelar al apagar
-                pcall(function()
-                    for _, obj in pairs(Workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj:GetAttribute("IsNpc") == true then
-                            local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
-                            if hrp then hrp.Anchored = false end
-                        end
-                    end
-                end)
-                StatusLabel.Text = "❄️ Todos los monstruos han sido descongelados."
             end)
+            StatusLabel.Text = "🔮 Búnker 360° activado. Repele Ataques Radiales (AoE) al alejar físicos 8 metros en toda dirección."
         else
-            FreezeBtn.Text = "❄️ STUN-LOCK (CONGELAR ZOMBIS)"
-            FreezeBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 200)
+            BunkerBtn.Text = "🔮 BÚNKER ESFERA (ANTI-AoE)"
+            BunkerBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+            if MyBunker then MyBunker:Destroy() MyBunker = nil end
         end
     end)
 
