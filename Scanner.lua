@@ -704,17 +704,18 @@ AutoMobBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- =====================================================================
--- 6. EXAMINAR MOB: Forense Completo de Zombie Cercano
--- =====================================================================
-ExaminarBtn.MouseButton1Click:Connect(function()
+-- ===================================================================ExaminarBtn.MouseButton1Click:Connect(function()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then
-        AddLog("EXAMEN", "❌ Si    -- ===================== ANÁLISIS DEL ARMA EQUIPADA =====================
-    -- Buscar en Character Y Backpack (el bot puede haber cambiado la herramienta)
+        AddLog("EXAMEN", "❌ Sin personaje cargado.", "")
+        return
+    end
+    local hrp = char.HumanoidRootPart
+    local pService = game:GetService("Players")
+    
+    -- ===================== ANÁLISIS DEL ARMA EQUIPADA =====================
     local equippedTool = char:FindFirstChildWhichIsA("Tool")
     if not equippedTool then
-        -- Buscar "Weapon" específicamente en la mochila
         for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
             if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
                 equippedTool = t; break
@@ -723,9 +724,7 @@ ExaminarBtn.MouseButton1Click:Connect(function()
     end
     
     if equippedTool then
-        AddLog("EXAMEN", "🗡️ ARMA: " .. equippedTool.Name .. " @ " .. equippedTool:GetFullName(), equippedTool:GetFullName())
-        
-        -- Scripts dentro del arma
+        AddLog("EXAMEN", "🗡️ ARMA: " .. equippedTool.Name, equippedTool:GetFullName())
         local toolScripts = ""
         for _, v in pairs(equippedTool:GetDescendants()) do
             if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("ModuleScript") then
@@ -733,8 +732,6 @@ ExaminarBtn.MouseButton1Click:Connect(function()
             end
         end
         AddLog("EXAMEN", "📜 Scripts del Arma", toolScripts ~= "" and toolScripts or "Sin scripts")
-        
-        -- Todas las BaseParts del arma (posibles hitboxes)
         local partsStr = ""
         for _, v in pairs(equippedTool:GetDescendants()) do
             if v:IsA("BasePart") then
@@ -743,13 +740,9 @@ ExaminarBtn.MouseButton1Click:Connect(function()
             end
         end
         AddLog("EXAMEN", "🔷 Parts/Hitbox del Arma", partsStr ~= "" and partsStr or "Sin parts")
-        
-        -- Atributos del arma
         local toolAttr = ""
         for k, v in pairs(equippedTool:GetAttributes()) do toolAttr = toolAttr .. k .. "=" .. tostring(v) .. " | " end
         AddLog("EXAMEN", "🏷️ Atributos del Arma", toolAttr ~= "" and toolAttr or "Sin atributos")
-        
-        -- INTENTO: Expandir hitbox del arma para golpear desde lejos
         local expanded = 0
         pcall(function()
             for _, v in pairs(equippedTool:GetDescendants()) do
@@ -763,30 +756,26 @@ ExaminarBtn.MouseButton1Click:Connect(function()
         end)
         if expanded == 0 then AddLog("EXAMEN", "⚠️ Hitbox protegido por servidor", "") end
     else
-        AddLog("EXAMEN", "⚠️ No se encontró arma en personaje ni mochila", "")
+        AddLog("EXAMEN", "⚠️ Sin arma: equipa tu espada primero", "")
     end
     
-    -- ===================== ESCANEO DE workspace.Proximity =====================
+    -- ===================== ESCANEO workspace.Proximity =====================
     local proximity = workspace:FindFirstChild("Proximity")
     if proximity then
-        AddLog("EXAMEN", "⚠️ workspace.Proximity ENCONTRADO - Aquí está el sistema de daño", "")
+        AddLog("EXAMEN", "🔴 workspace.Proximity existe - aqui está el sistema de daño del mob", "")
         local proxStr = ""
         for _, obj in pairs(proximity:GetDescendants()) do
             if obj:IsA("Script") or obj:IsA("LocalScript") then
                 proxStr = proxStr .. "[" .. obj.ClassName .. "] " .. obj.Name .. " @ " .. obj:GetFullName() .. " | "
             end
         end
-        AddLog("EXAMEN", "📡 Scripts en Proximity (sistema de daño)", proxStr ~= "" and proxStr or "Sin scripts visibles")
+        AddLog("EXAMEN", "📡 Scripts en Proximity", proxStr ~= "" and proxStr or "Sin scripts visibles")
     end
-    AddLog("EXAMEN", "─────────────────────────────", "") end
-    else
-        AddLog("EXAMEN", "⚠️ No tienes arma equipada. Equipa tu espada primero.", "")
-    end
+    
     AddLog("EXAMEN", "─────────────────────────────", "")
     
-    -- Buscar mob más cercano
-    local bestMob = nil
-    local bestDist = math.huge
+    -- ===================== ANÁLISIS DEL MOB MÁS CERCANO =====================
+    local bestMob, bestDist = nil, math.huge
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not pService:GetPlayerFromCharacter(obj) then
             local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
@@ -796,44 +785,25 @@ ExaminarBtn.MouseButton1Click:Connect(function()
             end
         end
     end
-    
-    if not bestMob then
-        AddLog("EXAMEN", "❌ No hay mobs cerca.", "")
-        return
-    end
+    if not bestMob then AddLog("EXAMEN", "❌ No hay mobs cerca.", ""); return end
     
     AddLog("EXAMEN", "🎯 Mob: " .. bestMob.Name .. " a " .. math.floor(bestDist) .. "m", bestMob:GetFullName())
-    
-    -- 1. HP y stats del Humanoid
     local hum = bestMob:FindFirstChildOfClass("Humanoid")
     if hum then
-        local stats = string.format("HP:%.0f/%.0f | Speed:%.1f | Jump:%.1f", hum.Health, hum.MaxHealth, hum.WalkSpeed, hum.JumpPower)
-        AddLog("EXAMEN", "❤️ Stats: " .. stats, stats)
+        AddLog("EXAMEN", "❤️ Stats: " .. string.format("HP:%.0f/%.0f | Speed:%.1f | Jump:%.1f", hum.Health, hum.MaxHealth, hum.WalkSpeed, hum.JumpPower), "")
     end
-    
-    -- 2. Todos los atributos del modelo
     local attrStr = ""
     for k, v in pairs(bestMob:GetAttributes()) do attrStr = attrStr .. k .. "=" .. tostring(v) .. " | " end
-    if attrStr ~= "" then AddLog("EXAMEN", "🏷️ Atributos", attrStr) else AddLog("EXAMEN", "🏷️ Sin atributos directos", "") end
-    
-    -- 3. Scripts, Remotes y Bindables dentro del modelo
+    AddLog("EXAMEN", "🏷️ Atributos Mob", attrStr ~= "" and attrStr or "Sin atributos")
     local scriptStr, remoteStr = "", ""
     for _, v in pairs(bestMob:GetDescendants()) do
         if v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") then
             scriptStr = scriptStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
         end
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") or v:IsA("BindableFunction") then
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") then
             remoteStr = remoteStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
         end
     end
-    if scriptStr ~= "" then AddLog("EXAMEN", "📜 Scripts en mob", scriptStr) else AddLog("EXAMEN", "📜 Sin scripts en modelo", "") end
-    if remoteStr ~= "" then AddLog("EXAMEN", "📡 Remotes en mob", remoteStr) else AddLog("EXAMEN", "📡 Sin remotes en modelo", "") end
-    
-    -- 4. Conexiones activas en el Humanoid (qué funciones escuchan el daño)
-    if getconnections then
-        pcall(function()
-            local dmgConns = getconnections(hum.HealthChanged)
-            local connStr = "HealthChanged tiene " .. #dmgConns .. " conexiones: "
             for i, c in pairs(dmgConns) do
                 if c.Function then
                     local ok, info = pcall(function() return debug.getinfo(c.Function) end)
