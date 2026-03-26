@@ -253,18 +253,27 @@ end)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local methodStr = string.lower(tostring(getnamecallmethod()))
-    if TrackerRunning and (methodStr == "fireserver" or methodStr == "invokeserver") then
+    if (methodStr == "fireserver" or methodStr == "invokeserver") then
         local args = {...}
-        task.spawn(function()
-            local success, selfName = pcall(function() return self.Name end)
-            if not success or not selfName then selfName = "Remote_Anónimo" end
-            local nLow = string.lower(selfName)
-            if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "movement") then
-                local argStr = ""
-                pcall(function() for i,v in pairs(args) do argStr = argStr .. typeof(v).. ":" ..tostring(v).." | " end end)
-                AddLog("RED", "[NM_CALL] " .. tostring(selfName), argStr)
-            end
-        end)
+        local success, selfName = pcall(function() return self.Name end)
+        if not success or not selfName then selfName = "Remote_Anónimo" end
+        
+        -- CAPTURA PARA EL SNIPER NEURONAL EN NAMECALL
+        if tostring(selfName) == "HitboxClassRemote" and not _G.SniperArgs then
+            _G.SniperArgs = args
+            task.spawn(function() AddLog("COMBATE", "✅ NEURAL SNIPER CALIBRADO: Señales de Hitbox Guardadas.", "") end)
+        end
+        
+        if TrackerRunning then
+            task.spawn(function()
+                local nLow = string.lower(selfName)
+                if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "movement") then
+                    local argStr = ""
+                    pcall(function() for i,v in pairs(args) do argStr = argStr .. typeof(v).. ":" ..tostring(v).." | " end end)
+                    AddLog("RED", "[NM_CALL] " .. tostring(selfName), argStr)
+                end
+            end)
+        end
     end
     return oldNamecall(self, ...)
 end))
