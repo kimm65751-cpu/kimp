@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.7 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -709,8 +709,15 @@
     local RunService = game:GetService("RunService")
     local mouse = LocalPlayer:GetMouse()
     local liveTimer = 0
+    local LiveScanActivo = false
+    local NoclipActivo = false
 
     RunService.Heartbeat:Connect(function(dt)
+        if not LiveScanActivo then 
+            LiveLabel.Text = "(Scanner Pausado - Presiona 📡 SCAN para analizar FPS/Objetos)"
+            return 
+        end
+        
         liveTimer = liveTimer + dt
         if liveTimer < 0.2 then return end
         liveTimer = 0
@@ -771,6 +778,52 @@
 
     local AutoMineActivo = false
     local AutoKillActivo = false
+    
+    local LiveScanBtn = Instance.new("TextButton")
+    LiveScanBtn.Size = UDim2.new(0.5, -6, 0, 30)
+    LiveScanBtn.Position = UDim2.new(0, 4, 1, -175)
+    LiveScanBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    LiveScanBtn.Text = "📡 LIVE SCAN: OFF"
+    LiveScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LiveScanBtn.Font = Enum.Font.Code
+    LiveScanBtn.TextSize = 10
+    LiveScanBtn.Parent = LivePanel
+
+    local NoclipBtn = Instance.new("TextButton")
+    NoclipBtn.Size = UDim2.new(0.5, -6, 0, 30)
+    NoclipBtn.Position = UDim2.new(0.5, 2, 1, -175)
+    NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    NoclipBtn.Text = "👻 NOCLIP: OFF"
+    NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NoclipBtn.Font = Enum.Font.Code
+    NoclipBtn.TextSize = 11
+    NoclipBtn.Parent = LivePanel
+    
+    LiveScanBtn.MouseButton1Click:Connect(function()
+        LiveScanActivo = not LiveScanActivo
+        if LiveScanActivo then
+            LiveScanBtn.Text = "📡 LIVE SCAN: ON"
+            LiveScanBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+        else
+            LiveScanBtn.Text = "📡 LIVE SCAN: OFF"
+            LiveScanBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        end
+    end)
+    
+    NoclipBtn.MouseButton1Click:Connect(function()
+        NoclipActivo = not NoclipActivo
+        if NoclipActivo then
+            NoclipBtn.Text = "👻 NOCLIP: ON"
+            NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+        else
+            NoclipBtn.Text = "👻 NOCLIP: OFF"
+            NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            pcall(function() 
+                local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if r then r.Anchored = false end 
+            end)
+        end
+    end)
 
     local ShieldBtn = Instance.new("TextButton")
     ShieldBtn.Size = UDim2.new(1, -8, 0, 30)
@@ -782,15 +835,15 @@
     ShieldBtn.TextSize = 12
     ShieldBtn.Parent = LivePanel
 
-    local BunkerBtn = Instance.new("TextButton")
-    BunkerBtn.Size = UDim2.new(1, -8, 0, 30)
-    BunkerBtn.Position = UDim2.new(0, 4, 1, -105)
-    BunkerBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
-    BunkerBtn.Text = "🔮 BÚNKER ESFERA (ANTI-AoE)"
-    BunkerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BunkerBtn.Font = Enum.Font.Code
-    BunkerBtn.TextSize = 11
-    BunkerBtn.Parent = LivePanel
+    local HeadshotBtn = Instance.new("TextButton")
+    HeadshotBtn.Size = UDim2.new(1, -8, 0, 30)
+    HeadshotBtn.Position = UDim2.new(0, 4, 1, -105)
+    HeadshotBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    HeadshotBtn.Text = "🎯 AIMBOT CABEZA: OFF"
+    HeadshotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    HeadshotBtn.Font = Enum.Font.Code
+    HeadshotBtn.TextSize = 11
+    HeadshotBtn.Parent = LivePanel
 
     local KiteBtn = Instance.new("TextButton")
     KiteBtn.Size = UDim2.new(1, -8, 0, 30)
@@ -912,58 +965,17 @@
         end
     end)
 
-    local BunkerActivo = false
-    local MyBunker = nil
+    local HeadshotActivo = false
     
-    BunkerBtn.MouseButton1Click:Connect(function()
-        BunkerActivo = not BunkerActivo
-        if BunkerActivo then
-            BunkerBtn.Text = "🔮 BÚNKER ESFERA: ON ✅"
-            BunkerBtn.BackgroundColor3 = Color3.fromRGB(160, 60, 220)
-            
-            MyBunker = Instance.new("Part")
-            MyBunker.Name = "BunkerEsfera"
-            MyBunker.Shape = Enum.PartType.Ball
-            MyBunker.Size = Vector3.new(16, 16, 16) -- Una burbuja gigante de 8 studs de radio
-            MyBunker.Transparency = 0.4
-            MyBunker.Material = Enum.Material.ForceField
-            MyBunker.BrickColor = BrickColor.new("Magenta")
-            MyBunker.Anchored = true
-            MyBunker.CanCollide = true
-            MyBunker.Parent = Workspace
-            
-            task.spawn(function()
-                while BunkerActivo and MyBunker do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                        if myRoot then
-                            -- Fantasmizar el jugador para que pueda flotar mágicamente dentro del cristal sólido 
-                            for _, v in pairs(char:GetDescendants()) do
-                                if v:IsA("BasePart") then
-                                    local cName = "NCC_" .. v.Name
-                                    if not MyBunker:FindFirstChild(cName) then
-                                        local nc = Instance.new("NoCollisionConstraint")
-                                        nc.Name = cName
-                                        nc.Part0 = v
-                                        nc.Part1 = MyBunker
-                                        nc.Parent = MyBunker
-                                    end
-                                end
-                            end
-                            -- Al remover myRoot.CFrame y usar CFrame.new, evitamos que la esfera rote salvajemente
-                            -- cuando el auto-farmear manipule agresivamente tu rotación, eliminando todo Stutter
-                            MyBunker.CFrame = CFrame.new(myRoot.Position)
-                        end
-                    end)
-                    task.wait()
-                end
-            end)
-            StatusLabel.Text = "🔮 Búnker 360° activado. Repele Ataques Radiales (AoE) al alejar físicos 8 metros en toda dirección."
+    HeadshotBtn.MouseButton1Click:Connect(function()
+        HeadshotActivo = not HeadshotActivo
+        if HeadshotActivo then
+            HeadshotBtn.Text = "🎯 AIMBOT CABEZA: ON ✅"
+            HeadshotBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            StatusLabel.Text = "🎯 Headshot Aimbot configurado. Los ataques automáticos buscarán la cabeza."
         else
-            BunkerBtn.Text = "🔮 BÚNKER ESFERA (ANTI-AoE)"
-            BunkerBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
-            if MyBunker then MyBunker:Destroy() MyBunker = nil end
+            HeadshotBtn.Text = "🎯 AIMBOT CABEZA: OFF"
+            HeadshotBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
         end
     end)
 
@@ -977,6 +989,11 @@
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (SEGURO): ON ✅"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
             
+            -- Desactivar el Live Scanner automáticamente para ahorrar CPU (Lag/FPS)
+            LiveScanActivo = false
+            LiveScanBtn.Text = "📡 LIVE SCAN: OFF"
+            LiveScanBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            
             task.spawn(function()
                 while KiteActivo do
                     pcall(function()
@@ -984,8 +1001,8 @@
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         if not myRoot or not currentHum then return end
 
-                        local targetPart = nil
-                        local obj, dist = findNearest(function(o)
+                        -- === ESCÁNER 1: Zombis (Alerta Máxima de Supervivencia) ===
+                        local zTarget, zDist = findNearest(function(o)
                             if o:IsA("Model") and o ~= LocalPlayer.Character then
                                 local h = o:FindFirstChildWhichIsA("Humanoid")
                                 return h and h.Health > 0 and o:GetAttribute("IsNpc") == true
@@ -993,32 +1010,123 @@
                             return false
                         end)
 
-                        if obj and dist and dist < 25 then
-                            targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
-                            if targetPart then
-                                -- Dinámico: Si la trampa física de muro está activa, la rellenamos manteniéndonos a 4 metros.
-                                -- Si no, el rango seguro de farm estándar (7m).
-                                local targetDist = ShieldActivo and 4 or 7
-                                
-                                if dist > targetDist then
-                                    -- Solo caminamos PARA ADELANTE si está lejos
-                                    currentHum:MoveTo(targetPart.Position)
+                        -- === ESCÁNER 2: Pebbles / Rocas (Minería) ===
+                        local oreTarget, oDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= LocalPlayer.Character then
+                                local n = string.lower(o.Name)
+                                local h = o:GetAttribute("Health")
+                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "rock") or string.find(n, "ore")) then
+                                    return true
+                                end
+                            end
+                            return false
+                        end)
+
+                        local targetObj = nil
+                        local dist = 0
+                        local targetDist = 7
+                        local mode = "None"
+                        local toolId = "weapon"
+
+                        -- Sistema de Decisión Asimétrica (Agro Override)
+                        if zTarget and zDist < 30 then
+                            targetObj = zTarget
+                            dist = zDist
+                            targetDist = ShieldActivo and 4 or 7
+                            mode = "Combat"
+                            toolId = "weapon"
+                        elseif oreTarget and oDist < 100 then
+                            targetObj = oreTarget
+                            dist = oDist
+                            targetDist = 4
+                            mode = "Mining"
+                            toolId = "pickaxe"
+                        end
+
+                        if targetObj then
+                            local targetPart = targetObj:FindFirstChild("HumanoidRootPart") or targetObj:FindFirstChild("Torso") or targetObj:FindFirstChildWhichIsA("BasePart")
+                            if not targetPart then return end
+
+                            -- == 1. CEREBRO DE HERRAMIENTAS (SLOTS 1 y 2) ==
+                            local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+                            local isEquipped = false
+                            for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                                if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
+                                    isEquipped = true
+                                    break
+                                end
+                            end
+
+                            if not isEquipped then
+                                local bpTools = LocalPlayer.Backpack:GetChildren()
+                                local equippedCorrectly = false
+                                -- Intentar equipar leyendo nombres
+                                for _, t in pairs(bpTools) do
+                                    if string.find(string.lower(t.Name), toolId) then
+                                        hum:EquipTool(t)
+                                        equippedCorrectly = true; break
+                                    end
+                                end
+                                -- Failsafe: Si el programador del juego nombró las cosas diferente, usa el pad numérico directamente
+                                if not equippedCorrectly and #bpTools > 0 then
+                                    if toolId == "pickaxe" then
+                                        hum:EquipTool(bpTools[1]) -- Tecla 1
+                                    elseif #bpTools >= 2 then
+                                        hum:EquipTool(bpTools[2]) -- Tecla 2
+                                    else
+                                        hum:EquipTool(bpTools[1])
+                                    end
+                                end
+                            end
+
+                            -- == 2. NOCLIP Y PATHFINDING EXACTO ==
+                            if dist > targetDist then
+                                if NoclipActivo then
+                                    myRoot.Anchored = true
+                                    local speed = currentHum.WalkSpeed or 16
+                                    local step = speed * (1/60)
+                                    local dir = (targetPart.Position - myRoot.Position).Unit
+                                    myRoot.CFrame = CFrame.lookAt(myRoot.Position + (dir * step), targetPart.Position)
+                                    
+                                    -- Modo Fantasma Real: Ignorar Montañas
+                                    for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                                        if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
+                                    end
                                 else
-                                    -- Frenamos físicamente el Momentum con el Freno de Mano 
-                                    -- NO retrocedemos jamás para evitar que el Roblox Animator tuerza visualmente tu torso 180 grados a tu espalda
+                                    myRoot.Anchored = false
+                                    currentHum:MoveTo(targetPart.Position)
+                                end
+                            else
+                                if NoclipActivo then
+                                    myRoot.Anchored = true
+                                else
+                                    myRoot.Anchored = false
+                                    -- Frenado Legal
                                     currentHum:MoveTo(myRoot.Position)
                                 end
-                                
-                                -- Clavar el LookVector para asestar el Hit 
-                                local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
-                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
-                                
-                                -- Rebanar 
-                                ToolRF:InvokeServer("Weapon")
-                                StatusLabel.Text = "🗡️ Asegurando a: " .. obj.Name .. " desde " .. tostring(targetDist) .. "m"
                             end
+
+                            -- == 3. ACCIÓN DE COMBATE Y PICADO ==
+                            local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+                            
+                            -- Argumento de Knit para golpear
+                            local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
+
+                            if mode == "Combat" and HeadshotActivo then
+                                local head = targetObj:FindFirstChild("Head") or targetPart
+                                local snapOrigin = myRoot.CFrame
+                                -- Silent Flick Headshot
+                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, head.Position)
+                                ToolRF:InvokeServer(serverArg)
+                                myRoot.CFrame = snapOrigin
+                            else
+                                ToolRF:InvokeServer(serverArg)
+                            end
+                            
+                            StatusLabel.Text = (mode == "Mining" and "⛏️ Picando: " or "🗡️ Asegurando a: ") .. targetObj.Name .. " desde " .. tostring(math.floor(dist)) .. "m"
                         else
-                            StatusLabel.Text = "🗡️ Buscando monstruos seguros..."
+                            StatusLabel.Text = "🗡️/⛏️ Buscando Mobs o Recursos..."
                         end
                     end)
                     task.wait()
@@ -1028,6 +1136,8 @@
         else
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (MANTENER 7m)"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then root.Anchored = false end
         end
     end)
 
