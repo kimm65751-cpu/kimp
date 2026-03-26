@@ -333,7 +333,7 @@ LocalPlayer.CharacterAdded:Connect(function(char) SetupTouchSpy(char) end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not TrackerRunning then return end
     
-    if autoEspia and input.UserInputType == Enum.UserInputType.MouseButton2 then
+    if false and input.UserInputType == Enum.UserInputType.MouseButton2 then
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         local foundGuis = playerGui and playerGui:GetGuiObjectsAtPosition(Mouse.X, Mouse.Y) or {}
         
@@ -693,7 +693,9 @@ local function ScanForESP()
                 local txt = Instance.new("TextLabel")
                 txt.Size = UDim2.new(1, 0, 1, 0)
                 txt.BackgroundTransparency = 1
-                txt.Text = obj.Name .. " ["..math.floor((root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude).."m]"
+                local char = LocalPlayer.Character
+                local hrpPos = (char and char:FindFirstChild("HumanoidRootPart")) and char.HumanoidRootPart.Position or root.Position
+                txt.Text = obj.Name .. " ["..math.floor((root.Position - hrpPos).Magnitude).."m]"
                 txt.TextColor3 = color
                 txt.TextStrokeTransparency = 0
                 txt.Font = Enum.Font.Code
@@ -733,7 +735,9 @@ end)
 RefreshBtn.MouseButton1Click:Connect(function()
     AddLog("SISTEMA", "Descargando Actualización desde GitHub...", "")
     TrackerRunning = false
-    autoFarmPebble = false
+    autoFarmOres = false
+    autoFarmMobs = false
+    autoESP = false
     ScreenGui:Destroy()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua?v=" .. tostring(math.random(1000, 9999))))()
 end)
