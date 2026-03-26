@@ -20,14 +20,48 @@ local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalP
 ScreenGui.Parent = parentUI
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 700, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -350, 0.5, -250)
+MainFrame.Size = UDim2.new(0, 700, 0, 530)
+MainFrame.Position = UDim2.new(0.5, -350, 0.5, -265)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 2
 MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 128)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
+
+-- Panel lateral: Monitor En Vivo (siempre activo)
+local LivePanel = Instance.new("Frame")
+LivePanel.Size = UDim2.new(0, 280, 0, 430)
+LivePanel.Position = UDim2.new(0, 710, 0.5, -215)
+LivePanel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
+LivePanel.BorderSizePixel = 2
+LivePanel.BorderColor3 = Color3.fromRGB(0, 200, 100)
+LivePanel.Active = true
+LivePanel.Draggable = true
+LivePanel.Parent = ScreenGui
+
+local LiveTitle = Instance.new("TextLabel")
+LiveTitle.Size = UDim2.new(1, 0, 0, 25)
+LiveTitle.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
+LiveTitle.Text = " 🟢 LIVE MONITOR (AUTO)"
+LiveTitle.TextColor3 = Color3.fromRGB(0, 255, 100)
+LiveTitle.TextSize = 12
+LiveTitle.Font = Enum.Font.Code
+LiveTitle.TextXAlignment = Enum.TextXAlignment.Left
+LiveTitle.Parent = LivePanel
+
+local LiveLabel = Instance.new("TextLabel")
+LiveLabel.Size = UDim2.new(1, -4, 1, -30)
+LiveLabel.Position = UDim2.new(0, 2, 0, 27)
+LiveLabel.BackgroundTransparency = 1
+LiveLabel.Text = "(Apunta tu mouse\na algo en el juego)"
+LiveLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+LiveLabel.TextSize = 11
+LiveLabel.Font = Enum.Font.Code
+LiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+LiveLabel.TextYAlignment = Enum.TextYAlignment.Top
+LiveLabel.TextWrapped = true
+LiveLabel.Parent = LivePanel
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
@@ -126,14 +160,30 @@ UpdateBtn.TextSize = 13
 UpdateBtn.Parent = MainFrame
 
 local LabBtn = Instance.new("TextButton")
-LabBtn.Size = UDim2.new(0.97, 0, 0, 35)
+LabBtn.Size = UDim2.new(0.48, 0, 0, 35)
 LabBtn.Position = UDim2.new(0.01, 0, 0, 115)
 LabBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
-LabBtn.Text = "🧪 5. LABORATORIO: EXAMINAR ATAQUE/CLIC (DIAGNÓSTICO)"
+LabBtn.Text = "🧪 5. LAB: CLIC-DIAGNÓSTICO"
 LabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 LabBtn.Font = Enum.Font.Code
 LabBtn.TextSize = 13
 LabBtn.Parent = MainFrame
+
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0.48, 0, 0, 35)
+ClearBtn.Position = UDim2.new(0.51, 0, 0, 115)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ClearBtn.Text = "🗑️ 6. LIMPIAR LOG"
+ClearBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+ClearBtn.Font = Enum.Font.Code
+ClearBtn.TextSize = 13
+ClearBtn.Parent = MainFrame
+
+ClearBtn.MouseButton1Click:Connect(function()
+    for _, v in pairs(LogScroll:GetChildren()) do
+        if v:IsA("Frame") then v:Destroy() end
+    end
+end)
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -20, 1, -165)
