@@ -186,12 +186,11 @@ end
 -- 3. MÓDULOS DE RASTREO EN VIVO (LIVE SPY HOOKS)
 -- =====================================================================
 local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     if TrackerRunning and not checkcaller() then
         local method = getnamecallmethod()
         if method == "FireServer" or method == "InvokeServer" then
-            local self = select(1, ...)
-            local args = {select(2, ...)}
+            local args = {...}
             
             task.spawn(function()
                 local success, selfName = pcall(function() return self.Name end)
@@ -208,7 +207,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
             end)
         end
     end
-    return oldNamecall(...)
+    return oldNamecall(self, ...)
 end))
 
 local lastPos = nil
