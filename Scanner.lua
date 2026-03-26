@@ -480,8 +480,6 @@ local function ToggleNoclip(state)
                     for _, v in pairs(char:GetDescendants()) do
                         if v:IsA("BasePart") then
                             if v.CanCollide then v.CanCollide = false end
-                            -- CanQuery=false: invisible a raycasts del servidor (sistema de daño)
-                            pcall(function() if v.CanQuery then v.CanQuery = false end end)
                         end
                     end
                 end
@@ -502,15 +500,26 @@ local function TweenToPosition(targetPos, facePos)
     local time = dist / speed
     if time < 0.1 then time = 0.1 end
     
-    -- Si no hay "facePos", por defecto mira hacia abajo (como el modo minería). Si hay, mira hacia ese punto.
-    local lookCFrame = facePos and CFrame.lookAt(targetPos, Vector3.new(facePos.X, targetPos.Y, facePos.Z)) or CFrame.lookAt(targetPos, targetPos + Vector3.new(0, -1, 0))
+    -- Mirar exactamente hacia la cara del zombie (y hacia abajo si facePos está en el suelo)
+    local lookCFrame = facePos and CFrame.lookAt(targetPos, facePos) or CFrame.lookAt(targetPos, targetPos + Vector3.new(0, -1, 0))
+    
+    -- Cancelar la gravedad puramente durante el vuelo para deslizarse como mantequilla
+    local bv = hrp:FindFirstChild("TweenForce")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "TweenForce"
+        bv.MaxForce = Vector3.new(100000, 100000, 100000)
+        bv.Velocity = Vector3.zero
+        bv.Parent = hrp
+    end
     
     local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
-    -- TweenService no da kick porque interpola los frames paulatinamente (movimiento legítimo 100% legal)
     local tween = TweenService:Create(hrp, tweenInfo, {CFrame = lookCFrame})
     
     tween:Play()
     tween.Completed:Wait()
+    
+    if bv then bv:Destroy() end
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
 end
