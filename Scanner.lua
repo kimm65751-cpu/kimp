@@ -1,179 +1,96 @@
--- FORENSE ANALYZER V3 - Script Independiente
--- Inyecta aparte del script principal. No lo modifica.
-
--- PASO 1: GUI primero (antes de cualquier servicio que pueda fallar)
+-- FORENSE ANALYZER V4 - Sin ScrollingFrame (compatibilidad maxima)
 local sg = Instance.new("ScreenGui")
-sg.Name = "ForenseV3"
+sg.Name = "ForenseV4"
 sg.ResetOnSpawn = false
 local okCg = pcall(function() sg.Parent = game:GetService("CoreGui") end)
 if not okCg then
     sg.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
 end
 
--- PASO 2: Servicios DESPUES de que la GUI ya existe
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local HttpService, ReplicatedStorage
+local HttpService
 pcall(function() HttpService = game:GetService("HttpService") end)
+local ReplicatedStorage
 pcall(function() ReplicatedStorage = game:GetService("ReplicatedStorage") end)
 
--- PASO 3: Construir UI
+local W, H = 700, 540
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 700, 0, 510)
-Main.Position = UDim2.new(0.5, -350, 0.5, -255)
+Main.Size = UDim2.new(0, W, 0, H)
+Main.Position = UDim2.new(0.5, -W/2, 0.5, -H/2)
 Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 Main.BorderSizePixel = 2
 Main.BorderColor3 = Color3.fromRGB(200, 30, 30)
 Main.Active = true
 Main.Draggable = true
+Main.ZIndex = 5
 Main.Parent = sg
 
-local Bar = Instance.new("TextLabel")
-Bar.Size = UDim2.new(1, -32, 0, 30)
-Bar.BackgroundColor3 = Color3.fromRGB(160, 10, 10)
-Bar.Text = "  FORENSE ANALYZER V3 - 17 VECTORES (FISICOS + RED EN VIVO)"
-Bar.TextColor3 = Color3.fromRGB(255, 240, 80)
-Bar.Font = Enum.Font.Code
-Bar.TextSize = 12
-Bar.TextXAlignment = Enum.TextXAlignment.Left
-Bar.Parent = Main
-
-local XBtn = Instance.new("TextButton")
-XBtn.Size = UDim2.new(0, 32, 0, 30)
-XBtn.Position = UDim2.new(1, -32, 0, 0)
-XBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
-XBtn.Text = "X"
-XBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-XBtn.Font = Enum.Font.Code
-XBtn.TextSize = 14
-XBtn.Parent = Main
-XBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-
-local RunBtn = Instance.new("TextButton")
-RunBtn.Size = UDim2.new(0.62, -4, 0, 36)
-RunBtn.Position = UDim2.new(0, 4, 0, 34)
-RunBtn.BackgroundColor3 = Color3.fromRGB(150, 8, 8)
-RunBtn.Text = "[ANALIZAR] Parate cerca de un mob y presiona aqui"
-RunBtn.TextColor3 = Color3.fromRGB(255, 240, 80)
-RunBtn.Font = Enum.Font.Code
-RunBtn.TextSize = 11
-RunBtn.Parent = Main
-
-local ClrBtn = Instance.new("TextButton")
-ClrBtn.Size = UDim2.new(0.38, -4, 0, 36)
-ClrBtn.Position = UDim2.new(0.62, 2, 0, 34)
-ClrBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-ClrBtn.Text = "[LIMPIAR]"
-ClrBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-ClrBtn.Font = Enum.Font.Code
-ClrBtn.TextSize = 12
-ClrBtn.Parent = Main
-
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -8, 0, 18)
-Status.Position = UDim2.new(0, 4, 0, 74)
-Status.BackgroundTransparency = 1
-Status.Text = "Listo. Acercate a un zombi y presiona ANALIZAR."
-Status.TextColor3 = Color3.fromRGB(80, 220, 80)
-Status.Font = Enum.Font.Code
-Status.TextSize = 11
-Status.TextXAlignment = Enum.TextXAlignment.Left
-Status.Parent = Main
-
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -8, 1, -96)
-Scroll.Position = UDim2.new(0, 4, 0, 94)
-Scroll.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
-Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Scroll.ScrollBarThickness = 5
-Scroll.BorderSizePixel = 0
-Scroll.Parent = Main
-
-local ULL = Instance.new("UIListLayout")
-ULL.Parent = Scroll
-ULL.SortOrder = Enum.SortOrder.LayoutOrder
-ULL.Padding = UDim.new(0, 2)
-
-local n = 0
-local function Log(tag, title, body)
-    n = n + 1
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -4, 0, 58)
-    row.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    row.BorderSizePixel = 0
-    row.LayoutOrder = n
-    row.Parent = Scroll
-
-    local tg = Instance.new("TextLabel")
-    tg.Size = UDim2.new(0, 48, 1, 0)
-    tg.BackgroundColor3 = Color3.fromRGB(120, 6, 6)
-    tg.Text = tag
-    tg.TextColor3 = Color3.fromRGB(255, 255, 80)
-    tg.Font = Enum.Font.Code
-    tg.TextSize = 10
-    tg.TextWrapped = true
-    tg.Parent = row
-
-    local ti = Instance.new("TextLabel")
-    ti.Size = UDim2.new(1, -118, 0, 20)
-    ti.Position = UDim2.new(0, 52, 0, 2)
-    ti.BackgroundTransparency = 1
-    ti.Text = title
-    ti.TextColor3 = Color3.fromRGB(0, 210, 255)
-    ti.Font = Enum.Font.Code
-    ti.TextSize = 11
-    ti.TextXAlignment = Enum.TextXAlignment.Left
-    ti.Parent = row
-
-    local bd = Instance.new("TextLabel")
-    bd.Size = UDim2.new(1, -118, 0, 32)
-    bd.Position = UDim2.new(0, 52, 0, 22)
-    bd.BackgroundTransparency = 1
-    bd.Text = string.sub(body, 1, 200) .. (#body > 200 and "..." or "")
-    bd.TextColor3 = Color3.fromRGB(185, 185, 185)
-    bd.Font = Enum.Font.Code
-    bd.TextSize = 10
-    bd.TextXAlignment = Enum.TextXAlignment.Left
-    bd.TextWrapped = true
-    bd.Parent = row
-
-    local cp = Instance.new("TextButton")
-    cp.Size = UDim2.new(0, 56, 0, 26)
-    cp.Position = UDim2.new(1, -60, 0.5, -13)
-    cp.BackgroundColor3 = Color3.fromRGB(20, 100, 20)
-    cp.Text = "COPY"
-    cp.TextColor3 = Color3.fromRGB(255, 255, 255)
-    cp.Font = Enum.Font.Code
-    cp.TextSize = 11
-    cp.Parent = row
-    cp.MouseButton1Click:Connect(function()
-        pcall(function()
-            if setclipboard then
-                setclipboard("[" .. tag .. "] " .. title .. "\n\n" .. body)
-                cp.Text = "OK!"
-                task.delay(1.5, function() pcall(function() cp.Text = "COPY" end) end)
-            end
-        end)
-    end)
+local function MkLbl(txt, x, y, w, h, fc, bg)
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(0, w, 0, h)
+    l.Position = UDim2.new(0, x, 0, y)
+    l.BackgroundColor3 = bg or Color3.fromRGB(0,0,0)
+    l.BackgroundTransparency = bg and 0 or 1
+    l.Text = txt
+    l.TextColor3 = fc or Color3.fromRGB(255,255,255)
+    l.Font = Enum.Font.Code
+    l.TextSize = 11
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.TextWrapped = true
+    l.ZIndex = 6
+    l.Parent = Main
+    return l
 end
 
+local function MkBtn(txt, x, y, w, h, bc, fc)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, w, 0, h)
+    b.Position = UDim2.new(0, x, 0, y)
+    b.BackgroundColor3 = bc
+    b.Text = txt
+    b.TextColor3 = fc or Color3.fromRGB(255,255,255)
+    b.Font = Enum.Font.Code
+    b.TextSize = 11
+    b.TextWrapped = true
+    b.ZIndex = 6
+    b.Parent = Main
+    return b
+end
+
+MkLbl("  FORENSE ANALYZER V4 - 17 VECTORES", 0, 0, W-32, 30, Color3.fromRGB(255,240,80), Color3.fromRGB(160,10,10))
+
+local XBtn = MkBtn("X", W-32, 0, 32, 30, Color3.fromRGB(200,20,20))
+XBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+local RunBtn = MkBtn("[ANALIZAR] Parate cerca de un mob y presiona aqui", 4, 34, W-8, 36, Color3.fromRGB(140,5,5), Color3.fromRGB(255,240,80))
+local ClrBtn = MkBtn("[LIMPIAR]", 4, 74, 120, 26, Color3.fromRGB(40,40,40))
+local StatusLbl = MkLbl("Listo.", 130, 74, W-134, 26, Color3.fromRGB(80,220,80))
+
+local LogLbl = Instance.new("TextLabel")
+LogLbl.Size = UDim2.new(0, W-8, 0, H-105)
+LogLbl.Position = UDim2.new(0, 4, 0, 104)
+LogLbl.BackgroundColor3 = Color3.fromRGB(14,14,20)
+LogLbl.BackgroundTransparency = 0
+LogLbl.Text = "Log vacio. Presiona ANALIZAR cerca de un zombi."
+LogLbl.TextColor3 = Color3.fromRGB(185,185,185)
+LogLbl.Font = Enum.Font.Code
+LogLbl.TextSize = 11
+LogLbl.TextXAlignment = Enum.TextXAlignment.Left
+LogLbl.TextYAlignment = Enum.TextYAlignment.Top
+LogLbl.TextWrapped = true
+LogLbl.ZIndex = 6
+LogLbl.Parent = Main
+
 ClrBtn.MouseButton1Click:Connect(function()
-    for _, v in pairs(Scroll:GetChildren()) do
-        if v:IsA("Frame") then v:Destroy() end
-    end
-    n = 0
-    Status.Text = "Log limpiado."
+    LogLbl.Text = "Log limpiado."
+    StatusLbl.Text = "Listo."
 end)
 
 RunBtn.MouseButton1Click:Connect(function()
-    RunBtn.Text = "[...] Analizando... (~6s)"
-    RunBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 0)
-    for _, v in pairs(Scroll:GetChildren()) do
-        if v:IsA("Frame") then v:Destroy() end
-    end
-    n = 0
+    RunBtn.Text = "[...] Buscando mob y analizando..."
+    StatusLbl.Text = "Buscando mob..."
 
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -191,135 +108,100 @@ RunBtn.MouseButton1Click:Connect(function()
     end
 
     if not mob then
-        Status.Text = "Sin mob encontrado. Acercate mas."
-        Log("ERR", "Sin mob vivo en rango", "Acercate a un zombi vivo y presiona ANALIZAR de nuevo.")
+        StatusLbl.Text = "Sin mob vivo cerca."
+        LogLbl.Text = "No se encontro mob.\nAcercate a un zombi vivo y vuelve a presionar."
         RunBtn.Text = "[ANALIZAR] Parate cerca de un mob y presiona aqui"
-        RunBtn.BackgroundColor3 = Color3.fromRGB(150, 8, 8)
         return
     end
 
-    Status.Text = mob.Name .. " HP:" .. math.floor(mHum.Health) .. " Dist:" .. math.floor(mDist) .. "m"
-    Log("MOB", mob.Name .. " HP:" .. math.floor(mHum.Health) .. "/" .. math.floor(mHum.MaxHealth) .. " Dist:" .. math.floor(mDist) .. "m", "17 vectores. V1-V10 fisicos locales. V11-V17 red en vivo (3s combate).")
+    StatusLbl.Text = mob.Name .. " HP:" .. math.floor(mHum.Health) .. " Dist:" .. math.floor(mDist) .. "m"
+    local log = "=== MOB: " .. mob.Name .. " HP:" .. math.floor(mHum.Health) .. "/" .. math.floor(mHum.MaxHealth) .. " Dist:" .. math.floor(mDist) .. "m ===\n\n"
 
-    local tParts, aParts = {}, {}
-
-    -- V1
-    local v1 = ""
+    -- V1 Atributos
     local attrs = mob:GetAttributes()
     if next(attrs) then
-        v1 = "Atributos:\n"
-        for k, v in pairs(attrs) do v1 = v1 .. "  " .. k .. " = " .. tostring(v) .. " (" .. typeof(v) .. ")\n" end
-        local a1 = pcall(function() mob:SetAttribute("Health", 0) end)
-        local a2 = pcall(function() mob:SetAttribute("IsNpc", false) end)
-        v1 = v1 .. "SetAttr Health=0: " .. (a1 and "EXITOSO" or "Bloqueado")
-        v1 = v1 .. " | IsNpc=false: " .. (a2 and "EXITOSO" or "Bloqueado")
+        log = log .. "V1 ATRIBUTOS:\n"
+        for k, v in pairs(attrs) do log = log .. "  " .. k .. "=" .. tostring(v) .. "\n" end
+        local a1 = pcall(function() mob:SetAttribute("Health",0) end)
+        log = log .. "SetAttr Health=0: " .. (a1 and "EXITOSO (posible 1-shot!)" or "Bloqueado") .. "\n\n"
     else
-        v1 = "Sin atributos locales. Dano 100% server-side."
+        log = log .. "V1: Sin atributos locales. Dano server-side.\n\n"
     end
-    Log("V1", "Mutabilidad de Atributos", v1); task.wait(0.05)
 
-    -- V2
-    local v2, sc = "", 0
+    -- V2 Scripts
+    local sc = 0
     for _, s in pairs(mob:GetDescendants()) do
-        if s:IsA("Script") or s:IsA("LocalScript") or s:IsA("ModuleScript") then
-            v2 = v2 .. "[" .. s.ClassName .. "] " .. s:GetFullName() .. "\n"; sc = sc + 1
-        end
+        if s:IsA("Script") or s:IsA("LocalScript") then sc=sc+1 end
     end
-    Log("V2", "Scripts IA/Dano (" .. sc .. ")", sc > 0 and v2 .. "POTENCIAL: s.Disabled=true" or "Sin scripts locales. Mob server-side (Raycast)."); task.wait(0.05)
+    log = log .. "V2 SCRIPTS en mob: " .. sc .. (sc>0 and " → POTENCIAL: s.Disabled=true" or " → Server-side") .. "\n\n"
 
-    -- V3
-    local v3 = "Sin myRoot."
+    -- V3 Direccion
     if myRoot then
-        local ok3, dot = pcall(function() return (mRoot.Position - myRoot.Position).Unit:Dot(myRoot.CFrame.LookVector) end)
-        if ok3 then
-            v3 = "Dot:" .. string.format("%.2f", dot) .. " | " .. (dot>0.5 and "MIRANDOLO" or dot<-0.5 and "DE ESPALDAS" or "LATERAL")
-            v3 = v3 .. "\nTIP: Si HP baja atacando de espaldas -> sin validacion de direccion."
-        end
+        local ok3, dot = pcall(function() return (mRoot.Position-myRoot.Position).Unit:Dot(myRoot.CFrame.LookVector) end)
+        if ok3 then log = log .. "V3 DIRECCION Dot:" .. string.format("%.2f",dot) .. " | " .. (dot>0.5 and "MIRANDOLO" or dot<-0.5 and "DE ESPALDAS" or "LATERAL") .. "\n\n" end
     end
-    Log("V3", "Validacion Direccion para Dano", v3); task.wait(0.05)
 
-    -- V4
+    -- V4 Knockback
     local okP = pcall(function() if myRoot then mRoot.AssemblyLinearVelocity=(mRoot.Position-myRoot.Position).Unit*-30 end end)
-    local v4 = "Empuje x-30: " .. (okP and "EXITOSO (salio volando)" or "Bloqueado")
-    for _, vv in pairs(mob:GetDescendants()) do
-        if vv:IsA("BodyVelocity") or vv:IsA("LinearVelocity") then v4=v4.."\nPhysics: "..vv:GetFullName() end
-    end
-    Log("V4", "Knockback / Empuje", v4); task.wait(0.05)
+    log = log .. "V4 KNOCKBACK: " .. (okP and "EXITOSO (salio volando)" or "Bloqueado") .. "\n\n"
 
-    -- V5
-    local v5 = "Sin myRoot."
+    -- V5 Rotacion
     if myRoot then
         local away = myRoot.Position + myRoot.CFrame.LookVector*100
         local okR = pcall(function() mRoot.CFrame=CFrame.new(mRoot.Position,Vector3.new(away.X,mRoot.Position.Y,away.Z)) end)
-        v5 = "Rotar de espaldas: " .. (okR and "EXITOSO - integra: mRoot.CFrame=CFrame.lookAt(pos,away)" or "Bloqueado server-side.")
+        log = log .. "V5 ROTACION CFrame: " .. (okR and "EXITOSO → integra en Farm: lookAt" or "Bloqueado") .. "\n\n"
     end
-    Log("V5", "Rotacion Forzada CFrame", v5); task.wait(0.05)
 
-    -- V6
-    local v6 = ""
+    -- V6 TouchInterest
+    local tt = 0
     for _, p in pairs(mob:GetDescendants()) do
-        if p:IsA("BasePart") and p:FindFirstChildWhichIsA("TouchTransmitter") then
-            table.insert(tParts, p)
-            v6 = v6 .. p.Name .. " [" .. tostring(p.Size) .. "] EXPLOIT: tt:Destroy()\n"
-        end
+        if p:IsA("BasePart") and p:FindFirstChildWhichIsA("TouchTransmitter") then tt=tt+1 end
     end
-    Log("V6", "TouchInterest / Contacto (" .. #tParts .. ")", v6=="" and "Sin TouchInterest. Mob usa Raycast server-side." or v6); task.wait(0.05)
+    log = log .. "V6 TOUCHINTEREST: " .. tt .. " partes" .. (tt>0 and " → EXPLOIT: tt:Destroy() en loop" or " → Raycast server-side") .. "\n\n"
 
-    -- V7
-    local v7 = ""
+    -- V7 Brazos
+    local arms = 0
     for _, p in pairs(mob:GetDescendants()) do
         if p:IsA("BasePart") then
-            local nm = string.lower(p.Name)
-            if string.find(nm,"arm") or string.find(nm,"hand") or string.find(nm,"weapon") or string.find(nm,"hit") or string.find(nm,"attack") then
-                table.insert(aParts, p)
-                local ok7 = pcall(function() p.Size=Vector3.new(0.1,0.1,0.1) end)
-                v7 = v7 .. p.Name .. ": " .. (ok7 and "REDUCIDO" or "Bloqueado") .. "\n"
+            local n = string.lower(p.Name)
+            if string.find(n,"arm") or string.find(n,"hand") or string.find(n,"hit") then
+                arms=arms+1
+                pcall(function() p.Size=Vector3.new(0.1,0.1,0.1) end)
             end
         end
     end
-    Log("V7", "Brazos/Hitbox Ataque (" .. #aParts .. ")", v7=="" and "Sin partes por nombre. Raycast ~5-8 studs. Fix: muro -6.5 studs." or v7); task.wait(0.05)
+    log = log .. "V7 BRAZOS/HITBOX: " .. arms .. " partes encontradas\n\n"
 
-    -- V8
+    -- V8 Congelar
     local okW = pcall(function() mHum.WalkSpeed=0; mHum.JumpPower=0 end)
-    local okS = pcall(function() mHum:ChangeState(Enum.HumanoidStateType.Disabled) end)
-    Log("V8", "Congelar IA", "WalkSpeed=0: "..(okW and "EXITOSO" or "Bloqueado").."\nChangeState: "..(okS and "EJECUTADO" or "Bloqueado")); task.wait(0.05)
+    log = log .. "V8 CONGELAR IA: " .. (okW and "EXITOSO" or "Bloqueado") .. "\n\n"
 
-    -- V9
-    local v9, fc = "", 0
+    -- V9 Flags
+    local fc = 0
     for _, c in pairs(mob:GetDescendants()) do
-        if c:IsA("BoolValue") or c:IsA("NumberValue") or c:IsA("IntValue") or c:IsA("StringValue") then
-            local nm = string.lower(c.Name)
-            local sus = string.find(nm,"invul") or string.find(nm,"immune") or string.find(nm,"god") or string.find(nm,"stun") or string.find(nm,"dead")
-            v9 = v9 .. (sus and "[!!] " or "  ") .. c.Name .. " = " .. tostring(c.Value) .. "\n"; fc=fc+1
+        if c:IsA("BoolValue") or c:IsA("NumberValue") or c:IsA("IntValue") then
+            fc=fc+1
         end
     end
-    Log("V9", "Flags Invulnerabilidad (" .. fc .. ")", fc==0 and "Sin Values expuestos. Flags server-side." or v9); task.wait(0.05)
+    log = log .. "V9 FLAGS: " .. fc .. " Values locales en el mob\n\n"
 
-    -- V10
-    local v10 = "Mob: " .. mob.Name .. " | Touch:" .. #tParts .. " | Attack:" .. #aParts .. "\nPRIORIDADES:\n"
-    if #tParts>0 then v10=v10.."[1] V6: TouchTransmitter:Destroy() en loop\n" end
-    if #aParts>0 then v10=v10.."[2] V7: arm.Size=V3.new(0.1,0.1,0.1) en loop\n" end
-    v10=v10.."[3] Offset muro: CFrame.new(0,0,-6.5)\n[4] Si V5 OK: mRoot.CFrame=lookAt cada golpe\n"
-    Log("V10", "Resumen Fisico + Prioridades", v10)
-
-    Status.Text = "Red en vivo: capturando 3 segundos..."
-
-    -- V11
-    local v11, rcnt = "", 0
+    -- V11 Remotes
+    local rcnt = 0
+    local rl = ""
     for _, rem in pairs(game:GetDescendants()) do
-        if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") or rem:IsA("UnreliableRemoteEvent") then
-            local nm = string.lower(rem.Name)
-            if string.find(nm,"damage") or string.find(nm,"hit") or string.find(nm,"hurt") or string.find(nm,"attack") or
-               string.find(nm,"health") or string.find(nm,"hp") or string.find(nm,"mob") or string.find(nm,"kill") or
-               string.find(nm,"tool") or string.find(nm,"weapon") or string.find(nm,"ability") then
-                v11=v11.."["..rem.ClassName.."] "..rem:GetFullName().."\n"; rcnt=rcnt+1
+        if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") then
+            local n = string.lower(rem.Name)
+            if string.find(n,"damage") or string.find(n,"hit") or string.find(n,"attack") or string.find(n,"tool") or string.find(n,"weapon") then
+                rcnt=rcnt+1; rl=rl.."  ["..rem.ClassName.."] "..rem:GetFullName().."\n"
             end
         end
     end
-    Log("V11", "Remotes Combate (" .. rcnt .. ")", rcnt==0 and "Sin nombres obvios. Ver V14." or v11)
+    log = log .. "V11 REMOTES COMBATE: " .. rcnt .. "\n" .. (rcnt>0 and rl or "  Sin nombres obvios. Usa Interceptor.\n") .. "\n"
 
-    -- V12
-    Log("V12", "Captura Red Vivo 3s", "Atacando mob y capturando C->S...")
+    -- V12-V17 Red en vivo
+    log = log .. "V12 CAPTURA RED (3s)...\n"
+    LogLbl.Text = log
+    StatusLbl.Text = "Capturando red 3s..."
     task.wait(0.2)
 
     local pkts, captOn, t0, grps = {}, true, tick(), {}
@@ -345,7 +227,6 @@ RunBtn.MouseButton1Click:Connect(function()
     pcall(function() ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated end)
 
     local hpB = mHum.Health
-    local hpLog = {{t=0,hp=hpB}}
     task.spawn(function()
         local endT = tick()+3
         while tick()<endT and captOn do
@@ -353,54 +234,35 @@ RunBtn.MouseButton1Click:Connect(function()
                 if myRoot and mRoot then myRoot.CFrame=CFrame.lookAt(myRoot.Position,Vector3.new(mRoot.Position.X,myRoot.Position.Y,mRoot.Position.Z)) end
                 if ToolRF then ToolRF:InvokeServer("Weapon") end
             end)
-            pcall(function() table.insert(hpLog,{t=tick()-t0,hp=mHum.Health}) end)
             task.wait(0.15)
         end
     end)
     task.wait(3.2)
     captOn=false
 
+    local hpA=mHum.Health; local hpDrop=hpB-hpA
     for _,p in ipairs(pkts) do
         if not grps[p.name] then grps[p.name]={} end
         table.insert(grps[p.name],p)
     end
+    local gc=0; for _ in pairs(grps) do gc=gc+1 end
 
-    -- V13
-    local hpA=mHum.Health; local hpDrop=hpB-hpA
-    local v13="HP:"..string.format("%.1f",hpB).." -> "..string.format("%.1f",hpA).."\nDano 3s:"..string.format("%.1f",hpDrop).." DPS:"..string.format("%.2f",hpDrop/3).."\nCurva:\n"
-    for i,s in ipairs(hpLog) do
-        if i>1 then local d=hpLog[i-1].hp-s.hp; if d>0 then v13=v13.."  t+"..string.format("%.1f",s.t).."s HP:"..string.format("%.0f",s.hp).." (-"..string.format("%.1f",d)..")\n" end end
-    end
-    v13=v13..(hpDrop<=0 and "DANO NULO - ToolRF no valido. Ver V14." or "ToolRF OK - "..string.format("%.1f",hpDrop).." HP quitados.")
-    Log("V13", "Curva HP Forense 3s", v13)
-
-    -- V14
-    local v14="Paquetes C->S: "..#pkts.."\n\n"
+    log = log .. "V13 HP: "..string.format("%.1f",hpB).." → "..string.format("%.1f",hpA).." | Dano:"..string.format("%.1f",hpDrop).." DPS:"..string.format("%.2f",hpDrop/3).."\n"
+    log = log .. (hpDrop>0 and "  ToolRF CONFIRMADO\n\n" or "  ToolRF no valido → busca remote en V14\n\n")
+    log = log .. "V14 PAQUETES C->S: " .. #pkts .. " | Remotes unicos: " .. gc .. "\n"
     for rName,rp in pairs(grps) do
-        v14=v14.."["..rp[1].cls.."] "..rName.." x"..#rp.."\n  Path:"..rp[1].path.."\n  Args:\n"
-        for i,arg in ipairs(rp[1].args) do
-            local tp=typeof(arg); local ex=""
-            pcall(function()
-                if tp=="Instance" then ex=" -> "..arg:GetFullName()
-                elseif tp=="table" and HttpService then ex=" -> "..HttpService:JSONEncode(arg)
-                elseif tp=="CFrame" then ex=" pos="..tostring(arg.Position) end
-            end)
-            v14=v14.."    ["..i.."] ("..tp..") "..tostring(arg)..ex.."\n"
+        log = log .. "  ["..rp[1].cls.."] "..rName.." x"..#rp.." | Path: "..rp[1].path.."\n"
+        if #rp>=2 then
+            log = log .. "  Rate: "..string.format("%.1f",1/((rp[#rp].t-rp[1].t)/math.max(1,#rp-1))).." /s\n"
         end
-        if #rp>=2 then v14=v14.."  Rate:"..string.format("%.1f",1/((rp[#rp].t-rp[1].t)/math.max(1,#rp-1))).." /s\n" end
-        v14=v14.."\n"
     end
-    if #pkts==0 then v14=v14.."CERO paquetes. Usa Interceptor script principal + ataque manual." end
-    Log("V14", "Paquetes C->S (" .. #pkts .. " capturas)", v14)
+    if #pkts==0 then log=log.."  CERO paquetes. Usa Interceptor+manual.\n" end
+    log = log .. "\n"
 
-    Log("V15", "Paquetes S->C", "HP via Humanoid.Health replication automatica (sin RemoteEvents).\nUsa Live Monitor del script principal.")
-
-    -- V16
     local bestR,bestC,bestA=nil,0,nil
     for _,rp in pairs(grps) do if #rp>bestC then bestC=#rp; bestR=rp[1].rem; bestA=rp[1].args end end
-    local v16=""
     if bestR then
-        v16="Remote:"..bestR.Name.." x"..bestC.."\nREPLAY x5...\n"
+        log = log .. "V16 REPLAY x5...\n"
         local hpPre=mHum.Health; local hits=0
         for i=1,5 do
             local ok=pcall(function() if bestR:IsA("RemoteFunction") then bestR:InvokeServer(table.unpack(bestA)) else bestR:FireServer(table.unpack(bestA)) end end)
@@ -408,22 +270,17 @@ RunBtn.MouseButton1Click:Connect(function()
         end
         task.wait(0.35)
         local dmgR=hpPre-mHum.Health
-        v16=v16.."Replays:"..hits.."/5 Dano:"..string.format("%.1f",dmgR).."\n"
-        v16=v16..(dmgR>0 and "MEGA-EXPLOIT: Sin rate-limit! x10 DPS.\nPath: "..bestR:GetFullName() or hits>0 and "Rate-limit activo. Remote valido." or "")
-    else v16="Sin remote capturado. Usa Interceptor + manual." end
-    Log("V16", "Replay / Rate-Limit", v16)
+        log = log .. "  Replays:"..hits.."/5 Dano:"..string.format("%.1f",dmgR).."\n"
+        log = log .. (dmgR>0 and "  MEGA-EXPLOIT: sin rate-limit!\n  Path: "..bestR:GetFullName().."\n" or "  Rate-limit activo.\n")
+    else
+        log = log .. "V16: Sin remote capturado.\n"
+    end
 
-    -- V17
-    local gc=0; for _ in pairs(grps) do gc=gc+1 end
-    local v17="Mob:"..mob.Name.."\nPkts:"..#pkts.." Remotes:"..gc.." Dano:"..string.format("%.1f",hpDrop).." DPS:"..string.format("%.2f",hpDrop/3).."\n\nHALLAZGOS:\n"
-    v17=v17..(hpDrop>0 and "  [OK] ToolRF valido\n" or "  [NO] ToolRF no valido -> V14\n")
-    v17=v17..(#pkts>0 and "  [OK] Red capturada -> V14\n" or "  [NO] Red no capturada -> Interceptor\n")
-    v17=v17..(#tParts>0 and "  [!!] TouchInterest -> V6\n" or "")
-    v17=v17..(#aParts>0 and "  [!!] Brazos -> V7\n" or "")
-    v17=v17.."\nPROXIMOS PASOS:\n  1.V16 OK->spam remote en Farm\n  2.V6 OK->tt:Destroy()\n  3.V5 OK->lookAt en Farm\n  4.Muro offset -6.5"
-    Log("V17", "[FIN] RESUMEN 17 VECTORES", v17)
+    log = log .. "\n=== FIN ANALISIS ===\n"
+    log = log .. "DPS: "..string.format("%.2f",hpDrop/3).." | Touch:"..tt.." | Arms:"..arms.." | Pkts:"..#pkts
 
-    Status.Text = "Listo. Pkts:" .. #pkts .. " Remotes:" .. gc .. " DPS:" .. string.format("%.2f",hpDrop/3)
+    LogLbl.Text = log
+    StatusLbl.Text = "LISTO. DPS:" .. string.format("%.2f",hpDrop/3) .. " Pkts:" .. #pkts
     RunBtn.Text = "[ANALIZAR] Parate cerca de un mob y presiona aqui"
-    RunBtn.BackgroundColor3 = Color3.fromRGB(150, 8, 8)
+    RunBtn.BackgroundColor3 = Color3.fromRGB(140,5,5)
 end)
