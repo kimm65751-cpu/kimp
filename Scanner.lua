@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DELTA OMNI-TRACKER v3.5 (GUI FORENSE EN VIVO)
--- Registra Coordenadas, Economía, Herramientas, Toques y Red.
+-- Registra Coordenadas, Economía, Herramientas, Toques, Combate y Red.
 -- Con Botón Flotante, Hotkey (RightControl) y Refresh Github.
 -- =====================================================================
 
@@ -21,9 +21,8 @@ end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "OmniTrackerGUI"
-ScreenGui.Parent = CoreGui -- Oculto del juego
+ScreenGui.Parent = CoreGui 
 
--- Botón Flotante para re-abrir (Minimizado)
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
 OpenBtn.Position = UDim2.new(0, 20, 0.5, -25)
@@ -33,12 +32,11 @@ OpenBtn.BorderColor3 = Color3.fromRGB(0, 120, 200)
 OpenBtn.Text = "👁️"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.TextSize = 25
-OpenBtn.Visible = false -- Oculto al inicio
+OpenBtn.Visible = false 
 OpenBtn.Draggable = true
 OpenBtn.Active = true
 OpenBtn.Parent = ScreenGui
 
--- Marco Principal
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 500, 0, 400)
 MainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
@@ -48,7 +46,6 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Título
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -59,7 +56,6 @@ Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Botón Minimizar (-)
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 MinimizeBtn.Position = UDim2.new(1, -145, 0, 5)
@@ -70,7 +66,6 @@ MinimizeBtn.Font = Enum.Font.Code
 MinimizeBtn.TextSize = 20
 MinimizeBtn.Parent = MainFrame
 
--- Botón Refrescar (Github)
 local RefreshBtn = Instance.new("TextButton")
 RefreshBtn.Size = UDim2.new(0, 105, 0, 30)
 RefreshBtn.Position = UDim2.new(1, -110, 0, 5)
@@ -81,7 +76,6 @@ RefreshBtn.Font = Enum.Font.Code
 RefreshBtn.TextSize = 12
 RefreshBtn.Parent = MainFrame
 
--- Contenedor de Logs (Scroll)
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -20, 1, -60)
 LogScroll.Position = UDim2.new(0, 10, 0, 50)
@@ -94,9 +88,6 @@ UIListLayout.Parent = LogScroll
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- =====================================================================
--- 1.5. LÓGICA DE MINIMIZAR Y HOTKEY
--- =====================================================================
 local function ToggleMenu()
     if MainFrame.Visible then
         MainFrame.Visible = false
@@ -110,7 +101,6 @@ end
 MinimizeBtn.MouseButton1Click:Connect(ToggleMenu)
 OpenBtn.MouseButton1Click:Connect(ToggleMenu)
 
--- Tecla RCTRL (Control Derecho) para abrir/cerrar invisiblemente
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed then
         if input.KeyCode == Enum.KeyCode.RightControl then
@@ -137,6 +127,7 @@ local function AddLog(category, message, copiableData)
     TextPrefix.BackgroundTransparency = 1
     TextPrefix.Text = "["..category.."]"
     if category == "RED" then TextPrefix.TextColor3 = Color3.fromRGB(200, 100, 100)
+    elseif category == "COMBATE" then TextPrefix.TextColor3 = Color3.fromRGB(255, 80, 80)
     elseif category == "FISICA" then TextPrefix.TextColor3 = Color3.fromRGB(100, 200, 100)
     elseif category == "TOOL" then TextPrefix.TextColor3 = Color3.fromRGB(200, 200, 100)
     elseif category == "STAT" then TextPrefix.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -224,6 +215,40 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- Función Inteligente para buscar la Vida (HP) de un objeto, NPC o Piedra
+local function GetHealthInfo(obj)
+    local target = obj
+    local loopCount = 0
+    -- Escanear hacia los ancestros (hasta 4 niveles arriba)
+    while target and target ~= workspace and loopCount < 4 do
+        -- 1. Buscar si tiene un Humanoid clásico (NPCs, Jugadores)
+        local hum = target:FindFirstChildOfClass("Humanoid")
+        if hum then
+            return "❤️ Vida: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth), hum, target.Name
+        end
+        
+        -- 2. Buscar si usa ValueObjects para la vida (Muy usado en Piedras/Árboles de farmeo)
+        for _, child in pairs(target:GetChildren()) do
+            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                local name = string.lower(child.Name)
+                if name == "health" or name == "hp" or name == "vida" or name == "currenthp" then
+                    return "❤️ " .. child.Name .. ": " .. math.floor(child.Value), child, target.Name
+                end
+            end
+        end
+        
+        -- 3. Buscar si usa Atributos nativos de Roblox para la vida
+        local attr = target:GetAttribute("HP") or target:GetAttribute("Health")
+        if attr then
+            return "❤️ Atributo Vida: " .. math.floor(attr), target, target.Name
+        end
+        
+        target = target.Parent
+        loopCount = loopCount + 1
+    end
+    return "❓ Objeto destruible sin vida visible", nil, obj.Name
+end
+
 local touchedDebounce = {}
 local function SetupTouchSpy(character)
     local root = character:WaitForChild("HumanoidRootPart", 5)
@@ -231,21 +256,67 @@ local function SetupTouchSpy(character)
         root.Touched:Connect(function(hit)
             if TrackerRunning and hit.Parent ~= character and not touchedDebounce[hit] then
                 touchedDebounce[hit] = true
-                local pathInfo = hit:GetFullName()
-                AddLog("FISICA", "Tocaste el objeto: " .. hit.Name, "Objeto tocado: " .. pathInfo)
-                task.delay(5, function() touchedDebounce[hit] = nil end)
+                local hpString, _, objName = GetHealthInfo(hit)
+                -- Omitir reporte de piso / terreno
+                if string.find(string.lower(hit.Name), "terrain") or hit.Name == "Baseplate" then 
+                    task.delay(2, function() touchedDebounce[hit] = nil end)
+                    return 
+                end
+                
+                AddLog("FISICA", "Tocaste: " .. objName .. " | " .. hpString, hit:GetFullName())
+                task.delay(10, function() touchedDebounce[hit] = nil end)
             end
         end)
     end
 end
 
+local dmgDebounce = {}
 local function SetupToolSpy(character)
     character.ChildAdded:Connect(function(child)
         if TrackerRunning and child:IsA("Tool") then
             AddLog("TOOL", "Herramienta Equipada: " .. child.Name, child.Name)
+            
             child.Activated:Connect(function()
-                AddLog("TOOL", "Usaste la herramienta: " .. child.Name, child.Name .. " - Activada")
+                AddLog("TOOL", "Click: Usaste " .. child.Name, child.Name)
             end)
+            
+            -- RASTREADOR DE ESPADA / PICO (Combat Spy)
+            -- Conectamos un radar a la punta de la herramienta para ver QUÉ golpea
+            local handle = child:FindFirstChild("Handle") or child:FindFirstChildWhichIsA("Part")
+            if handle then
+                handle.Touched:Connect(function(hit)
+                    if hit:IsDescendantOf(character) then return end
+                    
+                    local hpString, healthObj, objName = GetHealthInfo(hit)
+                    if healthObj and not dmgDebounce[healthObj] then
+                        dmgDebounce[healthObj] = true
+                        
+                        -- Log del golpe exitoso
+                        AddLog("COMBATE", "Golpe a " .. objName .. " | " .. hpString, hit:GetFullName())
+                        
+                        -- 💥 RASTREADOR DE DAÑO EXACTO 💥
+                        -- Nos suscribimos al HP del objeto para ver cuánta vida le quitamos
+                        if typeof(healthObj) == "Instance" and (healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase")) then
+                            local startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
+                            
+                            local conn
+                            conn = (healthObj:IsA("Humanoid") and healthObj.HealthChanged or healthObj.Changed):Connect(function()
+                                local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
+                                if typeof(newHp) == "number" and newHp < startHp then
+                                    local damage = startHp - newHp
+                                    AddLog("COMBATE", "💥 Daño Realizado: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
+                                end
+                                startHp = newHp
+                            end)
+                            
+                            -- Desconectar el radar de vida después de 5 segundos
+                            task.delay(5, function() conn:Disconnect() end)
+                        end
+                        
+                        task.delay(1, function() dmgDebounce[healthObj] = nil end)
+                    end
+                end)
+            end
         end
     end)
 end
