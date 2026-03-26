@@ -600,19 +600,26 @@ task.spawn(function()
                     end
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
-                    -- Equipar espada/arma (no pico)
+                    -- Equipar Gladius Dagger / Weapon (confirmado: está en el Character)
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    local targetTool = nil
-                    local invItems = LocalPlayer.Backpack:GetChildren()
-                    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                        if t:IsA("Tool") then table.insert(invItems, t) end
-                    end
-                    for _, t in pairs(invItems) do
-                        if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
-                            targetTool = t; break
+                    -- Buscar "Weapon" directamente en el Character primero
+                    local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
+                    if not targetTool then
+                        -- Fallback: cualquier tool que no sea pickaxe
+                        for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
+                                targetTool = t; break
+                            end
                         end
                     end
-                    if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                    if not targetTool then
+                        for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
+                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
+                                targetTool = t; break
+                            end
+                        end
+                    end
+                    -- Equipar si no está en el personaje
                     if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
@@ -621,15 +628,15 @@ task.spawn(function()
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
-                    -- Ráfaga de 5 clicks: zombie 20hp muere en ~3 ciclos (0.3s)
-                    for _ = 1, 5 do
+                    -- 3 clicks (servidor limita cooldown, más clicks no registran más daño)
+                    for _ = 1, 3 do
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
                         task.wait()
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                         local activeTool2 = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                         if activeTool2 then pcall(function() activeTool2:Activate() end) end
+                        task.wait(0.1) -- Esperar que el server procese cada golpe
                     end
-                    task.wait(0.05)
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
