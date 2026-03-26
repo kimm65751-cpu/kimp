@@ -617,16 +617,18 @@ task.spawn(function()
                         hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- 🕵️ IDEA MAESTRA: Robar el Arma del jugador PRO del mapa (Weapon Spoofing)
+                    -- 🕵️ ROBO MASIVO DE ATRIBUTOS VIP (Weapon Spoofing Extremista)
                     pcall(function()
                         if targetTool then
                             local bestJSON = nil
                             local maxQuality = 0
-                            -- Escanear todos los jugadores vivos en el mapa
+                            
+                            -- Escanear absolutamente TODOS los modelos vivos en el mapa
                             local livingFolder = workspace:FindFirstChild("Living")
                             if livingFolder then
                                 for _, obj in pairs(livingFolder:GetChildren()) do
-                                    if obj:IsA("Model") and game:GetService("Players"):GetPlayerFromCharacter(obj) and obj ~= LocalPlayer.Character then
+                                    -- ¡Robarle a quien sea! Jugadores fuertes, Jefes, Mobs VIP (Ignorándote a ti)
+                                    if obj:IsA("Model") and obj ~= LocalPlayer.Character and obj.Name ~= LocalPlayer.Name then
                                         local remoteW = obj:FindFirstChild("Weapon")
                                         if remoteW then
                                             local j = remoteW:GetAttribute("ItemJSON")
@@ -639,9 +641,18 @@ task.spawn(function()
                                     end
                                 end
                             end
+                            
+                            -- Si encontramos un arma más demente que la nuestra, la robamos y engañamos al server
                             if bestJSON and targetTool:GetAttribute("ItemJSON") ~= bestJSON then
                                 targetTool:SetAttribute("ItemJSON", bestJSON)
-                                AddLog("STAT", "🗡️ EXPLOIT: ¡Robaste los Atributos de tu enemigo! (Calidad: "..maxQuality..")", "")
+                                AddLog("STAT", "🗡️ ¡ESPADAS ROBADAS! Copiaste código VIP (Quality: "..maxQuality..")", bestJSON)
+                                
+                                -- ⚡ TACTICA: Desequipar y volver a equipar para que el Server lea los atributos inflados
+                                if hum then
+                                    hum:UnequipTools()
+                                    task.wait(0.2)
+                                    hum:EquipTool(targetTool)
+                                end
                             end
                         end
                     end)
