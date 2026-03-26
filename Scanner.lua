@@ -265,19 +265,34 @@ task.spawn(function()
                 hrp.CFrame = CFrame.lookAt(atackPos, bestPebble.Position)
                 hrp.AssemblyLinearVelocity = Vector3.zero
                 
-                -- 3. Equipar y Picar (Uso forzado de herramienta)
-                local pickaxe = LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")
-                if pickaxe and pickaxe.Parent == LocalPlayer.Backpack then
-                    pickaxe.Parent = LocalPlayer.Character
+                -- 3. Equipar y Golpear (Aimbot + Virtual Click)
+                -- Buscamos cualquier tipo de herramienta, sin importar el nombre ("Wooden Pickaxe", "Basic", etc)
+                local tool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool") 
+                             or LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
+                
+                if tool and tool.Parent == LocalPlayer.Backpack then
+                    tool.Parent = LocalPlayer.Character
                 end
                 
-                if pickaxe then
-                    pickaxe:Activate()
-                    -- Algunas veces se requiere simular el click del teclado (Executor nativo)
-                    if mouse1click then mouse1click() end 
+                -- Giramos el cuello humano (Cámara) forzosamente hacia la piedra
+                local camera = workspace.CurrentCamera
+                if camera then
+                    camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestPebble.Position)
                 end
                 
-                task.wait(0.3) -- Esperar cooldown del golpe
+                -- Ejecución de Clic Múltiple
+                if tool then tool:Activate() end
+                
+                -- Inyección de Clic Falso Nivel Kernel (Engaña al Raycast apuntando al centro)
+                local VirtualUser = game:GetService("VirtualUser")
+                VirtualUser:Button1Down(Vector2.new(0,0))
+                task.wait(0.05)
+                VirtualUser:Button1Up(Vector2.new(0,0))
+                
+                -- Inyección por Delta (Capa Externa)
+                if mouse1click then mouse1click() end
+                
+                task.wait(0.2) -- Esperar cooldown del golpe
             else
                 -- Ya no hay piedras vivas (Descanzar y tocar el suelo)
                 ToggleNoclip(false)
