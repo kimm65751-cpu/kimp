@@ -191,12 +191,21 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
         local method = getnamecallmethod()
         if method == "FireServer" or method == "InvokeServer" then
             local args = {...}
-            local argStr = ""
-            for i,v in pairs(args) do
-                argStr = argStr .. "Arg" .. i .. ":" .. tostring(v) .. " | "
-            end
-            local payload = "Remote: " .. tostring(self.Name) .. "\nArgs: " .. argStr
-            AddLog("RED", "Paquete enviado a: " .. tostring(self.Name), payload)
+            -- ENVOLVER EN HILO SEPARADO: Esto evita que la creación de la Interfaz GUI
+            -- bloquee la instrucción interna del juego (evita que se traben los clics/NPCs).
+            task.spawn(function()
+                local success, selfName = pcall(function() return self.Name end)
+                if not success then selfName = "Remote_Desconocido" end
+                
+                local argStr = ""
+                for i,v in pairs(args) do
+                    local strVal = typeof(v) == "Instance" and v.Name or tostring(v)
+                    argStr = argStr .. "Arg" .. i .. ":" .. strVal .. " | "
+                end
+                
+                local payload = "Remote: " .. tostring(selfName) .. "\nArgs: " .. argStr
+                AddLog("RED", "Paquete enviado a: " .. tostring(selfName), payload)
+            end)
         end
     end
     return oldNamecall(self, ...)
