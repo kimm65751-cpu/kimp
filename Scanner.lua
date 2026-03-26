@@ -805,29 +805,15 @@ ExaminarBtn.MouseButton1Click:Connect(function()
             remoteStr = remoteStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
         end
     end
-            AddLog("EXAMEN", "🔗 Listeners HP", connStr)
+    AddLog("EXAMEN", "📜 Scripts en Mob", scriptStr ~= "" and scriptStr or "Sin scripts")
+    AddLog("EXAMEN", "📡 Remotes en Mob", remoteStr ~= "" and remoteStr or "Sin remotes")
+    if getconnections and hum then
+        pcall(function()
+            AddLog("EXAMEN", "🔗 HealthChanged: " .. #getconnections(hum.HealthChanged) .. " conexiones", "")
         end)
     end
-    
-    -- 5. Monitorear RED por 8 segundos al golpear (capturar el remote del daño)
-    AddLog("EXAMEN", "⏱️ Monitoreando red 8s → ¡Golpea el zombie manualmente ahora!", "")
-    ExaminarBtn.Text = "⏳ Escuchando red..."
-    ExaminarBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
-    
-    local capturedRemotes = {}
-    local monitorConn
-    monitorConn = RunService.Heartbeat:Connect(function()
-        -- Ya los hookfunction/namecall globales capturan todo, solo necesitamos marcar el tiempo
-    end)
-    
-    task.delay(8, function()
-        monitorConn:Disconnect()
-        AddLog("EXAMEN", "✅ Examen completo. Revisa logs [RED] generados al golpear.", "")
-        ExaminarBtn.Text = "🔍 EXAMINAR MOB CERCANO"
-        ExaminarBtn.BackgroundColor3 = Color3.fromRGB(20, 60, 100)
-    end)
+    AddLog("EXAMEN", "✅ Examen completo. Equipa tu arma antes de examinar.", "")
 end)
-
 
 local EspElements = {}
 local autoESP = false
