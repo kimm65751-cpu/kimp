@@ -480,8 +480,13 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
             task.wait(3) -- Tiempo táctico para mover el ratón real a la posición deseada
             if not autoPump then return end
             
-            AddLog("SISTEMA", "🔥 Bombeo Iniciado. (MANTÉN PRESIONADO 'Q' PARA APAGAR DE EMERGENCIA)", "")
+            AddLog("SISTEMA", "🔥 Bombeo Iniciado. (MANTÉN PRESIONADO 'Q' PARA APAGAR)", "")
             
+            local vim = game:GetService("VirtualInputManager")
+            local m = LocalPlayer:GetMouse()
+            
+            -- ¡DOBLE ANCLAJE DE CLIC! (Motor Virtual + Motor Físico del Exploit)
+            vim:SendMouseButtonEvent(m.X, m.Y, 0, true, game, 1)
             if mouse1click then mouse1click() end 
             if mouse1press then mouse1press() end
             
@@ -493,14 +498,14 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
                     break
                 end
                 
-                -- Baja el ratón físico 300 píxeles relativos
+                -- Inicia el barrido obligatoriamente hacia ABAJO (300 píxeles relativos)
                 for i = 1, 10 do
                     if not autoPump then break end
                     if mousemoverel then mousemoverel(0, 30) end
                     task.wait(0.01)
                 end
                 
-                -- Sube el ratón 300 píxeles hacia arriba
+                -- Sube el ratón mágicamente
                 for i = 1, 10 do
                     if not autoPump then break end
                     if mousemoverel then mousemoverel(0, -30) end
@@ -508,7 +513,10 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
                 end
             end
             
+            -- Liberar ambos Clics Fantasma
             if mouse1release then mouse1release() end
+            vim:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 1)
+            
             AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
             AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
             AddLog("SISTEMA", "Bombeo Físico Terminado o Cancelado.", "")
