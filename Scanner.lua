@@ -545,13 +545,8 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚡ MODO HIT-AND-RUN: CFrame instantáneo (sin Tween = sin latencia)
-                    -- 1. Calcular punto de ataque: al lado del zombie pero no encima
-                    local attackPos = bestTarget.Position + Vector3.new(3, 0, 3)
-                    
-                    -- 2. Teletransporte INSTANTÁNEO al punto de ataque
-                    hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
-                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    -- 🥊 MODO BOXEADOR (KITING): Avanzar → Golpear → Retroceder
+                    -- Sin teleport, todo con TweenService para evitar anti-cheat
                     
                     -- 3. Seleccionar y equipar arma de combate
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -570,7 +565,22 @@ task.spawn(function()
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
                     
-                    -- 4. DISPARAR el golpe
+                    -- FASE 1: AVANZAR rápido al rango de golpe (3 studs del zombie)
+                    local dirToMob = (bestTarget.Position - hrp.Position)
+                    local dist = dirToMob.Magnitude
+                    if dist > 4 then
+                        local strikePos = bestTarget.Position + dirToMob.Unit * -3.5 -- Pararse a 3.5 studs del zombie
+                        strikePos = Vector3.new(strikePos.X, hrp.Position.Y, strikePos.Z) -- Mantener mismo nivel del suelo
+                        local approachTime = math.clamp(dist / 40, 0.05, 0.6) -- Velocidad: 40 studs/s (carrera humana)
+                        local approachTween = TweenService:Create(hrp, TweenInfo.new(approachTime, Enum.EasingStyle.Linear), {
+                            CFrame = CFrame.lookAt(strikePos, bestTarget.Position)
+                        })
+                        approachTween:Play()
+                        approachTween.Completed:Wait()
+                    end
+                    
+                    -- FASE 2: GOLPEAR
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
@@ -581,12 +591,15 @@ task.spawn(function()
                     local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                     if activeTool then pcall(function() activeTool:Activate() end) end
                     
-                    -- 5. ⚡ ESCAPE INSTANTÁNEO: Salir del rango melee ANTES de que el zombie responda
+                    -- FASE 3: RETROCEDER RÁPIDO (antes de que el zombie reaccione)
                     local escapeDir = (hrp.Position - bestTarget.Position).Unit
-                    local escapePos = hrp.Position + escapeDir * 20
-                    hrp.CFrame = CFrame.new(escapePos)
+                    local escapePos = hrp.Position + Vector3.new(escapeDir.X * 14, 0, escapeDir.Z * 14)
+                    local retreatTween = TweenService:Create(hrp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        CFrame = CFrame.new(escapePos)
+                    })
+                    retreatTween:Play()
+                    retreatTween.Completed:Wait()
                     hrp.AssemblyLinearVelocity = Vector3.zero
-                    task.wait(0.15) -- Esperar que el servidor procese la animación del zombie
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
