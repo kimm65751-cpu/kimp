@@ -87,22 +87,32 @@ UIListLayout.Parent = LogScroll
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- ⚡ Menú BOT (Auto-Farm) ⚡
+-- ⚡ Menú BOT (Auto-Farm & Minigames) ⚡
 local BotFrame = Instance.new("Frame")
-BotFrame.Size = UDim2.new(1, -20, 0, 50)
-BotFrame.Position = UDim2.new(0, 10, 1, -55)
+BotFrame.Size = UDim2.new(1, -20, 0, 80) -- Ampliado para dos botones
+BotFrame.Position = UDim2.new(0, 10, 1, -85)
 BotFrame.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
 BotFrame.Parent = MainFrame
 
 local AutoPebbleBtn = Instance.new("TextButton")
 AutoPebbleBtn.Size = UDim2.new(0, 200, 0, 30)
-AutoPebbleBtn.Position = UDim2.new(0.5, -100, 0.5, -15)
+AutoPebbleBtn.Position = UDim2.new(0.5, -210, 0.5, -15) -- Izquierda
 AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
 AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
 AutoPebbleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoPebbleBtn.Font = Enum.Font.Code
 AutoPebbleBtn.TextSize = 14
 AutoPebbleBtn.Parent = BotFrame
+
+local AutoPumpBtn = Instance.new("TextButton")
+AutoPumpBtn.Size = UDim2.new(0, 200, 0, 30)
+AutoPumpBtn.Position = UDim2.new(0.5, 10, 0.5, -15) -- Derecha
+AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 150)
+AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): OFF"
+AutoPumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoPumpBtn.Font = Enum.Font.Code
+AutoPumpBtn.TextSize = 13
+AutoPumpBtn.Parent = BotFrame
 
 local function ToggleMenu()
     if MainFrame.Visible then
@@ -416,32 +426,7 @@ task.spawn(function()
                 hrp.CFrame = CFrame.lookAt(atackPos, bestPebble.Position)
                 hrp.AssemblyLinearVelocity = Vector3.zero
                 
-                -- PARCHE DE NÚCLEO (Hackeo de Estadísticas de Herramienta)
-                local patchedTools = {}
-                local function PatchToolStats(t)
-                    if patchedTools[t] then return end
-                    patchedTools[t] = true
-                    for name, _ in pairs(t:GetAttributes()) do
-                        local ln = string.lower(name)
-                        if string.find(ln, "coold") or string.find(ln, "speed") or string.find(ln, "waittime") then
-                            t:SetAttribute(name, 0); AddLog("SISTEMA", "😎 Atributo de Retraso hackeado a 0 ("..name..")", "")
-                        elseif string.find(ln, "damage") or string.find(ln, "dmg") then
-                            t:SetAttribute(name, 99999); AddLog("SISTEMA", "🔥 Atributo de Daño al infinito ("..name..")", "")
-                        end
-                    end
-                    for _, v in pairs(t:GetDescendants()) do
-                        if v:IsA("NumberValue") or v:IsA("IntValue") then
-                            local ln = string.lower(v.Name)
-                            if string.find(ln, "coold") or string.find(ln, "speed") or string.find(ln, "waittime") then
-                                v.Value = 0; AddLog("SISTEMA", "😎 Variable Cooldown bajada al piso", v.Name)
-                            elseif string.find(ln, "damage") or string.find(ln, "dmg") then
-                                v.Value = 99999; AddLog("SISTEMA", "🔥 Variable Daño infinita!", v.Name)
-                            end
-                        end
-                    end
-                end
-                
-                -- RUTINA DE GOLPEO AVANZADA (Evade Anti-Exploits y Armas Extrañas)
+                -- RUTINA DE GOLPEO RÁPIDO Y PRECISO (Paso 1 - Finalizado)
                 local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 local tool = LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
                 
@@ -449,8 +434,6 @@ task.spawn(function()
                     hum:EquipTool(tool)
                     task.wait(0.1) -- Tiempo de animación de equipar
                 end
-                
-                if tool then PatchToolStats(tool) end
                 
                 local camera = workspace.CurrentCamera
                 if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestPebble.Position) end
@@ -484,6 +467,52 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
         AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
         ToggleNoclip(false)
         AddLog("SISTEMA", "Bot Auto-Farm apagado.", "")
+    end
+end)
+
+-- Lógica del Auto-Fuelle (Vibrador de Mouse Virtual)
+local autoPump = false
+local pumpConn
+
+AutoPumpBtn.MouseButton1Click:Connect(function()
+    autoPump = not autoPump
+    if autoPump then
+        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): ON"
+        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
+        AddLog("SISTEMA", "¡Fuelle ON! Pon tu ratón sobre la flecha verde.", "")
+        
+        if not pumpConn then
+            local vim = game:GetService("VirtualInputManager")
+            local Mouse = LocalPlayer:GetMouse()
+            local toggled = false
+            
+            pumpConn = RunService.RenderStepped:Connect(function()
+                local X, Y = Mouse.X, Mouse.Y
+                -- Mantiene el ratón presionado artificialmente
+                vim:SendMouseButtonEvent(X, Y, 0, true, game, 1)
+                
+                -- Sacude la coordenada Y violentamente para rellenar la barra
+                if toggled then
+                    vim:SendMouseMovementEvent(X, Y + 150, game)
+                else
+                    vim:SendMouseMovementEvent(X, Y - 150, game)
+                end
+                toggled = not toggled
+            end)
+        end
+    else
+        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): OFF"
+        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+        AddLog("SISTEMA", "Auto-Fuelle apagado.", "")
+        
+        if pumpConn then
+            pumpConn:Disconnect()
+            pumpConn = nil
+            -- Asegurarnos de soltar el fantasma del ratón
+            local vim = game:GetService("VirtualInputManager")
+            local Mouse = LocalPlayer:GetMouse()
+            vim:SendMouseButtonEvent(Mouse.X, Mouse.Y, 0, false, game, 1)
+        end
     end
 end)
 
