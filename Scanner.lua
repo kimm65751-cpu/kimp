@@ -1,82 +1,82 @@
--- FORENSE ANALYZER V5 - GUI DE MAXIMA COMPATIBILIDAD (Botones Flotantes)
-local sg = Instance.new("ScreenGui")
-sg.Name = "ForenseV5"
-sg.ResetOnSpawn = false
-local okCg = pcall(function() sg.Parent = game:GetService("CoreGui") end)
-if not okCg then
-    sg.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
-end
-
--- Limpiar anteriores
-if sg.Parent then
-    for _, v in ipairs(sg.Parent:GetChildren()) do
-        if v.Name == "ForenseV5" and v ~= sg then v:Destroy() end
-    end
-end
-
+-- FORENSE ANALYZER V6 - INYECTOR EXCLUYENTE 100% FIABLE
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local HttpService
-pcall(function() HttpService = game:GetService("HttpService") end)
-local ReplicatedStorage
-pcall(function() ReplicatedStorage = game:GetService("ReplicatedStorage") end)
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
 
--- Panel Principal Transparente
-local Base = Instance.new("Frame")
-Base.Size = UDim2.new(0, 600, 0, 450)
-Base.Position = UDim2.new(0.5, -300, 0.5, -225)
-Base.BackgroundTransparency = 1
-Base.Active = true
-Base.Draggable = true
-Base.Parent = sg
-
--- Crear Elementos Individuales (sin containers anidados)
-local function MkElm(cls, n, sX, sY, pX, pY, bg)
-    local e = Instance.new(cls)
-    e.Name = n
-    e.Size = UDim2.new(0, sX, 0, sY)
-    e.Position = UDim2.new(0, pX, 0, pY)
-    e.BackgroundColor3 = bg
-    e.BorderSizePixel = 2
-    e.BorderColor3 = Color3.fromRGB(0,0,0)
-    e.Parent = Base
-    return e
+-- EXCLUSION: Destruir previas inyecciones
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+for _, v in pairs(parentUI:GetChildren()) do
+    if v.Name == "ForenseV6" then v:Destroy() end
 end
 
-local Title = MkElm("TextLabel", "Title", 560, 30, 0, 0, Color3.fromRGB(160, 10, 10))
-Title.Text = " FORENSE ANALYZER V5 - 17 VECTORES"
-Title.TextColor3 = Color3.fromRGB(255, 240, 80)
-Title.Font = Enum.Font.Code
-Title.TextSize = 13
-Title.TextXAlignment = Enum.TextXAlignment.Left
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ForenseV6"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = parentUI
 
-local XBtn = MkElm("TextButton", "XBtn", 40, 30, 560, 0, Color3.fromRGB(200, 20, 20))
-XBtn.Text = "X"
-XBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-XBtn.Font = Enum.Font.Code
-XBtn.TextSize = 14
-XBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+-- VENTANA PRINCIPAL ROJA
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 680, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -340, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 10)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-local RunBtn = MkElm("TextButton", "RunBtn", 600, 40, 0, 32, Color3.fromRGB(20, 100, 20))
-RunBtn.Text = ">>> INICIAR ANALISIS (ACERCATE A UN MOB) <<<"
-RunBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RunBtn.Font = Enum.Font.Code
-RunBtn.TextSize = 14
+local TitleArea = Instance.new("TextLabel")
+TitleArea.Size = UDim2.new(1, -30, 0, 30)
+TitleArea.BackgroundColor3 = Color3.fromRGB(180, 10, 10)
+TitleArea.Text = "  FORENSE ANALYZER V6 - 17 VECTORES EN VIVO"
+TitleArea.TextColor3 = Color3.fromRGB(255, 255, 0)
+TitleArea.Font = Enum.Font.Code
+TitleArea.TextSize = 13
+TitleArea.TextXAlignment = Enum.TextXAlignment.Left
+TitleArea.Parent = MainFrame
 
-local LogBox = MkElm("TextLabel", "LogBox", 600, 376, 0, 74, Color3.fromRGB(15, 15, 20))
-LogBox.Text = "ESPERANDO ORDEN...\nLos resultados completos se copiaran a tu portapapeles automaticamente al terminar."
-LogBox.TextColor3 = Color3.fromRGB(200, 200, 200)
-LogBox.Font = Enum.Font.Code
-LogBox.TextSize = 12
-LogBox.TextXAlignment = Enum.TextXAlignment.Left
-LogBox.TextYAlignment = Enum.TextYAlignment.Top
-LogBox.TextWrapped = true
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.Code
+CloseBtn.TextSize = 14
+CloseBtn.Parent = MainFrame
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-RunBtn.MouseButton1Click:Connect(function()
-    RunBtn.Text = "ANALIZANDO (~5s)..."
-    RunBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 0)
-    LogBox.Text = "Buscando mob cercano..."
+local ActionBtn = Instance.new("TextButton")
+ActionBtn.Size = UDim2.new(1, -10, 0, 40)
+ActionBtn.Position = UDim2.new(0, 5, 0, 35)
+ActionBtn.BackgroundColor3 = Color3.fromRGB(140, 0, 0)
+ActionBtn.Text = "/// CLICK AQUI PARA INICIAR EL ANALISIS DEL ZOMBI AL FRENTE ///"
+ActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActionBtn.Font = Enum.Font.Code
+ActionBtn.TextSize = 14
+ActionBtn.Parent = MainFrame
+
+-- SIN SCROLL: USAMOS SIMPLE TEXTLABEL (BUG DELTA-COMPATIBLE)
+local LogWindow = Instance.new("TextLabel")
+LogWindow.Size = UDim2.new(1, -10, 1, -85)
+LogWindow.Position = UDim2.new(0, 5, 0, 80)
+LogWindow.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+LogWindow.TextColor3 = Color3.fromRGB(200, 200, 200)
+LogWindow.Font = Enum.Font.Code
+LogWindow.TextSize = 12
+LogWindow.TextXAlignment = Enum.TextXAlignment.Left
+LogWindow.TextYAlignment = Enum.TextYAlignment.Top
+LogWindow.TextWrapped = true
+LogWindow.Text = "\n  1. Parate a menos de 50 studs de un zombi vivo.\n  2. Dale click al boton rojo superior.\n  3. Comenzara el escaneo fisico (hitboxes/scripts/TouchTransmitters)\n  4. Y luego capturara todo el combate en red durante 3 segundos.\n\n  AL TERMINAR, SE COPIARA todo el escaneo a tu portapapeles ctrl+c/v."
+LogWindow.Parent = MainFrame
+
+ActionBtn.MouseButton1Click:Connect(function()
+    ActionBtn.Text = "ESPERA... ESCANEANDO MOB (~5s)"
+    ActionBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+    LogWindow.Text = "Buscando objetivo..."
 
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -94,36 +94,35 @@ RunBtn.MouseButton1Click:Connect(function()
     end
 
     if not mob then
-        LogBox.Text = "ERROR: Sin mob vivo cerca.\nAcercate a menos de 50 studs de un zombi."
-        RunBtn.Text = ">>> REINTENTAR <<<"
-        RunBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 20)
+        ActionBtn.Text = "ERROR: ACERCATE A UN MOB Vivo Y VUELVE A CLICKAR"
+        ActionBtn.BackgroundColor3 = Color3.fromRGB(140, 0, 0)
+        LogWindow.Text = "No se encontro ningun mob en la escena o estan muy lejos.\nAcercate y reinicia el escaneo."
         return
     end
 
-    LogBox.Text = "Mob encontrado: " .. mob.Name .. "\nIniciando 17 vectores..."
-    local log = "=== FORENSE: " .. mob.Name .. " (HP:" .. math.floor(mHum.Health) .. ") ===\n\n"
+    local log = "== TARGET: " .. mob.Name .. " (HP:" .. math.floor(mHum.Health) .. ") ==\n\n"
 
     -- V1 Atributos
     local attrs = mob:GetAttributes()
     if next(attrs) then
         local a1 = pcall(function() mob:SetAttribute("Health",0) end)
-        log = log .. "[V1] ATRIBUTOS: Manipulables. SetAttr Health=0: " .. (a1 and "OK" or "Block") .. "\n"
+        log = log .. "[V1] ATRIBUTOS: SetAttr Health=0 -> " .. (a1 and "Exitoso" or "Bloqueado") .. "\n"
     else
-        log = log .. "[V1] ATRIBUTOS: Server-side puro.\n"
+        log = log .. "[V1] ATRIBUTOS: Ninguno (100% Server-side)\n"
     end
 
     -- V2-V5 Físicas y scripts
     local sc = 0
     for _, s in pairs(mob:GetDescendants()) do if s:IsA("Script") then sc=sc+1 end end
-    log = log .. "[V2] SCRIPTS IA: " .. sc .. "\n"
+    log = log .. "[V2] SCRIPTS LOCALS: " .. sc .. "\n"
 
     local okP = pcall(function() if myRoot then mRoot.AssemblyLinearVelocity=(mRoot.Position-myRoot.Position).Unit*-30 end end)
-    log = log .. "[V4] KNOCKBACK: " .. (okP and "Salio Volando (OK)" or "Bloqueado") .. "\n"
+    log = log .. "[V4] KNOCKBACK (Empuje): " .. (okP and "Salio Volando (Exploitable)" or "Bloqueado") .. "\n"
 
     if myRoot then
         local aw = myRoot.Position + myRoot.CFrame.LookVector*100
         local okR = pcall(function() mRoot.CFrame=CFrame.new(mRoot.Position,Vector3.new(aw.X,mRoot.Position.Y,aw.Z)) end)
-        log = log .. "[V5] ROTACION: " .. (okR and "Manipulable (OK)" or "Bloqueada") .. "\n"
+        log = log .. "[V5] ROTACION CFRAME: " .. (okR and "Obligado a dar espalda (Exploitable)" or "Bloqueada") .. "\n"
     end
 
     -- V6-V7 Hitboxes
@@ -137,8 +136,8 @@ RunBtn.MouseButton1Click:Connect(function()
             end
         end
     end
-    log = log .. "[V6] TouchInterest: " .. tt .. (tt>0 and " -> EXPLOIT: tt:Destroy()" or "") .. "\n"
-    log = log .. "[V7] Hitbox Ataque: " .. arms .. (arms>0 and " -> Reducidas a 0.1x" or "") .. "\n"
+    log = log .. "[V6] TouchTransmitter: " .. tt .. (tt>0 and " -> USAR: V6 tt:Destroy()" or " -> Dano por Raycast") .. "\n"
+    log = log .. "[V7] Hitbox Brazos: " .. arms .. (arms>0 and " -> Reducidos a 0.1 studs" or " -> No se detectaron brazos") .. "\n\n"
 
     -- V11 Remotes
     local rl = ""
@@ -146,14 +145,14 @@ RunBtn.MouseButton1Click:Connect(function()
         if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") then
             local n = string.lower(rem.Name)
             if string.find(n,"damage") or string.find(n,"hit") or string.find(n,"attack") then
-                rl=rl.." "..rem.Name.."\n"
+                rl=rl..rem.Name.." "
             end
         end
     end
-    log = log .. "[V11] REMOTES OBVIOS:\n" .. (rl~="" and rl or " Ninguno.\n") .. "\n"
+    log = log .. "[V11] NOMBRES REMOTES:\n " .. (rl~="" and rl or " Ninguno obvio.") .. "\n\n"
 
     -- V12-V16 Red en Vivo
-    LogBox.Text = log .. "CAPTURANDO RED EN VIVO... (3s)"
+    LogWindow.Text = log .. "CAPTURANDO EL COMBATE Y PAQUETES DE RED EN VIVO... (3s)\nNO TEMUEVAS..."
     task.wait(0.2)
 
     local pkts, captOn, t0, grps = {}, true, tick(), {}
@@ -197,16 +196,15 @@ RunBtn.MouseButton1Click:Connect(function()
         table.insert(grps[p.name],p)
     end
 
-    log = log .. "=== RESULTADO COMBATE ===\n"
-    log = log .. "[V13] Dano 3s: " .. string.format("%.1f",hpDrop) .. " | DPS: " .. string.format("%.2f",hpDrop/3) .. "\n"
-    log = log .. (hpDrop>0 and " --> ToolRF HACE DANO OK\n\n" or " --> ToolRF NO HACE DANO. Usa V14.\n\n")
+    log = log .. "[V13] Dano en 3s: " .. string.format("%.1f",hpDrop) .. " | DPS: " .. string.format("%.2f",hpDrop/3) .. "\n"
+    log = log .. (hpDrop>0 and " --> ToolRF Funciona perfectamente\n\n" or " --> ToolRF NO hizo dano. Busca paquete en V14.\n\n")
 
-    log = log .. "[V14] PAQUETES DE RED CAPTURADOS: " .. #pkts .. "\n"
+    log = log .. "[V14] " .. #pkts .. " PAQUETES RECIBIDOS (C->S):\n"
     for rName,rp in pairs(grps) do
-        log = log .. " ["..rp[1].cls.."] " .. rName .. " -> x" .. #rp .. " veces\n"
+        log = log .. " " .. rName .. " -> llamadox" .. #rp .. " veces\n"
         log = log .. " Path: " .. rp[1].path .. "\n"
     end
-    if #pkts==0 then log=log.." CERO paquetes.\n" end
+    if #pkts==0 then log=log.." CERO paquetes de red. El juego oculta sus remotes.\n" end
     log = log .. "\n"
 
     local bestR,bestC,bestA=nil,0,nil
@@ -219,15 +217,16 @@ RunBtn.MouseButton1Click:Connect(function()
         end
         task.wait(0.35)
         local dmgR = hpPre-mHum.Health
-        log = log .. "[V16] REPLAY TEST (x5): " .. hits .. "/5 ejecutados\n  Dano: " .. string.format("%.1f",dmgR) .. "\n"
-        log = log .. (dmgR>0 and "  -> MEGA-EXPLOIT: Sin rate-limit (x10 DPS posible)\n" or "  -> Rate-limit activo\n")
+        log = log .. "[V16] REPLAY TEST (Evadiendo rate-limits): " .. hits .. "/5 replays enviados\n  Dano infligido: " .. string.format("%.1f",dmgR) .. "\n"
+        log = log .. (dmgR>0 and "  -> MEGA-EXPLOIT: Multiplica DPS x10 al spamear\n" or "  -> Rate-limit activo del server\n")
     else
-        log = log .. "[V16] REPLAY: No hay remotes suficientes.\n"
+        log = log .. "[V16] REPLAY: No se capturaron remotes para testear replays.\n"
     end
 
-    LogBox.Text = log
-    RunBtn.Text = ">>> ANALISIS FINALIZADO (COPIADO AL PORTAPAPELES) <<<"
-    RunBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 20)
+    -- Mostrar y Copiar
+    LogWindow.Text = log
+    ActionBtn.Text = "/// ANALISIS TERMINADO Y COPIADO AL PORTAPAPELES (CTRL+V) ///"
+    ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 
     pcall(function()
         if setclipboard then setclipboard(log) end
