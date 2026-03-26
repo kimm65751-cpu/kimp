@@ -89,8 +89,8 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- ⚡ Menú BOT (Auto-Farm & Minigames) ⚡
 local BotFrame = Instance.new("Frame")
-BotFrame.Size = UDim2.new(1, -20, 0, 80) -- Ampliado para dos botones
-BotFrame.Position = UDim2.new(0, 10, 1, -85)
+BotFrame.Size = UDim2.new(1, -20, 0, 115) -- 3 filas de botones
+BotFrame.Position = UDim2.new(0, 10, 1, -120)
 BotFrame.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
 BotFrame.Parent = MainFrame
 
@@ -115,14 +115,24 @@ AutoMobBtn.TextSize = 13
 AutoMobBtn.Parent = BotFrame
 
 local ESPBtn = Instance.new("TextButton")
-ESPBtn.Size = UDim2.new(1, -20, 0, 30)
-ESPBtn.Position = UDim2.new(0, 10, 0, 45) -- Abajo Centro
+ESPBtn.Size = UDim2.new(1, -20, 0, 28)
+ESPBtn.Position = UDim2.new(0, 10, 0, 45)
 ESPBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
 ESPBtn.Text = "👁️ ESP UNIDADES: OFF"
 ESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ESPBtn.Font = Enum.Font.Code
 ESPBtn.TextSize = 13
 ESPBtn.Parent = BotFrame
+
+local ExaminarBtn = Instance.new("TextButton")
+ExaminarBtn.Size = UDim2.new(1, -20, 0, 28)
+ExaminarBtn.Position = UDim2.new(0, 10, 0, 80)
+ExaminarBtn.BackgroundColor3 = Color3.fromRGB(20, 60, 100)
+ExaminarBtn.Text = "🔍 EXAMINAR MOB CERCANO"
+ExaminarBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExaminarBtn.Font = Enum.Font.Code
+ExaminarBtn.TextSize = 13
+ExaminarBtn.Parent = BotFrame
 
 local function ToggleMenu()
     if MainFrame.Visible then
@@ -562,33 +572,40 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- 💀 AURA KILL: TakeDamage directo sin necesidad de estar en rango
-                    -- Daña a TODOS los mobs cercanos en un radio de 30 studs simultáneamente
-                    local pService = game:GetService("Players")
-                    local killed = 0
+                    -- Sistema confirmado que funciona (mismo patrón que Ores)
+                    local attackPos = bestTarget.Position + Vector3.new(0, 3.5, 0)
+                    if (hrp.Position - attackPos).Magnitude > 3 then
+                        TweenToPosition(attackPos)
+                    end
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                     
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                            if not pService:GetPlayerFromCharacter(obj) then
-                                local nLC = string.lower(obj.Name)
-                                if string.find(nLC, "zomb") or string.find(nLC, "enem") or string.find(nLC, "delver") then
-                                    local mobRoot = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                                    if mobRoot then
-                                        local dist = (mobRoot.Position - hrp.Position).Magnitude
-                                        if dist <= 30 and obj.Humanoid.Health > 0 then
-                                            -- Aura Kill directo
-                                            pcall(function()
-                                                obj.Humanoid:TakeDamage(9999)
-                                            end)
-                                            killed += 1
-                                        end
-                                    end
-                                end
-                            end
+                    -- Equipar espada/arma (no pico)
+                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local targetTool = nil
+                    local invItems = LocalPlayer.Backpack:GetChildren()
+                    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                        if t:IsA("Tool") then table.insert(invItems, t) end
+                    end
+                    for _, t in pairs(invItems) do
+                        if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
+                            targetTool = t; break
                         end
                     end
+                    if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                    if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                        hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
+                    end
                     
-                    task.wait(0.5) -- Pulso de aura cada 0.5 segundos
+                    local camera = workspace.CurrentCamera
+                    if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
+                    local cx = camera.ViewportSize.X / 2
+                    local cy = camera.ViewportSize.Y / 2
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                    task.wait()
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                    if activeTool then pcall(function() activeTool:Activate() end) end
+                    task.wait()
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
@@ -664,8 +681,97 @@ AutoMobBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================================================
--- 7. MÓDULO ESP (VISIÓN DE UNIDADES A TRAVÉS DE PAREDES)
+-- 6. EXAMINAR MOB: Forense Completo de Zombie Cercano
 -- =====================================================================
+ExaminarBtn.MouseButton1Click:Connect(function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        AddLog("EXAMEN", "❌ Sin personaje.", "")
+        return
+    end
+    local hrp = char.HumanoidRootPart
+    local pService = game:GetService("Players")
+    
+    -- Buscar mob más cercano
+    local bestMob = nil
+    local bestDist = math.huge
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not pService:GetPlayerFromCharacter(obj) then
+            local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+            if root then
+                local d = (root.Position - hrp.Position).Magnitude
+                if d < bestDist then bestDist = d; bestMob = obj end
+            end
+        end
+    end
+    
+    if not bestMob then
+        AddLog("EXAMEN", "❌ No hay mobs cerca.", "")
+        return
+    end
+    
+    AddLog("EXAMEN", "🎯 Mob: " .. bestMob.Name .. " a " .. math.floor(bestDist) .. "m", bestMob:GetFullName())
+    
+    -- 1. HP y stats del Humanoid
+    local hum = bestMob:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local stats = string.format("HP:%.0f/%.0f | Speed:%.1f | Jump:%.1f", hum.Health, hum.MaxHealth, hum.WalkSpeed, hum.JumpPower)
+        AddLog("EXAMEN", "❤️ Stats: " .. stats, stats)
+    end
+    
+    -- 2. Todos los atributos del modelo
+    local attrStr = ""
+    for k, v in pairs(bestMob:GetAttributes()) do attrStr = attrStr .. k .. "=" .. tostring(v) .. " | " end
+    if attrStr ~= "" then AddLog("EXAMEN", "🏷️ Atributos", attrStr) else AddLog("EXAMEN", "🏷️ Sin atributos directos", "") end
+    
+    -- 3. Scripts, Remotes y Bindables dentro del modelo
+    local scriptStr, remoteStr = "", ""
+    for _, v in pairs(bestMob:GetDescendants()) do
+        if v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") then
+            scriptStr = scriptStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
+        end
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") or v:IsA("BindableFunction") then
+            remoteStr = remoteStr .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
+        end
+    end
+    if scriptStr ~= "" then AddLog("EXAMEN", "📜 Scripts en mob", scriptStr) else AddLog("EXAMEN", "📜 Sin scripts en modelo", "") end
+    if remoteStr ~= "" then AddLog("EXAMEN", "📡 Remotes en mob", remoteStr) else AddLog("EXAMEN", "📡 Sin remotes en modelo", "") end
+    
+    -- 4. Conexiones activas en el Humanoid (qué funciones escuchan el daño)
+    if getconnections then
+        pcall(function()
+            local dmgConns = getconnections(hum.HealthChanged)
+            local connStr = "HealthChanged tiene " .. #dmgConns .. " conexiones: "
+            for i, c in pairs(dmgConns) do
+                if c.Function then
+                    local ok, info = pcall(function() return debug.getinfo(c.Function) end)
+                    if ok and info then connStr = connStr .. "[" .. i .. "] src=" .. tostring(info.source) .. " | " end
+                end
+            end
+            AddLog("EXAMEN", "🔗 Listeners HP", connStr)
+        end)
+    end
+    
+    -- 5. Monitorear RED por 8 segundos al golpear (capturar el remote del daño)
+    AddLog("EXAMEN", "⏱️ Monitoreando red 8s → ¡Golpea el zombie manualmente ahora!", "")
+    ExaminarBtn.Text = "⏳ Escuchando red..."
+    ExaminarBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
+    
+    local capturedRemotes = {}
+    local monitorConn
+    monitorConn = RunService.Heartbeat:Connect(function()
+        -- Ya los hookfunction/namecall globales capturan todo, solo necesitamos marcar el tiempo
+    end)
+    
+    task.delay(8, function()
+        monitorConn:Disconnect()
+        AddLog("EXAMEN", "✅ Examen completo. Revisa logs [RED] generados al golpear.", "")
+        ExaminarBtn.Text = "🔍 EXAMINAR MOB CERCANO"
+        ExaminarBtn.BackgroundColor3 = Color3.fromRGB(20, 60, 100)
+    end)
+end)
+
+
 local EspElements = {}
 local autoESP = false
 
