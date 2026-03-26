@@ -519,48 +519,35 @@ task.spawn(function()
             local bestMobDist = math.huge
             local pService = game:GetService("Players")
             
-            -- SCAN DE MAPA: Buscar Rocas y Zombies por separado
-            -- Mobs: primero buscamos en workspace.Living (confirmado por Examinar)
-            local livingFolder = workspace:FindFirstChild("Living")
-            local mobScanTarget = livingFolder and livingFolder:GetDescendants() or workspace:GetDescendants()
-            local oreScanTarget = workspace:GetDescendants()
-            
-            for _, obj in pairs(oreScanTarget) do
-                local nLC = string.lower(obj.Name)
-                
-                -- Si es una Piedra Crítica (Y el Modo Piedras está activo)
-                if autoFarmOres and (string.find(nLC, "pebble") or string.find(nLC, "flatrock") or string.find(nLC, "rock") or string.find(nLC, "stone") or string.find(nLC, "ore")) then
-                    local hp = obj:GetAttribute("Health") or obj:GetAttribute("HP")
-                    if hp and hp > 0 then
-                        local posNode = obj:FindFirstChild("Hitbox") or obj:FindFirstChildWhichIsA("BasePart") or obj
-                        if posNode and posNode:IsA("BasePart") then
-                            local dist = (hrp.Position - posNode.Position).Magnitude
-                            if dist < bestOreDist then
-                                bestOreDist = dist
-                                bestOre = posNode
+            -- SCAN DE MAPA: Dos loops separados (sin anidamiento, sin freeze)
+            -- Loop 1: Buscar Ores
+            if autoFarmOres then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    local nLC = string.lower(obj.Name)
+                    if string.find(nLC, "pebble") or string.find(nLC, "flatrock") or string.find(nLC, "rock") or string.find(nLC, "stone") or string.find(nLC, "ore") then
+                        local hp = obj:GetAttribute("Health") or obj:GetAttribute("HP")
+                        if hp and hp > 0 then
+                            local posNode = obj:FindFirstChild("Hitbox") or obj:FindFirstChildWhichIsA("BasePart") or obj
+                            if posNode and posNode:IsA("BasePart") then
+                                local dist = (hrp.Position - posNode.Position).Magnitude
+                                if dist < bestOreDist then bestOreDist = dist; bestOre = posNode end
                             end
                         end
                     end
                 end
-                
-                -- Si es un Mob (buscar en Living folder o workspace)
-                if (autoFarmMobs or autoFarmOres) then
-                    for _, obj2 in pairs(mobScanTarget) do
-                        if obj2:IsA("Model") and obj2:FindFirstChild("Humanoid") then
-                            if not pService:GetPlayerFromCharacter(obj2) then
-                                local nLC2 = string.lower(obj2.Name)
-                                if string.find(nLC2, "zomb") or string.find(nLC2, "enem") or string.find(nLC2, "delver") or obj2:GetAttribute("IsNpc") then
-                                    if obj2.Humanoid.Health > 0 then
-                                        local posNode = obj2:FindFirstChild("HumanoidRootPart") or obj2.PrimaryPart
-                                        if posNode then
-                                            local dist = (hrp.Position - posNode.Position).Magnitude
-                                            if dist < bestMobDist then
-                                                bestMobDist = dist
-                                                bestMob = posNode
-                                            end
-                                        end
-                                    end
-                                end
+            end
+            
+            -- Loop 2: Buscar Mobs en workspace.Living (carpeta confirmada)
+            if autoFarmMobs or autoFarmOres then
+                local livingFolder = workspace:FindFirstChild("Living")
+                local scanList = livingFolder and livingFolder:GetChildren() or workspace:GetDescendants()
+                for _, obj in pairs(scanList) do
+                    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                        if not pService:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
+                            local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                            if posNode then
+                                local dist = (hrp.Position - posNode.Position).Magnitude
+                                if dist < bestMobDist then bestMobDist = dist; bestMob = posNode end
                             end
                         end
                     end
