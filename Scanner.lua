@@ -579,17 +579,14 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ COMBATE TÁCTICO: Rango Seguro (6 studs)
-                    -- Eliminamos la lógica basura; el truco real es no chocar con el zombie
+                    -- ⚔️ COMBATE TÁCTICO AVANZADO: AURA KILL (10 studs)
                     local diff = hrp.Position - bestTarget.Position
                     local flatDir = Vector3.new(diff.X, 0, diff.Z)
-                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(6, 0, 0) end
+                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(10, 0, 0) end
                     
-                    -- Posición a 6 studs exactos del zombie (rango máximo de tu Dagger)
-                    local attackPos = bestTarget.Position + (flatDir.Unit * 6) + Vector3.new(0, 3.5, 0)
+                    -- Posición a 10 studs exactos del zombie (100% invulnerable al golpe normal)
+                    local attackPos = bestTarget.Position + (flatDir.Unit * 10) + Vector3.new(0, 3.5, 0)
                     
-                    -- Moverse solo si estamos lejos de ese anillo de seguridad
-                    -- IMPORTANTE: Pasamos bestTarget.Position al TweenToPosition para rotar suavemente (SIN TELEPORT/KICK)
                     if (hrp.Position - attackPos).Magnitude > 2 then
                         TweenToPosition(attackPos, bestTarget.Position)
                     end
@@ -617,12 +614,11 @@ task.spawn(function()
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
                     
-                    -- 💥 BOOST ItemJSON: intentar aumentar Quality/Upgrade del arma
+                    -- 💥 BOOST ItemJSON
                     if targetTool then
                         pcall(function()
                             local json = targetTool:GetAttribute("ItemJSON")
                             if json then
-                                -- Reemplazar Quality y Upgrade con valores máximos
                                 json = string.gsub(json, '"Quality":[%d%.]+', '"Quality":9999')
                                 json = string.gsub(json, '"Upgrade":%d+', '"Upgrade":99')
                                 targetTool:SetAttribute("ItemJSON", json)
@@ -634,15 +630,39 @@ task.spawn(function()
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
-                    -- 3 clicks (servidor limita cooldown, más clicks no registran más daño)
+                    
+                    -- 🔥 AURA KILL: Traer hitboxes del zombie al arma LOCALMENTE 🔥
+                    local oldCframes = {}
+                    pcall(function()
+                        for _, part in pairs(bestTarget:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                oldCframes[part] = part.CFrame
+                                -- Mapear todas las partes del zombie justo frente a ti, a 3 studs
+                                part.CFrame = hrp.CFrame * CFrame.new(0, 0, -3)
+                                part.Size = Vector3.new(6, 6, 6) -- Hitbox gordo temporal
+                                part.Transparency = 0.5 -- Visualizar ghost
+                                part.CanCollide = false
+                            end
+                        end
+                    end)
+                    
+                    -- 3 clicks con el hitbox frente a la espada
                     for _ = 1, 3 do
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
                         task.wait()
                         VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                         local activeTool2 = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                         if activeTool2 then pcall(function() activeTool2:Activate() end) end
-                        task.wait(0.1) -- Esperar que el server procese cada golpe
+                        task.wait(0.15) -- Dar más tiempo al Raycast central para procesar
                     end
+                    
+                    -- Devolver el zombie a la normalidad para evitar kicks del anti-TP server
+                    pcall(function()
+                        for part, originalCFrame in pairs(oldCframes) do
+                            part.CFrame = originalCFrame
+                            part.Transparency = 0
+                        end
+                    end)
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
