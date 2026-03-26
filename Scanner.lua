@@ -773,7 +773,7 @@ local AutoMineActivo = false
 local AutoKillActivo = false
 
 local AutoMineBtn = Instance.new("TextButton")
-AutoMineBtn.Size = UDim2.new(1, -8, 0, 32)
+AutoMineBtn.Size = UDim2.new(1, -8, 0, 30)
 AutoMineBtn.Position = UDim2.new(0, 4, 1, -105)
 AutoMineBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
 AutoMineBtn.Text = "⛏️ AUTOMINE: OFF"
@@ -782,15 +782,15 @@ AutoMineBtn.Font = Enum.Font.Code
 AutoMineBtn.TextSize = 13
 AutoMineBtn.Parent = LivePanel
 
-local AutoKillBtn = Instance.new("TextButton")
-AutoKillBtn.Size = UDim2.new(1, -8, 0, 32)
-AutoKillBtn.Position = UDim2.new(0, 4, 1, -68)
-AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-AutoKillBtn.Text = "⚔️ AUTOKILL: OFF"
-AutoKillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoKillBtn.Font = Enum.Font.Code
-AutoKillBtn.TextSize = 13
-AutoKillBtn.Parent = LivePanel
+local ReachBtn = Instance.new("TextButton")
+ReachBtn.Size = UDim2.new(1, -8, 0, 30)
+ReachBtn.Position = UDim2.new(0, 4, 1, -70)
+ReachBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+ReachBtn.Text = "🗡️ ALCANCE GIGANTE (REACH): OFF"
+ReachBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ReachBtn.Font = Enum.Font.Code
+ReachBtn.TextSize = 12
+ReachBtn.Parent = LivePanel
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 28)
@@ -886,43 +886,44 @@ AutoMineBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-AutoKillBtn.MouseButton1Click:Connect(function()
-    AutoKillActivo = not AutoKillActivo
-    if AutoKillActivo then
-        AutoKillBtn.Text = "⚔️ AUTOKILL: ON ✅"
-        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+local ReachActivo = false
+ReachBtn.MouseButton1Click:Connect(function()
+    ReachActivo = not ReachActivo
+    if ReachActivo then
+        ReachBtn.Text = "🗡️ ALCANCE GIGANTE: ON ✅"
+        ReachBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 200)
         task.spawn(function()
-            while AutoKillActivo do
+            while ReachActivo do
                 pcall(function()
-                    -- KILL AURA LEGIT: Buscar zombies en nuestro radio permitido
-                    local mob, dist = findNearest(function(obj)
-                        if obj:IsA("Model") and obj ~= LocalPlayer.Character then
-                            local hum = obj:FindFirstChildWhichIsA("Humanoid")
-                            local isNpc = obj:GetAttribute("IsNpc")
-                            return hum and hum.Health > 0 and isNpc == true
+                    local char = LocalPlayer.Character
+                    if char then
+                        local tool = char:FindFirstChildWhichIsA("Tool")
+                        if tool then
+                            for _, part in pairs(tool:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.Massless = true
+                                    part.CanCollide = false
+                                    -- Agrandamos solo las partes que sean probables Hitboxes o el Handle principal
+                                    local n = string.lower(part.Name)
+                                    if string.find(n, "handle") or string.find(n, "hitbox") or string.find(n, "blade") or string.find(n, "part") then
+                                        part.Size = Vector3.new(40, 40, 40)
+                                        part.Transparency = 0.6
+                                    end
+                                end
+                            end
+                            StatusLabel.Text = "🗡️ Arma Gigante Activada. ¡Pega desde LEJOS para forzar el daño!"
+                        else
+                            StatusLabel.Text = "⚠️ Equipa tu arma en la mano primero."
                         end
-                        return false
-                    end)
-                    if mob and dist and dist <= 14 then
-                        local mobPart = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob:FindFirstChildWhichIsA("BasePart")
-                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if mobPart and myRoot then 
-                            -- Rotación sin mover coordenadas X/Z ni disparar alarmas Anti-Teleport
-                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(mobPart.Position.X, myRoot.Position.Y, mobPart.Position.Z))
-                        end
-                        StatusLabel.Text = "⚔️ Atacando seguro: " .. mob.Name .. " ("..math.floor(dist).."m)"
-                        ToolRF:InvokeServer("Weapon")
-                    else
-                        StatusLabel.Text = "⚔️ Camina hacia un zombi (-14m)"
                     end
                 end)
-                task.wait(0.15)
+                task.wait(1) -- Solo necesita actualizar cada 1 segundo
             end
             StatusLabel.Text = "Estado: Inactivo"
         end)
     else
-        AutoKillBtn.Text = "⚔️ AUTOKILL: OFF"
-        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+        ReachBtn.Text = "🗡️ ALCANCE GIGANTE: OFF"
+        ReachBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
     end
 end)
 
