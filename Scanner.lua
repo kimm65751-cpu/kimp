@@ -592,8 +592,8 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ AURA KILL DEFINITIVO (Hitbox Expander)
-                    -- Distancia ultra-lejana (15 studs): El zombie nunca jamás te podrá tocar.
+                    -- ⚔️ AURA KILL MAESTRO (Hitbox Injection)
+                    -- Distancia táctica ultra segura (15 studs, fuera del rango del zombie)
                     local diff = hrp.Position - bestTarget.Position
                     local flatDir = Vector3.new(diff.X, 0, diff.Z)
                     if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(15, 0, 0) end
@@ -604,9 +604,7 @@ task.spawn(function()
                         TweenToPosition(attackPos, bestTarget.Position)
                     end
                     
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    
-                    -- Equipar Arma
+                    -- Equipar arma fluida
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                     local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
                     if not targetTool then
@@ -623,19 +621,24 @@ task.spawn(function()
                         hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- 🔥 INFLAR ZOMBIE LOCALMENTE (HITBOX EXPANDER MAGIA) 🔥
-                    local originalSizes = {}
-                    pcall(function()
-                        for _, part in pairs(bestTarget:GetChildren()) do
-                            if part:IsA("BasePart") and (part.Name == "HumanoidRootPart" or part.Name == "Head" or part.Name == "Torso") then
-                                originalSizes[part] = part.Size
-                                -- Un cuadrado de 25x25 studs es inmenso. Y el servidor lo aprueba porque el centro del zombie no se ha movido
-                                part.Size = Vector3.new(25, 25, 25)
-                                part.Transparency = 0.8 -- Semi-invisible pero con colisión letal
-                                part.CanCollide = false
-                            end
-                        end
-                    end)
+                    -- 🔥 INYECTAR HITBOX FALSO (Elimina físicas explosivas y evita el Kick por TP/Fling) 🔥
+                    local fakeHitbox = bestTarget:FindFirstChild("MagicalAuraHitbox")
+                    if not fakeHitbox then
+                        fakeHitbox = Instance.new("Part")
+                        fakeHitbox.Name = "MagicalAuraHitbox"
+                        fakeHitbox.Size = Vector3.new(35, 35, 35) -- Gigantesco, alcanza la cámara
+                        fakeHitbox.Transparency = 0.8 -- Te muestra una caja oscura a dónde estás pegando
+                        fakeHitbox.CanCollide = false
+                        fakeHitbox.Massless = true
+                        fakeHitbox.Anchored = true
+                        -- Lo plantamos directamente en el centro del zombie
+                        local root = bestTarget:FindFirstChild("HumanoidRootPart") or bestTarget.PrimaryPart
+                        if root then fakeHitbox.CFrame = root.CFrame end
+                        fakeHitbox.Parent = bestTarget
+                    else
+                        local root = bestTarget:FindFirstChild("HumanoidRootPart") or bestTarget.PrimaryPart
+                        if root then fakeHitbox.CFrame = root.CFrame end
+                    end
                     
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
@@ -652,20 +655,17 @@ task.spawn(function()
                         task.wait(0.05)
                     end
                     
-                    -- Regresarlo a la normalidad para no glitchearlo
-                    pcall(function()
-                        for part, oSize in pairs(originalSizes) do
-                            part.Size = oSize
-                            part.Transparency = 0 -- O si el bicho era transparente por base, no es tan vital
-                        end
-                    end)
+                    -- Limpiamos el hitbox artificial
+                    if fakeHitbox then fakeHitbox:Destroy() end
+                    
+                else
                     -- MODO MINERÍA: TweenService suave para ores
                     local offset = Vector3.new(0, 3.5, 0)
                     local attackPos = bestTarget.Position + offset
                     if (hrp.Position - attackPos).Magnitude > 3 then
-                        TweenToPosition(attackPos)
+                        TweenToPosition(attackPos, bestTarget.Position)
                     end
-                    hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
+                    -- Eliminada rotación violenta hrp.CFrame (evadir un TP kick)
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
                     -- Equipar Pico
