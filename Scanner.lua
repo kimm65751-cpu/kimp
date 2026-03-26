@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.6 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -712,6 +712,20 @@
     local LiveScanActivo = false
     local NoclipActivo = false
 
+    -- ==========================================
+    -- NOCLIP ENGINE (Stepped = ANTES del physics engine, nunca se atora)
+    -- ==========================================
+    RunService.Stepped:Connect(function()
+        if not NoclipActivo then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end)
+
     RunService.Heartbeat:Connect(function(dt)
         if not LiveScanActivo then 
             LiveLabel.Text = "(Scanner Pausado - Presiona 📡 SCAN para analizar FPS/Objetos)"
@@ -1119,24 +1133,32 @@
                         -- == 2. NOCLIP Y PATHING V2 ==
                         if dist > targetDist then
                             if NoclipActivo then
-                                myRoot.Anchored = true
-                                local speed = currentHum.WalkSpeed or 16
-                                local step = speed * (1/60)
-                                local dir = (targetPart.Position - myRoot.Position).Unit
-                                myRoot.CFrame = CFrame.lookAt(myRoot.Position + (dir * step), targetPart.Position)
-                                for _, v in pairs(char:GetDescendants()) do
-                                    if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
+                                -- Modo Fantasma: BodyVelocity directo, sin Anchored, nunca se atora
+                                myRoot.Anchored = false
+                                local bv = myRoot:FindFirstChild("_NoclipBV")
+                                if not bv then
+                                    bv = Instance.new("BodyVelocity")
+                                    bv.Name = "_NoclipBV"
+                                    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                                    bv.Parent = myRoot
                                 end
+                                local speed = currentHum.WalkSpeed or 16
+                                local dir = (targetPart.Position - myRoot.Position).Unit
+                                bv.Velocity = dir * speed * 2.5
+                                -- Rotar el personaje hacia el objetivo
+                                myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(dir.X, 0, dir.Z))
                             else
+                                -- Limpiar BodyVelocity si Noclip se apagó
+                                local bv = myRoot:FindFirstChild("_NoclipBV")
+                                if bv then bv:Destroy() end
                                 myRoot.Anchored = false
                                 currentHum:MoveTo(targetPart.Position)
                             end
                         else
-                            -- FIX: Desanclar a corta distancia. Si golpeas anclado, los RemoteEvents fallan estáticamente en el Servidor.
+                            -- En rango: parar BodyVelocity, desanclar para golpear
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if bv then bv.Velocity = Vector3.zero end
                             myRoot.Anchored = false
-                            if NoclipActivo then
-                                myRoot.Velocity = Vector3.zero 
-                            end
                             currentHum:MoveTo(myRoot.Position)
                         end
 
