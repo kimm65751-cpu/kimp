@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.66 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -983,16 +983,22 @@
     local KiteActivo = false
     KiteBtn.MouseButton1Click:Connect(function()
         KiteActivo = not KiteActivo
+        local char = LocalPlayer.Character
+        local myHum = char and char:FindFirstChild("Humanoid")
+        
         if KiteActivo then
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (SEGURO): ON ✅"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
             
+            -- Deshabilitar la auto-rotación del motor de Roblox para hacer un "Moonwalk" de combate (caminar hacia atrás sin voltearse)
+            if myHum then myHum.AutoRotate = false end
+            
             task.spawn(function()
                 while KiteActivo do
                     pcall(function()
-                        local myHum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+                        local currentHum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if not myRoot or not myHum then return end
+                        if not myRoot or not currentHum then return end
 
                         local targetPart = nil
                         local obj, dist = findNearest(function(o)
@@ -1010,11 +1016,12 @@
                                 local safeSpot = targetPart.Position + ((myRoot.Position - targetPart.Position).Unit * 7)
                                 
                                 if math.abs(dist - 7) > 1 then
-                                    myHum:MoveTo(safeSpot)
+                                    currentHum:MoveTo(safeSpot)
                                 end
                                 
-                                -- Apuntar de frente a su cara para que el raycast sea válido
-                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, targetPart.Position)
+                                -- Apuntar de frente aislando el eje Y exacto para que el personaje no se voltee ni se incline
+                                local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
                                 
                                 -- Rebanar a distancia
                                 ToolRF:InvokeServer("Weapon")
@@ -1024,7 +1031,7 @@
                             StatusLabel.Text = "🗡️ Buscando monstruos seguros..."
                         end
                     end)
-                    task.wait(0.1)
+                    task.wait()
                 end
                 StatusLabel.Text = "Estado: Inactivo"
             end)
