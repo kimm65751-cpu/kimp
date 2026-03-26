@@ -1,6 +1,6 @@
 -- =====================================================================
--- DELTA OMNI-TRACKER v5.5 (RESTAURADO)
--- Rastreo de Vida Restaurado + Auto-Farm Bot Mejorado VIM
+-- DELTA OMNI-TRACKER v5.6 (RESTAURADO)
+-- Rastreo de Vida Restaurado + Auto-Farm Bot Mejorado VIM + Auto-Fuelle
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -48,7 +48,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = " 🕵️ OMNI-TRACKER V5.5 (RCTRL para ocultar)"
+Title.Text = " 🕵️ OMNI-TRACKER V5.6 (RCTRL para ocultar)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.Code
 Title.TextSize = 16
@@ -108,7 +108,7 @@ local AutoPumpBtn = Instance.new("TextButton")
 AutoPumpBtn.Size = UDim2.new(0, 200, 0, 30)
 AutoPumpBtn.Position = UDim2.new(0.5, 10, 0.5, -15) -- Derecha
 AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-AutoPumpBtn.Text = "MODO ESCANER UI: OFF"
+AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
 AutoPumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoPumpBtn.Font = Enum.Font.Code
 AutoPumpBtn.TextSize = 13
@@ -261,7 +261,6 @@ local Mouse = LocalPlayer:GetMouse()
 local dmgDebounce = {}
 local touchedDebounce = {}
 
--- RASTREO TACTIL
 local function SetupTouchSpy(character)
     local root = character:WaitForChild("HumanoidRootPart", 5)
     if root then
@@ -282,25 +281,8 @@ end
 if LocalPlayer.Character then SetupTouchSpy(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(function(char) SetupTouchSpy(char) end)
 
--- RASTREO COMBATE Y DAÑO LOCAL (Cualquier Tipo de Click)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not TrackerRunning then return end
-    
-    -- MODO ESCÁNER DE MINIJUEGOS (Botón Derecho)
-    if autoPump and input.UserInputType == Enum.UserInputType.MouseButton2 then
-        local target = Mouse.Target
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if playerGui then
-            local foundGuis = playerGui:GetGuiObjectsAtPosition(Mouse.X, Mouse.Y)
-            if foundGuis and #foundGuis > 0 then
-                local ui = foundGuis[1]
-                -- Extraer datos cruciales de límites
-                local Limits = "SizeY: "..math.floor(ui.AbsoluteSize.Y).." PosY: "..math.floor(ui.AbsolutePosition.Y)
-                AddLog("SISTEMA", "🔍 UI Detectada: " .. ui.Name .. " | " .. Limits, ui:GetFullName())
-                return -- Prevenir que también lance daño de combate
-            end
-        end
-    end
     
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         task.delay(0.1, function()
@@ -391,7 +373,7 @@ local function TweenToPosition(targetPos)
     local hrp = char.HumanoidRootPart
     
     local dist = (hrp.Position - targetPos).Magnitude
-    local speed = 60 -- Aceleramos un poco la trayectoria
+    local speed = 60
     local time = dist / speed
     if time < 0.1 then time = 0.1 end
     
@@ -404,14 +386,12 @@ local function TweenToPosition(targetPos)
     hrp.AssemblyAngularVelocity = Vector3.zero
 end
 
--- Táctico del Auto-Pebble
 task.spawn(function()
     while task.wait(0.1) do
         if autoFarmPebble and LocalPlayer.Character then
             local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then continue end
             
-            -- Radar
             local bestPebble = nil
             local minDist = math.huge
             
@@ -529,7 +509,7 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
             vim:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 1)
         end)
     else
-        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): OFF"
+        AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
         AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
         AddLog("SISTEMA", "Bombeo desactivado.", "")
     end
@@ -539,11 +519,12 @@ end)
 -- 6. CONECTOR GITHUB REFRESH
 -- =====================================================================
 RefreshBtn.MouseButton1Click:Connect(function()
-    AddLog("SISTEMA", "Descargando V5.5 desde GitHub...", "")
+    AddLog("SISTEMA", "Descargando V5.6 Final desde GitHub...", "")
     TrackerRunning = false
     autoFarmPebble = false
+    autoPump = false
     ScreenGui:Destroy()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua?v=" .. tostring(math.random(1000, 9999))))()
 end)
 
-AddLog("SISTEMA", "Omni-Tracker V5.5 Inyectado. Clic manual Restaurado.", "")
+AddLog("SISTEMA", "Omni-Tracker V5.6 Recreado Final.", "")
