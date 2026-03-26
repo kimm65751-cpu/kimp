@@ -1048,15 +1048,15 @@
                     local mode = "None"
                     local toolId = "weapon"
 
-                    -- PRIORIDAD 1: CAZA O SUPERVIVENCIA PELIGROSA (<30m)
-                    if zTarget and zDist < 40 and (KiteActivo or (MineActivo and zDist < 30)) then
+                    -- PRIORIDAD 1: CAZA PURA (Todo el mapa) O SUPERVIVENCIA (Si mina y se le acerca zombi)
+                    if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
                         targetObj = zTarget
                         dist = zDist
                         targetDist = ShieldActivo and 4 or 7
                         mode = "Combat"
                         toolId = "weapon"
-                    -- PRIORIDAD 2: MINADO RUTINARIO
-                    elseif oreTarget and oDist < 100 and MineActivo then
+                    -- PRIORIDAD 2: MINADO RUTINARIO (Todo el mapa)
+                    elseif oreTarget and MineActivo then
                         targetObj = oreTarget
                         dist = oDist
                         targetDist = 4
@@ -1121,23 +1121,29 @@
                             end
                         end
 
-                        -- == 3. GOLPE ==
+                        -- == 3. GOLPE SENSORIAL (Solo golpea al estar enfrente) ==
                         local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
                         myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
 
-                        if mode == "Combat" and HeadshotActivo then
-                            local head = targetObj:FindFirstChild("Head") or targetPart
-                            local snapOrigin = myRoot.CFrame
-                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, head.Position)
-                            ToolRF:InvokeServer(serverArg)
-                            myRoot.CFrame = snapOrigin -- Flickea invisible
+                        -- Verificación física: Solo atacamos si ya recorrimos la distancia y estamos parados enfrente de él.
+                        if dist <= targetDist + 1.5 then
+                            if mode == "Combat" and HeadshotActivo then
+                                local head = targetObj:FindFirstChild("Head") or targetPart
+                                local snapOrigin = myRoot.CFrame
+                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, head.Position)
+                                ToolRF:InvokeServer(serverArg)
+                                myRoot.CFrame = snapOrigin -- Flickea invisible
+                            else
+                                ToolRF:InvokeServer(serverArg)
+                            end
+                            StatusLabel.Text = (mode == "Mining" and "⛏️ Picando: " or "🗡️ Atacando: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                         else
-                            ToolRF:InvokeServer(serverArg)
+                            -- Estamos en trayecto silencioso (Walking / Noclipping)
+                            StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                         end
-                        StatusLabel.Text = (mode == "Mining" and "⛏️ Picando: " or "🗡️ Atacando: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                     else
-                        StatusLabel.Text = "🗡️/⛏️ Buscando objetivo cercano..."
+                        StatusLabel.Text = "🗡️/⛏️ Buscando objetivo por el mapa..."
                     end
                 end)
                 task.wait()
