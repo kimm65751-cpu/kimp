@@ -579,13 +579,17 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ COMBATE FLUIDO (KITING): 4.5 studs = Rango Gladius Dagger
-                    local diff = hrp.Position - bestTarget.Position
-                    local flatDir = Vector3.new(diff.X, 0, diff.Z)
-                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(1, 0, 0) end
+                    -- ⚔️ COMBATE VERTICAL (DEATH FROM ABOVE): Volamos sobre el mob
+                    -- Restauramos el Tween veloz y el Noclip, pero evitamos el daño horizontal.
+                    -- Flotaremos a 7.5 studs sobre su cabeza. El zombie no puede saltar ni pegar arriba.
+                    local attackPos = bestTarget.Position + Vector3.new(0, 7.5, 0)
                     
-                    -- Calculamos la posición de golpe óptima frente al zombie (si él se mueve, esto cambia)
-                    local attackPos = bestTarget.Position + (flatDir.Unit * 4.5)
+                    -- Volamos hacia esa posición rápida y suavemente
+                    if (hrp.Position - attackPos).Magnitude > 2 then
+                        TweenToPosition(attackPos, bestTarget.Position)
+                    end
+                    
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                     
                     -- Equipamos tu arma
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -604,11 +608,18 @@ task.spawn(function()
                         hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- Movimiento Fluido: MoveTo no congela el script como el Tween y evade el ban de TPs
-                    if hum then pcall(function() hum:MoveTo(attackPos) end) end
-                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    -- Mantenemos flotando congelando gravedad
+                    local bg = hrp:FindFirstChild("CombatHover")
+                    if not bg then
+                        bg = Instance.new("BodyVelocity")
+                        bg.Name = "CombatHover"
+                        bg.MaxForce = Vector3.new(100000, 100000, 100000)
+                        bg.Velocity = Vector3.zero
+                        bg.Parent = hrp
+                        task.delay(0.5, function() if bg and bg.Parent then bg:Destroy() end end)
+                    end
                     
-                    -- Apuntar la cámara exactamente al zombie para que el click local NUNCA falle
+                    -- Apuntar la cámara y el cuerpo hacia abajo (al zombie)
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     
@@ -617,10 +628,13 @@ task.spawn(function()
                     
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
-                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                     
-                    task.wait(0.05) -- Solo un micro-descanso para no ahogar el loop
+                    for _ = 1, 3 do
+                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                        task.wait()
+                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                        task.wait(0.1)
+                    end
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
