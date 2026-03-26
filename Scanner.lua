@@ -772,41 +772,41 @@ local ToolRF = game:GetService("ReplicatedStorage").Shared.Packages.Knit.Service
 local AutoMineActivo = false
 local AutoKillActivo = false
 
-local SpoofIABtn = Instance.new("TextButton")
-SpoofIABtn.Size = UDim2.new(1, -8, 0, 30)
-SpoofIABtn.Position = UDim2.new(0, 4, 1, -140)
-SpoofIABtn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
-SpoofIABtn.Text = "🤖 TEST 1: CAMUFLAJE ZOMBI"
-SpoofIABtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpoofIABtn.Font = Enum.Font.Code
-SpoofIABtn.TextSize = 13
-SpoofIABtn.Parent = LivePanel
+local GlassBtn = Instance.new("TextButton")
+GlassBtn.Size = UDim2.new(1, -8, 0, 30)
+GlassBtn.Position = UDim2.new(0, 4, 1, -140)
+GlassBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 120)
+GlassBtn.Text = "🛡️ CREAR PISO FLOTANTE (SAFE ZONE)"
+GlassBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GlassBtn.Font = Enum.Font.Code
+GlassBtn.TextSize = 12
+GlassBtn.Parent = LivePanel
 
-local DisarmBtn = Instance.new("TextButton")
-DisarmBtn.Size = UDim2.new(1, -8, 0, 30)
-DisarmBtn.Position = UDim2.new(0, 4, 1, -105)
-DisarmBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
-DisarmBtn.Text = "✂️ TEST 2: AMPUTAR ZOMBIS"
-DisarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DisarmBtn.Font = Enum.Font.Code
-DisarmBtn.TextSize = 13
-DisarmBtn.Parent = LivePanel
+local InjectBtn = Instance.new("TextButton")
+InjectBtn.Size = UDim2.new(1, -8, 0, 30)
+InjectBtn.Position = UDim2.new(0, 4, 1, -105)
+InjectBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+InjectBtn.Text = "💉 INYECTAR SÚPER DAÑO/STATS"
+InjectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+InjectBtn.Font = Enum.Font.Code
+InjectBtn.TextSize = 12
+InjectBtn.Parent = LivePanel
 
-local GhostBtn = Instance.new("TextButton")
-GhostBtn.Size = UDim2.new(1, -8, 0, 30)
-GhostBtn.Position = UDim2.new(0, 4, 1, -70)
-GhostBtn.BackgroundColor3 = Color3.fromRGB(20, 80, 80)
-GhostBtn.Text = "👻 TEST 3: FE INVISIBILITY"
-GhostBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-GhostBtn.Font = Enum.Font.Code
-GhostBtn.TextSize = 13
-GhostBtn.Parent = LivePanel
+local SafeAuraBtn = Instance.new("TextButton")
+SafeAuraBtn.Size = UDim2.new(1, -8, 0, 30)
+SafeAuraBtn.Position = UDim2.new(0, 4, 1, -70)
+SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL)"
+SafeAuraBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SafeAuraBtn.Font = Enum.Font.Code
+SafeAuraBtn.TextSize = 11
+SafeAuraBtn.Parent = LivePanel
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 28)
 StatusLabel.Position = UDim2.new(0, 4, 1, -34)
 StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Elige un Test IA..."
+StatusLabel.Text = "Estado: Inactivo..."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
@@ -856,72 +856,96 @@ local function faceTarget(targetPos)
     end)
 end
 
-SpoofIABtn.MouseButton1Click:Connect(function()
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            -- Intentar añadir atributos engañosos al personaje
-            char:SetAttribute("IsNpc", true)
-            char:SetAttribute("Team", "Zombies")
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then hum.Name = "ZombieWalk" end
-            StatusLabel.Text = "🤖 Atributos Zombi Inyectados. ¿Aún te persiguen?"
-        end
-    end)
-end)
+local GlassActivo = false
+local MyGlass = nil
 
-local DisarmActivo = false
-DisarmBtn.MouseButton1Click:Connect(function()
-    DisarmActivo = not DisarmActivo
-    if DisarmActivo then
-        DisarmBtn.Text = "✂️ AMPUTANDO ZOMBIS..."
-        DisarmBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 120)
+GlassBtn.MouseButton1Click:Connect(function()
+    GlassActivo = not GlassActivo
+    if GlassActivo then
+        GlassBtn.Text = "🛡️ SISTEMA DE ESCUDO AÉREO: ON ✅"
+        GlassBtn.BackgroundColor3 = Color3.fromRGB(30, 150, 255)
+        
+        MyGlass = Instance.new("Part")
+        MyGlass.Name = "EscudoAntiZombies"
+        MyGlass.Size = Vector3.new(40, 1, 40)
+        MyGlass.Transparency = 0.5
+        MyGlass.Material = Enum.Material.ForceField
+        MyGlass.BrickColor = BrickColor.new("Cyan")
+        MyGlass.Anchored = true
+        MyGlass.CanCollide = true
+        MyGlass.Parent = Workspace
+        
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            -- Eleva al jugador 12 metros, fuera del hitbox vertical del zombi (que suele ser maximo de 6-8)
+            MyGlass.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + 11, hrp.Position.Z)
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, 13, 0)
+        end
+        
         task.spawn(function()
-            while DisarmActivo do
-                pcall(function()
-                    local count = 0
-                    for _, obj in pairs(Workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj:GetAttribute("IsNpc") == true then
-                            -- Si el daño es de script TouchInterest local, borrar brazos o armas lo rompe.
-                            for _, part in pairs(obj:GetChildren()) do
-                                if typeof(part) == "Instance" then
-                                    local n = string.lower(part.Name)
-                                    if string.find(n, "arm") or string.find(n, "weapon") or string.find(n, "sword") or string.find(n, "hitbox") then
-                                        part:Destroy()
-                                        count = count + 1
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    StatusLabel.Text = "✂️ " .. count .. " hitboxes enemigas amputadas."
-                end)
-                task.wait(1)
+            while GlassActivo and MyGlass do
+                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if myRoot then
+                    -- La plataforma sigue tus pies en todo momento como una alfombra mágica
+                    MyGlass.CFrame = CFrame.new(myRoot.Position.X, MyGlass.Position.Y, myRoot.Position.Z)
+                end
+                task.wait(0.05)
             end
         end)
+        StatusLabel.Text = "🛡️ Plataforma lista. Los Zombis se quedarán abajo como tontos."
     else
-        DisarmBtn.Text = "✂️ TEST 2: AMPUTAR ZOMBIS"
-        DisarmBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+        GlassBtn.Text = "🛡️ CREAR PISO FLOTANTE (SAFE ZONE)"
+        GlassBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 120)
+        if MyGlass then MyGlass:Destroy() MyGlass = nil end
     end
 end)
 
-GhostBtn.MouseButton1Click:Connect(function()
+InjectBtn.MouseButton1Click:Connect(function()
     pcall(function()
         local char = LocalPlayer.Character
         if char then
-            -- Romper el iterador `FindNearestPlayer` del Servidor
-            -- Si el servidor busca "Humanoids", al cambiar el parent o destruirlo lo anulamos.
-            local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-            if torso then 
-                torso.Name = "GhostTorso" 
+            -- Inyectando estadísticas monstruosas que aprendimos del Scanner para romper la economía de daño
+            char:SetAttribute("DamageBoost", 99999)
+            char:SetAttribute("MiningBoost", 99999)
+            char:SetAttribute("LuckBoost", 99999)
+            char:SetAttribute("Health", 99999)
+            char:SetAttribute("RequiredDamage", 0)
+            char:SetAttribute("IsNpc", nil) -- Aseguramos perder el rasgo negativo de camuflaje
+            
+            local tool = char:FindFirstChildWhichIsA("Tool")
+            if tool then
+                tool:SetAttribute("Damage", 99999)
+                tool:SetAttribute("Range", 999)
             end
-            local head = char:FindFirstChild("Head")
-            if head then
-                head.Name = "GhostHead"
-            end
-            -- Ocultar el RootPart de los loops simples
-            StatusLabel.Text = "👻 Físicas Roteadas (FE Invis). Prueba si te ven."
+            
+            StatusLabel.Text = "💉 Sobredosis de Atributos inyectados. Daño/Minería Max"
         end
     end)
+end)
+
+local SafeAuraActivo = false
+SafeAuraBtn.MouseButton1Click:Connect(function()
+    SafeAuraActivo = not SafeAuraActivo
+    if SafeAuraActivo then
+        SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL): ON ✅"
+        SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+        task.spawn(function()
+            while SafeAuraActivo do
+                pcall(function()
+                    local targetStr = "Ninguno"
+                    -- Disparar Arma Constantemente Hacia Abajo
+                    pcall(function() ToolRF:InvokeServer("Weapon") end)
+                    pcall(function() ToolRF:InvokeServer("Pickaxe") end)
+                    
+                    StatusLabel.Text = "⚔️ Aura Destructiva Disparando (Muévete por el cristal para matar)"
+                end)
+                task.wait(0.2)
+            end
+            StatusLabel.Text = "Estado: Inactivo"
+        end)
+    else
+        SafeAuraBtn.Text = "⚔️ AUTOAURA (COMBATE DESDE CRISTAL)"
+        SafeAuraBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+    end
 end)
 
