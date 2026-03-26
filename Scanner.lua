@@ -814,8 +814,8 @@ local function findNearest(condFn)
         if condFn(obj) then
             local p = nil
             pcall(function()
-                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj
-                if hrp and hrp:IsA("BasePart") then
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                if hrp then
                     p = hrp.Position
                 end
             end)
@@ -854,7 +854,7 @@ AutoMineBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while AutoMineActivo do
                 pcall(function()
-                    -- Buscar roca más cercana con atributo Health (pebble, rock, ore)
+                    -- KILL AURA LEGIT: Buscar roca solo en nuestro radio de visión segura
                     local rock, dist = findNearest(function(obj)
                         if obj:IsA("Model") then
                             local n = string.lower(obj.Name)
@@ -863,16 +863,20 @@ AutoMineBtn.MouseButton1Click:Connect(function()
                         end
                         return false
                     end)
-                    if rock and dist and dist < 30 then
-                        local rootPart = rock:FindFirstChild("HumanoidRootPart") or rock:FindFirstChildWhichIsA("BasePart")
-                        if rootPart then faceTarget(rootPart.Position) end
-                        StatusLabel.Text = "⛏️ Minando: " .. rock.Name .. " (" .. math.floor(dist) .. "m)"
+                    if rock and dist and dist <= 14 then
+                        local rockPart = rock:FindFirstChild("HumanoidRootPart") or rock:FindFirstChild("Torso") or rock:FindFirstChildWhichIsA("BasePart")
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if rockPart and myRoot then 
+                            -- Rotar silenciosamente sin cambiar de posición para evitar Anti-TP Kicks
+                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(rockPart.Position.X, myRoot.Position.Y, rockPart.Position.Z))
+                        end
+                        StatusLabel.Text = "⛏️ Minando seguro: " .. rock.Name .. " ("..math.floor(dist).."m)"
+                        ToolRF:InvokeServer("Pickaxe")
                     else
-                        StatusLabel.Text = "⛏️ Buscando roca... acércate más"
+                        StatusLabel.Text = "⛏️ Camina hacia una roca (-14m)"
                     end
-                    ToolRF:InvokeServer("Pickaxe")
                 end)
-                task.wait(0.3)
+                task.wait(0.2)
             end
             StatusLabel.Text = "Estado: Inactivo"
         end)
@@ -890,7 +894,7 @@ AutoKillBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while AutoKillActivo do
                 pcall(function()
-                    -- Buscar mob más cercano con Humanoid vivo
+                    -- KILL AURA LEGIT: Buscar zombies en nuestro radio permitido
                     local mob, dist = findNearest(function(obj)
                         if obj:IsA("Model") and obj ~= LocalPlayer.Character then
                             local hum = obj:FindFirstChildWhichIsA("Humanoid")
@@ -899,16 +903,20 @@ AutoKillBtn.MouseButton1Click:Connect(function()
                         end
                         return false
                     end)
-                    if mob and dist and dist < 25 then
-                        local hrp = mob:FindFirstChild("HumanoidRootPart")
-                        if hrp then faceTarget(hrp.Position) end
-                        StatusLabel.Text = "⚔️ Atacando: " .. mob.Name .. " (" .. math.floor(dist) .. "m)"
+                    if mob and dist and dist <= 14 then
+                        local mobPart = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob:FindFirstChildWhichIsA("BasePart")
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if mobPart and myRoot then 
+                            -- Rotación sin mover coordenadas X/Z ni disparar alarmas Anti-Teleport
+                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(mobPart.Position.X, myRoot.Position.Y, mobPart.Position.Z))
+                        end
+                        StatusLabel.Text = "⚔️ Atacando seguro: " .. mob.Name .. " ("..math.floor(dist).."m)"
+                        ToolRF:InvokeServer("Weapon")
                     else
-                        StatusLabel.Text = "⚔️ Sin enemigos cerca (<25m)"
+                        StatusLabel.Text = "⚔️ Camina hacia un zombi (-14m)"
                     end
-                    ToolRF:InvokeServer("Weapon")
                 end)
-                task.wait(0.2)
+                task.wait(0.15)
             end
             StatusLabel.Text = "Estado: Inactivo"
         end)
