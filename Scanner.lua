@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.66 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
