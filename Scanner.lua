@@ -628,41 +628,41 @@ task.spawn(function()
                     
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
-                    local cx = camera.ViewportSize.X / 2
-                    local cy = camera.ViewportSize.Y / 2
                     
-                    -- 🔥 AURA KILL: Traer hitboxes del zombie al arma LOCALMENTE 🔥
-                    local oldCframes = {}
-                    pcall(function()
-                        for _, part in pairs(bestTarget:GetChildren()) do
-                            if part:IsA("BasePart") then
-                                oldCframes[part] = part.CFrame
-                                -- Mapear todas las partes del zombie justo frente a ti, a 3 studs
-                                part.CFrame = hrp.CFrame * CFrame.new(0, 0, -3)
-                                part.Size = Vector3.new(6, 6, 6) -- Hitbox gordo temporal
-                                part.Transparency = 0.5 -- Visualizar ghost
-                                part.CanCollide = false
+                    -- 🔥 MODO DIOS: Ataque Directo al Remote (Bypass de Físicas) 🔥
+                    local rs = game:GetService("ReplicatedStorage")
+                    local hitRemote = rs:FindFirstChild("HitboxClassRemote")
+                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                    
+                    if hitRemote and activeTool then
+                        -- El juego usa RaycastHitboxV4 o similar. Disparamos directo al Remote
+                        pcall(function()
+                            for i = 1, 3 do
+                                -- Formato genérico de RaycastHitbox: Action, HitPointsArray
+                                -- Registramos todas las partes del zombie como 'Golpeadas'
+                                local hitPoints = {}
+                                for _, part in pairs(bestTarget:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        table.insert(hitPoints, {part, part.Position, Vector3.new(0,0,0), part.Material})
+                                    end
+                                end
+                                hitRemote:FireServer("Hit", hitPoints, activeTool)
+                                activeTool:Activate() -- Disparar animaciones/cooldowns
+                                task.wait(0.15)
                             end
+                        end)
+                    else
+                        -- Fallback si no hay remote: Click clásico desde la distancia segura
+                        local cx = camera.ViewportSize.X / 2
+                        local cy = camera.ViewportSize.Y / 2
+                        for _ = 1, 3 do
+                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                            task.wait()
+                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                            if activeTool then pcall(function() activeTool:Activate() end) end
+                            task.wait(0.15)
                         end
-                    end)
-                    
-                    -- 3 clicks con el hitbox frente a la espada
-                    for _ = 1, 3 do
-                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                        task.wait()
-                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                        local activeTool2 = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                        if activeTool2 then pcall(function() activeTool2:Activate() end) end
-                        task.wait(0.15) -- Dar más tiempo al Raycast central para procesar
                     end
-                    
-                    -- Devolver el zombie a la normalidad para evitar kicks del anti-TP server
-                    pcall(function()
-                        for part, originalCFrame in pairs(oldCframes) do
-                            part.CFrame = originalCFrame
-                            part.Transparency = 0
-                        end
-                    end)
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
