@@ -867,8 +867,8 @@
             
             MyShield = Instance.new("Part")
             MyShield.Name = "MuroDefensivo"
-            -- Hecho muchísimo más grueso y obscenamente ANCHO
-            MyShield.Size = Vector3.new(30, 12, 5) 
+            -- Restaurado a la medida exacta que genera el Glitch Físico del Agujero en la IA del Zombi
+            MyShield.Size = Vector3.new(12, 12, 2) 
             MyShield.Transparency = 0.5
             MyShield.Material = Enum.Material.ForceField
             MyShield.BrickColor = BrickColor.new("Cyan")
@@ -896,28 +896,15 @@
                                 end
                             end
                             
-                            -- SISTEMA ORBITAL MAGNÉTICO: En vez de atar el cristal a donde tú miras (lo cual interfiere con el bot de auto-farmear)
-                            -- lo forzamos a existir físicamente 100% en la línea entre TÚ y EL ZOMBI.
-                            local targetPart = nil
-                            local obj = findNearest(function(o) return o:GetAttribute("IsNpc") == true end)
-                            if obj then targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") end
-                            
-                            if targetPart then
-                                local vectorDiff = (targetPart.Position - myRoot.Position)
-                                if vectorDiff.Magnitude > 0.1 then
-                                    local guardPos = myRoot.Position + (vectorDiff.Unit * 4.5)
-                                    MyShield.CFrame = CFrame.lookAt(guardPos, targetPart.Position)
-                                end
-                            else
-                                -- Default
-                                MyShield.CFrame = CFrame.lookAt(myRoot.Position + (myRoot.CFrame.LookVector * 4.5), myRoot.Position + (myRoot.CFrame.LookVector * 10))
-                            end
+                            -- Restaurado a como te gustaba: Esto causa que el muro "abrace" el pathing frontal 
+                            -- y tuerza al Muro del Zombi forzándolo a dar la espalda eternamente por clip en su hitbox.
+                            MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
                         end
                     end)
-                    task.wait() -- Ejecución Ultra Fluida a 60 FPS exactos (sincronía física perfecta)
+                    task.wait()
                 end
             end)
-            StatusLabel.Text = "🛡️ Muro Trampa masivo activado. Zombis ignorarán tu hitbox para rodear al infinito."
+            StatusLabel.Text = "🛡️ Muro original atado a tu pecho. Los Zombis se quedarán atorados de espaldas ("Agujero" Glitch)."
         else
             ShieldBtn.Text = "🛡️ MURO TRAMPA (GLITCH ZOMBI)"
             ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
@@ -1038,6 +1025,7 @@
         else
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (MANTENER 7m)"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+            if myHum then myHum.AutoRotate = true end
         end
     end)
 
