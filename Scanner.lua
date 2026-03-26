@@ -95,24 +95,24 @@ BotFrame.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
 BotFrame.Parent = MainFrame
 
 local AutoPebbleBtn = Instance.new("TextButton")
-AutoPebbleBtn.Size = UDim2.new(0, 200, 0, 30)
-AutoPebbleBtn.Position = UDim2.new(0.5, -210, 0.5, -15) -- Izquierda
+AutoPebbleBtn.Size = UDim2.new(0.5, -15, 0, 30)
+AutoPebbleBtn.Position = UDim2.new(0, 10, 0.5, -15) -- Lado Izquierdo
 AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
 AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
 AutoPebbleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoPebbleBtn.Font = Enum.Font.Code
-AutoPebbleBtn.TextSize = 14
+AutoPebbleBtn.TextSize = 13
 AutoPebbleBtn.Parent = BotFrame
 
-local EspiaBtn = Instance.new("TextButton")
-EspiaBtn.Size = UDim2.new(0, 200, 0, 30)
-EspiaBtn.Position = UDim2.new(0.5, 10, 0.5, -15) -- Derecha
-EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-EspiaBtn.Text = "MODO ESPÍA: OFF"
-EspiaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-EspiaBtn.Font = Enum.Font.Code
-EspiaBtn.TextSize = 13
-EspiaBtn.Parent = BotFrame
+local ESPBtn = Instance.new("TextButton")
+ESPBtn.Size = UDim2.new(0.5, -15, 0, 30)
+ESPBtn.Position = UDim2.new(0.5, 5, 0.5, -15) -- Lado Derecho
+ESPBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
+ESPBtn.Text = "ESP UNIDADES: OFF"
+ESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPBtn.Font = Enum.Font.Code
+ESPBtn.TextSize = 13
+ESPBtn.Parent = BotFrame
 
 local function ToggleMenu()
     if MainFrame.Visible then
@@ -545,77 +545,105 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
         AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
         AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
         ToggleNoclip(false)
-        AddLog("SISTEMA", "Bot Auto-Farm apagado.", "")
+        AddLog("SISTEMA", "Bot Auto-Farm apagado. Regresando a la normalidad.", "")
     end
 end)
 
-autoHack = false
-EspiaBtn.MouseButton1Click:Connect(function()
-    autoHack = not autoHack
-    if autoHack then
-        EspiaBtn.Text = "HACK INVENTARIO: ON"
-        EspiaBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-        AddLog("SISTEMA", "☠️ Iniciando Ataque Race-Condition (Dupe/Spoof)...", "")
+-- =====================================================================
+-- 7. MÓDULO ESP (VISIÓN DE UNIDADES A TRAVÉS DE PAREDES)
+-- =====================================================================
+local EspElements = {}
+local autoESP = false
+
+local function ClearESP()
+    for _, e in pairs(EspElements) do
+        if e and e.Parent then e:Destroy() end
+    end
+    table.clear(EspElements)
+end
+
+local function ScanForESP()
+    ClearESP()
+    local pService = game:GetService("Players")
+    for _, obj in pairs(workspace:GetDescendants()) do
+        local isTarget = false
+        local color = Color3.fromRGB(255, 255, 255)
+        local n = string.lower(obj.Name)
         
-        task.spawn(function()
-            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if not playerGui then return end
-            
-            -- Localizar Botón de Deal (Vender) y Botón de Equipar
-            local btnDeal, btnEquip
-            
-            for _, v in pairs(playerGui:GetDescendants()) do
-                if v:IsA("TextButton") then
-                    local text = string.lower(v.Text)
-                    local name = string.lower(v.Name)
-                    
-                    if string.find(text, "deal") or string.find(name, "deal") then
-                        btnDeal = v
-                    elseif (string.find(text, "equip") or string.find(name, "equip")) and not string.find(text, "unequip") then
-                        btnEquip = v
-                    end
-                end
+        -- Detección de Minerales Críticos
+        if string.find(n, "pebble") or string.find(n, "flatrock") or string.find(n, "rock") or string.find(n, "stone") or string.find(n, "ore") then
+            if obj:IsA("Model") or obj:IsA("BasePart") then
+                isTarget = true
+                color = Color3.fromRGB(170, 170, 170) -- Grid/Cobre
             end
-            
-            if btnDeal and btnEquip and getconnections then
-                AddLog("SISTEMA", "🔥 Inyectando Botones Maestros. Mantén el menú de venta abierto.", "")
-                
-                -- Ejecutar conexiones virtuales obligatorias
-                local dealConns = getconnections(btnDeal.MouseButton1Click)
-                local equipConns = getconnections(btnEquip.MouseButton1Click)
-                
-                if #dealConns > 0 and #equipConns > 0 then
-                    -- Fuego de Glitch Cruzado
-                    for i = 1, 10 do
-                        task.spawn(function()
-                            for _, conn in pairs(dealConns) do pcall(function() conn.Function() end) end
-                            for _, conn in pairs(equipConns) do pcall(function() conn.Function() end) end
-                        end)
-                    end
-                    AddLog("SISTEMA", "✅ Glitch Orquestado. Revisa tu saldo.", "")
+        end
+        
+        -- Detección de Mobs y NPCs (Tienen Humanoid, pero NO son jugadores)
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+            if not pService:GetPlayerFromCharacter(obj) then
+                isTarget = true
+                if string.find(n, "zomb") or string.find(n, "enem") or string.find(n, "boss") then
+                    color = Color3.fromRGB(255, 50, 50) -- Enemigos Peligrosos Rojos
                 else
-                    AddLog("SISTEMA", "❌ El ejecutor no soporta getconnections() virtual.", "")
+                    color = Color3.fromRGB(255, 200, 50) -- NPCs Neutros (Tiendas) Amarillos
                 end
-            else
-                AddLog("SISTEMA", "❌ ERROR: Abre el Diálogo de 'Deal' Y la maleta para ver 'Equip' a la vez.", "")
             end
-            
-            task.wait(1)
-            EspiaBtn.Text = "HACK INVENTARIO: OFF"
-            EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-            autoHack = false
+        end
+        
+        -- Generación del Adhesivo Visual
+        if isTarget then
+            local root = obj:IsA("Model") and (obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+            if root and root:IsA("BasePart") then
+                local bill = Instance.new("BillboardGui")
+                bill.Name = "OmniESP"
+                bill.AlwaysOnTop = true
+                bill.Size = UDim2.new(0, 150, 0, 30)
+                bill.StudsOffset = Vector3.new(0, 2, 0)
+                bill.Adornee = root
+                bill.Parent = root
+                
+                local txt = Instance.new("TextLabel")
+                txt.Size = UDim2.new(1, 0, 1, 0)
+                txt.BackgroundTransparency = 1
+                txt.Text = obj.Name .. " ["..math.floor((root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude).."m]"
+                txt.TextColor3 = color
+                txt.TextStrokeTransparency = 0
+                txt.Font = Enum.Font.Code
+                txt.TextSize = 13
+                txt.Parent = bill
+                
+                table.insert(EspElements, bill)
+            end
+        end
+    end
+end
+
+ESPBtn.MouseButton1Click:Connect(function()
+    autoESP = not autoESP
+    if autoESP then
+        ESPBtn.Text = "ESP UNIDADES: ON"
+        ESPBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 40)
+        AddLog("SISTEMA", "👁️ Radar de Unidades Activo (Ores/NPCs marcados).", "")
+        task.spawn(function()
+            while autoESP do
+                ScanForESP()
+                task.wait(2) -- Loop pacífico para no sobrecargar el CPU
+            end
+            ClearESP()
         end)
     else
-        EspiaBtn.Text = "HACK INVENTARIO: OFF"
-        EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+        ESPBtn.Text = "ESP UNIDADES: OFF"
+        ESPBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 20)
+        AddLog("SISTEMA", "Radar Apagado.", "")
+        ClearESP()
     end
 end)
 
 -- =====================================================================
--- 6. CONECTOR GITHUB REFRESH
+-- 8. CONECTOR GITHUB REFRESH
 -- =====================================================================
 RefreshBtn.MouseButton1Click:Connect(function()
-    AddLog("SISTEMA", "Descargando V5.6 Final desde GitHub...", "")
+    AddLog("SISTEMA", "Descargando Actualización desde GitHub...", "")
     TrackerRunning = false
     autoFarmPebble = false
     ScreenGui:Destroy()
