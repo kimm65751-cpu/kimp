@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.7 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -977,9 +977,6 @@
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (SEGURO): ON ✅"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
             
-            -- Deshabilitar la auto-rotación del motor de Roblox para hacer un "Moonwalk" de combate (caminar hacia atrás sin voltearse)
-            if myHum then myHum.AutoRotate = false end
-            
             task.spawn(function()
                 while KiteActivo do
                     pcall(function()
@@ -999,20 +996,26 @@
                         if obj and dist and dist < 25 then
                             targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
                             if targetPart then
-                                -- Mantener 7.5 metros mágicos (Rango donde la espada alcanza perfercto, pero el puñetazo zombi falla)
-                                local safeSpot = targetPart.Position + ((myRoot.Position - targetPart.Position).Unit * 7)
+                                -- Dinámico: Si la trampa física de muro está activa, la rellenamos manteniéndonos a 4 metros.
+                                -- Si no, el rango seguro de farm estándar (7m).
+                                local targetDist = ShieldActivo and 4 or 7
                                 
-                                if math.abs(dist - 7) > 1 then
-                                    currentHum:MoveTo(safeSpot)
+                                if dist > targetDist then
+                                    -- Solo caminamos PARA ADELANTE si está lejos
+                                    currentHum:MoveTo(targetPart.Position)
+                                else
+                                    -- Frenamos físicamente el Momentum con el Freno de Mano 
+                                    -- NO retrocedemos jamás para evitar que el Roblox Animator tuerza visualmente tu torso 180 grados a tu espalda
+                                    currentHum:MoveTo(myRoot.Position)
                                 end
                                 
-                                -- Apuntar de frente aislando el eje Y exacto para que el personaje no se voltee ni se incline
+                                -- Clavar el LookVector para asestar el Hit 
                                 local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
                                 myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
                                 
-                                -- Rebanar a distancia
+                                -- Rebanar 
                                 ToolRF:InvokeServer("Weapon")
-                                StatusLabel.Text = "🗡️ Asesinando a 7m de distancia a: " .. obj.Name
+                                StatusLabel.Text = "🗡️ Asegurando a: " .. obj.Name .. " desde " .. tostring(targetDist) .. "m"
                             end
                         else
                             StatusLabel.Text = "🗡️ Buscando monstruos seguros..."
@@ -1025,7 +1028,6 @@
         else
             KiteBtn.Text = "🗡️ AUTO-FARMEAR (MANTENER 7m)"
             KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
-            if myHum then myHum.AutoRotate = true end
         end
     end)
 
