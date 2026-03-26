@@ -66,7 +66,7 @@
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 30)
     Title.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    Title.Text = " 🕵️ OMNI-HACKS V3.6 : SKY BOMBER ENGINE 🚀"
+    Title.Text = " 🕵️ OMNI-HACKS V3.5 : SKY BOMBER ENGINE 🚀"
     Title.TextColor3 = Color3.fromRGB(0, 255, 128)
     Title.TextSize = 13
     Title.Font = Enum.Font.Code
@@ -185,9 +185,19 @@
         end
     end)
 
+    local ExploitBtn = Instance.new("TextButton")
+    ExploitBtn.Size = UDim2.new(1, -10, 0, 35)
+    ExploitBtn.Position = UDim2.new(0.01, 0, 0, 155)
+    ExploitBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 20)
+    ExploitBtn.Text = "☠️ 7. ANALISIS EXPLOIT AVANZADO (BUGS DE COMBATE NPC)"
+    ExploitBtn.TextColor3 = Color3.fromRGB(255, 255, 100)
+    ExploitBtn.Font = Enum.Font.Code
+    ExploitBtn.TextSize = 13
+    ExploitBtn.Parent = MainFrame
+
     local LogScroll = Instance.new("ScrollingFrame")
-    LogScroll.Size = UDim2.new(1, -20, 1, -165)
-    LogScroll.Position = UDim2.new(0, 10, 0, 155)
+    LogScroll.Size = UDim2.new(1, -20, 1, -205)
+    LogScroll.Position = UDim2.new(0, 10, 0, 200)
     LogScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -1216,5 +1226,507 @@
             MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
             DetenerFarm()
         end
+    end)
+
+    -- ==========================================
+    -- 9. ANALIZADOR DE EXPLOITS AVANZADO (BUGS DE COMBATE NPC)
+    -- ==========================================
+    ExploitBtn.MouseButton1Click:Connect(function()
+        for _, v in pairs(LogScroll:GetChildren()) do
+            if v:IsA("Frame") then v:Destroy() end
+        end
+        AddLog("☠️ EXPLOIT", "Iniciando análisis de vulnerabilidades de combate NPC...", "Buscando 10+ vectores de ataque. Asegúrate de estar cerca de un zombi.")
+        task.wait(0.3)
+
+        -- Buscar un mob de muestra
+        local mob = nil
+        local mobRoot = nil
+        local mobHum = nil
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj ~= LocalPlayer.Character and not Players:GetPlayerFromCharacter(obj) then
+                local h = obj:FindFirstChildWhichIsA("Humanoid")
+                local r = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+                if h and h.Health > 0 and r then
+                    mob = obj
+                    mobRoot = r
+                    mobHum = h
+                    break
+                end
+            end
+        end
+
+        if not mob then
+            AddLog("⚠️ ERROR", "No se encontró ningún mob vivo en el mapa.", "Acércate a un zombi y vuelve a escanear.")
+            return
+        end
+
+        local myChar = LocalPlayer.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local distToMob = myRoot and (myRoot.Position - mobRoot.Position).Magnitude or 9999
+
+        AddLog("🧟 MOB OBJETIVO", mob.Name .. " | HP: " .. tostring(math.floor(mobHum.Health)) .. "/" .. tostring(math.floor(mobHum.MaxHealth)) .. " | Distancia: " .. tostring(math.floor(distToMob)) .. "m", "Comenzando análisis en este objetivo...")
+
+        -- ============================================================
+        -- VECTOR 1: MUTABILIDAD DE ATRIBUTOS (El Bug Más Grande Posible)
+        -- ============================================================
+        local v1 = "====== [V1] MUTABILIDAD DE ATRIBUTOS ======\n"
+        local attrs = mob:GetAttributes()
+        if next(attrs) ~= nil then
+            v1 = v1 .. "✅ El mob TIENE atributos acccesibles:\n"
+            for k, val in pairs(attrs) do
+                v1 = v1 .. "   🔵 " .. k .. " = (" .. typeof(val) .. ") " .. tostring(val) .. "\n"
+            end
+            -- Intentar mutar Health directamente
+            local ok, err = pcall(function() mob:SetAttribute("Health", 0) end)
+            v1 = v1 .. "\n🔥 INTENTO de mob:SetAttribute('Health', 0): " .. (ok and "✅ EXITOSO (el servidor puede no validar esto)" or "❌ BLOQUEADO: " .. tostring(err)) .. "\n"
+            -- Intentar convertir en piedra
+            local okClass, errC = pcall(function() mob:SetAttribute("IsNpc", false) mob:SetAttribute("IsMob", false) end)
+            v1 = v1 .. "🧱 INTENTO de cambiar IsNpc/IsMob a false (Camuflaje como piedra): " .. (okClass and "✅ EJECUTADO (testea si el zombi deja de atacarte)" or "❌ Bloqueado") .. "\n"
+        else
+            v1 = v1 .. "❌ El mob no tiene atributos accesibles localmente. Daño manejado por el servidor puro.\n"
+        end
+        AddLog("V1", "Mutabilidad de Atributos", v1)
+
+        -- ============================================================
+        -- VECTOR 2: DETECCIÓN DE SCRIPT DE DAÑO EXPUESTO
+        -- ============================================================
+        task.wait(0.1)
+        local v2 = "====== [V2] SCRIPT DE DAÑO LOCAL ======\n"
+        local damageScripts = {}
+        for _, s in pairs(mob:GetDescendants()) do
+            if s:IsA("Script") or s:IsA("LocalScript") or s:IsA("ModuleScript") then
+                table.insert(damageScripts, s:GetFullName() .. " [" .. s.ClassName .. "]")
+            end
+        end
+        if #damageScripts > 0 then
+            v2 = v2 .. "🔥 Scripts DENTRO del mob (potencialmente explotables):\n"
+            for _, s in pairs(damageScripts) do v2 = v2 .. "   - " .. s .. "\n" end
+            v2 = v2 .. "\n💡 OPORTUNIDAD: Si hay un LocalScript con 'Damage' o 'Attack', puede ser deshabilitado con script:Disable().\n"
+        else
+            v2 = v2 .. "✅ Sin scripts locales expuestos. El daño viene del servidor con Raycast/Region3.\n"
+        end
+        AddLog("V2", "Scripts de daño dentro del mob", v2)
+
+        -- ============================================================  
+        -- VECTOR 3: ANÁLISIS DE VALIDACIÓN DE DIRECCIÓN (¿Necesitas estar enfrente?)
+        -- ============================================================
+        task.wait(0.1)
+        local v3 = "====== [V3] VALIDACIÓN DE DIRECCIÓN ======\n"
+        v3 = v3 .. "📐 Tu posición relativa al mob:\n"
+        if myRoot then
+            local toMob = (mobRoot.Position - myRoot.Position).Unit
+            local myLook = myRoot.CFrame.LookVector
+            local dot = toMob:Dot(myLook)
+            v3 = v3 .. "   Dot Product (1=frente, -1=espalda): " .. string.format("%.2f", dot) .. "\n"
+            v3 = v3 .. "   Tu orientación respecto al mob: " .. (dot > 0.5 and "MIRÁNDOLO" or dot < -0.5 and "DANDOLE LA ESPALDA" or "LATERAL") .. "\n\n"
+            v3 = v3 .. "🔍 PREGUNTA CLAVE: ¿El servidor valida que mires al mob para que el daño cuente?\n"
+            v3 = v3 .. "💡 MÉTODO DE TEST: Usa el Interceptor de Red y ataca desde atrás del mob. Si el remote se envía y el mob baja HP, NO valida dirección.\n"
+            v3 = v3 .. "💡 Si NO baja HP atacando de espaldas al mob, el servidor usa CFrame.LookVector delta < 90° como requisito.\n"
+        end
+        AddLog("V3", "Validación de dirección para hacer daño", v3)
+
+        -- ============================================================
+        -- VECTOR 4: SISTEMA DE KNOCKBACK (¿El empuje es explotable?)
+        -- ============================================================
+        task.wait(0.1)
+        local v4 = "====== [V4] KNOCKBACK Y EMPUJE ======\n"
+        -- Buscar BodyVelocity / BodyForce en el mob
+        local hasPhysicsObjects = false
+        for _, v in pairs(mob:GetDescendants()) do
+            if v:IsA("BodyVelocity") or v:IsA("BodyForce") or v:IsA("LinearVelocity") then
+                hasPhysicsObjects = true
+                v4 = v4 .. "🔥 PHYSICS OBJECT ENCONTRADO: " .. v:GetFullName() .. " [" .. v.ClassName .. "]\n"
+                if v:IsA("BodyVelocity") then
+                    v4 = v4 .. "   Velocidad actual: " .. tostring(v.Velocity) .. "\n"
+                    v4 = v4 .. "   MaxForce: " .. tostring(v.MaxForce) .. "\n"
+                    v4 = v4 .. "   💡 EXPLOIT: Si puedes acceder a este objeto, puedes empujarlo con: v.Velocity = Vector3.new(0,0,100)\n"
+                end
+            end
+        end
+        if not hasPhysicsObjects then
+            v4 = v4 .. "❌ Sin BodyVelocity expuesto. El knockback se maneja por el servidor al aplicar impulso con AssemblyLinearVelocity.\n"
+        end
+        -- Intentar empujar el mob directamente
+        local okPush, errPush = pcall(function()
+            if mobRoot then
+                mobRoot.AssemblyLinearVelocity = (mobRoot.Position - myRoot.Position).Unit * (-20)
+            end
+        end)
+        v4 = v4 .. "\n🔥 INTENTO de empujar mob con AssemblyLinearVelocity: " .. (okPush and "✅ EJECUTADO (si el mob se movió, es explotable)" or "❌ Bloqueado: " .. tostring(errPush)) .. "\n"
+        AddLog("V4", "Knockback y empuje forzado del mob", v4)
+
+        -- ============================================================
+        -- VECTOR 5: ROTACIÓN FORZADA (Hacerlo dar la espalda)
+        -- ============================================================
+        task.wait(0.1)
+        local v5 = "====== [V5] ROTACIÓN FORZADA DEL MOB ======\n"
+        if myRoot then
+            local behindPos = myRoot.Position + myRoot.CFrame.LookVector * 5
+            local okRotate, errR = pcall(function()
+                -- Intentar rotar el mob para que mire HACIA ATRÁS de ti
+                mobRoot.CFrame = CFrame.new(mobRoot.Position, Vector3.new(myRoot.Position.X, mobRoot.Position.Y, myRoot.Position.Z) + myRoot.CFrame.LookVector * 100)
+            end)
+            v5 = v5 .. "🔄 INTENTO de rotar mob para que dé la espalda: " .. (okRotate and "✅ EXITOSO (si se giró, el servidor no protege el CFrame del mob)" or "❌ Bloqueado: " .. tostring(errR)) .. "\n"
+            if okRotate then
+                v5 = v5 .. "💡 VENTAJA MASIVA: Puedes mantener al mob mirando en dirección opuesta con un loop en el Farm.\n"
+                v5 = v5 .. "   Código a integrar: mobRoot.CFrame = CFrame.lookAt(mobRoot.Position, awayPos)\n"
+            else
+                v5 = v5 .. "💡 El servidor protege el CFrame del mob. Usa el Muro Trampa como alternativa física.\n"
+            end
+        end
+        AddLog("V5", "Rotación forzada (CFrame hijack del mob)", v5)
+
+        -- ============================================================
+        -- VECTOR 6: DETECCIÓN DE TOUCHINTEREST (Explosión de contacto)
+        -- ============================================================
+        task.wait(0.1)
+        local v6 = "====== [V6] TOUCHINTEREST Y DAÑO POR CONTACTO ======\n"
+        local touchParts = {}
+        for _, part in pairs(mob:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local tt = part:FindFirstChildWhichIsA("TouchTransmitter")
+                if tt then
+                    table.insert(touchParts, part)
+                    v6 = v6 .. "🔥 PARTE CON TOUCH: " .. part:GetFullName() .. " | Size: " .. tostring(part.Size) .. "\n"
+                    -- Este es el vector de ataque: si el mob usa Touch para detectar impactos
+                    v6 = v6 .. "   💡 EXPLOIT A: firetouchinterest(LocalPlayer.Character.HumanoidRootPart, part, 0)\n"
+                    v6 = v6 .. "   💡 EXPLOIT B: Desactiva el TouchTransmitter: tt:Destroy() -> El mob deja de detectar tu toque y no te hace daño\n"
+                end
+            end
+        end
+        if #touchParts == 0 then
+            v6 = v6 .. "❌ Sin TouchInterest expuesto. El mob usa Raycast o OverlapParams server-side para detectar colisiones.\n"
+            v6 = v6 .. "💡 Opción: Si el mob usa un HitboxPart (zona de daño), podemos sacarlo del workspace localmente.\n"
+        end
+        AddLog("V6", "TouchInterest - Daño por contacto y desactivación", v6)
+
+        -- ============================================================
+        -- VECTOR 7: ANÁLISIS DE BRAZOS Y HITBOX DE ATAQUE
+        -- ============================================================
+        task.wait(0.1)
+        local v7 = "====== [V7] BRAZOS, RANGO Y HITBOX DE ATAQUE ======\n"
+        local attackParts = {}
+        for _, part in pairs(mob:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local n = string.lower(part.Name)
+                if string.find(n, "arm") or string.find(n, "hand") or string.find(n, "weapon") or string.find(n, "attack") or string.find(n, "hit") then
+                    table.insert(attackParts, part)
+                    v7 = v7 .. "⚔️ PARTE DE ATAQUE: " .. part.Name .. " | Size: " .. tostring(part.Size) .. " | CanCollide: " .. tostring(part.CanCollide) .. "\n"
+                    
+                    -- INTENTO 1: Destruir localmente el brazo atacante
+                    local okDestroy = pcall(function() part.CanCollide = false part.Size = Vector3.new(0.1, 0.1, 0.1) end)
+                    v7 = v7 .. "   📐 Intento de reducir brazo a 0.1x: " .. (okDestroy and "✅ EXITOSO (el hitbox del brazo se redujo localmente)" or "❌ Bloqueado") .. "\n"
+                end
+            end
+        end
+        if #attackParts == 0 then
+            v7 = v7 .. "❌ No se encontraron partes de ataque nombradas explícitamente.\n"
+            v7 = v7 .. "💡 El juego usa Raycast desde el HumanoidRootPart del mob con un radio fijo (probablemente 5-8 studs).\n"
+            v7 = v7 .. "💡 Si el Muro (12x12x2) te mantiene a 3.5 studs del mob, aún entras dentro de su radio de 5-8 studs.\n"
+            v7 = v7 .. "💡 SOLUCIÓN: Aumenta el offset del muro de 3.5 a 5.5-6.0 studs para quedar fuera del radio de golpe.\n"
+        else
+            v7 = v7 .. "📊 Total partes de ataque encontradas: " .. #attackParts .. "\n"
+        end
+        AddLog("V7", "Hitbox de brazos y rango de ataque del mob", v7)
+
+        -- ============================================================
+        -- VECTOR 8: DESACTIVAR AI/PATHFINDING
+        -- ============================================================
+        task.wait(0.1)
+        local v8 = "====== [V8] CONTROL DE IA / PATHFINDING ======\n"
+        -- Buscar PathfindingService connections
+        local aiScripts = {}
+        for _, s in pairs(mob:GetDescendants()) do
+            if s:IsA("Script") and (string.find(string.lower(s.Name), "ai") or string.find(string.lower(s.Name), "path") or string.find(string.lower(s.Name), "move") or string.find(string.lower(s.Name), "chase")) then
+                table.insert(aiScripts, s:GetFullName())
+            end
+        end
+        v8 = v8 .. "Scripts de AI encontrados: " .. (#aiScripts > 0 and table.concat(aiScripts, "\n  ") or "Ninguno visible del lado cliente") .. "\n\n"
+        
+        -- Intentar pausar el humanoid (trick clásico)
+        local okFreeze, errF = pcall(function()
+            mobHum.WalkSpeed = 0
+            mobHum.JumpPower = 0
+        end)
+        v8 = v8 .. "❄️ INTENTO de congelar mob (WalkSpeed=0): " .. (okFreeze and "✅ EXITOSO (si el mob se paró, el servidor no valida WalkSpeed)" or "❌ Bloqueado: " .. tostring(errF)) .. "\n"
+        
+        local okDisable, errD = pcall(function()
+            mobHum:ChangeState(Enum.HumanoidStateType.Disabled)
+        end)
+        v8 = v8 .. "🔒 INTENTO de ChangeState(Disabled): " .. (okDisable and "✅ EJECUTADO" or "❌ Bloqueado: " .. tostring(errD)) .. "\n"
+        AddLog("V8", "Control de IA y pathfinding del mob", v8)
+
+        -- ============================================================
+        -- VECTOR 9: ANÁLISIS DE VALORES OCULTOS (Health Values, Invulnerability Flags)
+        -- ============================================================
+        task.wait(0.1)
+        local v9 = "====== [V9] FLAGS DE INVULNERABILIDAD ======\n"
+        for _, child in pairs(mob:GetDescendants()) do
+            if child:IsA("BoolValue") or child:IsA("NumberValue") or child:IsA("IntValue") or child:IsA("StringValue") then
+                local n = string.lower(child.Name)
+                local suspicious = string.find(n, "invul") or string.find(n, "immune") or string.find(n, "god") or string.find(n, "protect") or string.find(n, "dead") or string.find(n, "alive") or string.find(n, "stun")
+                local prefix = suspicious and "🚨 [SOSPECHOSO]" or "   "
+                v9 = v9 .. prefix .. " " .. child.Name .. " = " .. tostring(child.Value) .. " (" .. child.ClassName .. ")\n"
+            end
+        end
+        if v9 == "====== [V9] FLAGS DE INVULNERABILIDAD ======\n" then
+            v9 = v9 .. "No se encontraron Values simples dentro del mob. Los flags de invulnerabilidad son server-side puros.\n"
+        end
+        AddLog("V9", "Flags de Invulnerabilidad e Inmunidad", v9)
+
+        -- ============================================================
+        -- VECTOR 10: RECOMENDACIONES FINALES AUTOMÁTICAS
+        -- ============================================================
+        task.wait(0.1)
+        local v10 = "====== [V10] RECOMENDACIONES RÁPIDAS ======\n\n"
+        v10 = v10 .. "Basado en el análisis de " .. mob.Name .. ":\n\n"
+        if #touchParts > 0 then
+            v10 = v10 .. "🥇 TouchInterest encontrado: destruye el TouchTransmitter del mob para anular su daño.\n"
+        end
+        v10 = v10 .. "🥇 Muro offset sugerido: CFrame.new(0,0,-6.5) en lugar de -3.5 para melee largo.\n"
+        v10 = v10 .. "🥈 Si V5 EXITOSO: rotar mob con cada golpe en Farm Loop.\n"
+        v10 = v10 .. "🥉 Si V7 EXITOSO: arm.Size = Vector3.new(0.1,0.1,0.1) en loop.\n"
+        AddLog("V10", "Recomendaciones Rápidas Pre-Red", v10)
+
+        -- ============================================================
+        -- VECTOR 11: INVENTARIO DE REMOTES DE COMBATE
+        -- ============================================================
+        task.wait(0.1)
+        local v11 = "====== [V11] REMOTES DE COMBATE ENCONTRADOS ======\n"
+        local combatRemotes = {}
+        for _, rem in pairs(game:GetDescendants()) do
+            if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") or rem:IsA("UnreliableRemoteEvent") then
+                local n = string.lower(rem.Name)
+                if string.find(n,"damage") or string.find(n,"hit") or string.find(n,"hurt") or
+                   string.find(n,"attack") or string.find(n,"combat") or string.find(n,"health") or
+                   string.find(n,"hp") or string.find(n,"mob") or string.find(n,"enemy") or
+                   string.find(n,"kill") or string.find(n,"death") or string.find(n,"tool") or
+                   string.find(n,"weapon") or string.find(n,"swing") or string.find(n,"ability") then
+                    table.insert(combatRemotes, rem)
+                    v11 = v11 .. "🎯 [" .. rem.ClassName .. "] " .. rem:GetFullName() .. "\n"
+                end
+            end
+        end
+        v11 = v11 .. "\nTotal: " .. #combatRemotes .. (
+            #combatRemotes == 0 and "\n⚠️ Sin remotes con nombre obvio. El juego usa nombres genéricos. Usa Interceptor." or ""
+        )
+        AddLog("V11", "Catálogo de Remotes de Combate", v11)
+
+        -- ============================================================
+        -- VECTOR 12: CAPTURA FORENSE EN VIVO (3s de combate real)
+        -- ============================================================
+        task.wait(0.1)
+        AddLog("V12", "🔴 CAPTURA EN VIVO ACTIVA (3 segundos)", "Atacando al mob automáticamente. Capturando TODOS los paquetes C→S y S→C. Espera...")
+        task.wait(0.4)
+
+        local capturedPackets = {}
+        local capturedIncoming = {}
+        local captureActive = true
+        local captureStart = tick()
+        local remoteGroups = {}
+
+        -- Hook C→S
+        local captureHook
+        pcall(function()
+            captureHook = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+                local method = string.lower(tostring(getnamecallmethod()))
+                if captureActive and (method == "fireserver" or method == "invokeserver") then
+                    pcall(function()
+                        local args = {...}
+                        local name, fullPath = "?", "?"
+                        pcall(function() name = self.Name fullPath = self:GetFullName() end)
+                        local nLow = string.lower(name)
+                        if not string.find(nLow,"mouse") and not string.find(nLow,"camera") then
+                            table.insert(capturedPackets, {
+                                t = tick() - captureStart, name = name,
+                                path = fullPath, class = self.ClassName,
+                                args = args, remote = self
+                            })
+                        end
+                    end)
+                end
+                return captureHook(self, ...)
+            end))
+        end)
+
+        -- Muestreo HP durante ataque
+        local hpBefore = mobHum.Health
+        local hpSamples = {{t=0, hp=hpBefore}}
+
+        task.spawn(function()
+            local endT = tick() + 3
+            while tick() < endT and captureActive do
+                pcall(function()
+                    local myR = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if myR and mobRoot then
+                        local lk = Vector3.new(mobRoot.Position.X, myR.Position.Y, mobRoot.Position.Z)
+                        myR.CFrame = CFrame.lookAt(myR.Position, lk)
+                    end
+                    ToolRF:InvokeServer("Weapon")
+                end)
+                pcall(function() table.insert(hpSamples, {t=tick()-captureStart, hp=mobHum.Health}) end)
+                task.wait(0.15)
+            end
+        end)
+
+        task.wait(3.2)
+        captureActive = false
+
+        -- Agrupar remotes
+        for _, pkt in ipairs(capturedPackets) do
+            if not remoteGroups[pkt.name] then remoteGroups[pkt.name] = {} end
+            table.insert(remoteGroups[pkt.name], pkt)
+        end
+
+        -- ============================================================
+        -- VECTOR 13: ANÁLISIS HP FORENSE
+        -- ============================================================
+        local hpAfter = mobHum.Health
+        local hpDropped = hpBefore - hpAfter
+        local v13 = "====== [V13] ANÁLISIS HP DURANTE COMBATE ======\n"
+        v13 = v13 .. "HP antes: " .. string.format("%.1f", hpBefore) .. " | HP después: " .. string.format("%.1f", hpAfter) .. "\n"
+        v13 = v13 .. "Daño total (3s): " .. string.format("%.1f", hpDropped) .. " | DPS: " .. string.format("%.2f", hpDropped/3) .. "\n\n"
+        v13 = v13 .. "📈 Curva de daño:\n"
+        for i, s in ipairs(hpSamples) do
+            if i > 1 then
+                local delta = hpSamples[i-1].hp - s.hp
+                if delta > 0 then
+                    v13 = v13 .. "   t+" .. string.format("%.1f", s.t) .. "s → HP " .. string.format("%.0f", s.hp) .. " (-" .. string.format("%.1f", delta) .. ")\n"
+                end
+            end
+        end
+        if hpDropped <= 0 then
+            v13 = v13 .. "\n⚠️ DAÑO NULO: ToolRF no conecta con este mob. Busca el remote correcto en V14.\n"
+        else
+            v13 = v13 .. "\n✅ ToolRF es el canal válido. " .. string.format("%.1f", hpDropped) .. " HP quitados.\n"
+        end
+        AddLog("V13", "Curva HP forense en tiempo real", v13)
+
+        -- ============================================================
+        -- VECTOR 14: DECODIFICACIÓN DE PAQUETES C→S
+        -- ============================================================
+        task.wait(0.1)
+        local v14 = "====== [V14] PAQUETES C→S DURANTE COMBATE ======\n"
+        v14 = v14 .. "Total capturados: " .. #capturedPackets .. "\n\n"
+
+        for remoteName, pkts in pairs(remoteGroups) do
+            v14 = v14 .. "📡 [" .. pkts[1].class .. "] " .. remoteName .. " × " .. #pkts .. "\n"
+            v14 = v14 .. "   Path: " .. pkts[1].path .. "\n"
+            v14 = v14 .. "   📦 Args de muestra:\n"
+            for i, arg in ipairs(pkts[1].args) do
+                local t = typeof(arg)
+                local extra = ""
+                pcall(function()
+                    if t=="Instance" then extra=" → "..arg:GetFullName()
+                    elseif t=="table" then extra=" → "..HttpService:JSONEncode(arg)
+                    elseif t=="CFrame" then extra=" pos="..tostring(arg.Position) end
+                end)
+                v14 = v14 .. "      ["..i.."] ("..t..") "..tostring(arg)..extra.."\n"
+            end
+            if #pkts >= 2 then
+                local intv = (pkts[#pkts].t - pkts[1].t) / math.max(1, #pkts-1)
+                v14 = v14 .. "   ⏱️ Rate: "..string.format("%.1f", 1/intv).."/s\n"
+            end
+            v14 = v14 .. "\n"
+        end
+
+        if #capturedPackets == 0 then
+            v14 = v14 .. "⚠️ CERO paquetes. Posibles causas:\n"
+            v14 = v14 .. "  → Executor sin hookmetamethod\n  → Usa botón 2 INTERCEPTOR + ataca manualmente\n"
+        end
+        AddLog("V14", "Decodificación C→S (Cliente al Servidor)", v14)
+
+        -- ============================================================
+        -- VECTOR 15: PAQUETES S→C (Servidor al Cliente)
+        -- ============================================================
+        task.wait(0.1)
+        local v15 = "====== [V15] PAQUETES S→C (SERVIDOR → CLIENTE) ======\n"
+        v15 = v15 .. "Capturados: " .. #capturedIncoming .. "\n\n"
+        if #capturedIncoming == 0 then
+            v15 = v15 .. "ℹ️ Sin paquetes S→C. El juego sincroniza HP via Humanoid.Health replication automática de Roblox.\n"
+            v15 = v15 .. "💡 Usa Live Scan apuntando al mob para ver HP en tiempo real sin eventos.\n"
+        else
+            for _, pkt in ipairs(capturedIncoming) do
+                v15 = v15 .. "📥 [+"..string.format("%.2f", pkt.t).."s] "..pkt.name.." → "..pkt.path.."\n"
+                for i, arg in ipairs(pkt.args) do
+                    local t = typeof(arg)
+                    local extra = ""
+                    pcall(function()
+                        if t=="number" and arg>0 and arg<10000 then extra=" ← ¿HP/Daño?" end
+                        if t=="Instance" then extra=" → "..arg:GetFullName() end
+                    end)
+                    v15 = v15 .. "   ["..i.."] ("..t..") "..tostring(arg)..extra.."\n"
+                end
+            end
+        end
+        AddLog("V15", "Decodificación S→C (Servidor al Cliente)", v15)
+
+        -- ============================================================
+        -- VECTOR 16: REPLAY Y AMPLIFICACIÓN DE DAÑO
+        -- ============================================================
+        task.wait(0.1)
+        local v16 = "====== [V16] REPLAY Y AMPLIFICACIÓN DE DAÑO ======\n"
+        local bestRemote, bestCount, bestArgs = nil, 0, nil
+        for _, pkts in pairs(remoteGroups) do
+            if #pkts > bestCount then
+                bestCount = #pkts
+                bestRemote = pkts[1].remote
+                bestArgs = pkts[1].args
+            end
+        end
+
+        if bestRemote then
+            v16 = v16 .. "🎯 Remote más frecuente: " .. bestRemote.Name .. " ×" .. bestCount .. "\n"
+            v16 = v16 .. "💥 Ejecutando REPLAY ×5 en ráfaga...\n\n"
+            local hpPre = mobHum.Health
+            local ok5 = 0
+            for i = 1, 5 do
+                local ok = pcall(function()
+                    if bestRemote:IsA("RemoteFunction") then bestRemote:InvokeServer(table.unpack(bestArgs))
+                    else bestRemote:FireServer(table.unpack(bestArgs)) end
+                end)
+                if ok then ok5 = ok5 + 1 end
+                task.wait(0.04)
+            end
+            task.wait(0.3)
+            local hpPost = mobHum.Health
+            local dmgReplay = hpPre - hpPost
+            v16 = v16 .. "Replays: "..ok5.."/5 | Daño replay: "..string.format("%.1f", dmgReplay).."\n"
+            if dmgReplay > 0 then
+                v16 = v16 .. "\n🔥🔥 MEGA-EXPLOIT: Servidor sin rate-limit! Puedes spamear el remote.\n"
+                v16 = v16 .. "   Remote: " .. bestRemote:GetFullName() .. "\n"
+                v16 = v16 .. "   → Integra loop de replay en Farm para ×10 DPS.\n"
+            elseif ok5 > 0 then
+                v16 = v16 .. "\n🔒 Rate-limit activo. Spam bloqueado pero remote es válido.\n"
+            end
+        else
+            v16 = v16 .. "❌ No se capturó ningún remote para replay.\n"
+            v16 = v16 .. "💡 Usa el Interceptor (botón 2) manualmente y ataca para identificar el remote.\n"
+        end
+        AddLog("V16", "Replay / Rate-Limit Test", v16)
+
+        -- ============================================================
+        -- VECTOR 17: RESUMEN FORENSE TOTAL
+        -- ============================================================
+        task.wait(0.1)
+        local v17 = "====== [V17] RESUMEN FORENSE COMPLETO ======\n\n"
+        v17 = v17 .. "🎮 Mob: " .. mob.Name .. "\n"
+        v17 = v17 .. "📦 Paquetes C→S: " .. #capturedPackets .. "\n"
+        v17 = v17 .. "📥 Paquetes S→C: " .. #capturedIncoming .. "\n"
+        v17 = v17 .. "💥 Daño real en 3s: " .. string.format("%.1f", hpDropped) .. " HP\n"
+        local rCount = 0 for _ in pairs(remoteGroups) do rCount=rCount+1 end
+        v17 = v17 .. "🎯 Remotes únicos C→S: " .. rCount .. "\n\n"
+        v17 = v17 .. "HALLAZGOS:\n"
+        v17 = v17 .. (hpDropped>0 and "   ✅ ToolRF hace daño confirmado\n" or "   ❌ ToolRF no válido - buscar remote alternativo\n")
+        v17 = v17 .. (#capturedPackets>0 and "   ✅ Red capturada - ver V14\n" or "   ⚠️ Red no capturada - usar INTERCEPTOR manual\n")
+        v17 = v17 .. (#touchParts>0 and "   🔥 TouchInterest explotable (V6)\n" or "")
+        v17 = v17 .. (#attackParts>0 and "   🔥 Brazos manipulables (V7)\n" or "")
+        v17 = v17 .. "\nPRÓXIMOS PASOS:\n"
+        v17 = v17 .. "   1. V16 EXITOSO → loop spam del remote en Farm\n"
+        v17 = v17 .. "   2. V6 EXITOSO → destruir TouchTransmitter en loop\n"
+        v17 = v17 .. "   3. V5 EXITOSO → rotar mob con cada golpe\n"
+        v17 = v17 .. "   4. Interceptor + Lab juntos para captura manual completa\n"
+        AddLog("V17", "🏁 RESUMEN FORENSE (17 Vectores)", v17)
+        AddLog("✅ FIN", "Análisis Completo - " .. mob.Name, "17 vectores + red forense analizados. Presiona COPY en cada sección para exportar al clipboard.")
     end)
 
