@@ -428,16 +428,17 @@ task.spawn(function()
                 local camera = workspace.CurrentCamera
                 if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestPebble.Position) end
                 
-                -- Virtual Input Manager (Simula Clic Perfecto de Usuario)
+                -- Virtual Input Manager (Fuego Rápido - Metralleta)
                 local cx = camera.ViewportSize.X / 2
                 local cy = camera.ViewportSize.Y / 2
                 VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                task.wait(0.05)
+                task.wait() -- Milisegundo mínimo
                 VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                 
                 if tool then pcall(function() tool:Activate() end) end
                 
-                task.wait(0.25)
+                -- PROBANDO VULNERABILIDAD: Cero Cooldown (De 0.25 a 0.01)
+                task.wait()
             else
                 ToggleNoclip(false)
             end
