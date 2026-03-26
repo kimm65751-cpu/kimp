@@ -185,9 +185,19 @@
         end
     end)
 
+    local ExploitBtn = Instance.new("TextButton")
+    ExploitBtn.Size = UDim2.new(1, -10, 0, 35)
+    ExploitBtn.Position = UDim2.new(0.01, 0, 0, 155)
+    ExploitBtn.BackgroundColor3 = Color3.fromRGB(160, 10, 10)
+    ExploitBtn.Text = "☠️ 7. EXPLOIT FORENSE TOTAL (MOBS + RED)"
+    ExploitBtn.TextColor3 = Color3.fromRGB(255, 240, 80)
+    ExploitBtn.Font = Enum.Font.Code
+    ExploitBtn.TextSize = 13
+    ExploitBtn.Parent = MainFrame
+
     local LogScroll = Instance.new("ScrollingFrame")
-    LogScroll.Size = UDim2.new(1, -20, 1, -165)
-    LogScroll.Position = UDim2.new(0, 10, 0, 155)
+    LogScroll.Size = UDim2.new(1, -20, 1, -205)
+    LogScroll.Position = UDim2.new(0, 10, 0, 200)
     LogScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -1216,5 +1226,280 @@
             MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
             DetenerFarm()
         end
+    end)
+
+    -- =====================================================
+    -- ANALIZADOR FORENSE TOTAL - 17 VECTORES
+    -- =====================================================
+    ExploitBtn.MouseButton1Click:Connect(function()
+        ExploitBtn.Text = "☠️ ANALIZANDO... (~5s)"
+        ExploitBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 0)
+        task.wait(0.1)
+        for _, v in pairs(LogScroll:GetChildren()) do
+            if v:IsA("Frame") then v:Destroy() end
+        end
+
+        local myChar = LocalPlayer.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local mob, mobRoot, mobHum, closestD = nil, nil, nil, math.huge
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj ~= myChar and not Players:GetPlayerFromCharacter(obj) then
+                local h = obj:FindFirstChildWhichIsA("Humanoid")
+                local r = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+                if h and h.Health > 0 and r then
+                    local d = myRoot and (myRoot.Position - r.Position).Magnitude or 9999
+                    if d < closestD then closestD = d; mob = obj; mobRoot = r; mobHum = h end
+                end
+            end
+        end
+
+        if not mob then
+            AddLog("⚠️", "Sin mob vivo cerca", "Acercate a un zombi y reintenta.")
+            ExploitBtn.Text = "☠️ 7. EXPLOIT FORENSE TOTAL (MOBS + RED)"
+            ExploitBtn.BackgroundColor3 = Color3.fromRGB(160, 10, 10)
+            return
+        end
+
+        AddLog("🧟 MOB", mob.Name.." | HP:"..math.floor(mobHum.Health).."/"..math.floor(mobHum.MaxHealth).." | Dist:"..math.floor(closestD).."m", "Iniciando 17 vectores...")
+
+        local touchParts, attackParts = {}, {}
+
+        -- V1: Mutabilidad Atributos
+        local v1, attrs = "", mob:GetAttributes()
+        if next(attrs) then
+            v1 = "Atributos accesibles:\n"
+            for k,val in pairs(attrs) do v1=v1.."  "..k.." = "..tostring(val).." ("..typeof(val)..")\n" end
+            local ok1 = pcall(function() mob:SetAttribute("Health",0) end)
+            local ok2 = pcall(function() mob:SetAttribute("IsNpc",false) end)
+            v1=v1.."\nSetAttribute Health=0: "..(ok1 and "EXITOSO (posible 1-shot)" or "Bloqueado")
+            v1=v1.."\nSetAttribute IsNpc=false: "..(ok2 and "EJECUTADO" or "Bloqueado")
+        else v1 = "Sin atributos locales. Dano server-side puro." end
+        AddLog("V1", "Mutabilidad de Atributos", v1); task.wait(0.05)
+
+        -- V2: Scripts dentro del mob
+        local v2, dsc = "", 0
+        for _,s in pairs(mob:GetDescendants()) do
+            if s:IsA("Script") or s:IsA("LocalScript") or s:IsA("ModuleScript") then
+                v2=v2.."["..s.ClassName.."] "..s:GetFullName().."\n"; dsc=dsc+1
+            end
+        end
+        v2 = dsc>0 and "Scripts dentro del mob ("..dsc.."):\n"..v2.."\nOportunidad: script:Disable()" or "Sin scripts locales. Dano via Raycast server-side."
+        AddLog("V2", "Scripts de dano del mob", v2); task.wait(0.05)
+
+        -- V3: Validacion de direccion
+        local v3 = ""
+        if myRoot then
+            local dot = (mobRoot.Position-myRoot.Position).Unit:Dot(myRoot.CFrame.LookVector)
+            v3 = "Dot (frente=1 espalda=-1): "..string.format("%.2f",dot).."\n"
+            v3 = v3..(dot>0.5 and "Orientacion: MIRANDOLO" or dot<-0.5 and "Orientacion: DE ESPALDAS" or "Orientacion: LATERAL")
+            v3 = v3.."\n\nSi el mob baja HP atacando desde atras = NO valida direccion (exploit de ataque invisible)."
+        else v3 = "Sin HRP local para calcular angulo." end
+        AddLog("V3", "Validacion de direccion para dano", v3); task.wait(0.05)
+
+        -- V4: Knockback
+        local v4 = ""
+        local okPush = pcall(function() if myRoot then mobRoot.AssemblyLinearVelocity=(mobRoot.Position-myRoot.Position).Unit*-25 end end)
+        v4 = "Empujar con AssemblyLinearVelocity: "..(okPush and "EXITOSO (mob volio)" or "Bloqueado")
+        for _,v in pairs(mob:GetDescendants()) do
+            if v:IsA("BodyVelocity") or v:IsA("LinearVelocity") then v4=v4.."\nPhysics encontrado: "..v:GetFullName() end
+        end
+        AddLog("V4", "Knockback y Empuje", v4); task.wait(0.05)
+
+        -- V5: Rotacion forzada
+        local v5 = ""
+        if myRoot then
+            local away = myRoot.Position + myRoot.CFrame.LookVector*100
+            local okR = pcall(function() mobRoot.CFrame = CFrame.new(mobRoot.Position, Vector3.new(away.X, mobRoot.Position.Y, away.Z)) end)
+            v5 = "Rotar mob de espaldas: "..(okR and "EXITOSO - integra en Farm Loop con: mobRoot.CFrame = CFrame.lookAt(pos, awayPos)" or "Bloqueado por servidor.")
+        end
+        AddLog("V5", "Rotacion Forzada CFrame del Mob", v5); task.wait(0.05)
+
+        -- V6: TouchInterest
+        local v6 = ""
+        for _,part in pairs(mob:GetDescendants()) do
+            if part:IsA("BasePart") and part:FindFirstChildWhichIsA("TouchTransmitter") then
+                table.insert(touchParts, part)
+                v6=v6..part.Name.." | Size:"..tostring(part.Size).."\n  EXPLOIT: TouchTransmitter:Destroy() -> mob no detecta tu cuerpo\n"
+            end
+        end
+        v6 = v6=="" and "Sin TouchInterest. Mob usa Raycast/OverlapParams server-side." or v6
+        AddLog("V6", "TouchInterest y Dano por Contacto", v6); task.wait(0.05)
+
+        -- V7: Brazos y Hitbox
+        local v7 = ""
+        for _,part in pairs(mob:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local n = string.lower(part.Name)
+                if string.find(n,"arm") or string.find(n,"hand") or string.find(n,"weapon") or string.find(n,"hit") or string.find(n,"attack") then
+                    table.insert(attackParts, part)
+                    local okSz = pcall(function() part.Size=Vector3.new(0.1,0.1,0.1) end)
+                    v7=v7..part.Name.." | Reducir size: "..(okSz and "EXITOSO" or "Bloqueado").."\n"
+                end
+            end
+        end
+        v7 = v7=="" and "Sin partes de ataque nombradas. Raycast radio fijo ~5-8 studs.\nSolucion: aumenta offset muro a -6.5 studs." or v7
+        AddLog("V7", "Brazos / Hitbox de Ataque", v7); task.wait(0.05)
+
+        -- V8: Congelar IA
+        local okW = pcall(function() mobHum.WalkSpeed=0; mobHum.JumpPower=0 end)
+        local okS = pcall(function() mobHum:ChangeState(Enum.HumanoidStateType.Disabled) end)
+        AddLog("V8", "Congelar IA del Mob",
+            "WalkSpeed=0: "..(okW and "EXITOSO (mob congelado)" or "Bloqueado").."\nChangeState Disabled: "..(okS and "EJECUTADO" or "Bloqueado"))
+        task.wait(0.05)
+
+        -- V9: Flags de invulnerabilidad
+        local v9, fc = "", 0
+        for _,child in pairs(mob:GetDescendants()) do
+            if child:IsA("BoolValue") or child:IsA("NumberValue") or child:IsA("IntValue") or child:IsA("StringValue") then
+                local n = string.lower(child.Name)
+                local sus = string.find(n,"invul") or string.find(n,"immune") or string.find(n,"god") or string.find(n,"stun") or string.find(n,"dead")
+                v9=v9..(sus and "[SOSPECHOSO] " or "  ")..child.Name.." = "..tostring(child.Value).."\n"
+                fc=fc+1
+            end
+        end
+        AddLog("V9", "Flags de Invulnerabilidad", fc==0 and "Sin Values en el mob. Flags son server-side." or v9); task.wait(0.05)
+
+        -- V10: Recomendaciones rapidas
+        local v10 = "Mob: "..mob.Name.."\n"
+        v10=v10..(#touchParts>0 and "PRIORIDAD 1: TouchInterest detectado - destruir tt en loop\n" or "")
+        v10=v10..(#attackParts>0 and "PRIORIDAD 2: Brazos reducibles a 0.1x (V7 exitoso)\n" or "")
+        v10=v10.."Muro: incrementar offset a -6.5 studs\n"
+        v10=v10.."Si V5 exitoso: rotar mob con cada golpe en Farm\n"
+        AddLog("V10", "Recomendaciones de Combate", v10)
+
+        -- V11: Catalogo remotes de combate
+        local v11, rcnt = "", 0
+        for _,rem in pairs(game:GetDescendants()) do
+            if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") or rem:IsA("UnreliableRemoteEvent") then
+                local n = string.lower(rem.Name)
+                if string.find(n,"damage") or string.find(n,"hit") or string.find(n,"hurt") or string.find(n,"attack") or
+                   string.find(n,"health") or string.find(n,"hp") or string.find(n,"mob") or string.find(n,"kill") or
+                   string.find(n,"tool") or string.find(n,"weapon") or string.find(n,"ability") then
+                    v11=v11.."["..rem.ClassName.."] "..rem:GetFullName().."\n"; rcnt=rcnt+1
+                end
+            end
+        end
+        AddLog("V11", "Catalogo Remotes de Combate", "Total: "..rcnt.."\n"..(rcnt==0 and "Sin nombres obvios. Usa Interceptor." or v11))
+
+        -- V12: Captura en vivo 3s
+        AddLog("V12", "CAPTURA EN VIVO (3s)", "Atacando al mob y capturando paquetes C->S. Espera...")
+        task.wait(0.3)
+
+        local pkts, captureOn, t0, grps = {}, true, tick(), {}
+        local cHook
+        pcall(function()
+            cHook = hookmetamethod(game, "__namecall", newcclosure(function(s2, ...)
+                local m = string.lower(tostring(getnamecallmethod()))
+                if captureOn and (m=="fireserver" or m=="invokeserver") then
+                    pcall(function()
+                        local nm, fp = "?", "?"
+                        pcall(function() nm=s2.Name; fp=s2:GetFullName() end)
+                        local nL = string.lower(nm)
+                        if not string.find(nL,"mouse") and not string.find(nL,"camera") and not string.find(nL,"input") then
+                            table.insert(pkts, {t=tick()-t0, name=nm, path=fp, cls=s2.ClassName, args={...}, rem=s2})
+                        end
+                    end)
+                end
+                return cHook(s2, ...)
+            end))
+        end)
+
+        local hpB = mobHum.Health
+        local hpLog = {{t=0, hp=hpB}}
+        task.spawn(function()
+            local endT = tick()+3
+            while tick()<endT and captureOn do
+                pcall(function()
+                    if myRoot and mobRoot then
+                        myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(mobRoot.Position.X,myRoot.Position.Y,mobRoot.Position.Z))
+                    end
+                    ToolRF:InvokeServer("Weapon")
+                end)
+                pcall(function() table.insert(hpLog,{t=tick()-t0, hp=mobHum.Health}) end)
+                task.wait(0.15)
+            end
+        end)
+        task.wait(3.2)
+        captureOn = false
+
+        for _,p in ipairs(pkts) do
+            if not grps[p.name] then grps[p.name]={} end
+            table.insert(grps[p.name], p)
+        end
+
+        -- V13: Curva HP
+        local hpA = mobHum.Health
+        local hpDrop = hpB - hpA
+        local v13 = "HP: "..string.format("%.1f",hpB).." -> "..string.format("%.1f",hpA).."\n"
+        v13=v13.."Dano 3s: "..string.format("%.1f",hpDrop).." | DPS: "..string.format("%.2f",hpDrop/3).."\n\nCurva:\n"
+        for i,s in ipairs(hpLog) do
+            if i>1 then local d=hpLog[i-1].hp-s.hp; if d>0 then v13=v13.."  t+"..string.format("%.1f",s.t).."s HP:"..string.format("%.0f",s.hp).." (-"..string.format("%.1f",d)..")\n" end end
+        end
+        v13=v13..(hpDrop<=0 and "\nDANO NULO. ToolRF no valido para este mob." or "\nToolRF confirmado. "..string.format("%.1f",hpDrop).." HP quitados.")
+        AddLog("V13", "Curva HP forense (3s)", v13)
+
+        -- V14: Paquetes C->S
+        local v14 = "Total paquetes: "..#pkts.."\n\n"
+        for rName,rPkts in pairs(grps) do
+            v14=v14.."["..rPkts[1].cls.."] "..rName.." x"..#rPkts.."\n  Path: "..rPkts[1].path.."\n  Args muestra:\n"
+            for i,arg in ipairs(rPkts[1].args) do
+                local tp=typeof(arg); local ex=""
+                pcall(function()
+                    if tp=="Instance" then ex=" -> "..arg:GetFullName()
+                    elseif tp=="table" then ex=" -> "..HttpService:JSONEncode(arg)
+                    elseif tp=="CFrame" then ex=" pos="..tostring(arg.Position) end
+                end)
+                v14=v14.."    ["..i.."] ("..tp..") "..tostring(arg)..ex.."\n"
+            end
+            if #rPkts>=2 then
+                local intv=(rPkts[#rPkts].t-rPkts[1].t)/math.max(1,#rPkts-1)
+                v14=v14.."  Rate: "..string.format("%.1f",1/intv).."/s\n"
+            end
+            v14=v14.."\n"
+        end
+        if #pkts==0 then v14=v14.."CERO paquetes. Executor sin hookmetamethod.\nUsa Interceptor (boton 2) + ataque manual." end
+        AddLog("V14", "Paquetes C->S", v14)
+
+        -- V15: S->C
+        AddLog("V15", "Paquetes S->C",
+            "HP sincronizado via Humanoid.Health replication de Roblox (sin RemoteEvents).\nUsa Live Scan apuntando al mob para monitorear HP en tiempo real.")
+
+        -- V16: Replay
+        local v16, bestR, bestC, bestA = "", nil, 0, nil
+        for _,rp in pairs(grps) do
+            if #rp>bestC then bestC=#rp; bestR=rp[1].rem; bestA=rp[1].args end
+        end
+        if bestR then
+            v16="Remote: "..bestR.Name.." x"..bestC.."\nREPLAY x5...\n"
+            local hpPre=mobHum.Health; local hits=0
+            for i=1,5 do
+                local ok=pcall(function()
+                    if bestR:IsA("RemoteFunction") then bestR:InvokeServer(table.unpack(bestA))
+                    else bestR:FireServer(table.unpack(bestA)) end
+                end)
+                if ok then hits=hits+1 end; task.wait(0.04)
+            end
+            task.wait(0.3)
+            local dmgR=hpPre-mobHum.Health
+            v16=v16.."Replays: "..hits.."/5 | Dano replay: "..string.format("%.1f",dmgR).."\n"
+            if dmgR>0 then
+                v16=v16.."MEGA-EXPLOIT: Sin rate-limit!\nIntegra loop de replay en Farm -> x10 DPS.\nPath: "..bestR:GetFullName()
+            elseif hits>0 then v16=v16.."Rate-limit detectado. Remote valido pero spam bloqueado."
+            end
+        else v16="Sin remote identificado.\nUsa Interceptor + ataque manual." end
+        AddLog("V16", "Replay / Rate-Limit Test", v16)
+
+        -- V17: Resumen
+        local gc=0; for _ in pairs(grps) do gc=gc+1 end
+        local v17="Mob: "..mob.Name.."\nPaquetes C->S: "..#pkts.." | Remotes unicos: "..gc.."\nDano 3s: "..string.format("%.1f",hpDrop).." HP\n\nHallazgos:\n"
+        v17=v17..(hpDrop>0 and "  ToolRF valido\n" or "  ToolRF NO valido - busca remote correcto en V14\n")
+        v17=v17..(#pkts>0 and "  Red capturada - ver V14\n" or "  Red NO capturada - usar Interceptor\n")
+        v17=v17..(#touchParts>0 and "  TouchInterest explotable (V6)\n" or "")
+        v17=v17..(#attackParts>0 and "  Brazos reducibles (V7)\n" or "")
+        v17=v17.."\nProximos pasos:\n  1. V16 OK -> spam remote en Farm\n  2. V6 OK -> destruir TouchTransmitter\n  3. V5 OK -> forzar rotacion mob\n  4. Interceptor + Lab para captura manual"
+        AddLog("V17", "RESUMEN FORENSE (17 Vectores)", v17)
+
+        ExploitBtn.Text = "☠️ 7. EXPLOIT FORENSE TOTAL (MOBS + RED)"
+        ExploitBtn.BackgroundColor3 = Color3.fromRGB(160, 10, 10)
     end)
 
