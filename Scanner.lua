@@ -560,12 +560,15 @@ task.spawn(function()
                 local scanList = livingFolder and livingFolder:GetChildren() or workspace:GetDescendants()
                 for _, obj in pairs(scanList) do
                     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                        -- FIX VITAL: Asegurarse de que obj NO es nuestro propio personaje ni otro jugador
-                        if obj ~= LocalPlayer.Character and obj.Name ~= LocalPlayer.Name and not pService:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
-                            local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                            if posNode then
-                                local dist = (hrp.Position - posNode.Position).Magnitude
-                                if dist < bestMobDist then bestMobDist = dist; bestMob = posNode end
+                        -- FILTRO ENEMIGOS REALES: Ignorar jugadores, tiendas (NPCs amistosos) y mascotas
+                        local nLC = string.lower(obj.Name)
+                        if (string.find(nLC, "zomb") or string.find(nLC, "enem") or string.find(nLC, "delver") or string.find(nLC, "boss")) then
+                            if obj ~= LocalPlayer.Character and obj.Name ~= LocalPlayer.Name and not pService:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
+                                local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                                if posNode then
+                                    local dist = (hrp.Position - posNode.Position).Magnitude
+                                    if dist < bestMobDist then bestMobDist = dist; bestMob = posNode end
+                                end
                             end
                         end
                     end
