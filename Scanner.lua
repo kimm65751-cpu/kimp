@@ -492,7 +492,7 @@ local function ToggleNoclip(state)
     end
 end
 
-local function TweenToPosition(targetPos)
+local function TweenToPosition(targetPos, facePos)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local hrp = char.HumanoidRootPart
@@ -502,8 +502,12 @@ local function TweenToPosition(targetPos)
     local time = dist / speed
     if time < 0.1 then time = 0.1 end
     
+    -- Si no hay "facePos", por defecto mira hacia abajo (como el modo minería). Si hay, mira hacia ese punto.
+    local lookCFrame = facePos and CFrame.lookAt(targetPos, Vector3.new(facePos.X, targetPos.Y, facePos.Z)) or CFrame.lookAt(targetPos, targetPos + Vector3.new(0, -1, 0))
+    
     local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.lookAt(targetPos, targetPos + Vector3.new(0, -1, 0))})
+    -- TweenService no da kick porque interpola los frames paulatinamente (movimiento legítimo 100% legal)
+    local tween = TweenService:Create(hrp, tweenInfo, {CFrame = lookCFrame})
     
     tween:Play()
     tween.Completed:Wait()
@@ -575,28 +579,21 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- Destruir RightHandle (arma del zombie) antes de atacar
-                    local mobModel = bestTarget.Parent
-                    if mobModel then
-                        pcall(function()
-                            -- Intentar destruir el arma/hitbox del zombie
-                            local rh = mobModel:FindFirstChild("RightHandle")
-                            if rh then rh:Destroy() end
-                            -- También intentar freezearlo
-                            local mobHum = mobModel:FindFirstChildOfClass("Humanoid")
-                            if mobHum then
-                                mobHum.WalkSpeed = 0
-                                mobHum.JumpPower = 0
-                                mobHum.PlatformStand = true
-                            end
-                        end)
+                    -- ⚔️ COMBATE TÁCTICO: Rango Seguro (6 studs)
+                    -- Eliminamos la lógica basura; el truco real es no chocar con el zombie
+                    local diff = hrp.Position - bestTarget.Position
+                    local flatDir = Vector3.new(diff.X, 0, diff.Z)
+                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(6, 0, 0) end
+                    
+                    -- Posición a 6 studs exactos del zombie (rango máximo de tu Dagger)
+                    local attackPos = bestTarget.Position + (flatDir.Unit * 6) + Vector3.new(0, 3.5, 0)
+                    
+                    -- Moverse solo si estamos lejos de ese anillo de seguridad
+                    -- IMPORTANTE: Pasamos bestTarget.Position al TweenToPosition para rotar suavemente (SIN TELEPORT/KICK)
+                    if (hrp.Position - attackPos).Magnitude > 2 then
+                        TweenToPosition(attackPos, bestTarget.Position)
                     end
                     
-                    -- Sistema de movimiento al zombie
-                    local attackPos = bestTarget.Position + Vector3.new(0, 3.5, 0)
-                    if (hrp.Position - attackPos).Magnitude > 3 then
-                        TweenToPosition(attackPos)
-                    end
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
                     -- Equipar Gladius Dagger / Weapon
