@@ -592,71 +592,104 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ AURA KILL MAESTRO (Hitbox Injection)
-                    -- Distancia táctica ultra segura (15 studs, fuera del rango del zombie)
+                    -- ⚔️ COMBATE DEFINITIVO (WEAPON SPOOF & NEURAL SNIPER)
+                    -- Distancia Táctica Lejana (25 studs, imposible tocarte)
                     local diff = hrp.Position - bestTarget.Position
                     local flatDir = Vector3.new(diff.X, 0, diff.Z)
-                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(15, 0, 0) end
+                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(25, 0, 0) end
                     
-                    local attackPos = bestTarget.Position + (flatDir.Unit * 15)
+                    local attackPos = bestTarget.Position + (flatDir.Unit * 25)
                     
                     if (hrp.Position - attackPos).Magnitude > 2 then
                         TweenToPosition(attackPos, bestTarget.Position)
                     end
                     
-                    -- Equipar arma fluida
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
-                    if not targetTool then
-                        for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then targetTool = t; break end
-                        end
-                        if not targetTool then
-                            for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
-                                if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then targetTool = t; break end
-                            end
-                        end
-                    end
+                    local targetTool = LocalPlayer.Character:FindFirstChild("Weapon") or LocalPlayer.Backpack:FindFirstChild("Weapon")
                     if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
                         hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- 🔥 INYECTAR HITBOX FALSO (Elimina físicas explosivas y evita el Kick por TP/Fling) 🔥
-                    local fakeHitbox = bestTarget:FindFirstChild("MagicalAuraHitbox")
-                    if not fakeHitbox then
-                        fakeHitbox = Instance.new("Part")
-                        fakeHitbox.Name = "MagicalAuraHitbox"
-                        fakeHitbox.Size = Vector3.new(35, 35, 35) -- Gigantesco, alcanza la cámara
-                        fakeHitbox.Transparency = 0.8 -- Te muestra una caja oscura a dónde estás pegando
-                        fakeHitbox.CanCollide = false
-                        fakeHitbox.Massless = true
-                        fakeHitbox.Anchored = true
-                        -- Lo plantamos directamente en el centro del zombie
-                        local root = bestTarget:FindFirstChild("HumanoidRootPart") or bestTarget.PrimaryPart
-                        if root then fakeHitbox.CFrame = root.CFrame end
-                        fakeHitbox.Parent = bestTarget
+                    -- 🕵️ IDEA MAESTRA: Robar el Arma del jugador PRO del mapa (Weapon Spoofing)
+                    pcall(function()
+                        if targetTool then
+                            local bestJSON = nil
+                            local maxQuality = 0
+                            -- Escanear todos los jugadores vivos en el mapa
+                            local livingFolder = workspace:FindFirstChild("Living")
+                            if livingFolder then
+                                for _, obj in pairs(livingFolder:GetChildren()) do
+                                    if obj:IsA("Model") and game:GetService("Players"):GetPlayerFromCharacter(obj) and obj ~= LocalPlayer.Character then
+                                        local remoteW = obj:FindFirstChild("Weapon")
+                                        if remoteW then
+                                            local j = remoteW:GetAttribute("ItemJSON")
+                                            if j then
+                                                local qStr = string.match(j, '"Quality":([%d%.]+)')
+                                                local qVal = tonumber(qStr) or 0
+                                                if qVal > maxQuality then maxQuality = qVal; bestJSON = j end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            if bestJSON and targetTool:GetAttribute("ItemJSON") ~= bestJSON then
+                                targetTool:SetAttribute("ItemJSON", bestJSON)
+                                AddLog("STAT", "🗡️ EXPLOIT: ¡Robaste los Atributos de tu enemigo! (Calidad: "..maxQuality..")", "")
+                            end
+                        end
+                    end)
+                    
+                    -- 🔥 NEURAL SNIPER (CLONACIÓN DE REMOTE AUTOMÁTICA) 🔥
+                    local rs = game:GetService("ReplicatedStorage")
+                    local hitRemote = rs:FindFirstChild("HitboxClassRemote")
+                    
+                    if hitRemote and _G.SniperArgs then
+                        -- MAGIA PURA: En lugar de adivinar qué manda tu arma, usamos la plantilla que robamos y la mutamos!
+                        local function MutateArgs(original, newTarget)
+                            local mutated = {}
+                            for k, v in pairs(original) do
+                                if typeof(v) == "table" then
+                                    mutated[k] = MutateArgs(v, newTarget)
+                                elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+                                    -- Si el viejo argumento enviaba un brazo, cambiamos por el brazo del nuevo zombie
+                                    mutated[k] = newTarget:FindFirstChild(v.Name) or newTarget:FindFirstChild("HumanoidRootPart") or newTarget.PrimaryPart
+                                elseif typeof(v) == "Instance" and v:IsA("Model") then
+                                    mutated[k] = newTarget
+                                elseif typeof(v) == "Instance" and v:IsA("Humanoid") then
+                                    mutated[k] = newTarget:FindFirstChild("Humanoid")
+                                else
+                                    mutated[k] = v
+                                end
+                            end
+                            return mutated
+                        end
+                        
+                        -- Enviamos la orden calcada del juego, pero con los datos del zombie lejano
+                        pcall(function()
+                            for _ = 1, 3 do
+                                local cloned = MutateArgs(_G.SniperArgs, bestTarget)
+                                hitRemote:FireServer(unpack(cloned))
+                                if targetTool then targetTool:Activate() end
+                                task.wait(0.1)
+                            end
+                        end)
+                        
                     else
-                        local root = bestTarget:FindFirstChild("HumanoidRootPart") or bestTarget.PrimaryPart
-                        if root then fakeHitbox.CFrame = root.CFrame end
+                        -- MODO RUTINA (Necesita 1 calibración): Falsa distancia 5 studs para golpear normal y llenar el Sniper
+                        local camera = workspace.CurrentCamera
+                        if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
+                        
+                        local cx = camera.ViewportSize.X / 2
+                        local cy = camera.ViewportSize.Y / 2
+                        for _ = 1, 3 do
+                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                            task.wait()
+                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                            task.wait(0.05)
+                        end
                     end
-                    
-                    local camera = workspace.CurrentCamera
-                    if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
-                    
-                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                    if activeTool then pcall(function() activeTool:Activate() end) end
-                    
-                    local cx = camera.ViewportSize.X / 2
-                    local cy = camera.ViewportSize.Y / 2
-                    for _ = 1, 3 do
-                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                        task.wait()
-                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                        task.wait(0.05)
-                    end
-                    
-                    -- Limpiamos el hitbox artificial
-                    if fakeHitbox then fakeHitbox:Destroy() end
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
@@ -665,7 +698,6 @@ task.spawn(function()
                     if (hrp.Position - attackPos).Magnitude > 3 then
                         TweenToPosition(attackPos, bestTarget.Position)
                     end
-                    -- Eliminada rotación violenta hrp.CFrame (evadir un TP kick)
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
                     -- Equipar Pico
