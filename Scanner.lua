@@ -416,6 +416,31 @@ task.spawn(function()
                 hrp.CFrame = CFrame.lookAt(atackPos, bestPebble.Position)
                 hrp.AssemblyLinearVelocity = Vector3.zero
                 
+                -- PARCHE DE NÚCLEO (Hackeo de Estadísticas de Herramienta)
+                local patchedTools = {}
+                local function PatchToolStats(t)
+                    if patchedTools[t] then return end
+                    patchedTools[t] = true
+                    for name, _ in pairs(t:GetAttributes()) do
+                        local ln = string.lower(name)
+                        if string.find(ln, "coold") or string.find(ln, "speed") or string.find(ln, "waittime") then
+                            t:SetAttribute(name, 0); AddLog("SISTEMA", "😎 Atributo de Retraso hackeado a 0 ("..name..")", "")
+                        elseif string.find(ln, "damage") or string.find(ln, "dmg") then
+                            t:SetAttribute(name, 99999); AddLog("SISTEMA", "🔥 Atributo de Daño al infinito ("..name..")", "")
+                        end
+                    end
+                    for _, v in pairs(t:GetDescendants()) do
+                        if v:IsA("NumberValue") or v:IsA("IntValue") then
+                            local ln = string.lower(v.Name)
+                            if string.find(ln, "coold") or string.find(ln, "speed") or string.find(ln, "waittime") then
+                                v.Value = 0; AddLog("SISTEMA", "😎 Variable Cooldown bajada al piso", v.Name)
+                            elseif string.find(ln, "damage") or string.find(ln, "dmg") then
+                                v.Value = 99999; AddLog("SISTEMA", "🔥 Variable Daño infinita!", v.Name)
+                            end
+                        end
+                    end
+                end
+                
                 -- RUTINA DE GOLPEO AVANZADA (Evade Anti-Exploits y Armas Extrañas)
                 local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 local tool = LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
@@ -424,6 +449,8 @@ task.spawn(function()
                     hum:EquipTool(tool)
                     task.wait(0.1) -- Tiempo de animación de equipar
                 end
+                
+                if tool then PatchToolStats(tool) end
                 
                 local camera = workspace.CurrentCamera
                 if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestPebble.Position) end
