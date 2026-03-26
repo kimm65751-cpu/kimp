@@ -486,17 +486,52 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Herramienta de Escaneo UI Avanzado (Detector de Minijuegos)
+-- Lógica del Auto-Fuelle (Barrido Vertical Absoluto)
+local autoPump = false
+
 AutoPumpBtn.MouseButton1Click:Connect(function()
     autoPump = not autoPump
     if autoPump then
-        AutoPumpBtn.Text = "MODO ESCANER UI: ON"
-        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(40, 60, 180)
-        AddLog("SISTEMA", "🔍 Modo Escáner Activado: Haz CLIC DERECHO sobre la flecha verde y luego sobre la barra.", "")
+        AutoPumpBtn.Text = "BOMBEO AUTOMÁTICO: ON"
+        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        AddLog("SISTEMA", "🔥 Modo Bombeo Activado. ¡Pon el mouse X sobre el fuelle, yo haré el resto!", "")
+        
+        task.spawn(function()
+            local vim = game:GetService("VirtualInputManager")
+            local camera = workspace.CurrentCamera
+            
+            -- Calculamos límites usando la pantalla absoluta (Para abarcar toda la barra sin fallar)
+            local topY = camera.ViewportSize.Y * 0.25 -- Cerca de la cima
+            local botY = camera.ViewportSize.Y * 0.75 -- Cerca del fondo
+            
+            while autoPump do
+                -- Toma anclaje constante de donde tienes tu mouse para no fallar el eje X
+                local X = LocalPlayer:GetMouse().X
+                
+                -- Agarra el botón en la cima
+                vim:SendMouseButtonEvent(X, topY, 0, true, game, 1)
+                
+                -- Barrido suave hacia abajo (Para que el juego no detecte hack de teletransporte)
+                for i = 0, 5 do
+                    vim:SendMouseMovementEvent(X, topY + ((botY - topY) * (i/5)), game)
+                    task.wait()
+                end
+                
+                -- Barrido suave hacia arriba
+                for i = 0, 5 do
+                    vim:SendMouseMovementEvent(X, botY - ((botY - topY) * (i/5)), game)
+                    task.wait()
+                end
+            end
+            
+            -- Cuando apagamos, suelta el clic
+            local m = LocalPlayer:GetMouse()
+            vim:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 1)
+        end)
     else
-        AutoPumpBtn.Text = "MODO ESCANER UI: OFF"
+        AutoPumpBtn.Text = "AUTO MINIGAME (FUELLE): OFF"
         AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-        AddLog("SISTEMA", "Escáner desactivado.", "")
+        AddLog("SISTEMA", "Bombeo desactivado.", "")
     end
 end)
 
