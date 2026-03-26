@@ -66,6 +66,17 @@ MinimizeBtn.Font = Enum.Font.Code
 MinimizeBtn.TextSize = 20
 MinimizeBtn.Parent = MainFrame
 
+local RefreshBtn = Instance.new("TextButton")
+RefreshBtn.Size = UDim2.new(0, 105, 0, 30)
+-- Posicionado a la izquierda del botón de minimizar
+RefreshBtn.Position = UDim2.new(1, -145, 0, 5) 
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+RefreshBtn.Text = "Refrescar (.lua)"
+RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshBtn.Font = Enum.Font.Code
+RefreshBtn.TextSize = 12
+RefreshBtn.Parent = MainFrame
+
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -20, 1, -60)
 LogScroll.Position = UDim2.new(0, 10, 0, 50)
@@ -333,5 +344,16 @@ if leaderstats then
         end
     end)
 end
+
+-- =====================================================================
+-- 5. CONECTOR GITHUB (BOTÓN DE REFRESCO)
+-- =====================================================================
+RefreshBtn.MouseButton1Click:Connect(function()
+    AddLog("SISTEMA", "Descargando actualización desde GitHub...", "")
+    TrackerRunning = false
+    ScreenGui:Destroy()
+    -- Agregamos un número aleatorio para evadir por completo el "Caché de GitHub"
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua?v=" .. tostring(math.random(1000, 9999))))()
+end)
 
 AddLog("SISTEMA", "Omni-Tracker V4.0 en vivo. Clic Izquierdo = Rastreo de Atributos/Salud", "Tracker V4")
