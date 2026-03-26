@@ -545,11 +545,12 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- 🥊 MODO BOXEADOR (KITING): Avanzar → Golpear → Retroceder
-                    -- Sin teleport, todo con TweenService para evitar anti-cheat
-                    
-                    -- 3. Seleccionar y equipar arma de combate
+                    -- ✅ MOVIMIENTO NATIVO: Humanoid:MoveTo() = mismo sistema que usa el jugador real
+                    -- El anti-cheat no puede distinguirlo de movimiento humano
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if not hum then task.wait(0.1); continue end
+                    
+                    -- Equipar arma (no pico)
                     local targetTool = nil
                     local invItems = LocalPlayer.Backpack:GetChildren()
                     for _, t in pairs(LocalPlayer.Character:GetChildren()) do
@@ -561,26 +562,25 @@ task.spawn(function()
                         end
                     end
                     if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
-                    if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                    if targetTool and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
                     
-                    -- FASE 1: AVANZAR rápido al rango de golpe (3 studs del zombie)
-                    local dirToMob = (bestTarget.Position - hrp.Position)
-                    local dist = dirToMob.Magnitude
-                    if dist > 4 then
-                        local strikePos = bestTarget.Position + dirToMob.Unit * -3.5 -- Pararse a 3.5 studs del zombie
-                        strikePos = Vector3.new(strikePos.X, hrp.Position.Y, strikePos.Z) -- Mantener mismo nivel del suelo
-                        local approachTime = math.clamp(dist / 40, 0.05, 0.6) -- Velocidad: 40 studs/s (carrera humana)
-                        local approachTween = TweenService:Create(hrp, TweenInfo.new(approachTime, Enum.EasingStyle.Linear), {
-                            CFrame = CFrame.lookAt(strikePos, bestTarget.Position)
-                        })
-                        approachTween:Play()
-                        approachTween.Completed:Wait()
-                    end
+                    -- FASE 1: CORRER hacia el zombie (WalkSpeed boost temporal)
+                    local oldSpeed = hum.WalkSpeed
+                    hum.WalkSpeed = 30
+                    local attackPos = bestTarget.Position + (hrp.Position - bestTarget.Position).Unit * 3.5
+                    attackPos = Vector3.new(attackPos.X, hrp.Position.Y, attackPos.Z)
+                    hum:MoveTo(attackPos)
+                    
+                    -- Esperar llegada (máx 1.5s para no congelarse)
+                    local moveTimer = 0
+                    repeat
+                        task.wait(0.05)
+                        moveTimer += 0.05
+                    until (hrp.Position - attackPos).Magnitude < 3 or moveTimer > 1.5
                     
                     -- FASE 2: GOLPEAR
-                    hrp.AssemblyLinearVelocity = Vector3.zero
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
@@ -591,15 +591,18 @@ task.spawn(function()
                     local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                     if activeTool then pcall(function() activeTool:Activate() end) end
                     
-                    -- FASE 3: RETROCEDER RÁPIDO (antes de que el zombie reaccione)
+                    -- FASE 3: CORRER hacia atrás (mismo MoveTo nativo)
                     local escapeDir = (hrp.Position - bestTarget.Position).Unit
-                    local escapePos = hrp.Position + Vector3.new(escapeDir.X * 14, 0, escapeDir.Z * 14)
-                    local retreatTween = TweenService:Create(hrp, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        CFrame = CFrame.new(escapePos)
-                    })
-                    retreatTween:Play()
-                    retreatTween.Completed:Wait()
-                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    local escapePos = hrp.Position + Vector3.new(escapeDir.X * 12, 0, escapeDir.Z * 12)
+                    hum:MoveTo(escapePos)
+                    
+                    local retTimer = 0
+                    repeat
+                        task.wait(0.05)
+                        retTimer += 0.05
+                    until (hrp.Position - escapePos).Magnitude < 3 or retTimer > 1.0
+                    
+                    hum.WalkSpeed = oldSpeed -- Restaurar velocidad original
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
