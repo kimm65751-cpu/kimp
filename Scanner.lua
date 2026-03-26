@@ -553,55 +553,47 @@ autoEspia = false
 EspiaBtn.MouseButton1Click:Connect(function()
     autoEspia = not autoEspia
     if autoEspia then
-        EspiaBtn.Text = "MODO ESPÍA: ON"
+        EspiaBtn.Text = "EXTRACTOR GUI: ON"
         EspiaBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 200)
-        AddLog("SISTEMA", "🔍 MODO ESPÍA RADIAL INICIADO. Hackeando el entorno cercano...", "")
+        AddLog("SISTEMA", "🔍 Extractor de Interfaz activado. Buscando botones vulnerables...", "")
         
         task.spawn(function()
-            -- 1. SAQUEO A LA BÓVEDA (ReplicatedStorage)
-            local function EscanearRemotos()
-                local intel = ""
-                local count = 0
-                for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                    if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                        intel = intel .. v.Name .. " | "
-                        count = count + 1
-                    end
-                end
-                if count > 0 then AddLog("ESPIA", "👽 Bóveda de Red ("..count.." Remotos):", intel) end
-            end
-            pcall(EscanearRemotos)
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if not playerGui then return end
             
-            -- 2. ESCANEO RADIAL DEL NPC (Sin clics, basado en distancia física)
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local HRP = char.HumanoidRootPart
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") and obj ~= char and obj:FindFirstChild("Humanoid") then
-                        local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-                        if root and (root.Position - HRP.Position).Magnitude <= 20 then -- 20 studs de radio
-                            AddLog("ESPIA", "🧍 NPC Cercano Detectado: " .. obj.Name, obj:GetFullName())
-                            
-                            local intelNPC = ""
-                            for _, v in pairs(obj:GetDescendants()) do
-                                if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("ModuleScript") or v:IsA("StringValue") or v:IsA("NumberValue") then
-                                    intelNPC = intelNPC .. "["..math.floor(v.AbsoluteSize and 0 or 1).."]"..v.Name .. " | "
-                                end
-                            end
-                            if intelNPC ~= "" then AddLog("ESPIA", "📂 Archivos Ocultos en " .. obj.Name .. ":", intelNPC) end
-                            
-                            local attrNPC = ""
-                            for k, val in pairs(obj:GetAttributes()) do attrNPC = attrNPC .. k .. "=" .. tostring(val) .. " " end
-                            if attrNPC ~= "" then AddLog("ESPIA", "🏷️ Atributos en " .. obj.Name .. ":", attrNPC) end
-                        end
+            local foundCount = 0
+            for _, v in pairs(playerGui:GetDescendants()) do
+                if v:IsA("TextButton") or v:IsA("ImageButton") or v:IsA("Frame") then
+                    local nameLow = string.lower(v.Name)
+                    local textLow = v:IsA("TextButton") and string.lower(v.Text) or ""
+                    
+                    if string.find(nameLow, "equip") or string.find(textLow, "equip") or 
+                       string.find(nameLow, "deal") or string.find(textLow, "deal") or 
+                       string.find(nameLow, "sell") or string.find(textLow, "sell") or
+                       string.find(nameLow, "marbles") then
+                        
+                        foundCount = foundCount + 1
+                        local pText = v:IsA("TextButton") and v.Text or "["..v.ClassName.."]"
+                        AddLog("ESPIA", "🎯 GUI Hallada: " .. v.Name .. " | Text: " .. pText, v:GetFullName())
                     end
                 end
             end
+            
+            if foundCount == 0 then
+                AddLog("ESPIA", "⚠️ No se hallaron botones clásicos. El juego usa renderizado totalitario.", "")
+            else
+                AddLog("SISTEMA", "✅ Extracción completada ("..foundCount.." elementos).", "")
+            end
+            
+            -- Apagado automático para usarlo como Radar de Ping
+            task.wait(1)
+            EspiaBtn.Text = "EXTRACTOR GUI: OFF"
+            EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+            autoEspia = false
         end)
     else
-        EspiaBtn.Text = "MODO ESPÍA: OFF"
+        EspiaBtn.Text = "EXTRACTOR GUI: OFF"
         EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-        AddLog("SISTEMA", "Modo Espía Apagado.", "")
     end
 end)
 
