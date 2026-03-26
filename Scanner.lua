@@ -559,63 +559,47 @@ EspiaBtn.MouseButton1Click:Connect(function()
         
         task.spawn(function()
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if not playerGui then return end
             
-            -- 1. Extraer los Secret GUIDs (IDs Seriales de tus herramientas)
-            local guids = {}
-            local pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
-            if playerGui then
-                for _, v in pairs(playerGui:GetDescendants()) do
-                    if string.match(v.Name, pattern) then
-                        guids[v.Name] = true
+            -- Localizar Botón de Deal (Vender) y Botón de Equipar
+            local btnDeal, btnEquip
+            
+            for _, v in pairs(playerGui:GetDescendants()) do
+                if v:IsA("TextButton") then
+                    local text = string.lower(v.Text)
+                    local name = string.lower(v.Name)
+                    
+                    if string.find(text, "deal") or string.find(name, "deal") then
+                        btnDeal = v
+                    elseif (string.find(text, "equip") or string.find(name, "equip")) and not string.find(text, "unequip") then
+                        btnEquip = v
                     end
                 end
             end
             
-            local foundItems = 0
-            local targetGuids = {}
-            for g, _ in pairs(guids) do 
-                table.insert(targetGuids, g)
-                foundItems = foundItems + 1
-            end
-            
-            if foundItems == 0 then
-                AddLog("SISTEMA", "❌ ERROR: No se encontraron GUIDs. Abre el menú 'Equipments Bag' primero.", "")
-            else
-                AddLog("ESPIA", "✅ Armas Encontradas para Dupear/Vender: " .. foundItems, "")
+            if btnDeal and btnEquip and getconnections then
+                AddLog("SISTEMA", "🔥 Inyectando Botones Maestros. Mantén el menú de venta abierto.", "")
                 
-                -- 2. Localizar Remotos Cómplices en la Bóveda
-                local rep = game:GetService("ReplicatedStorage")
-                local sellRemote = rep:FindFirstChild("Sell", true) or rep:FindFirstChild("SellMisc", true)
-                local equipRemote = rep:FindFirstChild("EquipItem", true)
+                -- Ejecutar conexiones virtuales obligatorias
+                local dealConns = getconnections(btnDeal.MouseButton1Click)
+                local equipConns = getconnections(btnEquip.MouseButton1Click)
                 
-                if sellRemote and equipRemote then
-                    AddLog("SISTEMA", "🔥 Bombardeando Servidor (Glitch Attempt) en 3 segundos...", "")
-                    task.wait(3)
-                    
-                    for _, guid in pairs(targetGuids) do
-                        AddLog("ESPIA", "Intentando Hack contra: ", guid)
-                        
+                if #dealConns > 0 and #equipConns > 0 then
+                    -- Fuego de Glitch Cruzado
+                    for i = 1, 10 do
                         task.spawn(function()
-                            -- ATAQUE 1: Spoofing (Cambiar Precio y Vender sin GUI)
-                            pcall(function() sellRemote:InvokeServer(guid, 999999) end)
-                            pcall(function() sellRemote:FireServer(guid, 999999) end)
-                            
-                            -- ATAQUE 2: Race Condition (Vender y Equipar en el mismo CPU Tick)
-                            for i = 1, 15 do -- Fuego Rápido
-                                pcall(function() sellRemote:InvokeServer(guid) end)
-                                pcall(function() equipRemote:InvokeServer(guid) end)
-                                pcall(function() sellRemote:FireServer(guid) end)
-                                pcall(function() equipRemote:FireServer(guid) end)
-                            end
+                            for _, conn in pairs(dealConns) do pcall(function() conn.Function() end) end
+                            for _, conn in pairs(equipConns) do pcall(function() conn.Function() end) end
                         end)
                     end
-                    AddLog("SISTEMA", "✅ Paquete de Hack Enviado.", "")
+                    AddLog("SISTEMA", "✅ Glitch Orquestado. Revisa tu saldo.", "")
                 else
-                    AddLog("SISTEMA", "❌ ERROR: El Servidor cerró los remotos 'Sell' y 'EquipItem' dinámicamente.", "")
+                    AddLog("SISTEMA", "❌ El ejecutor no soporta getconnections() virtual.", "")
                 end
+            else
+                AddLog("SISTEMA", "❌ ERROR: Abre el Diálogo de 'Deal' Y la maleta para ver 'Equip' a la vez.", "")
             end
             
-            -- Apagar tras el pulso
             task.wait(1)
             EspiaBtn.Text = "HACK INVENTARIO: OFF"
             EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
