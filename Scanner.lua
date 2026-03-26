@@ -211,8 +211,13 @@ task.spawn(function()
     pcall(function()
         local originalFire
         originalFire = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+            local args = {...}
+            if tostring(self.Name) == "HitboxClassRemote" and not _G.SniperArgs then
+                _G.SniperArgs = args
+                task.spawn(function() AddLog("COMBATE", "✅ NEURAL SNIPER CALIBRADO: Señales guardadas.", "") end)
+            end
+            
             if TrackerRunning then
-                local args = {...}
                 task.spawn(function()
                     local name = tostring(self.Name)
                     local lowN = string.lower(name)
