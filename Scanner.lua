@@ -520,7 +520,12 @@ task.spawn(function()
             local pService = game:GetService("Players")
             
             -- SCAN DE MAPA: Buscar Rocas y Zombies por separado
-            for _, obj in pairs(workspace:GetDescendants()) do
+            -- Mobs: primero buscamos en workspace.Living (confirmado por Examinar)
+            local livingFolder = workspace:FindFirstChild("Living")
+            local mobScanTarget = livingFolder and livingFolder:GetDescendants() or workspace:GetDescendants()
+            local oreScanTarget = workspace:GetDescendants()
+            
+            for _, obj in pairs(oreScanTarget) do
                 local nLC = string.lower(obj.Name)
                 
                 -- Si es una Piedra Crítica (Y el Modo Piedras está activo)
@@ -538,16 +543,23 @@ task.spawn(function()
                     end
                 end
                 
-                -- Si es un Mob (Siempre se escanean si hay Ores encendido para Autodefensa, o si Mobs está encendido)
-                if (autoFarmMobs or autoFarmOres) and obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                    if not pService:GetPlayerFromCharacter(obj) and (string.find(nLC, "zomb") or string.find(nLC, "enem") or string.find(nLC, "delver")) then
-                        if obj.Humanoid.Health > 0 then
-                            local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                            if posNode then
-                                local dist = (hrp.Position - posNode.Position).Magnitude
-                                if dist < bestMobDist then
-                                    bestMobDist = dist
-                                    bestMob = posNode
+                -- Si es un Mob (buscar en Living folder o workspace)
+                if (autoFarmMobs or autoFarmOres) then
+                    for _, obj2 in pairs(mobScanTarget) do
+                        if obj2:IsA("Model") and obj2:FindFirstChild("Humanoid") then
+                            if not pService:GetPlayerFromCharacter(obj2) then
+                                local nLC2 = string.lower(obj2.Name)
+                                if string.find(nLC2, "zomb") or string.find(nLC2, "enem") or string.find(nLC2, "delver") or obj2:GetAttribute("IsNpc") then
+                                    if obj2.Humanoid.Health > 0 then
+                                        local posNode = obj2:FindFirstChild("HumanoidRootPart") or obj2.PrimaryPart
+                                        if posNode then
+                                            local dist = (hrp.Position - posNode.Position).Magnitude
+                                            if dist < bestMobDist then
+                                                bestMobDist = dist
+                                                bestMob = posNode
+                                            end
+                                        end
+                                    end
                                 end
                             end
                         end
@@ -600,12 +612,15 @@ task.spawn(function()
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
                     local cy = camera.ViewportSize.Y / 2
-                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                    task.wait()
-                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                    local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
-                    if activeTool then pcall(function() activeTool:Activate() end) end
-                    task.wait()
+                    -- Ráfaga de 5 clicks: zombie 20hp muere en ~3 ciclos (0.3s)
+                    for _ = 1, 5 do
+                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                        task.wait()
+                        VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                        local activeTool2 = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                        if activeTool2 then pcall(function() activeTool2:Activate() end) end
+                    end
+                    task.wait(0.05)
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
