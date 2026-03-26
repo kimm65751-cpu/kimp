@@ -764,9 +764,82 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -- ==========================================
--- 8. AUTOMINE / AUTOKILL PROTOTIPO
+-- 8. AUTOFARM PANEL (dentro del LivePanel)
 -- ==========================================
--- Minería: usa el remote encontrado por el Lab
--- Para ejecutar en consola de Delta:
---   local rf = game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
---   while task.wait(0.15) do pcall(function() rf:InvokeServer("Pickaxe") end) end
+local ToolRF = game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
+
+local AutoMineActivo = false
+local AutoKillActivo = false
+
+local AutoMineBtn = Instance.new("TextButton")
+AutoMineBtn.Size = UDim2.new(1, -8, 0, 32)
+AutoMineBtn.Position = UDim2.new(0, 4, 1, -105)
+AutoMineBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+AutoMineBtn.Text = "⛏️ AUTOMINE: OFF"
+AutoMineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoMineBtn.Font = Enum.Font.Code
+AutoMineBtn.TextSize = 13
+AutoMineBtn.Parent = LivePanel
+
+local AutoKillBtn = Instance.new("TextButton")
+AutoKillBtn.Size = UDim2.new(1, -8, 0, 32)
+AutoKillBtn.Position = UDim2.new(0, 4, 1, -68)
+AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+AutoKillBtn.Text = "⚔️ AUTOKILL: OFF"
+AutoKillBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoKillBtn.Font = Enum.Font.Code
+AutoKillBtn.TextSize = 13
+AutoKillBtn.Parent = LivePanel
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -8, 0, 28)
+StatusLabel.Position = UDim2.new(0, 4, 1, -34)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+StatusLabel.Text = "Estado: Inactivo"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.Parent = LivePanel
+
+AutoMineBtn.MouseButton1Click:Connect(function()
+    AutoMineActivo = not AutoMineActivo
+    if AutoMineActivo then
+        AutoMineBtn.Text = "⛏️ AUTOMINE: ON ✅"
+        AutoMineBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+        task.spawn(function()
+            while AutoMineActivo do
+                pcall(function()
+                    ToolRF:InvokeServer("Pickaxe")
+                end)
+                StatusLabel.Text = "⛏️ Minando... " .. tick()
+                task.wait(0.25)
+            end
+            StatusLabel.Text = "Estado: Inactivo"
+        end)
+    else
+        AutoMineBtn.Text = "⛏️ AUTOMINE: OFF"
+        AutoMineBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+    end
+end)
+
+AutoKillBtn.MouseButton1Click:Connect(function()
+    AutoKillActivo = not AutoKillActivo
+    if AutoKillActivo then
+        AutoKillBtn.Text = "⚔️ AUTOKILL: ON ✅"
+        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        task.spawn(function()
+            while AutoKillActivo do
+                pcall(function()
+                    ToolRF:InvokeServer("Weapon")
+                end)
+                StatusLabel.Text = "⚔️ Atacando... " .. tick()
+                task.wait(0.2)
+            end
+            StatusLabel.Text = "Estado: Inactivo"
+        end)
+    else
+        AutoKillBtn.Text = "⚔️ AUTOKILL: OFF"
+        AutoKillBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+    end
+end)
