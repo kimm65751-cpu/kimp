@@ -221,13 +221,13 @@ local function GetHealthInfo(obj)
     local loopCount = 0
     -- Escanear hacia los ancestros (hasta 4 niveles arriba)
     while target and target ~= workspace and loopCount < 4 do
-        -- 1. Buscar si tiene un Humanoid clásico (NPCs, Jugadores)
+        -- 1. Buscar si tiene un Humanoid clásico
         local hum = target:FindFirstChildOfClass("Humanoid")
         if hum then
             return "❤️ Vida: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth), hum, target.Name
         end
         
-        -- 2. Buscar si usa ValueObjects para la vida (Muy usado en Piedras/Árboles de farmeo)
+        -- 2. Buscar si usa ValueObjects
         for _, child in pairs(target:GetChildren()) do
             if child:IsA("NumberValue") or child:IsA("IntValue") then
                 local name = string.lower(child.Name)
@@ -237,16 +237,40 @@ local function GetHealthInfo(obj)
             end
         end
         
-        -- 3. Buscar si usa Atributos nativos de Roblox para la vida
+        -- 3. Buscar Atributos nativos
         local attr = target:GetAttribute("HP") or target:GetAttribute("Health")
         if attr then
             return "❤️ Atributo Vida: " .. math.floor(attr), target, target.Name
         end
         
+        -- 4. 🧠 LECTOR DE GUI VISUAL (Cuando la vida está encondida en un TextLabel)
+        for _, child in pairs(target:GetDescendants()) do
+            if child:IsA("TextLabel") and (string.find(string.lower(child.Text), "hp") or string.match(child.Text, "%d+/%d+")) then
+                return "❤️ UI Vida: " .. child.Text, child, target.Name
+            end
+        end
+        
         target = target.Parent
         loopCount = loopCount + 1
     end
-    return "❓ Objeto destruible sin vida visible", nil, obj.Name
+    
+    -- 5. LECTOR DE PLAYERGUI ADORNEES (Barras de Vida Flotantes externas)
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui", 2)
+    if playerGui then
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if gui:IsA("BillboardGui") and gui.Adornee then
+                if obj:IsDescendantOf(gui.Adornee) or gui.Adornee:IsDescendantOf(obj) or gui.Adornee == obj then
+                    for _, lbl in pairs(gui:GetDescendants()) do
+                        if lbl:IsA("TextLabel") and (string.find(string.lower(lbl.Text), "hp") or string.match(lbl.Text, "%d+/%d+")) then
+                            return "❤️ Rastreo Visual HP: " .. lbl.Text, lbl, gui.Adornee.Name
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return "❓ Sin vida interna/visual descubierta", nil, obj.Name
 end
 
 local touchedDebounce = {}
@@ -287,21 +311,40 @@ local function SetupToolSpy(character)
                         dmgDebounce[healthObj] = true
                         AddLog("COMBATE", "Atacando a: " .. objName .. " | " .. hpString, target:GetFullName())
                         
-                        -- RASTREADOR DE DAÑO EXACTO
-                        if typeof(healthObj) == "Instance" and (healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase")) then
-                            local startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                            
+                        -- RASTREADOR DE DAÑO EXACTO (Físico y Visual)
+                        if typeof(healthObj) == "Instance" then
+                            local startHp = 0
                             local conn
-                            conn = (healthObj:IsA("Humanoid") and healthObj.HealthChanged or healthObj.Changed):Connect(function()
-                                local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                                if typeof(newHp) == "number" and newHp < startHp then
-                                    local damage = startHp - newHp
-                                    AddLog("COMBATE", "💥 Daño: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
-                                end
-                                startHp = newHp
-                            end)
                             
-                            task.delay(5, function() conn:Disconnect() end)
+                            -- Rastreo Matemático (Humanoids / Values)
+                            if healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase") then
+                                startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
+                                conn = (healthObj:IsA("Humanoid") and healthObj.HealthChanged or healthObj.Changed):Connect(function()
+                                    local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
+                                    if typeof(newHp) == "number" and newHp < startHp then
+                                        local damage = startHp - newHp
+                                        AddLog("COMBATE", "💥 Daño Real: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
+                                    end
+                                    startHp = newHp
+                                end)
+                                
+                            -- Rastreo Óptico (Lectura de GUI TextLabels)
+                            elseif healthObj:IsA("TextLabel") then
+                                -- Extraemos el primer número con decimales que encontremos ("Pebble 5.96 HP" -> 5.96)
+                                startHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
+                                conn = healthObj:GetPropertyChangedSignal("Text"):Connect(function()
+                                    local newHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
+                                    if newHp > 0 and newHp < startHp then
+                                        local damage = startHp - newHp
+                                        AddLog("COMBATE", "💥 Daño (Visual): " .. string.format("%.2f", damage) .. " a " .. objName, "Daño: " .. damage)
+                                    end
+                                    startHp = newHp
+                                end)
+                            end
+                            
+                            if conn then
+                                task.delay(5, function() conn:Disconnect() end)
+                            end
                         end
                         task.delay(1, function() dmgDebounce[healthObj] = nil end)
                     else
