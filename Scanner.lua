@@ -1,7 +1,7 @@
 -- =====================================================================
--- DELTA OMNI-TRACKER v3.5 (GUI FORENSE EN VIVO)
+-- DELTA OMNI-TRACKER v3.8 (GUI FORENSE EN VIVO)
 -- Registra Coordenadas, Economía, Herramientas, Toques, Combate y Red.
--- Con Botón Flotante, Hotkey (RightControl) y Refresh Github.
+-- Con Escáner Óptico de Interfaz (ScreenGui Reader) para Juegos RPG.
 -- =====================================================================
 
 local Players = game:GetService("Players")
@@ -49,7 +49,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = " 🕵️ OMNI-TRACKER V3.5 (RCTRL para ocultar)"
+Title.Text = " 🕵️ OMNI-TRACKER V3.8 (RCTRL para ocultar)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.Code
 Title.TextSize = 16
@@ -150,10 +150,10 @@ local function AddLog(category, message, copiableData)
     
     if copiableData then
         local CopyBtn = Instance.new("TextButton")
-        CopyBtn.Size = UDim2.new(0, 50, 0, 30)
-        CopyBtn.Position = UDim2.new(1, -55, 0, 5)
+        CopyBtn.Size = UDim2.new(0, 45, 0, 25)
+        CopyBtn.Position = UDim2.new(1, -50, 0, 7)
         CopyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        CopyBtn.Text = "Copiar"
+        CopyBtn.Text = "Copy"
         CopyBtn.TextColor3 = Color3.fromRGB(255,255,255)
         CopyBtn.Font = Enum.Font.Code
         CopyBtn.TextSize = 12
@@ -162,9 +162,9 @@ local function AddLog(category, message, copiableData)
         CopyBtn.MouseButton1Click:Connect(function()
             if setclipboard then
                 setclipboard(copiableData)
-                CopyBtn.Text = "OK!"
+                CopyBtn.Text = "OK"
                 task.wait(1)
-                CopyBtn.Text = "Copiar"
+                CopyBtn.Text = "Copy"
             end
         end)
     end
@@ -215,61 +215,27 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Función Inteligente para buscar la Vida (HP) de un objeto, NPC o Piedra
+-- Buscador de Vida (Resguardo Físico)
 local function GetHealthInfo(obj)
     local target = obj
     local loopCount = 0
-    -- Escanear hacia los ancestros (hasta 4 niveles arriba)
-    while target and target ~= workspace and loopCount < 4 do
-        -- 1. Buscar si tiene un Humanoid clásico
+    while target and target ~= workspace and loopCount < 3 do
         local hum = target:FindFirstChildOfClass("Humanoid")
-        if hum then
-            return "❤️ Vida: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth), hum, target.Name
-        end
-        
-        -- 2. Buscar si usa ValueObjects
+        if hum then return "❤️ Vida: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth), hum, target.Name end
         for _, child in pairs(target:GetChildren()) do
             if child:IsA("NumberValue") or child:IsA("IntValue") then
                 local name = string.lower(child.Name)
-                if name == "health" or name == "hp" or name == "vida" or name == "currenthp" then
+                if name == "health" or name == "hp" or name == "vida" then
                     return "❤️ " .. child.Name .. ": " .. math.floor(child.Value), child, target.Name
                 end
             end
         end
-        
-        -- 3. Buscar Atributos nativos
         local attr = target:GetAttribute("HP") or target:GetAttribute("Health")
-        if attr then
-            return "❤️ Atributo Vida: " .. math.floor(attr), target, target.Name
-        end
-        
-        -- 4. 🧠 LECTOR DE GUI VISUAL (Cuando la vida está encondida en un TextLabel)
-        for _, child in pairs(target:GetDescendants()) do
-            if child:IsA("TextLabel") and (string.find(string.lower(child.Text), "hp") or string.match(child.Text, "%d+/%d+")) then
-                return "❤️ UI Vida: " .. child.Text, child, target.Name
-            end
-        end
+        if attr then return "❤️ Atributo Vida: " .. math.floor(attr), target, target.Name end
         
         target = target.Parent
         loopCount = loopCount + 1
     end
-    
-    -- 5. LECTOR DE PLAYERGUI ADORNEES (Barras de Vida Flotantes externas)
-    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui", 2)
-    if playerGui then
-        for _, gui in pairs(playerGui:GetDescendants()) do
-            if gui:IsA("BillboardGui") and gui.Adornee then
-                if obj:IsDescendantOf(gui.Adornee) or gui.Adornee:IsDescendantOf(obj) or gui.Adornee == obj then
-                    for _, lbl in pairs(gui:GetDescendants()) do
-                        if lbl:IsA("TextLabel") and (string.find(string.lower(lbl.Text), "hp") or string.match(lbl.Text, "%d+/%d+")) then
-                            return "❤️ Rastreo Visual HP: " .. lbl.Text, lbl, gui.Adornee.Name
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
     return "❓ Sin vida interna/visual descubierta", nil, obj.Name
 end
 
@@ -281,12 +247,10 @@ local function SetupTouchSpy(character)
             if TrackerRunning and hit.Parent ~= character and not touchedDebounce[hit] then
                 touchedDebounce[hit] = true
                 local hpString, _, objName = GetHealthInfo(hit)
-                -- Quitamos el filtro de Terrain porque tu piedra aparentemente se llamaba "Terrain3"
-                if hit.Name == "Baseplate" then 
+                if hit.Name == "Baseplate" or string.find(string.lower(hit.Name), "terrain") then 
                     task.delay(2, function() touchedDebounce[hit] = nil end)
                     return 
                 end
-                
                 AddLog("FISICA", "Tocaste: " .. objName .. " ("..hit.Name..") | " .. hpString, hit:GetFullName())
                 task.delay(10, function() touchedDebounce[hit] = nil end)
             end
@@ -294,67 +258,89 @@ local function SetupTouchSpy(character)
     end
 end
 
+-- =====================================================================
+-- 3.5 LECTOR ÓPTICO DE INTERFAZ (SCREEN GUI HEALTH SPY)
+-- =====================================================================
+local function FindActiveHealthBar()
+    local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil, nil end
+    
+    -- Recorremos todos los ScreenGuis buscando la barra de vida objetivo ("Pebble 9.63 HP")
+    for _, gui in pairs(playerGui:GetDescendants()) do
+        if gui:IsA("TextLabel") and gui.Visible and gui.TextTransparency < 1 then
+            local text = gui.Text
+            if string.find(string.lower(text), "hp") and string.match(text, "[%d%.]+") then
+                return gui, text
+            end
+        end
+    end
+    return nil, nil
+end
+
 local Mouse = LocalPlayer:GetMouse()
 local dmgDebounce = {}
 
-local function SetupToolSpy(character)
-    character.ChildAdded:Connect(function(child)
-        if TrackerRunning and child:IsA("Tool") then
-            AddLog("TOOL", "Herramienta Equipada: " .. child.Name, child.Name)
+local function AttachToolHooks(tool, character)
+    -- Evitar duplicar radares en la misma herramienta
+    if not TrackerRunning or tool:GetAttribute("Tracked") then return end
+    tool:SetAttribute("Tracked", true)
+    
+    AddLog("TOOL", "Equipada: " .. tool.Name, tool.Name)
+    
+    tool.Activated:Connect(function()
+        local target = Mouse.Target
+        local targetName = target and target.Name or "Aire"
+        
+        -- Le damos al juego 0.1 segundos para que dibuje la barra de vida en tu pantalla
+        task.delay(0.1, function()
+            -- 1. Intentamos leer la vida ópticamente (De la esquina superior izquierda de tu pantalla)
+            local hpLabel, hpText = FindActiveHealthBar()
             
-            child.Activated:Connect(function()
-                local target = Mouse.Target
-                if target and not target:IsDescendantOf(character) then
-                    local hpString, healthObj, objName = GetHealthInfo(target)
-                    
-                    if healthObj and not dmgDebounce[healthObj] then
-                        dmgDebounce[healthObj] = true
-                        AddLog("COMBATE", "Atacando a: " .. objName .. " | " .. hpString, target:GetFullName())
-                        
-                        -- RASTREADOR DE DAÑO EXACTO (Físico y Visual)
-                        if typeof(healthObj) == "Instance" then
-                            local startHp = 0
-                            local conn
-                            
-                            -- Rastreo Matemático (Humanoids / Values)
-                            if healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase") then
-                                startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                                conn = (healthObj:IsA("Humanoid") and healthObj.HealthChanged or healthObj.Changed):Connect(function()
-                                    local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
-                                    if typeof(newHp) == "number" and newHp < startHp then
-                                        local damage = startHp - newHp
-                                        AddLog("COMBATE", "💥 Daño Real: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
-                                    end
-                                    startHp = newHp
-                                end)
-                                
-                            -- Rastreo Óptico (Lectura de GUI TextLabels)
-                            elseif healthObj:IsA("TextLabel") then
-                                -- Extraemos el primer número con decimales que encontremos ("Pebble 5.96 HP" -> 5.96)
-                                startHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
-                                conn = healthObj:GetPropertyChangedSignal("Text"):Connect(function()
-                                    local newHp = tonumber(string.match(healthObj.Text, "[%d%.]+")) or 0
-                                    if newHp > 0 and newHp < startHp then
-                                        local damage = startHp - newHp
-                                        AddLog("COMBATE", "💥 Daño (Visual): " .. string.format("%.2f", damage) .. " a " .. objName, "Daño: " .. damage)
-                                    end
-                                    startHp = newHp
-                                end)
-                            end
-                            
-                            if conn then
-                                task.delay(5, function() conn:Disconnect() end)
-                            end
-                        end
-                        task.delay(1, function() dmgDebounce[healthObj] = nil end)
-                    else
-                        AddLog("TOOL", "Click: Usaste " .. child.Name .. " apuntando a " .. target.Name, child.Name)
+            if hpLabel and not dmgDebounce[hpLabel] then
+                dmgDebounce[hpLabel] = true
+                
+                -- Extraemos el Número y el Nombre "Pebble 9.63 HP" -> Num: 9.63 | Nom: Pebble
+                local rawNumber = tonumber(string.match(hpText, "[%d%.]+")) or 0
+                local cleanName = string.match(hpText, "([%a%s]+)") or targetName
+                cleanName = cleanName:gsub("HP", ""):gsub("hp", ""):gsub("^%s*(.-)%s*$", "%1")
+                
+                AddLog("COMBATE", "Atacando a: " .. cleanName .. " | ❤️ " .. rawNumber .. " HP", "Obj: " .. cleanName)
+                
+                local startHp = rawNumber
+                local conn
+                conn = hpLabel:GetPropertyChangedSignal("Text"):Connect(function()
+                    local newHp = tonumber(string.match(hpLabel.Text, "[%d%.]+")) or 0
+                    if newHp > 0 and newHp < startHp then
+                        local damage = startHp - newHp
+                        AddLog("COMBATE", "💥 Daño Visual: " .. string.format("%.2f", damage) .. " a " .. cleanName, "Daño: " .. damage)
                     end
-                else
-                    AddLog("TOOL", "Click: Usaste " .. child.Name .. " al aire.", child.Name)
+                    startHp = newHp
+                end)
+                
+                task.delay(5, function() conn:Disconnect() end)
+                task.delay(1, function() dmgDebounce[hpLabel] = nil end)
+                
+            else
+                -- 2. Si no hay barra visual, usamos el método tradicional al Target Físico
+                if target then
+                    local hpString, healthObj, objName = GetHealthInfo(target)
+                    -- Si no tiene vida, solo decimos a qué le dio clic
+                    if objName == target.Name then objName = "Pieza: " .. target.Name end
+                    AddLog("TOOL", "Click con " .. tool.Name .. " sobre " .. objName, target:GetFullName())
                 end
-            end)
-        end
+            end
+        end)
+    end)
+end
+
+local function SetupToolSpy(character)
+    -- Adjuntar a herramientas YA equipadas (Soluciona el bug de no registrar)
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Tool") then AttachToolHooks(child, character) end
+    end
+    -- Adjuntar a herramientas futuras
+    character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then AttachToolHooks(child, character) end
     end)
 end
 
@@ -390,4 +376,4 @@ RefreshBtn.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"))()
 end)
 
-AddLog("SISTEMA", "Omni-Tracker V3.5 cargado con éxito. Escuchando en vivo.", "¡OmniTracker Listo!")
+AddLog("SISTEMA", "Omni-Tracker V3.8 cargado con éxito. Escuchando en vivo.", "¡OmniTracker Listo!")
