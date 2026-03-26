@@ -478,7 +478,11 @@ local function ToggleNoclip(state)
                 local char = LocalPlayer.Character
                 if char then
                     for _, v in pairs(char:GetDescendants()) do
-                        if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
+                        if v:IsA("BasePart") then
+                            if v.CanCollide then v.CanCollide = false end
+                            -- CanQuery=false: invisible a raycasts del servidor (sistema de daño)
+                            pcall(function() if v.CanQuery then v.CanQuery = false end end)
+                        end
                     end
                 end
             end)
@@ -571,24 +575,19 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ❄️ CONGELAR MOB: intentar antes de atacar
-                    -- Si el cliente tiene network ownership del zombie (cuando estás cerca),
-                    -- esto lo inmoviliza completamente. El server puede rechazarlo (pcall lo captura)
+                    -- Destruir RightHandle (arma del zombie) antes de atacar
                     local mobModel = bestTarget.Parent
                     if mobModel then
                         pcall(function()
+                            -- Intentar destruir el arma/hitbox del zombie
+                            local rh = mobModel:FindFirstChild("RightHandle")
+                            if rh then rh:Destroy() end
+                            -- También intentar freezearlo
                             local mobHum = mobModel:FindFirstChildOfClass("Humanoid")
                             if mobHum then
                                 mobHum.WalkSpeed = 0
                                 mobHum.JumpPower = 0
                                 mobHum.PlatformStand = true
-                            end
-                            for _, part in pairs(mobModel:GetDescendants()) do
-                                if part:IsA("BasePart") then
-                                    part.Anchored = true
-                                    part.AssemblyLinearVelocity = Vector3.zero
-                                    part.AssemblyAngularVelocity = Vector3.zero
-                                end
                             end
                         end)
                     end
@@ -600,12 +599,10 @@ task.spawn(function()
                     end
                     hrp.AssemblyLinearVelocity = Vector3.zero
                     
-                    -- Equipar Gladius Dagger / Weapon (confirmado: está en el Character)
+                    -- Equipar Gladius Dagger / Weapon
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    -- Buscar "Weapon" directamente en el Character primero
                     local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
                     if not targetTool then
-                        -- Fallback: cualquier tool que no sea pickaxe
                         for _, t in pairs(LocalPlayer.Character:GetChildren()) do
                             if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
                                 targetTool = t; break
@@ -619,9 +616,21 @@ task.spawn(function()
                             end
                         end
                     end
-                    -- Equipar si no está en el personaje
                     if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
+                    end
+                    
+                    -- 💥 BOOST ItemJSON: intentar aumentar Quality/Upgrade del arma
+                    if targetTool then
+                        pcall(function()
+                            local json = targetTool:GetAttribute("ItemJSON")
+                            if json then
+                                -- Reemplazar Quality y Upgrade con valores máximos
+                                json = string.gsub(json, '"Quality":[%d%.]+', '"Quality":9999')
+                                json = string.gsub(json, '"Upgrade":%d+', '"Upgrade":99')
+                                targetTool:SetAttribute("ItemJSON", json)
+                            end
+                        end)
                     end
                     
                     local camera = workspace.CurrentCamera
@@ -780,6 +789,31 @@ ExaminarBtn.MouseButton1Click:Connect(function()
             end
         end
         AddLog("EXAMEN", "📡 Scripts Proximity", proxStr ~= "" and proxStr or "Sin scripts visibles")
+    end
+    -- ===================== SCAN ReplicatedStorage (Remotes de Combate) =====================
+    local rs = game:GetService("ReplicatedStorage")
+    local rsRemotes = ""
+    for _, v in pairs(rs:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local n = string.lower(v.Name)
+            if string.find(n, "attack") or string.find(n, "damage") or string.find(n, "item") or
+               string.find(n, "use") or string.find(n, "weapon") or string.find(n, "hit") or
+               string.find(n, "mob") or string.find(n, "combat") or string.find(n, "kill") then
+                rsRemotes = rsRemotes .. "[" .. v.ClassName .. "] " .. v.Name .. " @ " .. v:GetFullName() .. " | "
+            end
+        end
+    end
+    if rsRemotes ~= "" then
+        AddLog("EXAMEN", "🎯 Remotes COMBATE en RS", rsRemotes)
+    else
+        -- Listar TODOS los remotes si no hay específicos de combate
+        local allRemotes = ""
+        for _, v in pairs(rs:GetDescendants()) do
+            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                allRemotes = allRemotes .. v.Name .. " | "
+            end
+        end
+        AddLog("EXAMEN", "📡 TODOS los Remotes RS", allRemotes ~= "" and allRemotes or "Sin remotes en RS")
     end
     AddLog("EXAMEN", "─────────────────────────────", "")
     
