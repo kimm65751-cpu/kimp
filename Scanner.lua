@@ -932,12 +932,52 @@ SafeAuraBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while SafeAuraActivo do
                 pcall(function()
-                    local targetStr = "Ninguno"
-                    -- Disparar Arma Constantemente Hacia Abajo
-                    pcall(function() ToolRF:InvokeServer("Weapon") end)
-                    pcall(function() ToolRF:InvokeServer("Pickaxe") end)
+                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if not myRoot then return end
+
+                    local targetPart = nil
+                    local method = "Weapon"
+                    local tName = ""
                     
-                    StatusLabel.Text = "⚔️ Aura Destructiva Disparando (Muévete por el cristal para matar)"
+                    local _, dist = findNearest(function(obj)
+                        if obj:IsA("Model") and obj ~= LocalPlayer.Character then
+                            -- Chequear si es NPC (Zombi)
+                            local hum = obj:FindFirstChildWhichIsA("Humanoid")
+                            local isNpc = obj:GetAttribute("IsNpc")
+                            if hum and hum.Health > 0 and isNpc == true then
+                                targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+                                method = "Weapon"
+                                tName = obj.Name
+                                return true
+                            end
+                            -- Chequear si es Roca/Mena
+                            local n = string.lower(obj.Name)
+                            local hasHealth = obj:GetAttribute("Health") ~= nil
+                            if hasHealth and (string.find(n,"pebble") or string.find(n,"rock") or string.find(n,"ore") or string.find(n,"stone") or string.find(n,"crystal")) then
+                                targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                                method = "Pickaxe"
+                                tName = obj.Name
+                                return true
+                            end
+                        end
+                        return false
+                    end)
+
+                    if targetPart and dist and dist < 25 then
+                        local origin = myRoot.CFrame
+                        -- Magia negra: Curvamos la espina dorsal apuntando abajo directamente al zombi/roca
+                        myRoot.CFrame = CFrame.lookAt(myRoot.Position, targetPart.Position)
+                        
+                        -- El servidor lee tu CFrame curvo y dispara verticalmente hacia abajo
+                        ToolRF:InvokeServer(method)
+                        
+                        -- Restauramos la vista al instante para que no caigas de cara o el personaje bugee
+                        myRoot.CFrame = origin
+                        
+                        StatusLabel.Text = "🛸 Bombardeando: " .. tName
+                    else
+                        StatusLabel.Text = "🛸 Esperando blanco bajo el cristal..."
+                    end
                 end)
                 task.wait(0.2)
             end
