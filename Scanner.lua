@@ -523,7 +523,49 @@ EspiaBtn.MouseButton1Click:Connect(function()
     if autoEspia then
         EspiaBtn.Text = "MODO ESPÍA: ON"
         EspiaBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 200)
-        AddLog("SISTEMA", "🔍 MODO ESPÍA ON. CLIC DERECHO a un NPC o a la Opción de Diálogo.", "")
+        AddLog("SISTEMA", "🔍 MODO ESPÍA RADIAL INICIADO. Hackeando el entorno cercano...", "")
+        
+        task.spawn(function()
+            -- 1. SAQUEO A LA BÓVEDA (ReplicatedStorage)
+            local function EscanearRemotos()
+                local intel = ""
+                local count = 0
+                for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                    if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                        intel = intel .. v.Name .. " | "
+                        count = count + 1
+                    end
+                end
+                if count > 0 then AddLog("ESPIA", "👽 Bóveda de Red ("..count.." Remotos):", intel) end
+            end
+            pcall(EscanearRemotos)
+            
+            -- 2. ESCANEO RADIAL DEL NPC (Sin clics, basado en distancia física)
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local HRP = char.HumanoidRootPart
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") and obj ~= char and obj:FindFirstChild("Humanoid") then
+                        local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+                        if root and (root.Position - HRP.Position).Magnitude <= 20 then -- 20 studs de radio
+                            AddLog("ESPIA", "🧍 NPC Cercano Detectado: " .. obj.Name, obj:GetFullName())
+                            
+                            local intelNPC = ""
+                            for _, v in pairs(obj:GetDescendants()) do
+                                if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("ModuleScript") or v:IsA("StringValue") or v:IsA("NumberValue") then
+                                    intelNPC = intelNPC .. "["..math.floor(v.AbsoluteSize and 0 or 1).."]"..v.Name .. " | "
+                                end
+                            end
+                            if intelNPC ~= "" then AddLog("ESPIA", "📂 Archivos Ocultos en " .. obj.Name .. ":", intelNPC) end
+                            
+                            local attrNPC = ""
+                            for k, val in pairs(obj:GetAttributes()) do attrNPC = attrNPC .. k .. "=" .. tostring(val) .. " " end
+                            if attrNPC ~= "" then AddLog("ESPIA", "🏷️ Atributos en " .. obj.Name .. ":", attrNPC) end
+                        end
+                    end
+                end
+            end
+        end)
     else
         EspiaBtn.Text = "MODO ESPÍA: OFF"
         EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
