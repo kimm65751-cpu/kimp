@@ -549,50 +549,80 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-autoEspia = false
+autoHack = false
 EspiaBtn.MouseButton1Click:Connect(function()
-    autoEspia = not autoEspia
-    if autoEspia then
-        EspiaBtn.Text = "EXTRACTOR GUI: ON"
-        EspiaBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 200)
-        AddLog("SISTEMA", "🔍 Extractor de Interfaz activado. Buscando botones vulnerables...", "")
+    autoHack = not autoHack
+    if autoHack then
+        EspiaBtn.Text = "HACK INVENTARIO: ON"
+        EspiaBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+        AddLog("SISTEMA", "☠️ Iniciando Ataque Race-Condition (Dupe/Spoof)...", "")
         
         task.spawn(function()
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if not playerGui then return end
             
-            local foundCount = 0
-            for _, v in pairs(playerGui:GetDescendants()) do
-                if v:IsA("TextButton") or v:IsA("ImageButton") or v:IsA("Frame") then
-                    local nameLow = string.lower(v.Name)
-                    local textLow = v:IsA("TextButton") and string.lower(v.Text) or ""
-                    
-                    if string.find(nameLow, "equip") or string.find(textLow, "equip") or 
-                       string.find(nameLow, "deal") or string.find(textLow, "deal") or 
-                       string.find(nameLow, "sell") or string.find(textLow, "sell") or
-                       string.find(nameLow, "marbles") then
-                        
-                        foundCount = foundCount + 1
-                        local pText = v:IsA("TextButton") and v.Text or "["..v.ClassName.."]"
-                        AddLog("ESPIA", "🎯 GUI Hallada: " .. v.Name .. " | Text: " .. pText, v:GetFullName())
+            -- 1. Extraer los Secret GUIDs (IDs Seriales de tus herramientas)
+            local guids = {}
+            local pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
+            if playerGui then
+                for _, v in pairs(playerGui:GetDescendants()) do
+                    if string.match(v.Name, pattern) then
+                        guids[v.Name] = true
                     end
                 end
             end
             
-            if foundCount == 0 then
-                AddLog("ESPIA", "⚠️ No se hallaron botones clásicos. El juego usa renderizado totalitario.", "")
-            else
-                AddLog("SISTEMA", "✅ Extracción completada ("..foundCount.." elementos).", "")
+            local foundItems = 0
+            local targetGuids = {}
+            for g, _ in pairs(guids) do 
+                table.insert(targetGuids, g)
+                foundItems = foundItems + 1
             end
             
-            -- Apagado automático para usarlo como Radar de Ping
+            if foundItems == 0 then
+                AddLog("SISTEMA", "❌ ERROR: No se encontraron GUIDs. Abre el menú 'Equipments Bag' primero.", "")
+            else
+                AddLog("ESPIA", "✅ Armas Encontradas para Dupear/Vender: " .. foundItems, "")
+                
+                -- 2. Localizar Remotos Cómplices en la Bóveda
+                local rep = game:GetService("ReplicatedStorage")
+                local sellRemote = rep:FindFirstChild("Sell", true) or rep:FindFirstChild("SellMisc", true)
+                local equipRemote = rep:FindFirstChild("EquipItem", true)
+                
+                if sellRemote and equipRemote then
+                    AddLog("SISTEMA", "🔥 Bombardeando Servidor (Glitch Attempt) en 3 segundos...", "")
+                    task.wait(3)
+                    
+                    for _, guid in pairs(targetGuids) do
+                        AddLog("ESPIA", "Intentando Hack contra: ", guid)
+                        
+                        task.spawn(function()
+                            -- ATAQUE 1: Spoofing (Cambiar Precio y Vender sin GUI)
+                            pcall(function() sellRemote:InvokeServer(guid, 999999) end)
+                            pcall(function() sellRemote:FireServer(guid, 999999) end)
+                            
+                            -- ATAQUE 2: Race Condition (Vender y Equipar en el mismo CPU Tick)
+                            for i = 1, 15 do -- Fuego Rápido
+                                pcall(function() sellRemote:InvokeServer(guid) end)
+                                pcall(function() equipRemote:InvokeServer(guid) end)
+                                pcall(function() sellRemote:FireServer(guid) end)
+                                pcall(function() equipRemote:FireServer(guid) end)
+                            end
+                        end)
+                    end
+                    AddLog("SISTEMA", "✅ Paquete de Hack Enviado.", "")
+                else
+                    AddLog("SISTEMA", "❌ ERROR: El Servidor cerró los remotos 'Sell' y 'EquipItem' dinámicamente.", "")
+                end
+            end
+            
+            -- Apagar tras el pulso
             task.wait(1)
-            EspiaBtn.Text = "EXTRACTOR GUI: OFF"
+            EspiaBtn.Text = "HACK INVENTARIO: OFF"
             EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-            autoEspia = false
+            autoHack = false
         end)
     else
-        EspiaBtn.Text = "EXTRACTOR GUI: OFF"
+        EspiaBtn.Text = "HACK INVENTARIO: OFF"
         EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
     end
 end)
