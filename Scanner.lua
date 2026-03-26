@@ -543,11 +543,13 @@ task.spawn(function()
             
             if bestTarget then
                 ToggleNoclip(true)
-                -- Ajuste Táctico de Altura
-                local offset = targetType == "Mob" and Vector3.new(0, 5.5, 0) or Vector3.new(0, 3.5, 0)
+                -- ☠️ MÉTODO MOLE: Posicionarse BAJO TIERRA del objetivo
+                -- Los mobs no tienen excavadora, así que no te golpean
+                -- Tu arma sigue activándose y dañando al objetivo desde abajo
+                local offset = targetType == "Mob" and Vector3.new(0, -6, 0) or Vector3.new(0, 3.5, 0)
                 local attackPos = bestTarget.Position + offset
                 
-                if (hrp.Position - attackPos).Magnitude > 3 then
+                if (hrp.Position - attackPos).Magnitude > 2 then
                     TweenToPosition(attackPos)
                 end
                 
