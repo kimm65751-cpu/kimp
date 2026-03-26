@@ -125,9 +125,19 @@ UpdateBtn.Font = Enum.Font.Code
 UpdateBtn.TextSize = 13
 UpdateBtn.Parent = MainFrame
 
+local LabBtn = Instance.new("TextButton")
+LabBtn.Size = UDim2.new(0.97, 0, 0, 35)
+LabBtn.Position = UDim2.new(0.01, 0, 0, 115)
+LabBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
+LabBtn.Text = "🧪 5. LABORATORIO: EXAMINAR ATAQUE/CLIC (DIAGNÓSTICO)"
+LabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LabBtn.Font = Enum.Font.Code
+LabBtn.TextSize = 13
+LabBtn.Parent = MainFrame
+
 local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -20, 1, -125)
-LogScroll.Position = UDim2.new(0, 10, 0, 115)
+LogScroll.Size = UDim2.new(1, -20, 1, -165)
+LogScroll.Position = UDim2.new(0, 10, 0, 155)
 LogScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -235,83 +245,73 @@ InterceptBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+local NetworkQueue = {}
+local LabClickActivo = false
+
+local function LogPacketToQueue(methodAlias, obj, args)
+    if #NetworkQueue > 50 then table.remove(NetworkQueue, 1) end
+    table.insert(NetworkQueue, {
+        Time = tick(),
+        Method = methodAlias,
+        Obj = obj,
+        Args = args
+    })
+    
+    if InterceptorActivo then
+        local selfName = "UnknownRemote"
+        pcall(function() selfName = obj.Name end)
+        local nLow = string.lower(selfName)
+        
+        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
+            task.spawn(function()
+                pcall(function()
+                    local fullPath = "Unknown"
+                    pcall(function() fullPath = obj:GetFullName() end)
+                    local argDump = "--- MODO "..methodAlias.." ---\nDestino: " .. fullPath .. "\nArgs:\n"
+                    for i, v in pairs(args) do
+                        local typeV = typeof(v)
+                        local extraInfo = ""
+                        if typeV == "Instance" then pcall(function() extraInfo = " | Padre: "..tostring(v.Parent) end) end
+                        if typeV == "table" then pcall(function() extraInfo = " | JSON: "..HttpService:JSONEncode(v) end) end
+                        argDump = argDump .. "["..tostring(i).."] ("..typeV..") = " .. tostring(v) .. extraInfo .. "\n"
+                    end
+                    AddLog("C->S", selfName, argDump)
+                end)
+            end)
+        end
+    end
+end
+
 -- Hook de Red: Namecall Clásico
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local methodStr = string.lower(tostring(method))
-    
-    if InterceptorActivo and (methodStr == "fireserver" or methodStr == "invokeserver") then
-        local args = {...}
-        local selfName = "UnknownRemote"
-        pcall(function() selfName = self.Name end)
-        local nLow = string.lower(selfName)
-        
-        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
-            task.spawn(function()
-                pcall(function()
-                    local fullPath = "Unknown"
-                    pcall(function() fullPath = self:GetFullName() end)
-                    local argDump = "--- MODO NAMECALL ---\nDestino: " .. fullPath .. "\nArgs:\n"
-                    for i, v in pairs(args) do
-                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
-                    end
-                    AddLog("C->S", selfName, argDump)
-                end)
-            end)
-        end
+    if methodStr == "fireserver" or methodStr == "invokeserver" then
+        LogPacketToQueue("Namecall("..methodStr..")", self, {...})
     end
     return oldNamecall(self, ...)
 end))
 
--- Hook de Red: FireServer Directo (Obligatorio para Knit / Comm Frameworks)
+-- Hook de Red: FireServer Directo
 local originalFireServer
 originalFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-    if InterceptorActivo then
-        local args = {...}
-        local selfName = "UnknownRemote"
-        pcall(function() selfName = self.Name end)
-        local nLow = string.lower(selfName)
-        
-        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
-            task.spawn(function()
-                pcall(function()
-                    local fullPath = "Unknown"
-                    pcall(function() fullPath = self:GetFullName() end)
-                    local argDump = "--- MODO FIRESERVER ---\nDestino: " .. fullPath .. "\nArgs:\n"
-                    for i, v in pairs(args) do
-                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
-                    end
-                    AddLog("C->S", selfName, argDump)
-                end)
-            end)
-        end
-    end
+    LogPacketToQueue("FireServer", self, {...})
     return originalFireServer(self, ...)
 end))
+
+-- Hook de Red: UnreliableRemoteEvent (Si el juego es nuevo/lag compensado)
+local originalUnreliable
+pcall(function()
+    originalUnreliable = hookfunction(Instance.new("UnreliableRemoteEvent").FireServer, newcclosure(function(self, ...)
+        LogPacketToQueue("UnreliableFireServer", self, {...})
+        return originalUnreliable(self, ...)
+    end))
+end)
 
 -- Hook de Red: InvokeServer Directo
 local originalInvokeServer
 originalInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
-    if InterceptorActivo then
-        local args = {...}
-        local selfName = "UnknownRemote"
-        pcall(function() selfName = self.Name end)
-        local nLow = string.lower(selfName)
-        
-        if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
-            task.spawn(function()
-                pcall(function()
-                    local fullPath = "Unknown"
-                    pcall(function() fullPath = self:GetFullName() end)
-                    local argDump = "--- MODO INVOKESERVER ---\nDestino: " .. fullPath .. "\nArgs:\n"
-                    for i, v in pairs(args) do
-                        argDump = argDump .. "["..tostring(i).."] ("..typeof(v)..") = " .. tostring(v) .. "\n"
-                    end
-                    AddLog("C->S", selfName, argDump)
-                end)
-            end)
-        end
-    end
+    LogPacketToQueue("InvokeServer", self, {...})
     return originalInvokeServer(self, ...)
 end))
 
@@ -582,4 +582,72 @@ DeepExamineBtn.MouseButton1Click:Connect(function()
     if trapCount == 0 then honeypotDump = honeypotDump .. "Tu juego parece seguro a simple vista, no hay remotes trampa evidentes.\n" end
     AddLog("ANTITRAMPAS", "Búsqueda de sistemas de baneo integrados.", honeypotDump)
     
+end)
+
+-- ==========================================
+-- 6. MÓDULO LABORATORIO DE INTERCEPCIÓN (DIAGNÓSTICO DE CLICS)
+-- ==========================================
+local UIS = game:GetService("UserInputService")
+local mouse = LocalPlayer:GetMouse()
+
+LabBtn.MouseButton1Click:Connect(function()
+    LabClickActivo = not LabClickActivo
+    if LabClickActivo then
+        LabBtn.Text = "🧪 5. DIAGNÓSTICO EN CURSO (¡PEGA/PICA ALGO CLICKEANDO!)"
+        LabBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        AddLog("LAB", "Laboratorio Activado", "Acércate a una roca/zombie y haz clic. Atraparemos qué evento usa el juego exactamente y veremos por qué está fallando.")
+    else
+        LabBtn.Text = "🧪 5. LABORATORIO: EXAMINAR ATAQUE/CLIC (DIAGNÓSTICO)"
+        LabBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
+    end
+end)
+
+UIS.InputBegan:Connect(function(input, gp)
+    if LabClickActivo and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local target = mouse.Target
+        local tName = target and target:GetFullName() or "Ninguno"
+        
+        AddLog("LAB", "Click registrado", "Analizando vías de red en los próximos 0.5 seg...")
+        LabClickActivo = false
+        LabBtn.Text = "🧪 5. LABORATORIO: EXAMINAR ATAQUE/CLIC (DIAGNÓSTICO)"
+        LabBtn.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
+        
+        task.delay(0.5, function()
+            local curTime = tick()
+            local report = "🎯 Blanco: " .. tName .. "\n\n"
+            
+            local foundRemotes = 0
+            for _, data in ipairs(NetworkQueue) do
+                -- Buscar todo lo que haya pasado en red durante este último segundo
+                if curTime - data.Time <= 1 then
+                    foundRemotes = foundRemotes + 1
+                    report = report .. "✅ VÍA DETECTADA: [" .. data.Method .. "]\n"
+                    pcall(function() report = report .. "   - Hacia: " .. data.Obj:GetFullName() .. " ("..data.Obj.ClassName..")\n" end)
+                    
+                    report = report .. "   - Parámetros Enviados:\n"
+                    for i, arg in pairs(data.Args) do
+                        local t = typeof(arg)
+                        local ex = ""
+                        pcall(function() if t=="table" then ex = " | "..HttpService:JSONEncode(arg) end end)
+                        pcall(function() if t=="Instance" then ex = " | "..arg:GetFullName() end end)
+                        report = report .. "      ["..i.."] = ("..t..") : " .. tostring(arg) .. ex .. "\n"
+                    end
+                    report = report .. "\n"
+                end
+            end
+            
+            if foundRemotes == 0 then
+                report = report .. "⚠️ NEGATIVO: No se atrapó NINGÚN envío de red en tu clic.\n"
+                report = report .. "🔍 ¿Por qué sucede esto?\n"
+                report = report .. "  -> 1. El daño se envía desde un Script puramente Local (No Remote).\n"
+                report = report .. "  -> 2. Tu herramienta dispara remotos Bindeables antes, la lógica es server-sided con Region3.\n"
+                report = report .. "  -> 3. Estás lejos y el cliente filtra el clic antes de enviarlo por la red.\n"
+                report = report .. "  -> 4. Fallo de Executor: Tu inyector no soporta hookfunction o hooks de UnreliableRemoteEvents.\n"
+            else
+                report = report .. "🔥 ÉXITO ABSOLUTO: " .. foundRemotes .. " eventos capturados que puedes usar de forma directa para el hack."
+            end
+            
+            AddLog("LAB-RESULTADO", "Diagnóstico del Ataque Finalizado", report)
+        end)
+    end
 end)
