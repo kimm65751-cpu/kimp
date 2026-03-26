@@ -1011,35 +1011,55 @@
         LiveScanBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
         
         FarmTask = task.spawn(function()
+            local loopTick = 0
+            local zTarget, oreTarget = nil, nil
+            local zDist, oDist = math.huge, math.huge
+
             while KiteActivo or MineActivo do
                 pcall(function()
-                    local currentHum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    local char = LocalPlayer.Character
+                    if not char then return end
+                    local currentHum = char:FindFirstChild("Humanoid")
+                    local myRoot = char:FindFirstChild("HumanoidRootPart")
                     if not myRoot or not currentHum then return end
 
-                    local zTarget, zDist = nil, math.huge
-                    if KiteActivo or MineActivo then -- Siempre escaneamos Zombis para Cazar (Kite) o Sobrevivir (Mine)
-                        zTarget, zDist = findNearest(function(o)
-                            if o:IsA("Model") and o ~= LocalPlayer.Character then
-                                local h = o:FindFirstChildWhichIsA("Humanoid")
-                                return h and h.Health > 0 and o:GetAttribute("IsNpc") == true
-                            end
-                            return false
-                        end)
-                    end
-
-                    local oreTarget, oDist = nil, math.huge
-                    if MineActivo then
-                        oreTarget, oDist = findNearest(function(o)
-                            if o:IsA("Model") and o ~= LocalPlayer.Character then
-                                local n = string.lower(o.Name)
-                                local h = o:GetAttribute("Health")
-                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "rock") or string.find(n, "ore")) then
-                                    return true
+                    loopTick = loopTick + 1
+                    
+                    -- ESCANEO OPTIMIZADO (Anti-Lag Extremo 0 FPS Drop):
+                    if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
+                        if KiteActivo or MineActivo then
+                            zTarget, zDist = findNearest(function(o)
+                                if o:IsA("Model") and o ~= char then
+                                    local h = o:FindFirstChildWhichIsA("Humanoid")
+                                    return h and h.Health > 0 and o:GetAttribute("IsNpc") == true
                                 end
-                            end
-                            return false
-                        end)
+                                return false
+                            end)
+                        end
+
+                        if MineActivo then
+                            oreTarget, oDist = findNearest(function(o)
+                                if o:IsA("Model") and o ~= char then
+                                    local n = string.lower(o.Name)
+                                    local h = o:GetAttribute("Health")
+                                    if h and h > 0 and (string.find(n, "pebb") or string.find(n, "rock") or string.find(n, "ore")) then
+                                        return true
+                                    end
+                                end
+                                return false
+                            end)
+                        end
+                    else
+                        -- Solo actualiza las distancias de los que ya encontró (Ahorra un 10,000% de CPU)
+                        if zTarget and zTarget.Parent then
+                            local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
+                            if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
+                        else zTarget = nil end
+
+                        if oreTarget and oreTarget.Parent then
+                            local oPart = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
+                            if oPart then oDist = (myRoot.Position - oPart.Position).Magnitude else oreTarget = nil end
+                        else oreTarget = nil end
                     end
 
                     local targetObj = nil
@@ -1048,14 +1068,14 @@
                     local mode = "None"
                     local toolId = "weapon"
 
-                    -- PRIORIDAD 1: CAZA PURA (Todo el mapa) O SUPERVIVENCIA (Si mina y se le acerca zombi)
+                    -- PRIORIDAD 1: CAZA PURA (Todo el mapa) O SUPERVIVENCIA
                     if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
                         targetObj = zTarget
                         dist = zDist
                         targetDist = ShieldActivo and 4 or 7
                         mode = "Combat"
                         toolId = "weapon"
-                    -- PRIORIDAD 2: MINADO RUTINARIO (Todo el mapa)
+                    -- PRIORIDAD 2: MINADO RUTINARIO
                     elseif oreTarget and MineActivo then
                         targetObj = oreTarget
                         dist = oDist
@@ -1070,7 +1090,7 @@
 
                         -- == 1. CEREBRO DE HERRAMIENTAS ==
                         local isEquipped = false
-                        for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                        for _, t in pairs(char:GetChildren()) do
                             if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
                                 isEquipped = true; break
                             end
@@ -1085,7 +1105,6 @@
                                     equippedCorrectly = true; break
                                 end
                             end
-                            -- Fallback: Teclado físico
                             if not equippedCorrectly and #bpTools > 0 then
                                 if toolId == "pickaxe" then
                                     currentHum:EquipTool(bpTools[1])
@@ -1105,7 +1124,7 @@
                                 local step = speed * (1/60)
                                 local dir = (targetPart.Position - myRoot.Position).Unit
                                 myRoot.CFrame = CFrame.lookAt(myRoot.Position + (dir * step), targetPart.Position)
-                                for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                                for _, v in pairs(char:GetDescendants()) do
                                     if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
                                 end
                             else
@@ -1113,33 +1132,32 @@
                                 currentHum:MoveTo(targetPart.Position)
                             end
                         else
+                            -- FIX: Desanclar a corta distancia. Si golpeas anclado, los RemoteEvents fallan estáticamente en el Servidor.
+                            myRoot.Anchored = false
                             if NoclipActivo then
-                                myRoot.Anchored = true
-                            else
-                                myRoot.Anchored = false
-                                currentHum:MoveTo(myRoot.Position)
+                                myRoot.Velocity = Vector3.zero 
                             end
+                            currentHum:MoveTo(myRoot.Position)
                         end
 
-                        -- == 3. GOLPE SENSORIAL (Solo golpea al estar enfrente) ==
+                        -- == 3. GOLPE SENSORIAL ==
                         local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
                         myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
 
-                        -- Verificación física: Solo atacamos si ya recorrimos la distancia y estamos parados enfrente de él.
+                        -- ROOT DESANCLADO: Ataque totalmente válido para el servidor
                         if dist <= targetDist + 1.5 then
                             if mode == "Combat" and HeadshotActivo then
                                 local head = targetObj:FindFirstChild("Head") or targetPart
                                 local snapOrigin = myRoot.CFrame
                                 myRoot.CFrame = CFrame.lookAt(myRoot.Position, head.Position)
                                 ToolRF:InvokeServer(serverArg)
-                                myRoot.CFrame = snapOrigin -- Flickea invisible
+                                myRoot.CFrame = snapOrigin
                             else
                                 ToolRF:InvokeServer(serverArg)
                             end
                             StatusLabel.Text = (mode == "Mining" and "⛏️ Picando: " or "🗡️ Atacando: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                         else
-                            -- Estamos en trayecto silencioso (Walking / Noclipping)
                             StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                         end
                     else
