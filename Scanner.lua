@@ -571,7 +571,29 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- Sistema confirmado que funciona (mismo patrón que Ores)
+                    -- ❄️ CONGELAR MOB: intentar antes de atacar
+                    -- Si el cliente tiene network ownership del zombie (cuando estás cerca),
+                    -- esto lo inmoviliza completamente. El server puede rechazarlo (pcall lo captura)
+                    local mobModel = bestTarget.Parent
+                    if mobModel then
+                        pcall(function()
+                            local mobHum = mobModel:FindFirstChildOfClass("Humanoid")
+                            if mobHum then
+                                mobHum.WalkSpeed = 0
+                                mobHum.JumpPower = 0
+                                mobHum.PlatformStand = true
+                            end
+                            for _, part in pairs(mobModel:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.Anchored = true
+                                    part.AssemblyLinearVelocity = Vector3.zero
+                                    part.AssemblyAngularVelocity = Vector3.zero
+                                end
+                            end
+                        end)
+                    end
+                    
+                    -- Sistema de movimiento al zombie
                     local attackPos = bestTarget.Position + Vector3.new(0, 3.5, 0)
                     if (hrp.Position - attackPos).Magnitude > 3 then
                         TweenToPosition(attackPos)
