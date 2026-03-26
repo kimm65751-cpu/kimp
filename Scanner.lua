@@ -593,9 +593,9 @@ task.spawn(function()
                 
                 if targetType == "Mob" then
                     -- ⚔️ COMBATE VERTICAL (DEATH FROM ABOVE): Volamos sobre el mob
-                    -- Restauramos el Tween veloz y el Noclip, pero evitamos el daño horizontal.
-                    -- Flotaremos a 7.5 studs sobre su cabeza. El zombie no puede saltar ni pegar arriba.
-                    local attackPos = bestTarget.Position + Vector3.new(0, 7.5, 0)
+                    -- Bajamos de 7.5 a 5.0 studs. A 5 studs, tus pies están exactamente tocando su cabeza.
+                    -- Tu Gladius Dagger ahora llegará perfectamente al golpe, pero él seguirá pegando abajo.
+                    local attackPos = bestTarget.Position + Vector3.new(0, 5, 0)
                     
                     -- Volamos hacia esa posición rápida y suavemente
                     if (hrp.Position - attackPos).Magnitude > 2 then
