@@ -242,42 +242,54 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     
     if InterceptorActivo and (methodStr == "fireserver" or methodStr == "invokeserver") then
         local args = {...}
-        local selfName = pcall(function() return self.Name end) and self.Name or "UnknownRemote"
+        local selfName = "UnknownRemote"
+        pcall(function() selfName = self.Name end)
         local nLow = string.lower(selfName)
         
         -- Ignoramos basura de movimiento o cámara
         if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "move") then
             -- MODO EDICIÓN EN TIEMPO REAL:
-            -- Aquí es donde podemos mentirle al servidor. 
-            -- Ejemplo de manipulación de daño a recibir:
             -- Si detectamos que nos quitan vida, mandamos "0"
             if string.find(nLow, "takedamage") then
                 args[1] = 0 -- Bajar nuestro daño a 0
             end
             
-            local argDump = "--- PAQUETE SALIENTE --- \nDestino: " .. self:GetFullName() .. "\nMétodo: " .. methodStr .. "\nArgumentos:\n"
-            for i, v in ipairs(args) do
-                local extraInfo = ""
-                if typeof(v) == "Instance" then
-                    pcall(function() extraInfo = " | Padre: " .. tostring(v.Parent) .. " | Es BasePart: " .. tostring(v:IsA("BasePart")) end)
-                    if pcall(function() return v:IsA("BasePart") end) and string.find(string.lower(v.Name), "hitbox") then
-                        extraInfo = extraInfo .. " 🎯 ¡ALERTA HITBOX! Pasa esta Hitbox a FireServer para daño global."
-                    end
-                elseif typeof(v) == "Vector3" then
-                    extraInfo = " | Posición Mundo (Raycast / HitPos)"
-                elseif typeof(v) == "CFrame" then
-                    extraInfo = " | Coordenadas/Rotación Orientada"
-                end
+            -- Hacemos el volcado de texto asíncrono y protegido para NUNCA romper tu ataque en el juego
+            task.spawn(function()
+                pcall(function()
+                    local fullPath = "Unknown"
+                    pcall(function() fullPath = self:GetFullName() end)
+                    
+                    local argDump = "--- PAQUETE SALIENTE --- \nDestino: " .. fullPath .. "\nMétodo: " .. methodStr .. "\nArgumentos:\n"
+                    for i, v in ipairs(args) do
+                        local extraInfo = ""
+                        if typeof(v) == "Instance" then
+                            local vP, vIsPart, vName = "nil", false, "unknown"
+                            pcall(function() vP = tostring(v.Parent); vIsPart = v:IsA("BasePart"); vName = v.Name end)
+                            extraInfo = " | Padre: " .. vP .. " | Es BasePart: " .. tostring(vIsPart)
+                            
+                            if vIsPart and string.find(string.lower(vName), "hitbox") then
+                                extraInfo = extraInfo .. " 🎯 ¡ALERTA HITBOX! Usa este argument en FireServer."
+                            end
+                        elseif typeof(v) == "Vector3" then
+                            extraInfo = " | Posición Mundo (Raycast / HitPos)"
+                        elseif typeof(v) == "CFrame" then
+                            extraInfo = " | Coordenadas/Rotación Orientada"
+                        end
 
-                argDump = argDump .. "["..i.."] ("..typeof(v)..") = " .. tostring(v) .. extraInfo .. "\n"
-                
-                if typeof(v) == "table" then
-                    pcall(function() argDump = argDump .. "   Tabla Volcada: " .. HttpService:JSONEncode(v) .. "\n" end)
-                end
-            end
-            task.spawn(function() AddLog("C->S", selfName, argDump) end)
+                        argDump = argDump .. "["..i.."] ("..typeof(v)..") = " .. tostring(v) .. extraInfo .. "\n"
+                        
+                        if typeof(v) == "table" then
+                            pcall(function() argDump = argDump .. "   Tabla: " .. HttpService:JSONEncode(v) .. "\n" end)
+                        end
+                    end
+                    AddLog("C->S", selfName, argDump)
+                end)
+            end)
             
-            return oldNamecall(self, unpack(args)) -- Enviamos los argumentos posiblemente hackeados
+            if string.find(nLow, "takedamage") then
+                return oldNamecall(self, unpack(args)) -- Enviamos args hackeados solo en daño propio
+            end
         end
     end
     return oldNamecall(self, ...)
