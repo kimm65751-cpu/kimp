@@ -257,45 +257,37 @@ local function SetupTouchSpy(character)
             if TrackerRunning and hit.Parent ~= character and not touchedDebounce[hit] then
                 touchedDebounce[hit] = true
                 local hpString, _, objName = GetHealthInfo(hit)
-                -- Omitir reporte de piso / terreno
-                if string.find(string.lower(hit.Name), "terrain") or hit.Name == "Baseplate" then 
+                -- Quitamos el filtro de Terrain porque tu piedra aparentemente se llamaba "Terrain3"
+                if hit.Name == "Baseplate" then 
                     task.delay(2, function() touchedDebounce[hit] = nil end)
                     return 
                 end
                 
-                AddLog("FISICA", "Tocaste: " .. objName .. " | " .. hpString, hit:GetFullName())
+                AddLog("FISICA", "Tocaste: " .. objName .. " ("..hit.Name..") | " .. hpString, hit:GetFullName())
                 task.delay(10, function() touchedDebounce[hit] = nil end)
             end
         end)
     end
 end
 
+local Mouse = LocalPlayer:GetMouse()
 local dmgDebounce = {}
+
 local function SetupToolSpy(character)
     character.ChildAdded:Connect(function(child)
         if TrackerRunning and child:IsA("Tool") then
             AddLog("TOOL", "Herramienta Equipada: " .. child.Name, child.Name)
             
             child.Activated:Connect(function()
-                AddLog("TOOL", "Click: Usaste " .. child.Name, child.Name)
-            end)
-            
-            -- RASTREADOR DE ESPADA / PICO (Combat Spy)
-            -- Conectamos un radar a la punta de la herramienta para ver QUÉ golpea
-            local handle = child:FindFirstChild("Handle") or child:FindFirstChildWhichIsA("Part")
-            if handle then
-                handle.Touched:Connect(function(hit)
-                    if hit:IsDescendantOf(character) then return end
+                local target = Mouse.Target
+                if target and not target:IsDescendantOf(character) then
+                    local hpString, healthObj, objName = GetHealthInfo(target)
                     
-                    local hpString, healthObj, objName = GetHealthInfo(hit)
                     if healthObj and not dmgDebounce[healthObj] then
                         dmgDebounce[healthObj] = true
+                        AddLog("COMBATE", "Atacando a: " .. objName .. " | " .. hpString, target:GetFullName())
                         
-                        -- Log del golpe exitoso
-                        AddLog("COMBATE", "Golpe a " .. objName .. " | " .. hpString, hit:GetFullName())
-                        
-                        -- 💥 RASTREADOR DE DAÑO EXACTO 💥
-                        -- Nos suscribimos al HP del objeto para ver cuánta vida le quitamos
+                        -- RASTREADOR DE DAÑO EXACTO
                         if typeof(healthObj) == "Instance" and (healthObj:IsA("Humanoid") or healthObj:IsA("ValueBase")) then
                             local startHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
                             
@@ -304,19 +296,21 @@ local function SetupToolSpy(character)
                                 local newHp = healthObj:IsA("Humanoid") and healthObj.Health or healthObj.Value
                                 if typeof(newHp) == "number" and newHp < startHp then
                                     local damage = startHp - newHp
-                                    AddLog("COMBATE", "💥 Daño Realizado: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
+                                    AddLog("COMBATE", "💥 Daño: " .. string.format("%.1f", damage) .. " a " .. objName, "Daño: " .. damage)
                                 end
                                 startHp = newHp
                             end)
                             
-                            -- Desconectar el radar de vida después de 5 segundos
                             task.delay(5, function() conn:Disconnect() end)
                         end
-                        
                         task.delay(1, function() dmgDebounce[healthObj] = nil end)
+                    else
+                        AddLog("TOOL", "Click: Usaste " .. child.Name .. " apuntando a " .. target.Name, child.Name)
                     end
-                end)
-            end
+                else
+                    AddLog("TOOL", "Click: Usaste " .. child.Name .. " al aire.", child.Name)
+                end
+            end)
         end
     end)
 end
