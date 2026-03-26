@@ -443,6 +443,23 @@ end
 local autoFarmOres = false
 local autoFarmMobs = false
 local noclipConn
+local healConn  -- Auto-Heal para combate
+
+local function StartAutoHeal()
+    if healConn then healConn:Disconnect() end
+    healConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health < hum.MaxHealth then
+            pcall(function() hum.Health = hum.MaxHealth end)
+        end
+    end)
+end
+
+local function StopAutoHeal()
+    if healConn then healConn:Disconnect(); healConn = nil end
+end
 
 local function ToggleNoclip(state)
     if state then
@@ -545,12 +562,16 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ✅ MOVIMIENTO NATIVO: Humanoid:MoveTo() = mismo sistema que usa el jugador real
-                    -- El anti-cheat no puede distinguirlo de movimiento humano
-                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    if not hum then task.wait(0.1); continue end
+                    -- Mismo sistema que Ores (funciona sin kick ni oscilación)
+                    -- El Noclip ya activo evita obstáculos
+                    local attackPos = bestTarget.Position + Vector3.new(0, 3.5, 0)
+                    if (hrp.Position - attackPos).Magnitude > 3 then
+                        TweenToPosition(attackPos)
+                    end
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                     
-                    -- Equipar arma (no pico)
+                    -- Equipar espada/arma (no pico)
+                    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                     local targetTool = nil
                     local invItems = LocalPlayer.Backpack:GetChildren()
                     for _, t in pairs(LocalPlayer.Character:GetChildren()) do
@@ -562,25 +583,10 @@ task.spawn(function()
                         end
                     end
                     if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
-                    if targetTool and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                    if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
                         hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
                     end
                     
-                    -- FASE 1: CORRER hacia el zombie (WalkSpeed boost temporal)
-                    local oldSpeed = hum.WalkSpeed
-                    hum.WalkSpeed = 30
-                    local attackPos = bestTarget.Position + (hrp.Position - bestTarget.Position).Unit * 3.5
-                    attackPos = Vector3.new(attackPos.X, hrp.Position.Y, attackPos.Z)
-                    hum:MoveTo(attackPos)
-                    
-                    -- Esperar llegada (máx 1.5s para no congelarse)
-                    local moveTimer = 0
-                    repeat
-                        task.wait(0.05)
-                        moveTimer += 0.05
-                    until (hrp.Position - attackPos).Magnitude < 3 or moveTimer > 1.5
-                    
-                    -- FASE 2: GOLPEAR
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     local cx = camera.ViewportSize.X / 2
@@ -590,19 +596,7 @@ task.spawn(function()
                     VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                     local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
                     if activeTool then pcall(function() activeTool:Activate() end) end
-                    
-                    -- FASE 3: CORRER hacia atrás (mismo MoveTo nativo)
-                    local escapeDir = (hrp.Position - bestTarget.Position).Unit
-                    local escapePos = hrp.Position + Vector3.new(escapeDir.X * 12, 0, escapeDir.Z * 12)
-                    hum:MoveTo(escapePos)
-                    
-                    local retTimer = 0
-                    repeat
-                        task.wait(0.05)
-                        retTimer += 0.05
-                    until (hrp.Position - escapePos).Magnitude < 3 or retTimer > 1.0
-                    
-                    hum.WalkSpeed = oldSpeed -- Restaurar velocidad original
+                    task.wait()
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
@@ -667,10 +661,12 @@ AutoMobBtn.MouseButton1Click:Connect(function()
     if autoFarmMobs then
         AutoMobBtn.Text = "⚔️ FARM MOBS: ON"
         AutoMobBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        AddLog("SISTEMA", "Bot Cacería de Zombies encendido.", "")
+        AddLog("SISTEMA", "Bot Mobs + Auto-Heal activo.", "")
+        StartAutoHeal()
     else
         AutoMobBtn.Text = "⚔️ FARM MOBS: OFF"
         AutoMobBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 150)
+        StopAutoHeal()
         if not autoFarmOres then ToggleNoclip(false) end
     end
 end)
