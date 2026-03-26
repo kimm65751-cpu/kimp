@@ -104,15 +104,15 @@ AutoPebbleBtn.Font = Enum.Font.Code
 AutoPebbleBtn.TextSize = 14
 AutoPebbleBtn.Parent = BotFrame
 
-local AutoPumpBtn = Instance.new("TextButton")
-AutoPumpBtn.Size = UDim2.new(0, 200, 0, 30)
-AutoPumpBtn.Position = UDim2.new(0.5, 10, 0.5, -15) -- Derecha
-AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
-AutoPumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoPumpBtn.Font = Enum.Font.Code
-AutoPumpBtn.TextSize = 13
-AutoPumpBtn.Parent = BotFrame
+local EspiaBtn = Instance.new("TextButton")
+EspiaBtn.Size = UDim2.new(0, 200, 0, 30)
+EspiaBtn.Position = UDim2.new(0.5, 10, 0.5, -15) -- Derecha
+EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+EspiaBtn.Text = "MODO ESPÍA: OFF"
+EspiaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+EspiaBtn.Font = Enum.Font.Code
+EspiaBtn.TextSize = 13
+EspiaBtn.Parent = BotFrame
 
 local function ToggleMenu()
     if MainFrame.Visible then
@@ -283,6 +283,50 @@ LocalPlayer.CharacterAdded:Connect(function(char) SetupTouchSpy(char) end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not TrackerRunning then return end
+    
+    if autoEspia and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        local foundGuis = playerGui and playerGui:GetGuiObjectsAtPosition(Mouse.X, Mouse.Y) or {}
+        
+        -- Si hizo Clic Derecho sobre un DIÁLOGO UI (Botones, Cajas de texto, Deals)
+        if #foundGuis > 0 then
+            local ui = foundGuis[1]
+            local text = (ui:IsA("TextLabel") or ui:IsA("TextButton")) and string.sub(ui.Text, 1, 20) or "Contenedor"
+            local info = "Text: [" .. text .. "] | Path: " .. ui:GetFullName()
+            AddLog("ESPIA", "👁️ Diálogo UI: " .. ui.Name, info)
+            
+            if getconnections and ui:IsA("TextButton") then
+                pcall(function()
+                    for _, conn in pairs(getconnections(ui.MouseButton1Click)) do
+                        if conn.Function then
+                            local src = debug.getinfo(conn.Function).source
+                            AddLog("ESPIA", "🔗 Código conectado a: " .. ui.Name, src)
+                        end
+                    end
+                end)
+            end
+            return
+        end
+        
+        -- Si hizo Clic Derecho sobre un NPC en el mundo 3D
+        local target = Mouse.Target
+        if target then
+            local model = target:FindFirstAncestorOfClass("Model") or target
+            AddLog("ESPIA", "🧍 NPC/Part 3D: " .. model.Name, model:GetFullName())
+            
+            local intel = ""
+            for _, v in pairs(model:GetDescendants()) do
+                if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") or v:IsA("ModuleScript") then
+                    intel = intel .. "["..v.ClassName.."] "..v.Name.." | "
+                end
+            end
+            if intel ~= "" then AddLog("ESPIA", "📂 Datos del NPC: Hallazgos Críticos", intel) end
+            
+            local attrStr = ""
+            for k, val in pairs(model:GetAttributes()) do attrStr = attrStr .. k .. "=" .. tostring(val) .. " | " end
+            if attrStr ~= "" then AddLog("ESPIA", "🏷️ Atributos del NPC", attrStr) end
+        end
+    end
     
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         task.delay(0.1, function()
@@ -466,65 +510,17 @@ AutoPebbleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Lógica del Auto-Fuelle (Barrido Vertical Absoluto)
-local autoPump = false
-
-AutoPumpBtn.MouseButton1Click:Connect(function()
-    autoPump = not autoPump
-    if autoPump then
-        AutoPumpBtn.Text = "BOMBEO AUTOMÁTICO: ON"
-        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        AddLog("SISTEMA", "🔥 Modo Bombeo Activado. ¡Tienes 3 SEG para mover el ratón al fuelle!", "")
-        
-        task.spawn(function()
-            task.wait(3) -- Tiempo táctico para mover el ratón real a la posición deseada
-            if not autoPump then return end
-            
-            AddLog("SISTEMA", "🔥 Bombeo Iniciado. (MANTÉN PRESIONADO 'Q' PARA APAGAR)", "")
-            
-            local vim = game:GetService("VirtualInputManager")
-            local m = LocalPlayer:GetMouse()
-            
-            -- ¡DOBLE ANCLAJE DE CLIC! (Motor Virtual + Motor Físico del Exploit)
-            vim:SendMouseButtonEvent(m.X, m.Y, 0, true, game, 1)
-            if mouse1click then mouse1click() end 
-            if mouse1press then mouse1press() end
-            
-            local uis = game:GetService("UserInputService")
-            
-            while autoPump do
-                if uis:IsKeyDown(Enum.KeyCode.Q) then
-                    autoPump = false
-                    break
-                end
-                
-                -- Inicia el barrido obligatoriamente hacia ABAJO (300 píxeles relativos)
-                for i = 1, 10 do
-                    if not autoPump then break end
-                    if mousemoverel then mousemoverel(0, 30) end
-                    task.wait(0.01)
-                end
-                
-                -- Sube el ratón mágicamente
-                for i = 1, 10 do
-                    if not autoPump then break end
-                    if mousemoverel then mousemoverel(0, -30) end
-                    task.wait(0.01)
-                end
-            end
-            
-            -- Liberar ambos Clics Fantasma
-            if mouse1release then mouse1release() end
-            vim:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 1)
-            
-            AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
-            AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-            AddLog("SISTEMA", "Bombeo Físico Terminado o Cancelado.", "")
-        end)
+autoEspia = false
+EspiaBtn.MouseButton1Click:Connect(function()
+    autoEspia = not autoEspia
+    if autoEspia then
+        EspiaBtn.Text = "MODO ESPÍA: ON"
+        EspiaBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 200)
+        AddLog("SISTEMA", "🔍 MODO ESPÍA ON. CLIC DERECHO a un NPC o a la Opción de Diálogo.", "")
     else
-        AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
-        AutoPumpBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
-        AddLog("SISTEMA", "Bombeo desactivado.", "")
+        EspiaBtn.Text = "MODO ESPÍA: OFF"
+        EspiaBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 80)
+        AddLog("SISTEMA", "Modo Espía Apagado.", "")
     end
 end)
 
@@ -535,7 +531,6 @@ RefreshBtn.MouseButton1Click:Connect(function()
     AddLog("SISTEMA", "Descargando V5.6 Final desde GitHub...", "")
     TrackerRunning = false
     autoFarmPebble = false
-    autoPump = false
     ScreenGui:Destroy()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua?v=" .. tostring(math.random(1000, 9999))))()
 end)
