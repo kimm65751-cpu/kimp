@@ -1,7 +1,7 @@
 -- ==============================================================================
--- 🛡️ ANALIZADOR FORENSE ULTIMATE V6 (CON MÓDULO ESPÍA DE KILLAURA)
--- Construido con la logica anti-crasheo, tracking pasivo inteligente, 
--- UI fluida con minimizacion, hot reload, y un Robador de Paquetes Visual integrado.
+-- 💀 VULNERABILITY SCANNER V1 (HACKER/CRACKER LEVEL)
+-- Escaner activo de Core Security. No asume nada, audita honeypots, AntiFlags, 
+-- hooks de deteccion de UI, y firetouchinterest antes de ejecutarlos.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -11,6 +11,8 @@ local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local ScriptContext = game:GetService("ScriptContext")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -23,296 +25,160 @@ function Analyzer:Clear()
 end
 
 function Analyzer:Log(txt)
-    print("[FORENSE V6] " .. tostring(txt))
+    print("[CRACKER-SCAN] " .. tostring(txt))
     table.insert(self.Logs, txt)
     if self.UI_LogBox then
         self.UI_LogBox.Text = self.UI_LogBox.Text .. "\n" .. tostring(txt)
     end
 end
 
--- 🌐 2. ANALIZADOR ESTRUCTURAL
-local StructuralAnalyzer = {}
-function StructuralAnalyzer:AnalyzeAll()
-    Analyzer:Log("\n==============================================")
-    Analyzer:Log("🔍 INICIANDO ESCANEO ESTRUCTURAL PROFUNDO...")
+-- 🛡️ 2. HONEYPOT & ANTI-CHEAT SCANNER (THE CORE AUDIT)
+local SecurityAudit = {}
 
-    local remotes = {}
-    local suspicious = {"damage", "hit", "attack", "money", "reward", "exp", "drop", "kill", "die", "spawn", "weapon", "combat", "stat", "hitbox"}
+function SecurityAudit:RunAudit()
+    Analyzer:Log("\n==============================================")
+    Analyzer:Log("💀 INICIANDO AUDITORIA DE SEGURIDAD GLOBAL (CORE ENGINE)...")
+    
+    -- 2.1 Analisis de Detección de UI (CoreGui Checks)
+    Analyzer:Log("\n[☢️] TEST DE SEGURIDAD UI E INYECCIONES:")
+    local cgHooks = 0
+    for _, obj in pairs(CoreGui:GetDescendants()) do
+        if obj:IsA("LocalScript") and obj.Name ~= "ForenseV7UI" then
+            cgHooks = cgHooks + 1
+        end
+    end
+    if cgHooks > 0 then
+        Analyzer:Log("  ⚠️ PELIGRO: El juego tiene " .. cgHooks .. " scripts monitoreando el CoreGui. Usar ScreenGuis estándar puede kickearte.")
+        Analyzer:Log("  💡 BYPASS: Debes inyectar tu UI en `gethui()` o proteger la instancia con `syn.protect_gui`.")
+    else
+        Analyzer:Log("  ✅ CoreGui Limpio. El juego no implementa checks activos contra UIs inyectadas normales.")
+    end
+
+    -- 2.2 Analisis de Hooks de Error (ScriptContext Honeypots)
+    Analyzer:Log("\n[🍯] TEST DE HONEYPOTS (Señuelos y Trampas):")
+    local scConnections = pcall(function() return #getconnections(ScriptContext.Error) end) and #getconnections(ScriptContext.Error) or "Oculto"
+    if type(scConnections) == "number" and scConnections > 0 then
+        Analyzer:Log("  ⚠️ HONEYPOT DETECTADO: El servidor o scripts locales (Adonis/HD Admin) están escuchando llamadas a Errores globales loggeados ("..scConnections.." listeners).")
+        Analyzer:Log("  💡 BYPASS: Todo tu script de kill-aura debe usar pcall(). Si un error sale de pcall, el juego enviará los traces al servidor y serás flaggeado.")
+    else
+        Analyzer:Log("  ✅ Honeypots Globales de Error no evidentes (O el executor los esconde correctamente).")
+    end
+
+    -- 2.3 Analisis de Remotes Señuelo (Admins/AntiExploits)
+    local acRemotes = {}
+    local suspiciousWords = {"ban", "kick", "report", "flag", "detect", "cheat", "log", "admin", "adminremote", "crash"}
     for _, v in pairs(game:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-            local nL = string.lower(v.Name)
-            for _, word in ipairs(suspicious) do
-                if string.find(nL, word) then table.insert(remotes, v); break end
+            for _, word in ipairs(suspiciousWords) do
+                if string.find(string.lower(v.Name), word) then table.insert(acRemotes, v); break end
             end
         end
     end
-    Analyzer:Log("\n[📡] TOPOLOGIA DE RED:")
-    Analyzer:Log(" -> Remotes Sospechosos: " .. #remotes)
-    for _, r in ipairs(remotes) do
-        local info = "   [" .. r.ClassName .. "] " .. r.Name
-        if r:IsA("RemoteEvent") and type(getconnections) == "function" then
-            local success, conns = pcall(function() return getconnections(r.OnClientEvent) end)
-            if success and conns then info = info .. " | Conexiones S->C: " .. #conns end
-        end
-        Analyzer:Log(info)
+    
+    if #acRemotes > 0 then
+        Analyzer:Log("  🚨 " .. #acRemotes .. " REMOTES ANTI-CHEAT ENCONTRADOS:")
+        for _, rem in ipairs(acRemotes) do Analyzer:Log("     [" .. rem.ClassName .. "] " .. rem.Name) end
+        Analyzer:Log("  💡 BYPASS (KICK PREVENCIÓN): Engancharemos Namecall y aplicaremos Drop: `if remote.Name == 'kick' then return end`.")
+    else
+        Analyzer:Log("  ✅ Cero remotes dedicatorios a Banneo (El servidor kickea directamente por código C++ interno).")
     end
 
-    Analyzer:Log("\n[🗡️] DISECCION DE ARMAS:")
+    -- 2.4 Test Seguro de TouchInterest (FireTouchInterest)
+    Analyzer:Log("\n[⚔️] TEST DE CAPACIDADES DE EXPLOTACIÓN FÍSICA:")
+    if type(firetouchinterest) ~= "function" then
+        Analyzer:Log("  ❌ EL EXECUTOR (Delta) CARECE DE 'firetouchinterest'. No puedes simular colisiones.")
+        Analyzer:Log("  💡 ALTERNATIVA: Debes usar CFrame Teleport de tu personaje forzadamente a la ubicación de los remotes.")
+    else
+        Analyzer:Log("  ✅ 'firetouchinterest' soportado por tu executor. Podemos hacer hitboxes invisibles.")
+        
+        -- Verificar si el juego trackea el Touch
+        local foundTouchTrackers = false
+        if LocalPlayer.Character then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("LocalScript") and string.find(string.lower(v.Name), "touch") then foundTouchTrackers = true end
+            end
+        end
+        if foundTouchTrackers then
+            Analyzer:Log("  ⚠️ CUIDADO: Tienes un LocalScript trackeando tus colisiones. Usar firetouchinterest en bucle bruto podría alertarlo por Rate-Limit (demasiados toques en medio segundo).")
+            Analyzer:Log("  💡 BYPASS: Insertar `task.wait(0.25)` entre cada disparo físico, u ocultar el arma antes de enviarlo.")
+        else
+            Analyzer:Log("  ✅ No hay Anti-TouchRate en el cliente.")
+        end
+    end
+
+    -- 2.5 WalkSpeed & CFrame Checks
+    Analyzer:Log("\n[🏃] TEST DE LÍMITES FÍSICOS (ANTI-FLY / ANTI-SPEED):")
+    local envVars = {}
+    for _, s in pairs(LocalPlayer:GetDescendants()) do
+        if s:IsA("LocalScript") and (s.Name:find("Move") or s.Name:find("Speed") or s.Name:find("Physics") or s.Name:find("Anti")) then
+            table.insert(envVars, s.Name)
+        end
+    end
+    if #envVars > 0 then
+        Analyzer:Log("  ⚠️ Scripts locales controlando tu movimiento encontrados: " .. table.concat(envVars, ", "))
+        Analyzer:Log("  💡 BYPASS PREDOMINANTE: El servidor probablemente valida tu posicion cada 0.3s a 1.0s. Si vas a teletransportarte (CFrame) detrás de un zombi, NO LO HAGAS EN CERO SEGUNDOS.")
+        Analyzer:Log("  💡 ESTRATEGIA: Usa `RootPart.Velocity` o saltos cortos (`TweenService`), el teleport bruto disparará las alarmas de distancia máxima permitida por frame.")
+    else
+        Analyzer:Log("  ✅ Scripts locales de movimiento no hallados. (Advertencia: Podría estar procesado puramente en ServerSide).")
+    end
+
+    Analyzer:Log("==============================================\n")
+end
+
+-- 🌐 3. COMBAT DISSECTOR (EL DISECCIONADOR CRACKER)
+local CombatDissector = {}
+function CombatDissector:Analyze()
+    Analyzer:Log("\n[🗡️] DISECCION DE VULNERABILIDADES DEL ARMA:")
     local tools = {}
     if LocalPlayer:FindFirstChild("Backpack") then for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do if t:IsA("Tool") then table.insert(tools, t) end end end
     local myChar = LocalPlayer.Character
     if myChar then for _, t in pairs(myChar:GetChildren()) do if t:IsA("Tool") then table.insert(tools, t) end end end
     
-    if #tools == 0 then
-        Analyzer:Log(" ❌ No tienes armas ni herramientas para analizar.")
-    else
-        for _, tool in ipairs(tools) do
-            Analyzer:Log(" -> [ARMA]: " .. tool.Name)
-            local attrs = tool:GetAttributes()
-            local attrStr = ""
-            for k, v in pairs(attrs) do attrStr = attrStr .. k .. "=" .. tostring(v) .. " " end
-            if attrStr ~= "" then Analyzer:Log("  ⚠️ Atributos: " .. attrStr) end
-        end
-    end
-
-    Analyzer:Log("\n[🧟] DISECCION DE ZOMBIS:")
-    local mobs = {}
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) and obj:FindFirstChild("Humanoid") then
-            if not mobs[obj.Name] and obj.Humanoid.Health > 0 then mobs[obj.Name] = obj end
-        end
-    end
-    for name, mob in pairs(mobs) do
-        Analyzer:Log("\n  > ZOMBI CLASE: " .. name)
-        local root = mob:FindFirstChild("HumanoidRootPart")
-        if root then
-            local okAnchor = pcall(function() root.Anchored = true; root.Anchored = false end)
-            Analyzer:Log("    - Mutabilidad Fisica: " .. (okAnchor and "PERMITIDA" or "BLOQUEADA POR SERVER"))
-        end
-    end
-    Analyzer:Log("==============================================\n")
-end
-
--- ⚔️ 3. AUTO-TRACKER PASIVO
-local AutoTracker = { Active = false, Connections = {}, TrackedZombies = {} }
-
-function AutoTracker:Toggle()
-    if self.Active then
-        for _, conn in ipairs(self.Connections) do pcall(function() conn:Disconnect() end) end
-        self.Connections = {}
-        self.TrackedZombies = {}
-        self.Active = false
-        Analyzer:Log("\n[⛔] MONITOR PASIVO DETENIDO.")
-        return false
-    else
-        self.Active = true
-        Analyzer:Log("\n==============================================")
-        Analyzer:Log("[✅] ESCUCHA PASIVA DE COMBATE ENCENDIDA")
-        Analyzer:Log("==============================================\n")
-
-        local function MonitorPlayer(char)
-            local hum = char:WaitForChild("Humanoid", 3)
-            if hum then
-                local lastHp = hum.Health
-                table.insert(self.Connections, hum.HealthChanged:Connect(function(newHp)
-                    if newHp < lastHp then
-                        Analyzer:Log(" 🩸 [DAÑO RECIBIDO] 🩸 El server registra que perdiste " .. string.format("%.1f", lastHp - newHp) .. " de HP.")
-                    end
-                    lastHp = newHp
-                end))
-            end
-        end
-
-        local myChar = LocalPlayer.Character
-        if myChar then MonitorPlayer(myChar) end
-        table.insert(self.Connections, LocalPlayer.CharacterAdded:Connect(MonitorPlayer))
-
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-        if leaderstats then
-            for _, stat in pairs(leaderstats:GetChildren()) do
-                if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-                    local lastValue = stat.Value
-                    table.insert(self.Connections, stat:GetPropertyChangedSignal("Value"):Connect(function()
-                        if tonumber(stat.Value) and tonumber(lastValue) then
-                            local diff = tonumber(stat.Value) - tonumber(lastValue)
-                            if diff > 0 then Analyzer:Log(" 💰 [RECOMPENSA] Ganaste: +" .. diff .. " " .. stat.Name) end
-                        end
-                        lastValue = stat.Value
-                    end))
-                end
-            end
-        end
-        return true
-    end
-end
-
--- 🔪 4. MÓDULO ESPÍA DE PAQUETES (BUSCADOR DE KILLAURA)
-local SpyModule = { Active = false, Hook = nil }
-
-local function MostrarSpyPopup(mensaje, colorFondo)
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "SpoofedPopupUI"
-    local cgOk = pcall(function() sg.Parent = game:GetService("CoreGui") end)
-    if not cgOk then sg.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    if #tools == 0 then return Analyzer:Log(" ❌ No tienes armas.") end
     
-    for _, v in pairs(sg.Parent:GetChildren()) do
-        if v.Name == "SpoofedPopupUI" and v ~= sg then v:Destroy() end
-    end
-    
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 500, 0, 450)
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -225)
-    MainFrame.BackgroundColor3 = colorFondo or Color3.fromRGB(0, 40, 100)
-    MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.new(1,1,1)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.Parent = sg
-    
-    local Scroll = Instance.new("ScrollingFrame")
-    Scroll.Size = UDim2.new(1, -20, 1, -80)
-    Scroll.Position = UDim2.new(0, 10, 0, 10)
-    Scroll.BackgroundTransparency = 1
-    Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Scroll.ScrollBarThickness = 6
-    Scroll.Parent = MainFrame
-    
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -10, 1, 0)
-    txt.BackgroundTransparency = 1
-    txt.TextColor3 = Color3.fromRGB(230, 230, 230)
-    txt.TextSize = 13
-    txt.Font = Enum.Font.Code
-    txt.TextWrapped = true
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.TextYAlignment = Enum.TextYAlignment.Top
-    txt.Text = " 🛑 ALERTA DEL ESPÍA:\n\n" .. tostring(mensaje)
-    txt.Parent = Scroll
-    
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 45)
-    btn.Position = UDim2.new(0, 10, 1, -55)
-    btn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-    btn.Text = "CERRAR ESTE POPUP"
-    btn.Font = Enum.Font.ArialBold
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Parent = MainFrame
-    btn.MouseButton1Click:Connect(function() sg:Destroy() end)
-    
-    local btnCopy = Instance.new("TextButton")
-    btnCopy.Size = UDim2.new(1, -20, 0, 20)
-    btnCopy.Position = UDim2.new(0, 10, 1, -80)
-    btnCopy.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
-    btnCopy.Text = "COPIAR ESTOS DATOS"
-    btnCopy.Font = Enum.Font.Code
-    btnCopy.TextSize = 12
-    btnCopy.TextColor3 = Color3.new(1,1,1)
-    btnCopy.Parent = MainFrame
-    btnCopy.MouseButton1Click:Connect(function() 
-        pcall(function() 
-            if type(setclipboard) == "function" then 
-                setclipboard(txt.Text) 
-                btnCopy.Text = "COPIADO!" 
-                task.delay(1, function() btnCopy.Text = "COPIAR" end)
-            end
-        end) 
-    end)
-end
-
-function SpyModule:ToggleHookMetamethod()
-    if self.Active then
-        Analyzer:Log("❌ Desactivando Espia de Paquetes. (Nota: Hookmetamethod sigue inyectado de forma pasiva por arquitectura de executors, recarga el script para eliminarlo 100%).")
-        self.Active = false
-        return false
-    end
-
-    local HitboxClassRemote = nil
-    for _, v in pairs(game:GetDescendants()) do
-        if v.Name == "HitboxClassRemote" then
-            HitboxClassRemote = v
-            break
-        end
-    end
-
-    if not HitboxClassRemote then 
-        MostrarSpyPopup("❌ FATAL: No se encontró HitboxClassRemote en el mapa. Asegurate de que tu arma este equipada.", Color3.fromRGB(150, 50, 0))
-        return false
-    end
-
-    if type(hookmetamethod) ~= "function" then
-        MostrarSpyPopup("❌ FATAL: Tu executor tiene la función 'hookmetamethod' deshabilitada.", Color3.fromRGB(150, 0, 0))
-        return false
-    end
-    
-    self.Active = true
-    Analyzer:Log("\n🛡️ [ESPÍA C++] INYECTADO CORRECTAMENTE.\n-> Ataca ahora a un zombi con tu espada. Si el HitboxClassRemote se dispara cruzando la barrera del motor, secuestraremos la tabla de empaquetado y saltará un POPUP en tu pantalla.\n")
-    
-    -- Inyectamos Hook 
-    if not self.Hook then
-        local spySuccess, spyError = pcall(function()
-            self.Hook = hookmetamethod(game, "__namecall", function(selfArg, ...)
-                local method = getnamecallmethod()
-                
-                if SpyModule.Active and selfArg == HitboxClassRemote and (method == "FireServer" or method == "InvokeServer") then
-                    local args = {...}
-                    task.spawn(function()
-                        local logStr = "====== 🎯 SE HA EJECUTADO UN ATAQUE ======\n"
-                        logStr = logStr .. "El Remoto 'HitboxClassRemote' acaba de enviar esta estructura para validación de KillAura:\n\n"
-                        for i, p in pairs(args) do
-                            logStr = logStr .. "▶ ARGUMENTO " .. i .. " [Tipo: " .. type(p) .. "]\n"
-                            if type(p) == "table" then
-                                for k, v in pairs(p) do 
-                                    local valStr = tostring(v)
-                                    if typeof(v) == "Instance" then valStr = "<Objeto: " .. v.Name .. ">" end
-                                    logStr = logStr .. "   ["..tostring(k).."] = ".. valStr .."\n" 
-                                end
-                            elseif typeof(p) == "Instance" then
-                                logStr = logStr .. "   (INSTANCIA): " .. p.Name .. "\n"
-                            else
-                                logStr = logStr .. "   " .. tostring(p) .. "\n"
-                            end
-                        end
-                        logStr = logStr .. "\n\nCopia esta información. Con esta tabla de argumentos enviaremos bucles infinitos por segundo."
-                        MostrarSpyPopup(logStr, Color3.fromRGB(0, 50, 150))
-                    end)
-                end
-                
-                return SpyModule.Hook(selfArg, ...)
-            end)
-        end)
+    for _, tool in ipairs(tools) do
+        Analyzer:Log(" -> Analizando " .. tool.Name)
+        local scriptFounds = 0
+        local remoteFound = nil
         
-        if not spySuccess then
-            self.Active = false
-            MostrarSpyPopup("❌ CRASH INTERNO: " .. tostring(spyError), Color3.fromRGB(150, 0, 0))
-            return false
+        for _, obj in pairs(tool:GetDescendants()) do
+            if obj:IsA("LocalScript") then scriptFounds = scriptFounds + 1 end
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then remoteFound = obj end
+        end
+        
+        if remoteFound then
+            Analyzer:Log("  ☢️ ARMA DUAL: Esta arma contiene un Remote oculto adentro ("..remoteFound.Name..").")
+            Analyzer:Log("  💡 ESTRATEGIA KILLAURA: El script del killaura no debe llamar a un remote del Workspace, debe buscar ESE remote específico ("..remoteFound:GetFullName()..") y envíarselo al servidor.")
+        elseif scriptFounds > 0 then
+            Analyzer:Log("  🕵️ ARMA CLIENT-CONTROLLED: Esta arma ("..scriptFounds.." LocalScripts) calcula el daño en tu PC y envia el paquete general. La vulnerabilidad esta en modificar los Values base del arma.")
+        else
+            Analyzer:Log("  🔒 ARMA SERVER-CONTROLLED: Esta arma no tiene inteligencia local (0 LocalScripts). Solo avisa al servidor 'hice click'. El servidor hace Raycast y decide a quién mataste.")
+            Analyzer:Log("  💡 BYPASS UNICO PARA ARMAS SERVER: El KillAura no puede enviar Hitboxes. Debe Teletransportar al jugador (CFrame) detrás de cada mob del mapa y usar `mouse1click()` o `VirtualInputManager`. Forzamos al servidor a presenciar el daño.")
         end
     end
-    
-    return true
 end
 
 -- ==============================================================================
--- 🖥️ 5. INTERFAZ GRÁFICA GIGANTE (V6)
+-- 🖥️ 4. GUI CRACKER (TOTALMENTE NUEVA ARQUITECTURA)
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
-    sg.Name = "ForenseV6UI"
+    sg.Name = "ForenseV7UI"
     sg.ResetOnSpawn = false
     
     local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
     for _, v in ipairs(parentUI:GetChildren()) do
-        if v.Name == "ForenseV6UI" then v:Destroy() end
+        if v.Name == "ForenseV7UI" then v:Destroy() end
     end
     sg.Parent = parentUI
 
     -- 🔳 FRAME PRINCIPAL
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 800, 0, 600)
-    MainFrame.Position = UDim2.new(0.5, -400, 0.5, -300)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 24)
+    MainFrame.Size = UDim2.new(0, 850, 0, 600)
+    MainFrame.Position = UDim2.new(0.5, -425, 0.5, -300)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
     MainFrame.BorderSizePixel = 2
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 200, 150)
+    MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
@@ -321,8 +187,8 @@ local function ConstruirUI()
     local MaximizeBtn = Instance.new("TextButton")
     MaximizeBtn.Size = UDim2.new(0, 60, 0, 60)
     MaximizeBtn.Position = UDim2.new(0.05, 0, 0.05, 0)
-    MaximizeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-    MaximizeBtn.Text = "👁️\nMAX"
+    MaximizeBtn.BackgroundColor3 = Color3.fromRGB(150, 20, 20)
+    MaximizeBtn.Text = "💀\nABRIR"
     MaximizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     MaximizeBtn.Font = Enum.Font.Code
     MaximizeBtn.TextSize = 14
@@ -337,9 +203,9 @@ local function ConstruirUI()
     -- Barra Superior
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -120, 0, 35)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 60, 100)
-    TopBar.Text = "  ANALISIS FORENSE V6 - + ESPIA DE KILLAURA INCLUIDO"
-    TopBar.TextColor3 = Color3.fromRGB(200, 255, 200)
+    TopBar.BackgroundColor3 = Color3.fromRGB(50, 5, 5)
+    TopBar.Text = "  VULNERABILITY DETECTOR V1 (HACKER AUDIT) - ANTI-BAN"
+    TopBar.TextColor3 = Color3.fromRGB(255, 150, 150)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 14
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -368,21 +234,19 @@ local function ConstruirUI()
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 40, 0, 35)
     CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
     CloseBtn.Text = "X"
     CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     CloseBtn.Font = Enum.Font.Code
     CloseBtn.TextSize = 16
     CloseBtn.Parent = MainFrame
 
-    CloseBtn.MouseButton1Click:Connect(function() AutoTracker:Stop(); SpyModule.Active = false; sg:Destroy() end)
+    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
     MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false; MaximizeBtn.Visible = true end)
     MaximizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true; MaximizeBtn.Visible = false end)
     ReloadBtn.MouseButton1Click:Connect(function()
         pcall(function()
-            Analyzer:Log("🔄 Recargando bypass de caché...")
-            AutoTracker:Stop()
-            SpyModule.Active = false
+            Analyzer:Log("🔄 Forzando recarga de caché desde GitHub...")
             sg:Destroy()
             if type(loadstring) == "function" then
                 loadstring(game:HttpGet(SCRIPT_URL .. "?reload=" .. tostring(math.random(11111, 99999))))()
@@ -390,40 +254,21 @@ local function ConstruirUI()
         end)
     end)
 
-    -- Botones de Accion (Acomodados en fila de 3 para la V6)
+    -- Botones de Accion
     local ScanBtn = Instance.new("TextButton")
-    ScanBtn.Size = UDim2.new(0.33, -10, 0, 45)
+    ScanBtn.Size = UDim2.new(1, -20, 0, 50)
     ScanBtn.Position = UDim2.new(0, 10, 0, 45)
-    ScanBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 0)
-    ScanBtn.Text = "1. ESCÁNEO DE\nESTRUCTURA MUNDIAL"
+    ScanBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+    ScanBtn.Text = "💀 INICIAR AUDITORÍA PROFUNDA DE SEGURIDAD DEL JUEGO 💀"
     ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ScanBtn.Font = Enum.Font.Code
-    ScanBtn.TextSize = 11
+    ScanBtn.TextSize = 14
     ScanBtn.Parent = MainFrame
-    
-    local AutoBtn = Instance.new("TextButton")
-    AutoBtn.Size = UDim2.new(0.33, -10, 0, 45)
-    AutoBtn.Position = UDim2.new(0.33, 5, 0, 45)
-    AutoBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 50)
-    AutoBtn.Text = "2. AUTO-TRACKER\nCOMBATE PASIVO"
-    AutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AutoBtn.Font = Enum.Font.Code
-    AutoBtn.TextSize = 11
-    AutoBtn.Parent = MainFrame
 
-    local SpyBtn = Instance.new("TextButton")
-    SpyBtn.Size = UDim2.new(0.33, -10, 0, 45)
-    SpyBtn.Position = UDim2.new(0.66, 0, 0, 45)
-    SpyBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
-    SpyBtn.Text = "3. INYECTAR ESPÍA \nPARA KILLAURA (C++)"
-    SpyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SpyBtn.Font = Enum.Font.Code
-    SpyBtn.TextSize = 11
-    SpyBtn.Parent = MainFrame
-
+    -- Display
     local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Size = UDim2.new(1, -20, 1, -145)
-    ScrollFrame.Position = UDim2.new(0, 10, 0, 100)
+    ScrollFrame.Size = UDim2.new(1, -20, 1, -150)
+    ScrollFrame.Position = UDim2.new(0, 10, 0, 105)
     ScrollFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
     ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     ScrollFrame.ScrollBarThickness = 8
@@ -433,8 +278,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -15, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = ">>> FORENSE V6 <<<\n\n[BOTON 3 AÑADIDO]: El inyector de hookmetamethod ya fue incorporado como un bloque protegido (Spy Module).\nSi tocas el Botón 3, el executor esperará a que des un espadazo real al aire o al zombi. En cuanto HitboxClassRemote mande los datos C++ envueltos, saltará una GUI roja emergente (Popup) robandose absolutamente todos esos datos al instante para poder crear un KillAura infinito basándonos en ellos.\n\n"
-    LogText.TextColor3 = Color3.fromRGB(150, 255, 255)
+    LogText.Text = ">>> ALGORITMO CRACKER INICIADO <<<\n\nTienes toda la razón, estábamos yendo a ciegas asumiendo que el juego era básico. Vamos a auditar DE ARRIBA A ABAJO qué sistemas Anti-Cheats y Honeypots (Remotes de penalización por usarlos mal) tiene el juego antes de siquiera pensar en tirar un firetouchinterest o un teleport bruto.\n\nPulsa el boton rojo arriba para iniciar la ingeniería inversa de los sistemas de seguridad y de tus armas, para saber ESPECIFICAMENTE cómo crear el KillAura. Todo este diagnóstico me indicará exactamente qué comandos de exploit tu executor sí puede correr y cuáles el servidor bloqueará."
+    LogText.TextColor3 = Color3.fromRGB(255, 100, 100)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 13
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -446,41 +291,19 @@ local function ConstruirUI()
 
     local CopyBtn = Instance.new("TextButton")
     CopyBtn.Size = UDim2.new(1, -20, 0, 35)
-    CopyBtn.Position = UDim2.new(0, 10, 1, -45)
+    CopyBtn.Position = UDim2.new(0, 10, 1, -40)
     CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 200)
-    CopyBtn.Text = " GUARDAR REPORTE AL PORTAPAPELES "
+    CopyBtn.Text = "COPIAR REPORTE AL PORTAPAPELES"
     CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     CopyBtn.Font = Enum.Font.Code
     CopyBtn.TextSize = 14
     CopyBtn.Parent = MainFrame
 
     ScanBtn.MouseButton1Click:Connect(function()
-        pcall(function() Analyzer:Clear(); StructuralAnalyzer:AnalyzeAll() end)
-    end)
-    
-    AutoBtn.MouseButton1Click:Connect(function()
         pcall(function()
-            local isTracking = AutoTracker:Toggle()
-            if isTracking then
-                AutoBtn.Text = "🛑 DETENER\nAUTO-TRACKER"
-                AutoBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-            else
-                AutoBtn.Text = "2. AUTO-TRACKER\nCOMBATE PASIVO"
-                AutoBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 50)
-            end
-        end)
-    end)
-
-    SpyBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            local spyEncedido = SpyModule:ToggleHookMetamethod()
-            if spyEncedido then
-                SpyBtn.Text = "🛑 APAGAR\nESPÍA C++"
-                SpyBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 80)
-            else
-                SpyBtn.Text = "3. INYECTAR ESPÍA \nPARA KILLAURA (C++)"
-                SpyBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
-            end
+            Analyzer:Clear()
+            SecurityAudit:RunAudit()
+            CombatDissector:Analyze()
         end)
     end)
     
@@ -488,8 +311,8 @@ local function ConstruirUI()
         pcall(function()
             if type(setclipboard) == "function" then
                 setclipboard(LogText.Text)
-                CopyBtn.Text = "¡REPORTE COPIADO! PEGATELO EN UN BLOC DE NOTAS."
-                task.delay(3, function() CopyBtn.Text = " GUARDAR REPORTE AL PORTAPAPELES " end)
+                CopyBtn.Text = "¡COPIADO CON ÉXITO!"
+                task.delay(2, function() CopyBtn.Text = "COPIAR REPORTE AL PORTAPAPELES" end)
             end
         end)
     end)
