@@ -185,22 +185,29 @@ local function AddLog(category, message, copiableData)
 end
 
 -- =====================================================================
--- 3. MÓDULOS DE RASTREO (RED Y FÍSICA)
+-- 3. MÓDULOS DE RASTREO (RED Y FÍSICA) - SPY V2
 -- =====================================================================
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    if TrackerRunning and not checkcaller() then
-        local method = getnamecallmethod()
-        if method == "FireServer" or method == "InvokeServer" then
-            local args = {...}
-            task.spawn(function()
-                local success, selfName = pcall(function() return self.Name end)
-                if not success then selfName = "Remote_Unk" end
+    local method = getnamecallmethod()
+    local methodStr = string.lower(tostring(method))
+    
+    if TrackerRunning and (methodStr == "fireserver" or methodStr == "invokeserver") then
+        local args = {...}
+        task.spawn(function()
+            local success, selfName = pcall(function() return self.Name end)
+            if not success or not selfName then selfName = "Remote_Anónimo" end
+            
+            -- Ignoramos paquetes de movimiento estándar de Roblox para no llenar el log
+            local nLow = string.lower(selfName)
+            if not string.find(nLow, "mouse") and not string.find(nLow, "camera") and not string.find(nLow, "movement") then
                 local argStr = ""
-                for i,v in pairs(args) do argStr = argStr .. typeof(v).. ":" ..tostring(v).." | " end
-                AddLog("RED", tostring(selfName), argStr)
-            end)
-        end
+                pcall(function()
+                    for i,v in pairs(args) do argStr = argStr .. typeof(v).. ":" ..tostring(v).." | " end
+                end)
+                AddLog("RED", "[NET] " .. tostring(selfName), argStr)
+            end
+        end)
     end
     return oldNamecall(self, ...)
 end))
