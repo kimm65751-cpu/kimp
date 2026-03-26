@@ -560,7 +560,8 @@ task.spawn(function()
                 local scanList = livingFolder and livingFolder:GetChildren() or workspace:GetDescendants()
                 for _, obj in pairs(scanList) do
                     if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                        if not pService:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
+                        -- FIX VITAL: Asegurarse de que obj NO es nuestro propio personaje ni otro jugador
+                        if obj ~= LocalPlayer.Character and obj.Name ~= LocalPlayer.Name and not pService:GetPlayerFromCharacter(obj) and obj.Humanoid.Health > 0 then
                             local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
                             if posNode then
                                 local dist = (hrp.Position - posNode.Position).Magnitude
