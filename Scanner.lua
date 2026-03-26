@@ -895,11 +895,26 @@
                                     end
                                 end
                             end
-                            -- Al centrarlo un poco más hacia nosotros con tanto grosor, el hitbox del muro traga completamente la AI de pathing del Zombi
-                            MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -4.5)
+                            
+                            -- SISTEMA ORBITAL MAGNÉTICO: En vez de atar el cristal a donde tú miras (lo cual interfiere con el bot de auto-farmear)
+                            -- lo forzamos a existir físicamente 100% en la línea entre TÚ y EL ZOMBI.
+                            local targetPart = nil
+                            local obj = findNearest(function(o) return o:GetAttribute("IsNpc") == true end)
+                            if obj then targetPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") end
+                            
+                            if targetPart then
+                                local vectorDiff = (targetPart.Position - myRoot.Position)
+                                if vectorDiff.Magnitude > 0.1 then
+                                    local guardPos = myRoot.Position + (vectorDiff.Unit * 4.5)
+                                    MyShield.CFrame = CFrame.lookAt(guardPos, targetPart.Position)
+                                end
+                            else
+                                -- Default
+                                MyShield.CFrame = CFrame.lookAt(myRoot.Position + (myRoot.CFrame.LookVector * 4.5), myRoot.Position + (myRoot.CFrame.LookVector * 10))
+                            end
                         end
                     end)
-                    task.wait(0.05)
+                    task.wait() -- Ejecución Ultra Fluida a 60 FPS exactos (sincronía física perfecta)
                 end
             end)
             StatusLabel.Text = "🛡️ Muro Trampa masivo activado. Zombis ignorarán tu hitbox para rodear al infinito."
@@ -949,11 +964,12 @@
                                     end
                                 end
                             end
-                            -- Centrado de manera permanente en el núcleo del jugador
-                            MyBunker.CFrame = myRoot.CFrame
+                            -- Al remover myRoot.CFrame y usar CFrame.new, evitamos que la esfera rote salvajemente
+                            -- cuando el auto-farmear manipule agresivamente tu rotación, eliminando todo Stutter
+                            MyBunker.CFrame = CFrame.new(myRoot.Position)
                         end
                     end)
-                    task.wait(0.05)
+                    task.wait()
                 end
             end)
             StatusLabel.Text = "🔮 Búnker 360° activado. Repele Ataques Radiales (AoE) al alejar físicos 8 metros en toda dirección."
