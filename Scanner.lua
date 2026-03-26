@@ -701,3 +701,72 @@ UIS.InputBegan:Connect(function(input, gp)
         end)
     end
 end)
+
+-- ==========================================
+-- 7. LIVE MONITOR EN VIVO (RunService Heartbeat)
+-- ==========================================
+local RunService = game:GetService("RunService")
+local mouse = LocalPlayer:GetMouse()
+local liveTimer = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    liveTimer = liveTimer + dt
+    if liveTimer < 0.2 then return end
+    liveTimer = 0
+
+    pcall(function()
+        local target = mouse.Target
+        if not target or not target.Parent then
+            LiveLabel.Text = "(Apunta el mouse\na roca o enemigo)"
+            return
+        end
+
+        local txt = ""
+        local partName = target.Name
+        local partPath = ""
+        pcall(function() partPath = target:GetFullName() end)
+        txt = txt .. "🎯 PARTE: " .. partName .. "\n"
+        txt = txt .. "📂 " .. partPath .. "\n"
+
+        -- Atributos directos de la parte
+        for k, v in pairs(target:GetAttributes()) do
+            txt = txt .. "  🔵 " .. k .. " = " .. tostring(v) .. "\n"
+        end
+
+        -- Modelo padre (mobs o rocas)
+        local model = target:FindFirstAncestorWhichIsA("Model")
+        if model then
+            txt = txt .. "\n👾 MODELO: " .. model.Name .. "\n"
+
+            -- HP humanoid (zombies, NPCs)
+            local hum = model:FindFirstChildWhichIsA("Humanoid")
+            if hum then
+                local pct = math.floor((hum.Health / math.max(hum.MaxHealth, 1)) * 100)
+                txt = txt .. "❤️ HP: " .. string.format("%.0f", hum.Health) .. "/" .. string.format("%.0f", hum.MaxHealth) .. " (" .. pct .. "%)\n"
+                txt = txt .. "🏃 Speed: " .. tostring(hum.WalkSpeed) .. "\n"
+            end
+
+            -- Atributos del modelo (rocas: Health, RequiredDamage, etc.)
+            for k, v in pairs(model:GetAttributes()) do
+                txt = txt .. "  🟡 " .. k .. " = " .. tostring(v) .. "\n"
+            end
+
+            -- Values hijos del modelo
+            for _, v in pairs(model:GetChildren()) do
+                if v:IsA("NumberValue") or v:IsA("StringValue") or v:IsA("BoolValue") or v:IsA("IntValue") then
+                    txt = txt .. "  💰 " .. v.Name .. " = " .. tostring(v.Value) .. "\n"
+                end
+            end
+        end
+
+        LiveLabel.Text = txt == "" and "(Sin datos en " .. partName .. ")" or txt
+    end)
+end)
+
+-- ==========================================
+-- 8. AUTOMINE / AUTOKILL PROTOTIPO
+-- ==========================================
+-- Minería: usa el remote encontrado por el Lab
+-- Para ejecutar en consola de Delta:
+--   local rf = game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
+--   while task.wait(0.15) do pcall(function() rf:InvokeServer("Pickaxe") end) end
