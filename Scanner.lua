@@ -579,90 +579,48 @@ task.spawn(function()
                 ToggleNoclip(true)
                 
                 if targetType == "Mob" then
-                    -- ⚔️ COMBATE TÁCTICO AVANZADO: AURA KILL (10 studs)
+                    -- ⚔️ COMBATE FLUIDO (KITING): 4.5 studs = Rango Gladius Dagger
                     local diff = hrp.Position - bestTarget.Position
                     local flatDir = Vector3.new(diff.X, 0, diff.Z)
-                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(10, 0, 0) end
+                    if flatDir.Magnitude < 0.1 then flatDir = Vector3.new(1, 0, 0) end
                     
-                    -- Posición a 10 studs exactos del zombie (100% invulnerable al golpe normal)
-                    local attackPos = bestTarget.Position + (flatDir.Unit * 10) + Vector3.new(0, 3.5, 0)
+                    -- Calculamos la posición de golpe óptima frente al zombie (si él se mueve, esto cambia)
+                    local attackPos = bestTarget.Position + (flatDir.Unit * 4.5)
                     
-                    if (hrp.Position - attackPos).Magnitude > 2 then
-                        TweenToPosition(attackPos, bestTarget.Position)
-                    end
-                    
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    
-                    -- Equipar Gladius Dagger / Weapon
+                    -- Equipamos tu arma
                     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                     local targetTool = LocalPlayer.Character:FindFirstChild("Weapon")
                     if not targetTool then
                         for _, t in pairs(LocalPlayer.Character:GetChildren()) do
-                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
-                                targetTool = t; break
-                            end
+                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then targetTool = t; break end
                         end
-                    end
-                    if not targetTool then
-                        for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
-                                targetTool = t; break
+                        if not targetTool then
+                            for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
+                                if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then targetTool = t; break end
                             end
                         end
                     end
                     if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
-                        hum:UnequipTools(); task.wait(0.05); hum:EquipTool(targetTool); task.wait(0.1)
+                        hum:UnequipTools(); hum:EquipTool(targetTool)
                     end
                     
-                    -- 💥 BOOST ItemJSON
-                    if targetTool then
-                        pcall(function()
-                            local json = targetTool:GetAttribute("ItemJSON")
-                            if json then
-                                json = string.gsub(json, '"Quality":[%d%.]+', '"Quality":9999')
-                                json = string.gsub(json, '"Upgrade":%d+', '"Upgrade":99')
-                                targetTool:SetAttribute("ItemJSON", json)
-                            end
-                        end)
-                    end
+                    -- Movimiento Fluido: MoveTo no congela el script como el Tween y evade el ban de TPs
+                    if hum then pcall(function() hum:MoveTo(attackPos) end) end
+                    hrp.AssemblyLinearVelocity = Vector3.zero
                     
+                    -- Apuntar la cámara exactamente al zombie para que el click local NUNCA falle
                     local camera = workspace.CurrentCamera
                     if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                     
-                    -- 🔥 MODO DIOS: Ataque Directo al Remote (Bypass de Físicas) 🔥
-                    local rs = game:GetService("ReplicatedStorage")
-                    local hitRemote = rs:FindFirstChild("HitboxClassRemote")
                     local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                    if activeTool then pcall(function() activeTool:Activate() end) end
                     
-                    if hitRemote and activeTool then
-                        -- El juego usa RaycastHitboxV4 o similar. Disparamos directo al Remote
-                        pcall(function()
-                            for i = 1, 3 do
-                                -- Formato genérico de RaycastHitbox: Action, HitPointsArray
-                                -- Registramos todas las partes del zombie como 'Golpeadas'
-                                local hitPoints = {}
-                                for _, part in pairs(bestTarget:GetChildren()) do
-                                    if part:IsA("BasePart") then
-                                        table.insert(hitPoints, {part, part.Position, Vector3.new(0,0,0), part.Material})
-                                    end
-                                end
-                                hitRemote:FireServer("Hit", hitPoints, activeTool)
-                                activeTool:Activate() -- Disparar animaciones/cooldowns
-                                task.wait(0.15)
-                            end
-                        end)
-                    else
-                        -- Fallback si no hay remote: Click clásico desde la distancia segura
-                        local cx = camera.ViewportSize.X / 2
-                        local cy = camera.ViewportSize.Y / 2
-                        for _ = 1, 3 do
-                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                            task.wait()
-                            VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                            if activeTool then pcall(function() activeTool:Activate() end) end
-                            task.wait(0.15)
-                        end
-                    end
+                    local cx = camera.ViewportSize.X / 2
+                    local cy = camera.ViewportSize.Y / 2
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                    VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                    
+                    task.wait(0.05) -- Solo un micro-descanso para no ahogar el loop
                     
                 else
                     -- MODO MINERÍA: TweenService suave para ores
