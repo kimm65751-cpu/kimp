@@ -430,7 +430,8 @@ end
 -- =====================================================================
 -- 5. ALGORITMOS DE MOVIMIENTO TÁCTICO PARA BOT (PATHFINDING / NOCLIP)
 -- =====================================================================
-local autoFarmPebble = false
+local autoFarmOres = false
+local autoFarmMobs = false
 local noclipConn
 
 local function ToggleNoclip(state)
@@ -471,62 +472,127 @@ end
 
 task.spawn(function()
     while task.wait(0.1) do
-        if autoFarmPebble and LocalPlayer.Character then
+        if (autoFarmOres or autoFarmMobs) and LocalPlayer.Character then
             local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then continue end
             
-            local bestPebble = nil
-            local minDist = math.huge
+            local bestOre = nil
+            local bestOreDist = math.huge
+            local bestMob = nil
+            local bestMobDist = math.huge
+            local pService = game:GetService("Players")
             
+            -- SCAN DE MAPA: Buscar Rocas y Zombies por separado
             for _, obj in pairs(workspace:GetDescendants()) do
-                if obj.Name == "Pebble" then
+                local nLC = string.lower(obj.Name)
+                
+                -- Si es una Piedra Crítica (Y el Modo Piedras está activo)
+                if autoFarmOres and (string.find(nLC, "pebble") or string.find(nLC, "flatrock") or string.find(nLC, "rock") or string.find(nLC, "stone") or string.find(nLC, "ore")) then
                     local hp = obj:GetAttribute("Health") or obj:GetAttribute("HP")
                     if hp and hp > 0 then
-                        local hitbox = obj:FindFirstChild("Hitbox") or obj:FindFirstChildWhichIsA("BasePart")
-                        if hitbox then
-                            local dist = (hrp.Position - hitbox.Position).Magnitude
-                            if dist < minDist then
-                                minDist = dist
-                                bestPebble = hitbox
+                        local posNode = obj:FindFirstChild("Hitbox") or obj:FindFirstChildWhichIsA("BasePart") or obj
+                        if posNode and posNode:IsA("BasePart") then
+                            local dist = (hrp.Position - posNode.Position).Magnitude
+                            if dist < bestOreDist then
+                                bestOreDist = dist
+                                bestOre = posNode
+                            end
+                        end
+                    end
+                end
+                
+                -- Si es un Mob (Siempre se escanean si hay Ores encendido para Autodefensa, o si Mobs está encendido)
+                if (autoFarmMobs or autoFarmOres) and obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                    if not pService:GetPlayerFromCharacter(obj) and (string.find(nLC, "zomb") or string.find(nLC, "enem") or string.find(nLC, "delver")) then
+                        if obj.Humanoid.Health > 0 then
+                            local posNode = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                            if posNode then
+                                local dist = (hrp.Position - posNode.Position).Magnitude
+                                if dist < bestMobDist then
+                                    bestMobDist = dist
+                                    bestMob = posNode
+                                end
                             end
                         end
                     end
                 end
             end
             
-            if bestPebble then
+            -- LÓGICA DE PRIORIDAD TÁCTICA Y AUTODEFENSA
+            local bestTarget = nil
+            local targetType = nil
+            
+            -- Priorizar Autodefensa: Si estamos picando piedras, pero un zombi se acerca demasiado (<50 studs), priorizar matarlo.
+            if bestMob and (autoFarmMobs or (autoFarmOres and bestMobDist < 50)) then
+                bestTarget = bestMob
+                targetType = "Mob"
+            elseif bestOre and autoFarmOres then
+                bestTarget = bestOre
+                targetType = "Ore"
+            end
+            
+            if bestTarget then
                 ToggleNoclip(true)
-                local atackPos = bestPebble.Position + Vector3.new(0, 3.5, 0)
+                -- Ajuste Táctico de Altura
+                local offset = targetType == "Mob" and Vector3.new(0, 5.5, 0) or Vector3.new(0, 3.5, 0)
+                local attackPos = bestTarget.Position + offset
                 
-                if (hrp.Position - atackPos).Magnitude > 3 then
-                    TweenToPosition(atackPos)
+                if (hrp.Position - attackPos).Magnitude > 3 then
+                    TweenToPosition(attackPos)
                 end
                 
-                hrp.CFrame = CFrame.lookAt(atackPos, bestPebble.Position)
+                hrp.CFrame = CFrame.lookAt(attackPos, bestTarget.Position)
                 hrp.AssemblyLinearVelocity = Vector3.zero
                 
-                -- RUTINA DE GOLPEO RÁPIDO Y PRECISO (Paso 1 - Finalizado)
+                -- BÚSQUEDA TÁCTICA DE ARMAS EN LA MOCHILA
                 local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                local tool = LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool")
+                local targetTool = nil
+                local invItems = LocalPlayer.Backpack:GetChildren()
+                for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+                    if t:IsA("Tool") then table.insert(invItems, t) end
+                end
                 
-                if tool and hum and tool.Parent ~= LocalPlayer.Character then
-                    hum:EquipTool(tool)
-                    task.wait(0.1) -- Tiempo de animación de equipar
+                if targetType == "Mob" then
+                    -- Arma 2: Cualquier herramienta ofensiva que NO sea un pico
+                    for _, t in pairs(invItems) do
+                        if t:IsA("Tool") and not string.find(string.lower(t.Name), "pickaxe") then
+                            targetTool = t
+                            break
+                        end
+                    end
+                    if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                else
+                    -- Arma 1: El Pico para minar Ores
+                    for _, t in pairs(invItems) do
+                        if t:IsA("Tool") and string.find(string.lower(t.Name), "pickaxe") then
+                            targetTool = t
+                            break
+                        end
+                    end
+                    if not targetTool then targetTool = LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") end
+                end
+                
+                -- EQUIPAR ARMA TÁCTICA
+                if targetTool and hum and LocalPlayer.Character:FindFirstChild(targetTool.Name) == nil then
+                    hum:UnequipTools()
+                    task.wait(0.05)
+                    hum:EquipTool(targetTool)
+                    task.wait(0.1)
                 end
                 
                 local camera = workspace.CurrentCamera
-                if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestPebble.Position) end
+                if camera then camera.CFrame = CFrame.lookAt(camera.CFrame.Position, bestTarget.Position) end
                 
-                -- Virtual Input Manager (Fuego Rápido - Metralleta)
+                -- AUTO-CLICKER LETAL MIENTRAS APUNTA
                 local cx = camera.ViewportSize.X / 2
                 local cy = camera.ViewportSize.Y / 2
                 VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                task.wait() -- Milisegundo mínimo
+                task.wait()
                 VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
                 
-                if tool then pcall(function() tool:Activate() end) end
+                local activeTool = LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+                if activeTool then pcall(function() activeTool:Activate() end) end
                 
-                -- PROBANDO VULNERABILIDAD: Cero Cooldown (De 0.25 a 0.01)
                 task.wait()
             else
                 ToggleNoclip(false)
@@ -535,17 +601,29 @@ task.spawn(function()
     end
 end)
 
-AutoPebbleBtn.MouseButton1Click:Connect(function()
-    autoFarmPebble = not autoFarmPebble
-    if autoFarmPebble then
-        AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: ON"
-        AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        AddLog("SISTEMA", "Bot Auto-Farm activado...", "")
+AutoOreBtn.MouseButton1Click:Connect(function()
+    autoFarmOres = not autoFarmOres
+    if autoFarmOres then
+        AutoOreBtn.Text = "⛏️ FARM ORES: ON"
+        AutoOreBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
+        AddLog("SISTEMA", "Bot Piedras encendido. Autodefensa lista.", "")
     else
-        AutoPebbleBtn.Text = "BOT AUTO-PEBBLE: OFF"
-        AutoPebbleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        ToggleNoclip(false)
-        AddLog("SISTEMA", "Bot Auto-Farm apagado. Regresando a la normalidad.", "")
+        AutoOreBtn.Text = "⛏️ FARM ORES: OFF"
+        AutoOreBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        if not autoFarmMobs then ToggleNoclip(false) end
+    end
+end)
+
+AutoMobBtn.MouseButton1Click:Connect(function()
+    autoFarmMobs = not autoFarmMobs
+    if autoFarmMobs then
+        AutoMobBtn.Text = "⚔️ FARM MOBS: ON"
+        AutoMobBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
+        AddLog("SISTEMA", "Bot Cacería de Zombies encendido.", "")
+    else
+        AutoMobBtn.Text = "⚔️ FARM MOBS: OFF"
+        AutoMobBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 150)
+        if not autoFarmOres then ToggleNoclip(false) end
     end
 end)
 
