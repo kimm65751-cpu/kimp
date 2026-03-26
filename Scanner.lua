@@ -477,36 +477,30 @@ AutoPumpBtn.MouseButton1Click:Connect(function()
         AddLog("SISTEMA", "🔥 Modo Bombeo Activado. ¡Pon el mouse X sobre el fuelle, yo haré el resto!", "")
         
         task.spawn(function()
-            local vim = game:GetService("VirtualInputManager")
-            local camera = workspace.CurrentCamera
+            AddLog("SISTEMA", "🔥 Modo Bombeo (Físico) Iniciado.", "")
             
-            -- Calculamos límites usando la pantalla absoluta (Para abarcar toda la barra sin fallar)
-            local topY = camera.ViewportSize.Y * 0.25 -- Cerca de la cima
-            local botY = camera.ViewportSize.Y * 0.75 -- Cerca del fondo
+            -- Aseguramos de hacer el clic sostenido al iniciar
+            if mouse1click then mouse1click() end 
+            if mouse1press then mouse1press() end
             
             while autoPump do
-                -- Toma anclaje constante de donde tienes tu mouse para no fallar el eje X
-                local X = LocalPlayer:GetMouse().X
-                
-                -- Agarra el botón en la cima
-                vim:SendMouseButtonEvent(X, topY, 0, true, game, 1)
-                
-                -- Barrido suave hacia abajo (Para que el juego no detecte hack de teletransporte)
-                for i = 0, 5 do
-                    vim:SendMouseMovementEvent(X, topY + ((botY - topY) * (i/5)), game)
-                    task.wait()
+                -- Baja el ratón físico 300 píxeles relativos
+                for i = 1, 10 do
+                    if not autoPump then break end
+                    if mousemoverel then mousemoverel(0, 30) end
+                    task.wait(0.01)
                 end
                 
-                -- Barrido suave hacia arriba
-                for i = 0, 5 do
-                    vim:SendMouseMovementEvent(X, botY - ((botY - topY) * (i/5)), game)
-                    task.wait()
+                -- Sube el ratón 300 píxeles hacia arriba
+                for i = 1, 10 do
+                    if not autoPump then break end
+                    if mousemoverel then mousemoverel(0, -30) end
+                    task.wait(0.01)
                 end
             end
             
-            -- Cuando apagamos, suelta el clic
-            local m = LocalPlayer:GetMouse()
-            vim:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 1)
+            if mouse1release then mouse1release() end
+            AddLog("SISTEMA", "Bombeo Físico Terminado.", "")
         end)
     else
         AutoPumpBtn.Text = "AUTO-FUELLE: OFF"
