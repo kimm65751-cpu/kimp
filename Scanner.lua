@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V3.1 (GOD-BOT SAFE-THREADING)
--- Intercepta el arranque, destruye el minijuego, y calcula matemática exacta.
+-- 🗡️ FORGE OMNI-ANALYZER V3.2 (GOD-BOT MATHEMATICS FIX)
+-- Bloqueo verdadero en red para suprimir interrupciones del script nativo.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V3.1 - DIOS DE LA FORJA SAFE"
+local SCRIPT_VERSION = "V3.2 - DIOS DE LA FORJA SAFE"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
-Title.Text = " 📡 FORGE V3.1 (GOD-BOT MATHEMATICS)"
-Title.TextColor3 = Color3.fromRGB(255, 150, 255)
+Title.BackgroundColor3 = Color3.fromRGB(120, 20, 60)
+Title.Text = " 📡 FORGE V3.2 (GOD-BOT MATHEMATICS)"
+Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -344,22 +344,26 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         
         -- INTERCEPTAMOS EL INICIO DEL JUEGO DIRECTO DEL USUARIO Y LO RETENEMOS!
         if string.find(nameLower, "changesequence") then
+            -- ==========================================
+            -- BLOQUEO VERDADERO (ANTI-SABOTAJE LOCAL)
+            -- ==========================================
+            if tostring(args[1]) ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
+                task.spawn(function() AddUILog("BLOCK", "Señal SUJA nativa [" .. tostring(args[1]) .. "] Anulada para proteger el cálculo perfecto.", Color3.fromRGB(255, 50, 50)) end)
+                return nil -- Destruye la ejecución del script nativo instantáneamente
+            end
+            
             -- OJO: ESTO BLOQUEARÁ EL HILO AQUÍ HASTA RECIBIR RESPUESTA, PERMITIENDO ROBARLA
             local RetTuple = {OriginalNamecall(self, ...)}
             local returnVal = RetTuple[1]
             
             task.spawn(function()
                 if tostring(args[1]) == "Melt" then
-                    AddUILog("INTERCEPT", "Tu click legal fue interceptado. Resp. Servidor Copiada V3.1", Color3.fromRGB(255,100,255))
+                    AddUILog("INTERCEPT", "Tu click legal fue interceptado. Resp. Servidor Copiada V3.2", Color3.fromRGB(255,100,255))
                     local dumpRet = (type(returnVal) == "table" and DumpTableDeep(returnVal) or tostring(returnVal))
                     AddUILog("INTERCEPT", "Resp: " .. dumpRet, Color3.fromRGB(200,200,200))
                     
                     if ModosBypass.BotActivo and not BotJugandoAhoraMismo then
                         ExecutePerfectSequence(self, returnVal)
-                    end
-                else
-                    if ModosBypass.BotActivo and BotJugandoAhoraMismo then
-                        AddUILog("BLOCK", "Tu Minijuego local intentó jugar, pero nosotros lo bloqueamos para jugar perfecto.", Color3.fromRGB(150,150,150))
                     end
                 end
             end)
@@ -394,5 +398,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V3.1 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "El Bot tiene Protección Anti-Crash de Ejecutores. Ya puedes probar sin que se trabe.", Color3.fromRGB(255, 200, 100))
+AddUILog("SISTEMA", "V3.2 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "Cálculo Matemático Perfeccionado. Ahora no habrá sabotajes del minijuego local.", Color3.fromRGB(255, 200, 100))
