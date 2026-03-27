@@ -1,6 +1,4 @@
--- ==============================================================================
--- 🗡️ OMNI-FARM V3.1 (ANTI-STUCK Y TRAVEL FIX)
--- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
+-- 🗡️ OMNI-FARM V3.2 (PISO DINÁMICO)
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -38,9 +36,8 @@ local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 local SelectedMobs = {} -- Se llena con el Scanner
 local SelectedOres = {} -- Se llena con el Scanner
 
-
-
--- ==========================================
+-- LÍMITE DE PISO DINÁMICO (Safe Floor)
+local SafeFloorY = -50 -- Límite base (Se actualiza con el botón)-- ==========================================
 -- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
 -- ==========================================
 local function GetMyLevel()
@@ -117,7 +114,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V3.1"
+Title.Text = " 🗡️ OMNI-FARM V3.2"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -209,7 +206,7 @@ MineBtn.TextSize = 12
 MineBtn.Parent = Panel
 
 local ScannerBtn = Instance.new("TextButton")
-ScannerBtn.Size = UDim2.new(1, -8, 0, 30)
+ScannerBtn.Size = UDim2.new(0.5, -6, 0, 30)
 ScannerBtn.Position = UDim2.new(0, 4, 0, 160)
 ScannerBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
 ScannerBtn.Text = "🔍 SCANNER"
@@ -217,6 +214,16 @@ ScannerBtn.TextColor3 = Color3.fromRGB(255, 220, 255)
 ScannerBtn.Font = Enum.Font.Code
 ScannerBtn.TextSize = 11
 ScannerBtn.Parent = Panel
+
+local SetFloorBtn = Instance.new("TextButton")
+SetFloorBtn.Size = UDim2.new(0.5, -6, 0, 30)
+SetFloorBtn.Position = UDim2.new(0.5, 2, 0, 160)
+SetFloorBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
+SetFloorBtn.Text = "📍 FIJAR PISO"
+SetFloorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetFloorBtn.Font = Enum.Font.Code
+SetFloorBtn.TextSize = 11
+SetFloorBtn.Parent = Panel
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 150)
@@ -591,6 +598,17 @@ local function DetenerFarm()
     end
 end
 
+SetFloorBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local r = char and char:FindFirstChild("HumanoidRootPart")
+        if r then
+            SafeFloorY = r.Position.Y
+            StatusLabel.Text = "📍 LÍMITE DE PISO FIJADO\nY = " .. tostring(math.floor(SafeFloorY)) .. " studs.\n\nEl bot NO bajará más de 15 studs debajo de este nivel al buscar minas."
+        end
+    end)
+end)
+
 local function IniciarFarm()
     if FarmTask then return end
     
@@ -623,6 +641,8 @@ local function IniciarFarm()
                                         local mobLvl = GetMobLevel(o)
                                         if mobLvl > 0 and mobLvl > myLevel then return false end
                                     end
+                                    local root = o:FindFirstChild("HumanoidRootPart")
+                                    if root and root.Position.Y < (SafeFloorY - 15) then return false end
                                     return true
                                 end
                             end
@@ -701,8 +721,8 @@ local function IniciarFarm()
                                     if selected then
                                         local op = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
                                         if op then
-                                            -- ANTI-UNDERGROUND (Absoluto Nivel del Mar)
-                                            if op.Position.Y > 0 then
+                                            -- ANTI-UNDERGROUND (Dinámico)
+                                            if op.Position.Y >= (SafeFloorY - 15) then
                                                 local distToOre = (myRoot.Position - op.Position).Magnitude
                                                 
                                                 -- INTELIGENCIA: Contar zombies usando caché (0 LAG)
