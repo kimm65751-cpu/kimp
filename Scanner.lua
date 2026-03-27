@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V3.3 (GOD-BOT IDENTITY FIX)
--- Tunelización de red segura para evitar Sabotaje y Self-Blocking.
+-- 🗡️ FORGE OMNI-ANALYZER V3.4 (GOD-BOT: SERVER TIME SYNC)
+-- Tunelización con Timeout y Anti-Drifting matemático exacto al tic del Servidor.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V3.3 - DIOS DE LA FORJA SAFE"
+local SCRIPT_VERSION = "V3.4 - DIOS DE LA FORJA SAFE"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(150, 0, 30)
-Title.Text = " 📡 FORGE V3.3 (FINAL GOD-BOT)"
-Title.TextColor3 = Color3.fromRGB(255, 200, 200)
+Title.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
+Title.Text = " 📡 FORGE V3.4 (FINAL TIME-SYNC BOT)"
+Title.TextColor3 = Color3.fromRGB(200, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -262,13 +262,34 @@ local function DestroyNativeMinigames()
 end
 
 -- ==========================================
--- TÚNEL SEGURO DE RED (Evasión de Self-Block)
+-- TÚNEL SEGURO DE RED CON ANTI-FREEZE
 -- ==========================================
 local function SafeInvoke(forgeRF, phase, argsParam)
+    local s, r = false, nil
+    local completed = false
     BotBypassingNetwork = true
-    local s, r = pcall(function() return forgeRF:InvokeServer(phase, argsParam) end)
+    task.spawn(function()
+        local _s, _r = pcall(function() return forgeRF:InvokeServer(phase, argsParam) end)
+        s, r = _s, _r
+        completed = true
+    end)
+    
+    local timeout = os.clock()
+    -- Evitamos que Knit cuelgue la computadora infinitamente si el servidor se traba
+    while not completed and (os.clock() - timeout) < 5 do task.wait() end
     BotBypassingNetwork = false
+    
+    if not completed then AddUILog("TIMEOUT", "El servidor tardó mucho respondiendo la fase " .. phase, Color3.fromRGB(255,100,0)) end
     return s, r
+end
+
+local function WaitUntilServerTime(targetTime)
+    local maxWait = targetTime + 2.0 -- Safety cap
+    while workspace:GetServerTimeNow() < targetTime do
+        if workspace:GetServerTimeNow() > maxWait then break end
+        task.wait()
+    end
+    return workspace:GetServerTimeNow()
 end
 
 -- ==========================================
@@ -279,42 +300,42 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         BotJugandoAhoraMismo = true
         DestroyNativeMinigames()
         
-        AddUILog("BOT_V3", ">> Calculando matemática fase 1 (Melt a Pour)...", Color3.fromRGB(150,255,150))
+        AddUILog("BOT_V3", ">> Fase 1: Sincronizando Melt con el AntiCheat...", Color3.fromRGB(150,255,150))
         local req1, start1 = ExtractTimes(primerMeltReturn)
-        req1 = req1 or 2.12
-        start1 = start1 or os.clock()
+        req1 = req1 or 2.15
+        start1 = start1 or workspace:GetServerTimeNow()
         
-        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req1), Color3.fromRGB(200,200,200))
-        task.wait(req1)
+        local trueTime1 = WaitUntilServerTime(start1 + req1)
+        AddUILog("BOT_V3", string.format("Fase 1 Sincronizada: +.%.2fs", req1), Color3.fromRGB(200,200,200))
         
         AddUILog("BOT_V3", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(150,255,150))
-        local s2, r2 = SafeInvoke(forgeRF, "Pour", {ClientTime = start1 + req1})
+        local s2, r2 = SafeInvoke(forgeRF, "Pour", {ClientTime = trueTime1})
         
         local req2, start2 = ExtractTimes(r2)
-        req2 = req2 or 3.00
-        start2 = start2 or (start1 + req1)
-        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req2), Color3.fromRGB(200,200,200))
-        task.wait(req2)
+        req2 = req2 or 3.50
+        start2 = start2 or workspace:GetServerTimeNow()
+        local trueTime2 = WaitUntilServerTime(start2 + req2)
+        AddUILog("BOT_V3", string.format("Fase 2 Sincronizada: +.%.2fs", req2), Color3.fromRGB(200,200,200))
         
         AddUILog("BOT_V3", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(150,255,150))
-        local s3, r3 = SafeInvoke(forgeRF, "Hammer", {ClientTime = start2 + req2})
+        local s3, r3 = SafeInvoke(forgeRF, "Hammer", {ClientTime = trueTime2})
         
         local req3, start3 = ExtractTimes(r3)
-        req3 = req3 or 3.00
-        start3 = start3 or (start2 + req2)
-        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req3), Color3.fromRGB(200,200,200))
-        task.wait(req3)
+        req3 = req3 or 3.50
+        start3 = start3 or workspace:GetServerTimeNow()
+        local trueTime3 = WaitUntilServerTime(start3 + req3)
+        AddUILog("BOT_V3", string.format("Fase 3 Sincronizada: +.%.2fs", req3), Color3.fromRGB(200,200,200))
         
         AddUILog("BOT_V3", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(150,255,150))
-        local s4, r4 = SafeInvoke(forgeRF, "Water", {ClientTime = start3 + req3})
+        local s4, r4 = SafeInvoke(forgeRF, "Water", {ClientTime = trueTime3})
         
         local req4, start4 = ExtractTimes(r4)
-        req4 = req4 or 3.00
-        start4 = start4 or (start3 + req3)
-        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req4), Color3.fromRGB(200,200,200))
-        task.wait(req4)
+        req4 = req4 or 3.50
+        start4 = start4 or workspace:GetServerTimeNow()
+        WaitUntilServerTime(start4 + req4)
+        AddUILog("BOT_V3", string.format("Fase 4 Sincronizada: +.%.2fs", req4), Color3.fromRGB(200,200,200))
         
-        AddUILog("BOT_V3", ">> Completado con éxito! Enviando reclamación de material (Showcase)", Color3.fromRGB(255,255,50))
+        AddUILog("BOT_V3", ">> Completado con éxito! Reclamando Arma...", Color3.fromRGB(255,255,50))
         SafeInvoke(forgeRF, "Showcase", {})
         AddUILog("BOT_V3", "=== FIN DEL CRAFTEO PERFECTO EN LA SOMBRA ===", Color3.fromRGB(0,255,0))
         
@@ -413,5 +434,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V3.3 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "Túnel Seguro de Red Activado. El Bot ya no bloqueará sus propios comandos. 100% QUALITY ENABLED.", Color3.fromRGB(255, 200, 100))
+AddUILog("SISTEMA", "V3.4 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "Tiempos dinámicos del Servidor en VIVO insertados. A prueba de congelamientos.", Color3.fromRGB(255, 200, 100))
