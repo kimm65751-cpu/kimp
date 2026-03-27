@@ -1,94 +1,178 @@
 -- ==============================================================================
--- 🛡️ AUTO-DEFENDER V1.2 (SAFE RENDER FULL BUGTRACKER)
--- Minimalista sin adornos complejos para evitar crasheos de ejecutor.
+-- 🛡️ REVERSE ENG: NETWORK ANALYZER V2.0 (GUI V2)
+-- Analiza la desincronización entre lo "Visual" y el "Servidor".
+-- Intercepta las llamadas de Red (RemoteEvents) para ver por qué falla la puerta.
 -- ==============================================================================
-local CoreGui = game:GetService("CoreGui")
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+
 local LocalPlayer = Players.LocalPlayer
 
--- Paso 1: Limpiar cualquier GUI anterior bugeada
+-- Paso 1: Limpieza
 for _, obj in pairs(CoreGui:GetChildren()) do
-    if obj.Name == "AutoDefender_V2" then
+    if obj.Name == "AutoDefender_V2" or obj.Name == "NetworkAnalyzerV2" then
         obj:Destroy()
     end
 end
 if LocalPlayer:FindFirstChild("PlayerGui") then
     for _, obj in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        if obj.Name == "AutoDefender_V2" then
+        if obj.Name == "AutoDefender_V2" or obj.Name == "NetworkAnalyzerV2" then
             obj:Destroy()
         end
     end
 end
 
--- Paso 2: Crear el GUI Secuencialmente sin "xpcall" que puede silenciar errores en Delta
-local gui = Instance.new("ScreenGui")
-gui.Name = "AutoDefender_V2"
-pcall(function() gui.Parent = CoreGui end)
-if not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+-- Paso 2: Creación de GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NetworkAnalyzerV2"
+pcall(function() ScreenGui.Parent = CoreGui end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 320, 0, 200)
-main.Position = UDim2.new(0.5, -160, 0.5, -100)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-main.BorderSizePixel = 2
-main.BorderColor3 = Color3.fromRGB(255, 0, 0)
-main.Active = true
--- Usamos "Draggable = true" directo. Es obsoleto en Gui modernas pero 100% seguro contra crasheos de scripts custom de Touch
-main.Draggable = true
-main.Parent = gui
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 420, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
--- Título
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(0, 255, 128)
-title.Text = "🛡️ BUG TRACKER V1.2"
-title.Font = Enum.Font.Code
-title.TextSize = 18
-title.Parent = main
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(0, 150, 255)
+Title.Text = "🛡️ NETWORK ANALYZER V2.0"
+Title.Font = Enum.Font.Code
+Title.TextSize = 18
+Title.Parent = MainFrame
 
--- Estado
-local statusInfo = Instance.new("TextLabel")
-statusInfo.Size = UDim2.new(1, -20, 0, 40)
-statusInfo.Position = UDim2.new(0, 10, 0, 40)
-statusInfo.BackgroundTransparency = 1
-statusInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusInfo.Text = "Estado: Esperando..."
-statusInfo.Font = Enum.Font.Code
-statusInfo.TextSize = 14
-statusInfo.TextWrapped = true
-statusInfo.Parent = main
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, -20, 0, 30)
+Status.Position = UDim2.new(0, 10, 0, 35)
+Status.BackgroundTransparency = 1
+Status.TextColor3 = Color3.fromRGB(200, 200, 200)
+Status.Text = "Estado: Localizando Botón..."
+Status.TextXAlignment = Enum.TextXAlignment.Left
+Status.Font = Enum.Font.Code
+Status.TextSize = 13
+Status.Parent = MainFrame
 
--- Botón
-local btnToggle = Instance.new("TextButton")
-btnToggle.Size = UDim2.new(0.8, 0, 0, 40)
-btnToggle.Position = UDim2.new(0.1, 0, 0, 90)
-btnToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-btnToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnToggle.Text = "INICIAR INTERCEPTOR (OFF)"
-btnToggle.Font = Enum.Font.Code
-btnToggle.TextSize = 14
-btnToggle.BorderSizePixel = 2
-btnToggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
-btnToggle.Parent = main
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0, 70)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Text = "INICIAR AUTO-BLOCK + SNIFFER (OFF)"
+ToggleBtn.Font = Enum.Font.Code
+ToggleBtn.TextSize = 14
+ToggleBtn.BorderSizePixel = 1
+ToggleBtn.Parent = MainFrame
 
--- Logging de Fallos
-local debugLog = Instance.new("TextLabel")
-debugLog.Size = UDim2.new(1, -20, 0, 40)
-debugLog.Position = UDim2.new(0, 10, 0, 140)
-debugLog.BackgroundTransparency = 1
-debugLog.TextColor3 = Color3.fromRGB(255, 255, 100)
-debugLog.Text = "Log: Ninguno"
-debugLog.Font = Enum.Font.Code
-debugLog.TextSize = 12
-debugLog.TextWrapped = true
-debugLog.Parent = main
+-- Zona de Log de Red (Para capturar los RemoteEvents)
+local LogHolder = Instance.new("ScrollingFrame")
+LogHolder.Size = UDim2.new(0.9, 0, 0, 180)
+LogHolder.Position = UDim2.new(0.05, 0, 0, 120)
+LogHolder.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+LogHolder.BorderSizePixel = 1
+LogHolder.BorderColor3 = Color3.fromRGB(0, 150, 255)
+LogHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogHolder.ScrollBarThickness = 6
+LogHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogHolder.Parent = MainFrame
 
-----------------------------------------------------
--- LÓGICA DEL HACK TRACKER
-----------------------------------------------------
+local UIListLayout = Instance.new("UIListLayout", LogHolder)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 2)
+
+local logCount = 0
+local function AddLog(msg, color)
+    logCount = logCount + 1
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 20)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    lbl.Text = "[" .. os.date("%H:%M:%S") .. "] " .. msg
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextWrapped = true
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 11
+    lbl.LayoutOrder = -logCount -- Los nuevos aparecen arriba
+    lbl.Parent = LogHolder
+end
+
+AddLog("✅ GUI V2.0 Cargada exitosamente sin caché.", Color3.fromRGB(100, 255, 100))
+AddLog("📡 Sniffer listo. Parate en el botón para ver qué pasa en el servidor.", Color3.fromRGB(0, 200, 255))
+
+-- ========================================================================
+-- NETWORK HOOK DETECTOR (SNIFFER)
+-- intercepta los datos Cliente -> Servidor (Para descubrir el fallo visual)
+-- ========================================================================
+task.spawn(function()
+    pcall(function()
+        local mt = getrawmetatable(game)
+        if setreadonly and mt then
+            local oldNamecall = mt.__namecall
+            setreadonly(mt, false)
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if method == "FireServer" or method == "InvokeServer" then
+                    if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
+                        local name = tostring(self.Name)
+                        -- Filtramos eventos irrelevantes de mouse/update para no causar lag
+                        if not name:match("Mouse") and not name:match("Move") and not name:match("Update") then
+                            local argStr = ""
+                            for _, v in pairs(args) do
+                                argStr = argStr .. tostring(v) .. ", "
+                            end
+                            if argStr == "" then argStr = "Vacío" end
+                            
+                            -- Enviar el evento capturado a la GUI
+                            task.spawn(AddLog, "📤 ENVIADO: ["..name.."] Args: {"..argStr.."}", Color3.fromRGB(255, 170, 0))
+                        end
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+            setreadonly(mt, true)
+            AddLog("🔌 Interceptor de Red Anclado.", Color3.fromRGB(200, 100, 255))
+        else
+            AddLog("⚠️ Tu ejecutor prohíbe el análisis de red (getrawmetatable bloqueado).", Color3.fromRGB(255, 50, 50))
+        end
+    end)
+end)
+
+-- ========================================================================
+-- DETECTAR RESPUESTAS DEL SERVIDOR
+-- Loggea todo lo que el Servidor nos responde de PlotService
+-- ========================================================================
+task.spawn(function()
+    local netFolder = ReplicatedStorage:FindFirstChild("Packages")
+    if netFolder then
+        for _, desc in pairs(netFolder:GetDescendants()) do
+            if desc:IsA("RemoteEvent") and (desc.Name:match("Plot") or desc.Name:match("Toggle") or desc.Name:match("Lock")) then
+                desc.OnClientEvent:Connect(function(...)
+                    local args = {...}
+                    local argStr = ""
+                    for _, v in pairs(args) do argStr = argStr .. tostring(v) .. ", " end
+                    AddLog("📥 SERVIDOR RESPONDE ["..desc.Name.."]: " .. argStr, Color3.fromRGB(50, 255, 150))
+                end)
+            end
+        end
+    end
+end)
+
+-- ========================================================================
+-- LOGICA DEL AUTO BOTON
+-- ========================================================================
 local AutoActive = false
 local TargetButton = nil
 local TargetTimerText = nil
@@ -101,12 +185,11 @@ local function FindInteractiveCircle()
     TargetButton = nil
     TargetTimerText = nil
     local closestDist = 150
-    local found = false
 
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("TextLabel") then
             local txt = tostring(obj.Text)
-            -- Busca el famoso texto "56s" de tu captura de pantalla
+            -- Identifica timers como "56s", "0s", "Lock Base"
             if string.match(txt, "%d+s") then
                 local guiObj = obj:FindFirstAncestorWhichIsA("BillboardGui") or obj:FindFirstAncestorWhichIsA("SurfaceGui")
                 local part = nil
@@ -121,23 +204,23 @@ local function FindInteractiveCircle()
                         closestDist = dist
                         TargetButton = part
                         TargetTimerText = obj
-                        found = true
                     end
                 end
             end
         end
     end
-    return found
+    return TargetButton ~= nil
 end
 
-btnToggle.MouseButton1Click:Connect(function()
+ToggleBtn.MouseButton1Click:Connect(function()
     AutoActive = not AutoActive
     if AutoActive then
-        btnToggle.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        btnToggle.Text = "AUTO-BLOCK (ON)"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
+        ToggleBtn.Text = "AUTO-BLOCK + SNIFFER (ON)"
+        AddLog("⚡ Modo prueba iniciado. Esperando a que el timer decaiga...", Color3.fromRGB(200, 200, 200))
     else
-        btnToggle.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        btnToggle.Text = "DETENER INTERCEPTOR (OFF)"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        ToggleBtn.Text = "INICIAR AUTO-BLOCK + SNIFFER (OFF)"
         TargetButton = nil
     end
 end)
@@ -146,47 +229,39 @@ task.spawn(function()
     while task.wait(0.25) do
         if not AutoActive then continue end
         
-        -- Si perdimos el objetivo, buscar de nuevo
-        if not TargetButton or not TargetButton.Parent then
-            statusInfo.Text = "📡 Buscando tu círculo amarillo de la base..."
-            local found = FindInteractiveCircle()
-            if not found then
-                debugLog.Text = "❌ Párate cerca del timer de los egundos ('s')"
-                continue
-            end
+        if not TargetButton then
+            Status.Text = "📡 Buscando botón..."
+            FindInteractiveCircle()
+            continue
         end
         
-        -- Ejecutar ataque automatizado simulado si lo vemos
         if TargetButton and TargetTimerText then
-            statusInfo.Text = "🛑 Círculo Encontrado Visto!"
             local currentText = tostring(TargetTimerText.Text)
-            debugLog.Text = "⏱️ Timer: " .. currentText
+            Status.Text = "🛑 Apuntando a: " .. TargetButton.Name .. " | Timer: " .. currentText
             
             local numStr = string.match(currentText, "%d+")
             local num = tonumber(numStr)
             
-            -- CUANDO LLEGUE A 0 o 1, DISPARAMOS
             if num and num <= 1 then
-                statusInfo.Text = "⚡ [ACCION] ¡Colision Fantasma Enviada!"
+                Status.Text = "⚡ [ACCION] Pisando botón..."
+                AddLog("¡Timer 0s verificado! Simulando pisada. Observando la red...", Color3.fromRGB(255, 255, 50))
+                
                 pcall(function()
                     if firetouchinterest and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                        -- Enviar pisada fantasma remota
                         firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 0)
                         task.wait(0.05)
                         firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 1)
                     else
-                        -- Si el exploit no tiene firetouchinterest, empujar el personaje al boton
                         if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
                             LocalPlayer.Character.PrimaryPart.CFrame = TargetButton.CFrame
                         end
                     end
                 end)
                 TargetButton = nil
-                task.wait(2)
+                task.wait(3) -- Cooldown largo para leer el log tranquilo
             end
         else
             TargetButton = nil
         end
     end
 end)
-print("[AutoDefender] GUI Cargada con Éxito")
