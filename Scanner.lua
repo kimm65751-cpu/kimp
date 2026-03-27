@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMNI-FARM V2.7 (SKY PATHING / ANTI-TELEPORT)
+-- 🗡️ OMNI-FARM V2.8 (ESP INTELLIGENCE + ORE LOCKING)
 -- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
@@ -145,7 +145,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2.7"
+Title.Text = " 🗡️ OMNI-FARM V2.8"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -799,76 +799,122 @@ local function IniciarFarm()
                 loopTick = loopTick + 1
                 local myLevel = GetMyLevel()
 
-                -- ESCANEO CON FILTRO DE NIVEL
-                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
-                    if loopTick % 10 == 0 then
-                        AddLog("SCAN", "Re-escaneando targets (tick " .. tostring(loopTick) .. ")")
-                    end
-                    if KiteActivo or MineActivo then
+                -- 1. ESCANEO DE ZOMBIES (CONSTANTE, PORQUE SE MUEVEN)
+                if KiteActivo or MineActivo then
+                    if loopTick % 10 == 0 or not zTarget or not zTarget.Parent or not zTarget:FindFirstChildWhichIsA("Humanoid") then
                         zTarget, zDist = findNearest(function(o)
                             if o:IsA("Model") and o ~= char then
                                 local h = o:FindFirstChildWhichIsA("Humanoid")
                                 if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
-                                    -- FILTRO POR SELECCIÓN: Solo atacar tipos seleccionados en Scanner
                                     local baseName = GetBaseName(o.Name)
-                                    if next(SelectedMobs) ~= nil and SelectedMobs[baseName] == false then
-                                        return false -- Tipo deseleccionado, ignorar
-                                    end
-                                    -- FILTRO DE NIVEL: Solo aplica cuando CAZAS (KiteActivo)
-                                    -- En auto-defensa (MineActivo) pelea con CUALQUIERA que se acerque
+                                    if next(SelectedMobs) ~= nil and SelectedMobs[baseName] == false then return false end
                                     if KiteActivo and not MineActivo then
                                         local mobLvl = GetMobLevel(o)
-                                        if mobLvl > 0 and mobLvl > myLevel then
-                                            return false
-                                        end
+                                        if mobLvl > 0 and mobLvl > myLevel then return false end
                                     end
                                     return true
                                 end
                             end
                             return false
                         end)
+                    else
+                        -- Actualiza distancia del zombi actual
+                        local zp = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
+                        if zp then
+                            zDist = (myRoot.Position - zp.Position).Magnitude
+                        else
+                            zTarget = nil
+                        end
                     end
+                end
 
-                    if MineActivo then
-                        -- Limpiar blacklist expirada
+                -- 2. ESCANEO ESP DE MINAS (INTELIGENTE Y CON BLOQUEO HASTA EXTRACCIÓN)
+                if MineActivo then
+                    -- Limpieza de blacklist cada 30 ticks (aprox 1s)
+                    if loopTick % 30 == 0 then
                         local now = tick()
                         for bOre, bTime in pairs(OreBlacklist) do
                             if now - bTime > BLACKLIST_EXPIRE then OreBlacklist[bOre] = nil end
                         end
+                    end
 
-                        oreTarget, oDist = findNearest(function(o)
-                            if o:IsA("Model") and o ~= char and not OreBlacklist[o] then
-                                local h = o:GetAttribute("Health")
+                    -- Chequea si la mina actualigue viva, no expiro, y completamos el target
+                    local oreIsAlive = false
+                    if oreTarget and oreTarget.Parent and not OreBlacklist[oreTarget] then
+                        local oHP = oreTarget:GetAttribute("Health")
+                        if oHP and oHP > 0 then
+                            local op = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
+                            if op then
+                                oDist = (myRoot.Position - op.Position).Magnitude
+                                oreIsAlive = true
+                            end
+                        end
+                    end
+                    
+                    if not oreIsAlive then
+                        oreTarget = nil
+                        oDist = math.huge
+                    end
+
+                    -- BÚSQUEDA ESP INTELIGENTE (Solo cuando no temenos mina asignada)
+                    if not oreTarget then
+                        if loopTick % 10 == 0 then AddLog("SCAN", "Buscando nueva mina (ESP Intelligence)...") end
+                        local bestScore = math.huge
+                        local bestObj = nil
+                        
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if obj:IsA("Model") and obj ~= char and not OreBlacklist[obj] then
+                                local h = obj:GetAttribute("Health")
                                 if h and h > 0 then
-                                    -- FILTRO POR SELECCIÓN: Solo minar tipos seleccionados en Scanner
-                                    local baseName = GetBaseName(o.Name)
+                                    local baseName = GetBaseName(obj.Name)
+                                    local selected = true
+                                    
+                                    -- Aplicar filtro del gui scanner si se configuro
                                     if next(SelectedOres) ~= nil and SelectedOres[baseName] == false then
-                                        return false -- Tipo deseleccionado, ignorar
+                                        selected = false
                                     end
-                                    -- Si Scanner no se ha usado aún, aceptar todo lo que tenga Health
-                                    if next(SelectedOres) == nil then
-                                        return true
+                                    
+                                    if selected then
+                                        local op = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                                        if op then
+                                            local distToOre = (myRoot.Position - op.Position).Magnitude
+                                            
+                                            -- INTELIGENCIA: Contar zombies alrededor de la posible mina
+                                            local mobsCerca = 0
+                                            for _, mob in pairs(Workspace:GetDescendants()) do
+                                                if mob:IsA("Model") and mob:GetAttribute("IsNpc") == true then
+                                                    local mh = mob:FindFirstChildWhichIsA("Humanoid")
+                                                    if mh and mh.Health > 0 then
+                                                        local mRoot = mob:FindFirstChild("HumanoidRootPart")
+                                                        if mRoot and (mRoot.Position - op.Position).Magnitude < 35 then
+                                                            mobsCerca = mobsCerca + 1
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                            
+                                            -- SCORE ESP: Distancia base + (200 de penalidad por cada Mob cerca)
+                                            -- Esto hace que prefiera una mina a 300 studs SOLA, que una a 50 studs rodeada de 2 Mobs.
+                                            local penalidadMobs = mobsCerca * 200
+                                            local totalScore = distToOre + penalidadMobs
+                                            
+                                            if totalScore < bestScore then
+                                                bestScore = totalScore
+                                                bestObj = obj
+                                            end
+                                        end
                                     end
-                                    -- Solo minar si está en la lista y está ON
-                                    if SelectedOres[baseName] == true then
-                                        return true
-                                    end
-                                    return false
                                 end
                             end
-                            return false
-                        end)
+                        end
+                        
+                        if bestObj then
+                            oreTarget = bestObj
+                            local op = bestObj:FindFirstChild("HumanoidRootPart") or bestObj:FindFirstChild("Torso") or bestObj:FindFirstChildWhichIsA("BasePart")
+                            oDist = (myRoot.Position - op.Position).Magnitude
+                            AddLog("ESP", "Mina Asegurada: " .. bestObj.Name .. " (Score ESP: " .. tostring(math.floor(bestScore)) .. ")")
+                        end
                     end
-                else
-                    if zTarget and zTarget.Parent then
-                        local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
-                        if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
-                    else zTarget = nil end
-
-                    if oreTarget and oreTarget.Parent then
-                        local oPart = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
-                        if oPart then oDist = (myRoot.Position - oPart.Position).Magnitude else oreTarget = nil end
-                    else oreTarget = nil end
                 end
 
                 local targetObj = nil
