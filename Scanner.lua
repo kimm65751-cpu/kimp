@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMNI-FARM V3.0 (ANTI-CLIPPING 100% SEGURO)
+-- 🗡️ OMNI-FARM V3.1 (ANTI-STUCK Y TRAVEL FIX)
 -- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
@@ -117,7 +117,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V3.0"
+Title.Text = " 🗡️ OMNI-FARM V3.1"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -749,10 +749,6 @@ local function IniciarFarm()
                     targetDist = ShieldActivo and 4 or 7
                     mode = "Combat"
                     toolId = "weapon"
-                    if LastLogTarget ~= tostring(zTarget) then
-                        LastLogTarget = tostring(zTarget)
-                        AddLog("TARGET", "Combate: " .. zTarget.Name .. " dist=" .. tostring(math.floor(zDist)))
-                    end
                 -- PRIORIDAD 2: MINADO
                 elseif oreTarget and MineActivo then
                     targetObj = oreTarget
@@ -760,10 +756,6 @@ local function IniciarFarm()
                     targetDist = 4
                     mode = "Mining"
                     toolId = "pickaxe"
-                    if LastLogTarget ~= tostring(oreTarget) then
-                        LastLogTarget = tostring(oreTarget)
-                        AddLog("TARGET", "Minando: " .. oreTarget.Name .. " dist=" .. tostring(math.floor(oDist)))
-                    end
 
                     -- ANTI-STUCK: Detectar si el mineral no baja de vida
                     local oreHP = oreTarget:GetAttribute("Health") or 0
@@ -773,19 +765,25 @@ local function IniciarFarm()
                         MiningTracker.startHP = oreHP
                         MiningTracker.startTime = tick()
                     else
-                        -- Mismo objetivo, checar si bajó de vida
-                        if tick() - MiningTracker.startTime > MINE_TIMEOUT then
-                            if oreHP >= MiningTracker.startHP then
-                                -- NO BAJÓ. Blacklistear y forzar rescan
-                                OreBlacklist[oreTarget] = tick()
-                                StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
-                                oreTarget = nil
-                                MiningTracker.ore = nil
-                                targetObj = nil
-                            else
-                                -- Sí bajó, resetear timer con el nuevo HP
-                                MiningTracker.startHP = oreHP
-                                MiningTracker.startTime = tick()
+                        if dist > targetDist + 1.5 then
+                            -- Aún viajando a la mina (en el aire). Pausar el reloj Anti-Stuck para que no caduque en el camino.
+                            MiningTracker.startTime = tick()
+                            MiningTracker.startHP = oreHP
+                        else
+                            -- Mismo objetivo y estamos pegando, checar si bajó de vida
+                            if tick() - MiningTracker.startTime > MINE_TIMEOUT then
+                                if oreHP >= MiningTracker.startHP then
+                                    -- NO BAJÓ. Blacklistear y forzar rescan
+                                    OreBlacklist[oreTarget] = tick()
+                                    StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
+                                    oreTarget = nil
+                                    MiningTracker.ore = nil
+                                    targetObj = nil
+                                else
+                                    -- Sí bajó, resetear timer con el nuevo HP
+                                    MiningTracker.startHP = oreHP
+                                    MiningTracker.startTime = tick()
+                                end
                             end
                         end
                     end
