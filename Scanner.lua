@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: SMART PROP ANALYZER V15.1 (MODO CIENTÍFICO)
--- Auditoría estricta de variables no-ancladas para inventario de Munición.
+-- 💀 ROBLOX EXPERT: DEEP RECON EXCAVATOR V16 (ANÁLISIS DE DATOS)
+-- Lee la genética, atributos, estados ocultos y dependencias de ataque Server.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -8,7 +8,6 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/he
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -21,7 +20,7 @@ function Analyzer:Clear()
 end
 
 function Analyzer:Log(txt)
-    print("[CRACKER-SCAN] " .. tostring(txt))
+    print("[CRACKER-RECON] " .. tostring(txt))
     table.insert(self.Logs, txt)
     pcall(function()
         if self.UI_LogBox then
@@ -35,161 +34,113 @@ function Analyzer:Log(txt)
 end
 
 -- ==============================================================================
--- 🔍 EL ESCÁNER INTELIGENTE DE MUNICIÓN FÍSICA
+-- 🔬 ESCÁNER PROFUNDO DE VECTORES
 -- ==============================================================================
-local function EscanearProyectilesReales()
+local function FormatValue(v)
+    if typeof(v) == "Instance" then return v:GetFullName()
+    elseif typeof(v) == "Vector3" then return "V3("..math.floor(v.X)..","..math.floor(v.Y)..","..math.floor(v.Z)..")"
+    elseif typeof(v) == "CFrame" then return "CF[...]"
+    else return tostring(v) end
+end
+
+local function ScanEntity(entity, title)
     Analyzer:Clear()
-    Analyzer:Log("🔍 INICIANDO AUDITORÍA FORENSE DE OBJETOS C++...\n")
+    Analyzer:Log("🔬 RADIOGRAFÍA DE DATOS A: " .. title .. " (" .. entity.Name .. ")")
+    Analyzer:Log("--------------------------------------------------")
     
-    local totalFound = 0
-    local discardedHumanoids = 0
-    local discardedWelds = 0
-    local discardedMap = 0
-    local validAmmo = 0
+    local foundData = 0
+
+    -- 1. Atributos Ocultos (Roblox 2026+)
+    local attrs = entity:GetAttributes()
+    local hasAttr = false
+    for k, v in pairs(attrs) do
+        if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS NATIVOS]:") hasAttr = true end
+        Analyzer:Log(" - " .. k .. " = " .. FormatValue(v))
+        foundData = foundData + 1
+    end
     
-    local TypeCount = {}
-    local validProps = {} -- Guardar referencias reales
-    
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and not obj.Anchored then
-            totalFound = totalFound + 1
-            local isValid = true
-            
-            -- Filtro 1: Descartar piezas que pertenecen a un modelo vivo (Jugador/NPC)
-            local current = obj
-            local isCharacterPart = false
-            while current and current ~= Workspace do
-                if current:FindFirstChild("Humanoid") then
-                    isCharacterPart = true
-                    break
-                end
-                if current:IsA("Accessory") or current:IsA("Tool") or current:IsA("Hat") then
-                    isCharacterPart = true
-                    break
-                end
-                current = current.Parent
-            end
-            
-            if isCharacterPart then
-                discardedHumanoids = discardedHumanoids + 1
-                isValid = false
-            end
-            
-            -- Filtro 2: Descartar terreno y placas base
-            if isValid and (obj.Name == "Baseplate" or obj.Name == "Terrain") then
-                discardedMap = discardedMap + 1
-                isValid = false
-            end
-            
-            -- Filtro 3: Comprobar Joints (Welds). Si está pegado a un jugador, fallidero Suicide-Bombing.
-            if isValid then
-                for _, joint in pairs(obj:GetJoints()) do
-                    if joint:IsA("JointInstance") then
-                        -- Si está soldado a algo más que no sea el mapa, ignorarlo por seguridad extrema
-                        local attachTo = joint.Part0 == obj and joint.Part1 or joint.Part0
-                        if attachTo and attachTo.Parent and attachTo.Parent:FindFirstChild("Humanoid") then
-                            discardedWelds = discardedWelds + 1
-                            isValid = false
-                            break
-                        end
-                    end
-                end
-            end
-            
-            -- Si pasó todos los filtros, es una pura Piedra o Mineral C++ (Ammo Real)
-            if isValid then
-                validAmmo = validAmmo + 1
-                local itemName = obj.Name .. " (Clase: " .. obj.ClassName .. ")"
-                TypeCount[itemName] = (TypeCount[itemName] or 0) + 1
-                table.insert(validProps, obj)
-            end
+    if entity:FindFirstChild("Humanoid") then
+        local humAttrs = entity.Humanoid:GetAttributes()
+        for k, v in pairs(humAttrs) do
+            if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS HUMANOID]:") hasAttr = true end
+            Analyzer:Log(" - " .. k .. " = " .. FormatValue(v))
+            foundData = foundData + 1
+        end
+    end
+
+    -- 2. Variables Clásicas (Values) y Scripts Relevantes
+    Analyzer:Log("\n[📂 VALORES, SCRIPTS Y SENSORES]:")
+    for _, obj in pairs(entity:GetDescendants()) do
+        if obj:IsA("ValueBase") then
+            Analyzer:Log(" 📌 " .. obj.ClassName .. ": " .. obj.Name .. " -> [" .. FormatValue(obj.Value) .. "]")
+            foundData = foundData + 1
+        elseif obj:IsA("TouchTransmitter") then
+            Analyzer:Log(" 🖐️ TouchSensor detectado en: " .. obj.Parent.Name .. " (Esto significa que su ataque te toca físicamente, no es Raycast).")
+            foundData = foundData + 1
+        elseif obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
+            Analyzer:Log(" 🔗 Vínculo Server: " .. obj.Name)
+            foundData = foundData + 1
+        elseif obj:IsA("StringValue") and string.find(string.lower(obj.Name), "target") then
+            Analyzer:Log(" 🎯 TARGET SYSTEM ENCONTRADO: " .. obj.Name .. " -> " .. FormatValue(obj.Value))
+            foundData = foundData + 1
+        elseif obj:IsA("ObjectValue") and obj.Name == "creator" then
+            Analyzer:Log(" 🗡️ SYSTEM KILL-TAG: 'creator' -> Registra quién le pegó último.")
         end
     end
     
-    -- REPORTE DETALLADO
-    Analyzer:Log("📊 RESULTADOS DEL DIAGNÓSTICO DE LA PARADOJA V15:")
-    Analyzer:Log("=========================================")
-    Analyzer:Log("Objetos Sueltos Brutos: " .. tostring(totalFound))
-    Analyzer:Log("❌ Descartados (Jugadores/NPC/Armas): " .. tostring(discardedHumanoids))
-    Analyzer:Log("❌ Descartados (Soldadura/Weld de Personaje): " .. tostring(discardedWelds))
-    Analyzer:Log("❌ Descartados (Restos del Mapa): " .. tostring(discardedMap))
-    Analyzer:Log("=========================================")
-    Analyzer:Log("✅ BALAS TELEQUINÉTICAS PURAS (" ..tostring(validAmmo).. "):\n")
+    -- 3. Estado del Humanoid
+    local hum = entity:FindFirstChild("Humanoid")
+    if hum then
+        Analyzer:Log("\n[🩸 STATUS DEL HUMANOID]:")
+        Analyzer:Log(" - MaxHealth: " .. tostring(hum.MaxHealth))
+        Analyzer:Log(" - WalkSpeed: " .. tostring(hum.WalkSpeed))
+        local state = hum:GetState()
+        Analyzer:Log(" - Estado Actual: " .. tostring(state))
+    end
     
-    if validAmmo > 0 then
-        -- Listar el inventario de Ammo real
-        for name, qt in pairs(TypeCount) do
-            Analyzer:Log(" -> " .. tostring(qt) .. "x " .. tostring(name))
-        end
-        Analyzer:Log("\n💡 CONCLUSIÓN: Tienes " .. tostring(validAmmo) .. " proyectiles físicos comprobados que NO están soldados a ti. Si le das a LANZAR MUNICIÓN en el botón de abajo, sólo usará estos objetos puros sin arrastrarte.")
-        getgenv().AmmoCache = validProps
+    Analyzer:Log("--------------------------------------------------")
+    if foundData == 0 then
+        Analyzer:Log("💀 ADVERTENCIA: Esta entidad está 100% blindada. No usa tags ni atributos. Su código es Código Servidor Puro con Raycast matemático.")
     else
-        Analyzer:Log("💀 CONCLUSIÓN MORTAL: Tras filtrar tus sombreros y armas... Quedan 0 Objetos en el mapa. Significa que los creadores anclaron literalmente CADA ÁTOMO. No podemos construir el Cañón.")
-        getgenv().AmmoCache = nil
+        Analyzer:Log("✅ Análisis completado. Busca fallas en estas variables (Tags de 'Stun', 'Hit', 'Target', 'Cooldown').")
     end
 end
 
--- ==============================================================================
--- 🔫 CAÑÓN SEGURO V15.1 (Sólo usa la Caché Validada)
--- ==============================================================================
-getgenv().PropTelekinesis = false
-
-local function DispararBalon()
-    if getgenv().PropTelekinesis then return end
+local function ScanTargetZombie()
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return Analyzer:Log("Error: No tienes personaje.") end
     
-    if not getgenv().AmmoCache or #getgenv().AmmoCache == 0 then
-        return Analyzer:Log("❌ ERROR: Primero debes usar el Escáner Inteligente, o usar el Escáner comprobó que hay 0 balas.")
-    end
-    
-    getgenv().PropTelekinesis = true
-    Analyzer:Log("🔥 INICIANDO DESCARGA TELEQUINÉTICA C/ " .. tostring(#getgenv().AmmoCache) .. " PROYECTILES 🔥")
-    
-    local ammo = getgenv().AmmoCache
-    
-    task.spawn(function()
-        while getgenv().PropTelekinesis do
-            pcall(function()
-                local char = LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if not root then return end
-                
-                -- Apuntar al enemigo más cercano
-                local target = nil
-                local distM = 99999
-                for _, z in pairs(Workspace:GetDescendants()) do
-                    if z:IsA("Model") and string.find(string.lower(z.Name), "zombie") and z ~= char then
-                        local zHum = z:FindFirstChild("Humanoid")
-                        local zRoot = z:FindFirstChild("HumanoidRootPart")
-                        if zHum and zHum.Health > 0 and zRoot then
-                            local d = (zRoot.Position - root.Position).Magnitude
-                            if d < distM then distM = d; target = zRoot end
-                        end
-                    end
-                end
-
-                if target then
-                    for _, obj in ipairs(ammo) do
-                        if obj and obj.Parent then
-                            -- Bombardeo dentro del hitbox del zombi
-                            obj.CFrame = target.CFrame * CFrame.new(math.random(-1,1), math.random(-1,1), math.random(-1,1))
-                            obj.AssemblyLinearVelocity = Vector3.new(0, -9999, 0)
-                            obj.AssemblyAngularVelocity = Vector3.new(9999, 9999, 9999)
-                        end
-                    end
-                end
-            end)
-            task.wait(0.02)
+    local target = nil
+    local distM = 99999
+    for _, z in pairs(Workspace:GetDescendants()) do
+        if z:IsA("Model") and string.find(string.lower(z.Name), "zombie") and z ~= char then
+            local zRoot = z:FindFirstChild("HumanoidRootPart")
+            if zRoot then
+                local d = (zRoot.Position - root.Position).Magnitude
+                if d < distM then distM = d; target = z end
+            end
         end
-    end)
+    end
+    
+    if target then
+        ScanEntity(target, "ZOMBIE CERCANO")
+    else
+        Analyzer:Log("❌ No se detectan zombies vivos cerca para escanear.")
+    end
 end
 
-local function DetenerDisparo()
-    getgenv().PropTelekinesis = false
-    Analyzer:Log("🛑 Cañón Apagado.")
+local function ScanMe()
+    local char = LocalPlayer.Character
+    if char then
+        ScanEntity(char, "TU PERSONAJE CLON C++")
+    else
+        Analyzer:Log("❌ Error: No tienes personaje.")
+    end
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: EL LABORATORIO INTELIGENTE
+-- 🖥️ GUI V2026: DEEP RECON EXCAVATOR COMPACTO
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -204,18 +155,18 @@ local function ConstruirUI()
     local MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 560, 0, 420)
     MainFrame.Position = UDim2.new(0.5, -280, 0.5, -210)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 200, 150)
+    MainFrame.BorderColor3 = Color3.fromRGB(150, 50, 200)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 50, 40)
-    TopBar.Text = "  [V15.1: SMART PROP ANALYZER - MODO CIENTÍFICO]"
-    TopBar.TextColor3 = Color3.fromRGB(150, 255, 200)
+    TopBar.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+    TopBar.Text = "  [V16: DEEP RECON EXCAVATOR - EXTRACCIÓN DE DATOS]"
+    TopBar.TextColor3 = Color3.fromRGB(200, 150, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -251,7 +202,7 @@ local function ConstruirUI()
     CloseBtn.TextSize = 14
     CloseBtn.Parent = MainFrame
 
-    CloseBtn.MouseButton1Click:Connect(function() pcall(DetenerDisparo) sg:Destroy() end)
+    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
     MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
     ReloadBtn.MouseButton1Click:Connect(function()
         pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(111,999)))() end)
@@ -260,7 +211,7 @@ local function ConstruirUI()
     local InfoScroll = Instance.new("ScrollingFrame")
     InfoScroll.Size = UDim2.new(1, -16, 0.5, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(20, 15, 25)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
@@ -269,8 +220,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -10, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "Tienes el honor de la verdad. Al intentar lanzar '363 Objetos Ciegos' en la versión anterior... El código agarró tu propia Gorra y la de los zombies, y al estar soldadas (Welds) a tu cuerpo, TE LANZÓ A TI MISMO COMO BOMBA suicida contra el Zombi, generando el Anti-TP Kick por velocidad excedida.\n\nEl Tornado Havok (Volar rotando) sufrió de la 'Tercera Ley de Newton'. Cuando chocaste a mach 10 contra la masa gorda del zombi, él te repelió hacia atrás, llevándote fuera de la atmósfera como una bala y el servidor te baneó por Anti-TP. Lo he cancelado por tu seguridad.\n\nHe construido entonces el SMART PROP ANALYZER V15.1. Pulsa el botón 1 para diseccionar los 363 objetos, descartar tus accesorios y armas para no suicidarnos, y crear una lista Blanca Exclusiva en caché. Si logramos obtener Balas Legítimas que no te pertenezcan a ti, podrás encender de forma limpia el Tiro Telequinético (Botón 2)."
-    LogText.TextColor3 = Color3.fromRGB(180, 255, 220)
+    LogText.Text = "TIENES TODA LA RAZÓN. Te explico qué acaba de pasar con la 'Cadena' loca:\n\nTu PC (El Cliente) la agarró mediante físicas y la estrelló a millón contra el zombie. Tu PC calculó que el zombi explotó, dándole un 'Fling Falso' (Por eso desaparecieron de tu pantalla). Pero el juego tiene al Zombi bloqueado en Propiedad de Red... ¡El Servidor denegó esa explosión! Así que un Fantasma Zombi Invisible e invencible bajó a tu cueva y te partió a golpes sin que tú lo vieras porque tu PC pensaba que estaba muerto.\n\nPor culpa de ese blindaje físico, la única y absoluta forma de atacarlos es descubriendo QUÉ TIPO DE DATOS TIENEN OCULTOS para atacarte. Acabo de forjar un Escáner de Rayos X (Radiografía Forense).\n\nPárate al lado de un zombi o cueva y pégale una RADIOGRAFÍA. Me dirá si el zombi usa un StringValue llamado 'Target' a tu nombre, si tiene un TouchSensor en sus manos, o si usa 'Attributes' ocultos que yo pueda apagar (Invulnerabilidad por desvinculación)."
+    LogText.TextColor3 = Color3.fromRGB(220, 180, 255)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 12
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -278,44 +229,29 @@ local function ConstruirUI()
     LogText.TextWrapped = true
     LogText.Parent = InfoScroll
 
-    -- Botones V15.1
-    local btnScan = Instance.new("TextButton")
-    btnScan.Size = UDim2.new(1, -16, 0, 50)
-    btnScan.Position = UDim2.new(0, 8, 0.62, 0)
-    btnScan.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-    btnScan.Text = "📊 1. ESCUDRIÑAR Y FILTRAR OBJETOS DEL JUEGO (MÁXIMA SEGURIDAD)"
-    btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnScan.Font = Enum.Font.Code
-    btnScan.TextSize = 13
-    btnScan.Parent = MainFrame
+    -- Botones de Radiografía
+    local btnZombie = Instance.new("TextButton")
+    btnZombie.Size = UDim2.new(0.48, 0, 0, 50)
+    btnZombie.Position = UDim2.new(0, 8, 0.62, 0)
+    btnZombie.BackgroundColor3 = Color3.fromRGB(150, 0, 50)
+    btnZombie.Text = "🧟 RADIOGRAFÍA AL ZOMBIE 🧟"
+    btnZombie.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnZombie.Font = Enum.Font.Code
+    btnZombie.TextSize = 13
+    btnZombie.Parent = MainFrame
 
-    local btnFire = Instance.new("TextButton")
-    btnFire.Size = UDim2.new(1, -16, 0, 50)
-    btnFire.Position = UDim2.new(0, 8, 0.62, 55)
-    btnFire.BackgroundColor3 = Color3.fromRGB(150, 60, 0)
-    btnFire.Text = "💥 2. DISPARAR MUNICIÓN VALIDADA (PROYECTILES LIMPIOS) 💥"
-    btnFire.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnFire.Font = Enum.Font.Code
-    btnFire.TextSize = 13
-    btnFire.Parent = MainFrame
+    local btnPlayer = Instance.new("TextButton")
+    btnPlayer.Size = UDim2.new(0.48, 0, 0, 50)
+    btnPlayer.Position = UDim2.new(0.5, 4, 0.62, 0)
+    btnPlayer.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+    btnPlayer.Text = "👤 RADIOGRAFÍA A TU PERSONAJE 👤"
+    btnPlayer.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnPlayer.Font = Enum.Font.Code
+    btnPlayer.TextSize = 13
+    btnPlayer.Parent = MainFrame
 
-    btnScan.MouseButton1Click:Connect(function() pcall(EscanearProyectilesReales) end)
-    
-    btnFire.MouseButton1Click:Connect(function()
-        pcall(function()
-            if getgenv().PropTelekinesis then
-                DetenerDisparo()
-                btnFire.Text = "💥 2. DISPARAR MUNICIÓN VALIDADA (PROYECTILES LIMPIOS) 💥"
-                btnFire.BackgroundColor3 = Color3.fromRGB(150, 60, 0)
-            else
-                DispararBalon()
-                if getgenv().PropTelekinesis then
-                    btnFire.Text = "🛑 DETENER FUEGO TELEQUINÉTICO"
-                    btnFire.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
-                end
-            end
-        end)
-    end)
+    btnZombie.MouseButton1Click:Connect(function() pcall(ScanTargetZombie) end)
+    btnPlayer.MouseButton1Click:Connect(function() pcall(ScanMe) end)
 end
 
 ConstruirUI()
