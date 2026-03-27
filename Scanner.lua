@@ -306,7 +306,7 @@ FastSkipBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- BOTON TEST 2: AUTO-PLAY (MATH PERFECT)
+-- BOTON TEST 2: AUTO-PLAY (AUTO-FORGE A.I.)
 -- ==========================================
 PerfectAutoBtn.MouseButton1Click:Connect(function()
     task.spawn(function()
@@ -314,37 +314,51 @@ PerfectAutoBtn.MouseButton1Click:Connect(function()
         if ModosBypass.Auto then return end
         ModosBypass.Auto = true
         
-        AddUILog("TEST_2", "== INICIANDO BOT MATEMÁTICO (PERFECT SCORE) ==", Color3.fromRGB(100,200,255))
+        AddUILog("BOT_AI", "== INICIANDO BOT MATEMÁTICO (PERFECT 100% SCORE) ==", Color3.fromRGB(100,255,255))
         local forgeRF = GetForgeRF()
         if not forgeRF then return end
         
-        local t0 = os.clock()
-        AddUILog("TEST_2", "Fase 1/5: Arrancando (Melt) - 0.00s", Color3.fromRGB(150,200,255))
+        -- FASE 1 (Arranca Inflador)
+        AddUILog("BOT_AI", "Fase 1: Enviando Datos de Metales (Melt)...", Color3.fromRGB(150,200,255))
         local s1, r1 = pcall(function() return forgeRF:InvokeServer("Melt", {FastForge = false, ItemType = "Weapon", Ores = LastOresDetected}) end)
         
-        -- DUMP DE LA RESPUESTA (Aquí el servidor nos revela los secretos del minijuego)
-        local responseStr = (typeof(r1) == "table" and DumpTableDeep(r1) or tostring(r1))
-        AddUILog("SERVER_REVEAL", "Melt retornó: " .. responseStr, Color3.fromRGB(255,255,100))
+        local req1 = (type(r1)=="table" and r1.MinigameData and r1.MinigameData.RequiredTime) or 3
+        local start1 = (type(r1)=="table" and r1.MinigameData and r1.MinigameData.StartTime) or os.clock()
+        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req1) .. "s. Esperando...", Color3.fromRGB(255,255,50))
+        task.wait(req1)
         
-        -- TIEMPOS BASADOS EN TU REPORTE FORENSE (Para que el servidor crea que somos perfectos)
-        -- Melt -> Pour (Inflador) tarda ~11 a 12 seg
-        task.wait(2)
-        AddUILog("TEST_2", "Fase 2/5: Inflador superado simulado. "..(os.clock()-t0), Color3.fromRGB(150,200,255))
-        pcall(function() forgeRF:InvokeServer("Pour", {ClientTime = t0 + 11.45}) end)
+        -- FASE 2 (Arranca Barra Amarilla)
+        AddUILog("BOT_AI", "Fase 2: Evadiendo Inflador y pidiendo fase Barra Amarilla (Pour)...", Color3.fromRGB(150,200,255))
+        local s2, r2 = pcall(function() return forgeRF:InvokeServer("Pour", {ClientTime = start1 + req1}) end)
         
-        task.wait(2)
-        AddUILog("TEST_2", "Fase 3/5: Barra amarilla superada simulada. "..(os.clock()-t0), Color3.fromRGB(150,200,255))
-        pcall(function() forgeRF:InvokeServer("Hammer", {ClientTime = t0 + (11.45 + 5.03)}) end)
+        local req2 = (type(r2)=="table" and r2.MinigameData and r2.MinigameData.RequiredTime) or 3
+        local start2 = (type(r2)=="table" and r2.MinigameData and r2.MinigameData.StartTime) or (start1 + req1)
+        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req2) .. "s. Esperando...", Color3.fromRGB(255,255,50))
+        task.wait(req2)
+
+        -- FASE 3 (Arranca Círculos / Yunque)
+        AddUILog("BOT_AI", "Fase 3: Evadiendo Barra Amarilla y pidiendo fase Yunque (Hammer)...", Color3.fromRGB(150,200,255))
+        local s3, r3 = pcall(function() return forgeRF:InvokeServer("Hammer", {ClientTime = start2 + req2}) end)
         
-        task.wait(2)
-        AddUILog("TEST_2", "Fase 4/5: Yunque superado simulado. "..(os.clock()-t0), Color3.fromRGB(150,200,255))
-        pcall(function() forgeRF:InvokeServer("Water", {ClientTime = t0 + (11.45 + 5.03 + 8.10)}) end)
+        local req3 = (type(r3)=="table" and r3.MinigameData and r3.MinigameData.RequiredTime) or 3
+        local start3 = (type(r3)=="table" and r3.MinigameData and r3.MinigameData.StartTime) or (start2 + req2)
+        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req3) .. "s. Esperando...", Color3.fromRGB(255,255,50))
+        task.wait(req3)
         
-        task.wait(2)
-        AddUILog("TEST_2", "Fase 5/5: Secuencia terminando (Showcase)...", Color3.fromRGB(150,200,255))
+        -- FASE 4 (Termina Círculos)
+        AddUILog("BOT_AI", "Fase 4: Evadiendo Yunque y pidiendo fase de Círculos (Water)...", Color3.fromRGB(150,200,255))
+        local s4, r4 = pcall(function() return forgeRF:InvokeServer("Water", {ClientTime = start3 + req3}) end)
+        
+        local req4 = (type(r4)=="table" and r4.MinigameData and r4.MinigameData.RequiredTime) or 3
+        local start4 = (type(r4)=="table" and r4.MinigameData and r4.MinigameData.StartTime) or (start3 + req3)
+        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req4) .. "s. Esperando...", Color3.fromRGB(255,255,50))
+        task.wait(req4)
+        
+        -- SHOWCASE
+        AddUILog("BOT_AI", "Fase 5: Círculos evadidos completando forja 100% Quality (Showcase)...", Color3.fromRGB(150,200,255))
         pcall(function() forgeRF:InvokeServer("Showcase", {}) end)
         
-        AddUILog("TEST_2", "== RUTINA AUTOMÁTICA FINALIZADA ==", Color3.fromRGB(100,200,255))
+        AddUILog("BOT_AI", "== AUTO-FORGE A.I. COMPLETADO. DISFRUTA TU ARMA ==", Color3.fromRGB(100,255,100))
         ModosBypass.Auto = false
     end)
 end)
