@@ -569,8 +569,18 @@ local function DetenerFarm()
     if not KiteActivo and not MineActivo then
         if FarmTask then task.cancel(FarmTask); FarmTask = nil end
         pcall(function()
-            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if r then r.Anchored = false end
+            local char = LocalPlayer.Character
+            if not char then return end
+            local r = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if r then
+                r.Anchored = false
+                -- LIMPIAR BodyVelocity para que deje de volar
+                local bv = r:FindFirstChild("_NoclipBV")
+                if bv then bv:Destroy() end
+            end
+            -- Detener caminata
+            if hum then hum:Move(Vector3.zero) end
         end)
         StatusLabel.Text = "Estado: Inactivo"
     end
@@ -760,7 +770,7 @@ local function IniciarFarm()
                             local speed = currentHum.WalkSpeed or 16
                             local dir = (targetPart.Position - myRoot.Position).Unit
                             bv.Velocity = dir * speed * 2.5
-                            myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(dir.X, 0, dir.Z))
+                            -- NO usar CFrame directo, el anti-cheat lo detecta y te manda al spawn
                         else
                             local bv = myRoot:FindFirstChild("_NoclipBV")
                             if bv then bv:Destroy() end
@@ -775,8 +785,14 @@ local function IniciarFarm()
                     end
 
                     -- == 3. GOLPE ==
-                    local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
-                    myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+                    -- Mirar al objetivo con Humanoid:Move (orgánico, no dispara anti-cheat)
+                    local dirToTarget = (targetPart.Position - myRoot.Position)
+                    local flatDir = Vector3.new(dirToTarget.X, 0, dirToTarget.Z)
+                    if flatDir.Magnitude > 0.1 then
+                        currentHum:Move(flatDir.Unit, false)
+                        task.wait() -- Un frame para que gire naturalmente
+                        currentHum:Move(Vector3.zero, false) -- Detener movimiento extra
+                    end
 
                     if dist <= targetDist + 1.5 then
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
