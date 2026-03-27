@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V31 THE DARK-ZONE ORCHESTRATOR (AISLAMIENTO TÁCTICO)
--- Explotación activa de los Vectores Físicos Vulnerables (Hit & Run vs Core Amputee)
+-- 💀 ROBLOX EXPERT: V32 TARGET-LOCK BYPASS (EL OMNI-BUSCADOR UNIVERSAL)
+-- Arreglo crítico de Búsqueda Anatómica para Bypass Físico de Zona Oscura.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -25,27 +25,51 @@ end
 private_G = {}
 
 -- ==============================================================================
--- 🔬 UTILIDADES Y BÚSQUEDA DE OBJETIVOS
+-- 🔬 EL BUSCADOR ANATÓMICO (SIN ASUMIR NOMBRES)
 -- ==============================================================================
 local function GetViableTarget()
+    local myChar = LocalPlayer.Character
+    local closestTarget = nil
+    local closestDist = math.huge
+    
     for _, obj in pairs(Workspace:GetDescendants()) do
         pcall(function()
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Name:lower():match("zombie") or obj.Name:lower():match("boss") then
-                if obj.Humanoid.Health > 0 and obj:FindFirstChild("HumanoidRootPart") then return obj end
+            -- Solo requerimos que sea un Modelo con un Humanoid válido y no ser nosotros
+            if obj:IsA("Model") and obj ~= myChar and not Players:GetPlayerFromCharacter(obj) then
+                local hum = obj:FindFirstChildOfClass("Humanoid")
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+                
+                if hum and hrp and hum.Health > 0.1 then
+                    -- Es un NPC, Monstruo o Bandido válido. Calcular el más cercano a ti para pegarle.
+                    local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                    if myHrp then
+                        local dist = (myHrp.Position - hrp.Position).Magnitude
+                        if dist < closestDist then
+                            closestDist = dist
+                            closestTarget = obj
+                        end
+                    else
+                        -- Si estamos usando el ataque 2 y no tenemos HRP, solo agarramos al primero vivo
+                        closestTarget = obj
+                    end
+                end
             end
         end)
     end
-    return nil
+    return closestTarget
 end
 
+-- Mecanismo robusto para usar armas
 local function FireWeapon()
     local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if not tool then
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp and bp:FindFirstChildOfClass("Tool") then
+        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if bp then
             tool = bp:FindFirstChildOfClass("Tool")
-            tool.Parent = LocalPlayer.Character
-            task.wait(0.2)
+            if tool then
+                tool.Parent = LocalPlayer.Character
+                task.wait(0.25)
+            end
         end
     end
     if tool then pcall(function() tool:Activate() end) end
@@ -57,7 +81,7 @@ end
 -- ==============================================================================
 local function RunAttack1()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "⚔️ V31. ATAQUE 1: HIT & RUN (CFRAME PURO RAPIDO) ⚔️\n"
+    FullReport = FullReport .. "⚔️ V32. ATAQUE 1: HIT & RUN (CFRAME PURO RAPIDO) ⚔️\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
@@ -65,38 +89,44 @@ local function RunAttack1()
     if not hrp then AddLog("❌ ERROR: No tienes personaje o RootPart.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: No hay Zombies vivos en el mapa.", 0); return end
+    if not target then AddLog("❌ ERROR ABSOLUTO: Literalmente no existen Modelos con Humanoides vivos en el mapa Workspace. ¿El juego genera monstruos locales?", 0); return end
     
     local PosOriginal = hrp.Position
-    local StartHealth = target.Humanoid.Health
+    local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     
-    AddLog("[+] TARGET: " .. target.Name .. " (Vida: " .. tostring(StartHealth) .. ").", 0)
-    AddLog("[🚀] MÉTODO HIT & RUN: Teletransporte -> Pegar -> Regresar (En 0.1s para evitar al Anti-Cheat).", 0)
+    AddLog("[+] TARGET OBTENIDO: '" .. target.Name .. "' (Vida actual: " .. tostring(math.floor(StartHealth)) .. ").", 0)
+    AddLog("[🚀] MÉTODO HIT & RUN: Teletransporte -> Pegar -> Regresar (En 0.15s para saltar Tick de Anti-Cheat).", 0)
     
+    local HuboFallo = false
     pcall(function()
-        for i=1, 3 do
-            -- 1. Saltar a la cabeza del zombie
-            char:PivotTo(target:FindFirstChild("HumanoidRootPart").CFrame * CFrame.new(0, 0, 2))
+        local targetHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+        if not targetHRP then HuboFallo = true; return end
+        
+        for i=1, 4 do
+            -- 1. Saltar a la cabeza del enemigo
+            char:PivotTo(targetHRP.CFrame * CFrame.new(0, 0, 2))
             -- 2. Disparar el Arma de ClientCast inmediatamente
             FireWeapon()
             task.wait(0.15)
-            -- 3. Regresar a la base volando antes de que el Servidor se de cuenta
+            -- 3. Regresar volando
             char:PivotTo(CFrame.new(PosOriginal))
-            task.wait(0.5) -- Esperar que el servidor procese el golpe y baje la fatiga
+            task.wait(0.5) 
         end
     end)
     
-    task.wait(1)
-    local EndHealth = target.Humanoid.Health
+    if HuboFallo then AddLog("❌ ERROR: El monstruo no tiene partes físicas a las cuales teletransportarse.", 0); return end
+    
+    task.wait(1.5)
+    local EndHealth = target:FindFirstChildOfClass("Humanoid").Health
     
     AddLog("\n[🔍 DIAGNÓSTICO DEL ATAQUE 1]", 0)
     if EndHealth < StartHealth then
-        AddLog("├─ [🚨 FACTIBLE (TE ESTÁN ROBANDOASÍ)]: Logramos golpear al Zombie y quitarle " .. tostring(StartHealth - EndHealth) .. " de HP.", 1)
-        AddLog("├─ ¿Por qué falló tu Anti-Trampas?: Porque tu servidor mide la posición CADA SEGUNDO (o más lento). El hacker ataca y vuelve muy rápido; para cuando el Servidor lo escanea, él sigue en la base y parece inocente.", 1)
-        AddLog("└─ JERARQUÍA DE SOLUCIÓN: Optimizar el Anti-Cheat o forzar Magnitude Server-Side al recibir el evento RaycastHitbox.", 1)
+        AddLog("├─ [🚨 FACTIBLE (TE ROBAN ASÍ)]: Lograste golpear al NPC ('"..target.Name.."') y quitarle " .. tostring(math.floor(StartHealth - EndHealth)) .. " HP regresando a base ileso.", 1)
+        AddLog("├─ Por qué falla el Anti-Cheat: Mide tu posición cada 1 o 2 segundos. Viajar rápido C/S (Hit & Run de 0.15s) no deja rastro temporal para hacer Trigger a la sanción.", 1)
+        AddLog("└─ SOLUCIÓN C++: Poner chequeos estáticos de Magnitud pura al recibir el daño de combate.", 1)
     else
-        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El zombie sigue con " .. tostring(EndHealth) .. " HP. El arma no se activó a tiempo o el Servidor rebotó el daño por desincronización rápida.", 1)
-        AddLog("└─ CONCLUSIÓN: Si este falló, significa que tu Anti-Cheat es extremadamente veloz y sí te jala de vuelta.", 1)
+        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El NPC ('"..target.Name.."') sigue con " .. tostring(math.floor(EndHealth)) .. " HP. El arma no se activó a tiempo o el Servidor hizo un 'Rollback' al daño.", 1)
+        AddLog("└─ CONCLUSIÓN: Si este falló, significa que tu código base es demasiado rápido o requiere estar cerca para infligir daño.", 1)
     end
 end
 
@@ -105,26 +135,26 @@ end
 -- ==============================================================================
 local function RunAttack2()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "👻 V31. ATAQUE 2: DARK ZONE GHOSTING (AMPUTACIÓN HRP) 👻\n"
+    FullReport = FullReport .. "👻 V32. ATAQUE 2: DARK ZONE GHOSTING (AMPUTACIÓN HRP) 👻\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then AddLog("❌ ERROR: Ya estás amputado o muerto.", 0); return end
+    if not hrp then AddLog("❌ ERROR: Tu personaje no tiene RootPart original.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: No hay Zombies vivos en el mapa.", 0); return end
+    if not target then AddLog("❌ ERROR: No hay Humanoides NPCs vivos en el mapa.", 0); return end
     
     local PosOriginal = hrp.Position
-    local StartHealth = target.Humanoid.Health
+    local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     local SafeZone = PosOriginal + Vector3.new(0, 1500, 0)
     
-    AddLog("[+] TARGET: " .. target.Name .. " (Vida: " .. tostring(StartHealth) .. ").", 0)
-    AddLog("[🚀] MÉTODO GHOST: Viajamos a Zona Oscura (1500 studs) -> Borramos nuestra Raíz para Crashear tu Anti-Trampas -> Bajamos a pegarle al Zombi desde arriba -> Volvemos al Cielo.", 0)
+    AddLog("[+] TARGET OBTENIDO: '" .. target.Name .. "' (Vida: " .. tostring(math.floor(StartHealth)) .. ").", 0)
+    AddLog("[🚀] MÉTODO GHOST: Viajamos a Zona Oscura (+1500 Y) -> Borramos RootPart Local (Crashear Anti-Cheat) -> Bajamos oscilando a pegarle al NPC -> Volvemos.", 0)
     
     pcall(function()
-        -- 1. Destruimos el HRP Local para cegar al Server
-        hrp.Name = "Basura"
+        -- 1. Destruimos el HRP Local para cegar/crashear el Anticheat en Servidor
+        hrp.Name = "NullPhysics"
         hrp.Parent = nil
         local torso = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
         if not torso then return end
@@ -133,32 +163,33 @@ local function RunAttack2()
         torso.CFrame = CFrame.new(SafeZone)
         task.wait(0.5)
         
-        -- 3. Bajamos al Zombie a machacar
-        for i=1, 3 do
-            torso.CFrame = target:FindFirstChild("HumanoidRootPart").CFrame * CFrame.new(0, 5, 0)
+        local targetHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+        if not targetHRP then return end
+
+        for i=1, 4 do
+            torso.CFrame = targetHRP.CFrame * CFrame.new(0, 5, 0)
             FireWeapon()
             task.wait(0.3)
-            -- Subir
             torso.CFrame = CFrame.new(SafeZone)
             task.wait(0.5)
         end
         
-        -- Restaurar
-        hrp.Parent = char; hrp.Name = "HumanoidRootPart"
-        char:PivotTo(CFrame.new(PosOriginal))
+        -- Restaurar física
+        pcall(function() hrp.Parent = char; hrp.Name = "HumanoidRootPart" end)
+        pcall(function() char:PivotTo(CFrame.new(PosOriginal)) end)
     end)
     
-    task.wait(1)
-    local EndHealth = target.Humanoid.Health
+    task.wait(1.5)
+    local EndHealth = target:FindFirstChildOfClass("Humanoid").Health
     
     AddLog("\n[🔍 DIAGNÓSTICO DEL ATAQUE 2]", 0)
     if EndHealth < StartHealth then
-        AddLog("├─ [🚨 FACTIBLE (BRUTALMENTE VULNERABLE)]: Le quitaste " .. tostring(StartHealth - EndHealth) .. " HP desde el cielo siendo un Fantasma indetectable.", 1)
-        AddLog("├─ ¿Por qué falló tu Anti-Trampas?: Porque se apoyaba exclusivamente en HumanoidRootPart. Al borrarlo, tu código C++ generó un error (letras rojas en tu consola F9) y dejó de protegerte. El hacker se vuelve Inmune a tus banneos.", 1)
-        AddLog("└─ JERARQUÍA DE SOLUCIÓN: Agrega 'if not Player.Character:FindFirstChild(\"HumanoidRootPart\") then Player:Kick() end' en tu rutina C++ del servidor.", 1)
+        AddLog("├─ [🚨 MORTAL (TE ROBAN ASÍ)]: Le quitaste " .. tostring(math.floor(StartHealth - EndHealth)) .. " HP desde el cielo siendo un personaje amputado.", 1)
+        AddLog("├─ PENSAMIENTO HACKER: La falta del HumanoidRootPart ha dejado inoperativo al Script vigilante en tu servidor. Tu motor requiere parches Try/Catch urgentes.", 1)
+        AddLog("└─ SOLUCIÓN C++: 'if Jugador.Character y no Jugador.Character:FindFirstChild(\"HumanoidRootPart\") entonces Kick' cada 2 segundos.", 1)
     else
-        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: Zombi intacto (" .. tostring(EndHealth) .. "). O el arma falló sin RootPart, o tu Servidor castiga amputaciones.", 1)
-        AddLog("└─ CONCLUSIÓN: Tus defensas no se inmutan por falta de partes del cuerpo.", 1)
+        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: NPC Intacto (" .. tostring(math.floor(EndHealth)) .. " HP). El servidor bloquea daño si tu personaje perdió partes base.", 1)
+        AddLog("└─ CONCLUSIÓN: Estás blindado contra NullReference Exceptions físicas.", 1)
     end
 end
 
@@ -167,7 +198,7 @@ end
 -- ==============================================================================
 local function RunAttack3()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "🌪️ V31. ATAQUE 3: BRING MOBS (MAGNETISMO DE RED) 🌪️\n"
+    FullReport = FullReport .. "🌪️ V32. ATAQUE 3: SECUESTRO FÍSICO (BRING MOBS) 🌪️\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
@@ -175,44 +206,46 @@ local function RunAttack3()
     if not hrp then AddLog("❌ ERROR: No tienes personaje.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: No hay Zombies vivos en el mapa.", 0); return end
+    if not target then AddLog("❌ ERROR: No hay NPCs vivos en el mapa.", 0); return end
     
+    local zHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+    if not zHRP then AddLog("❌ ERROR: El NPC no tiene física.", 0); return end
+
     local PosOriginal = hrp.Position
-    local ZombOriginal = target:FindFirstChild("HumanoidRootPart").Position
-    local StartHealth = target.Humanoid.Health
+    local ZombOriginal = zHRP.Position
+    local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     
-    AddLog("[+] TARGET: " .. target.Name .. " (Distancia original: " .. tostring(math.floor((PosOriginal - ZombOriginal).Magnitude)) .. " Studs).", 0)
-    AddLog("[🚀] MÉTODO IMÁN: No viaja el Hacker. Le roba la Física (NetworkOwner) al Zombie y teletransporta al Zombie hacia el arma del Hacker.", 0)
+    AddLog("[+] TARGET OBTENIDO: '" .. target.Name .. "' (A " .. tostring(math.floor((PosOriginal - ZombOriginal).Magnitude)) .. " Studs).", 0)
+    AddLog("[🚀] MÉTODO SECUESTRO: Falsificar la autoría de Red. Teletransportamos al NPC hacia nosotros abusando de una mala asignación Client-Owner.", 0)
     
     pcall(function()
-        local zHRP = target:FindFirstChild("HumanoidRootPart")
-        if zHRP then
-            -- Intentamos secuestrar la fisica asumiendo que el server la delego al cliente más cercano accidentalmente
-            task.spawn(function()
-                for i=1, 20 do
-                    if not zHRP then break end
-                    zHRP.CFrame = hrp.CFrame * CFrame.new(0, 0, -3) -- Lo obligamos a estar de frente nuestro
-                    task.wait(0.05)
-                end
-            end)
-            
-            task.wait(0.2)
-            for i=1, 3 do FireWeapon(); task.wait(0.3) end
-        end
+        task.spawn(function()
+            for i=1, 30 do
+                if not target or not zHRP or not hrp then break end
+                -- Traemos violentamente al Boss o Zombie hacia el Avatar
+                zHRP.CFrame = hrp.CFrame * CFrame.new(0, 0, -4) 
+                task.wait(0.05)
+            end
+        end)
+        
+        task.wait(0.3)
+        for i=1, 4 do FireWeapon(); task.wait(0.3) end
     end)
     
-    task.wait(1)
-    local EndHealth = target.Humanoid.Health
-    local ZombFinal = target:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("HumanoidRootPart").Position or ZombOriginal
+    task.wait(1.5)
+    local EndHealth = target:FindFirstChildOfClass("Humanoid").Health
+    local ZombFinal = zHRP.Position
     
     AddLog("\n[🔍 DIAGNÓSTICO DEL ATAQUE 3]", 0)
-    if (ZombFinal - PosOriginal).Magnitude < 15 and (ZombOriginal - PosOriginal).Magnitude > 25 then
-        AddLog("├─ [🚨 FACTIBLE POSICIONAL (ROBO DE RED)]: El Zombi se teletransportó hacia ti sin permiso. El Servidor le regaló el NetworkOwnership a tu cliente permitiéndote imantar monstruos.", 1)
-        if EndHealth < StartHealth then AddLog("├─ Y además... ¡Mataste al zombie imantado (-" .. tostring(StartHealth - EndHealth) .. " HP)!", 1) end
-        AddLog("└─ JERARQUÍA DE SOLUCIÓN: Agrega 'ZombieHRP:SetNetworkOwner(nil)' al final del ciclo for de todos tus NPCs en Servidor para que TÚ servidor maneje las físicas inquebrantablemente.", 1)
+    local HuboMovimientoMaligno = (ZombFinal - PosOriginal).Magnitude < 15 and (ZombOriginal - PosOriginal).Magnitude > 25
+
+    if HuboMovimientoMaligno then
+        AddLog("├─ [🚨 FACTIBLE (ROBO DE RED)]: El '"..target.Name.."' fue forzado a volar hacia tu cara y el Servidor LO PERMITIÓ.", 1)
+        if EndHealth < StartHealth then AddLog("├─ CONSECUENCIA DIRECTA: Le quitaste " .. tostring(math.floor(StartHealth - EndHealth)) .. " HP sin siquiera moverte.", 1) end
+        AddLog("└─ SOLUCIÓN C++: Falto ejecutar 'ZombiRootPart:SetNetworkOwner(nil)'. Hazlo siempre en el momento que Spawneas un nuevo monstruo.", 1)
     else
-        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El Zombi ignoró mi orden matemática de venir hacia ti. Se mantuvo en su sitio o cerca de su origen original.", 1)
-        AddLog("└─ CONCLUSIÓN: Has aplicado bien SetNetworkOwner(nil) en tus mobs. Son intocables.", 1)
+        AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El '"..target.Name.."' se rehusó a obedecer las matemáticas LUA del Cliente. La física no se alteró en Red.", 1)
+        AddLog("└─ CONCLUSIÓN: El C++ gestiona los dueños de físicas espléndidamente. Nadie mueve a tus monstruos.", 1)
     end
 end
 
@@ -232,7 +265,7 @@ local function SegmentarPaginas()
 end
 
 -- ==============================================================================
--- 🖥️ GUI V31: THE DARK-ZONE ORCHESTRATOR
+-- 🖥️ GUI V32: THE DARK-ZONE ORCHESTRATOR (O-SCANNER)
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -246,18 +279,18 @@ local function ConstruirUI()
     local MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 720, 0, 560)
     MainFrame.Position = UDim2.new(0.5, -360, 0.5, -280)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 30)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 255)
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(70, 0, 90)
-    TopBar.Text = "  [V31: THE DARK-ZONE ORCHESTRATOR - AUTORIZACIÓN POR ATAQUES AISLADOS]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 150, 255)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 80, 150)
+    TopBar.Text = "  [V32: TARGET-LOCK BYPASS - CAZADOR DE ANATOMÍA PURA]"
+    TopBar.TextColor3 = Color3.fromRGB(150, 255, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -273,10 +306,23 @@ local function ConstruirUI()
     CloseBtn.TextSize = 14
     CloseBtn.Parent = MainFrame
 
+    local ReloadBtn = Instance.new("TextButton")
+    ReloadBtn.Size = UDim2.new(0, 30, 0, 30)
+    ReloadBtn.Position = UDim2.new(1, -60, 0, 0)
+    ReloadBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 0)
+    ReloadBtn.Text = "↻"
+    ReloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ReloadBtn.Font = Enum.Font.Code
+    ReloadBtn.TextSize = 18
+    ReloadBtn.Parent = MainFrame
+
+    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+    ReloadBtn.MouseButton1Click:Connect(function() pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(111,999)))() end) end)
+
     local InfoScroll = Instance.new("ScrollingFrame")
     InfoScroll.Size = UDim2.new(1, -16, 0.55, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 5, 15)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
@@ -285,8 +331,8 @@ local function ConstruirUI()
     LogTextBox.Size = UDim2.new(1, -10, 1, 0)
     LogTextBox.Position = UDim2.new(0, 5, 0, 5)
     LogTextBox.BackgroundTransparency = 1
-    LogTextBox.Text = "TUS ÓRDENES FUERON CLARAS:\nCrear los 3 Botones para los ataques ofensivos que descubríamos en V30 de a un clic (Por si alguno nos provoca un error masivo o pateada, no perdemos todo el Log).\n\nHE CREADO LAS TRES PRUEBAS DE ESTRÉS (HACER DAÑO A ZOMBIES):\n\n[Botón ATAQUE 1: HIT & RUN ESPACIAL]\nVa al Zombi, le saca vida con ClientCast y regresa en milésimas de segundo intentando engañar la velocidad del Sensor.\n\n[Botón ATAQUE 2: ZONA OSCURA + AMPUTACIÓN]\nSe roba a sí mismo el 'HumanoidRootPart', cruza a 1500 Studs (Cielo) ciber-silenciosamente, baja y masacra al Zombi. Crashea al C++.\n\n[Botón ATAQUE 3: LA IMANTACIÓN DE RED]\nEl Hacker no viaja al zombie; Secuestra el estado del Zombie en su cliente y arrastra a los NPCs volando hacia la base segura para matarlos farmeando.\n\nPrueba los 3, uno por uno..."
-    LogTextBox.TextColor3 = Color3.fromRGB(230, 180, 255)
+    LogTextBox.Text = "ERROR CORREGIDO. EL BUSCADOR AHORA ES CIEGO A LOS NOMBRES.\n\nEn la prueba anterior te salió 'No hay zombies' a pesar de que tenías a los NPCs enfrente.\nEl problema es que yo asumía que los programabas con nombres de texto que incluían la palabra 'Zombie' o 'Boss'. Algunos Devs prefieren llamarlos 'Enemy', 'Mummy', 'Slime', etc.\n\nACTUALIZACIONES DE LA V32:\n- Reescritura del algoritmo de Cazador LUA: Tu herramienta ya NO MIRA EL NOMBRE. Escudriñará el mapa entero hasta hallar cualquier modelo biomecánico con la clase 'Humanoid' que tenga Vida > 0.1 y que no seas tú o tus amigos.\n- Asegurará el Target más cercano automáticamente.\n- Conectar el Arma es OBLIGATORIO (Pon tu escudo y espada en tu mano antes de presionar cualquiera de los 3 asaltos).\n\nAhora tienes luz verde total frente a tus NPCs anónimos. ¡Elige un ataque!"
+    LogTextBox.TextColor3 = Color3.fromRGB(180, 240, 255)
     LogTextBox.Font = Enum.Font.Code
     LogTextBox.TextSize = 12
     LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -307,8 +353,8 @@ local function ConstruirUI()
     local btnAtk1 = Instance.new("TextButton")
     btnAtk1.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk1.Position = UDim2.new(0, 8, 0.70, 0)
-    btnAtk1.BackgroundColor3 = Color3.fromRGB(100, 50, 0)
-    btnAtk1.Text = "🔥 ATK 1: HIT & RUN"
+    btnAtk1.BackgroundColor3 = Color3.fromRGB(120, 60, 0)
+    btnAtk1.Text = "🔥 ATK 1: HIT & RUN VELOZ"
     btnAtk1.TextColor3 = Color3.fromRGB(255, 230, 200)
     btnAtk1.Font = Enum.Font.Code
     btnAtk1.TextSize = 12
@@ -317,7 +363,7 @@ local function ConstruirUI()
     local btnAtk2 = Instance.new("TextButton")
     btnAtk2.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk2.Position = UDim2.new(0.34, 0, 0.70, 0)
-    btnAtk2.BackgroundColor3 = Color3.fromRGB(120, 0, 150)
+    btnAtk2.BackgroundColor3 = Color3.fromRGB(140, 0, 180)
     btnAtk2.Text = "👻 ATK 2: FANTASMA"
     btnAtk2.TextColor3 = Color3.fromRGB(255, 220, 255)
     btnAtk2.Font = Enum.Font.Code
@@ -327,8 +373,8 @@ local function ConstruirUI()
     local btnAtk3 = Instance.new("TextButton")
     btnAtk3.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk3.Position = UDim2.new(0.66, 8, 0.70, 0)
-    btnAtk3.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
-    btnAtk3.Text = "🌪️ ATK 3: IMÁN ZOMBIE"
+    btnAtk3.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+    btnAtk3.Text = "🌪️ ATK 3: SECUESTRO FÍSICO"
     btnAtk3.TextColor3 = Color3.fromRGB(200, 240, 255)
     btnAtk3.Font = Enum.Font.Code
     btnAtk3.TextSize = 12
@@ -341,7 +387,7 @@ local function ConstruirUI()
     local btnPrev = Instance.new("TextButton")
     btnPrev.Size = UDim2.new(0.32, 0, 0, 30)
     btnPrev.Position = UDim2.new(0, 8, 0.85, 0)
-    btnPrev.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    btnPrev.BackgroundColor3 = Color3.fromRGB(30, 60, 80)
     btnPrev.Text = "< Pielgues"
     btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnPrev.Parent = MainFrame
@@ -357,7 +403,7 @@ local function ConstruirUI()
     local btnNext = Instance.new("TextButton")
     btnNext.Size = UDim2.new(0.32, 0, 0, 30)
     btnNext.Position = UDim2.new(0.66, 8, 0.85, 0)
-    btnNext.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    btnNext.BackgroundColor3 = Color3.fromRGB(30, 60, 80)
     btnNext.Text = "Lectura >"
     btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnNext.Parent = MainFrame
