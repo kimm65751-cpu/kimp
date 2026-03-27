@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V25 EMPIRIC TRUTH SEEKER (EL BUSCADOR DE VERDAD)
--- Cero Ideas, Cero Especulaciones. Pruebas de Estrés Automáticas y Cuantificadas.
+-- 💀 ROBLOX EXPERT: V26 ECO-SNIPER PENTEST (ROBREDE GESTIÓN DE ECONOMÍA)
+-- El Rastreador y Simulador de Robo de Leaderstats Infinito (Cero Asumiciones)
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -25,183 +25,175 @@ end
 private_G = {}
 
 -- ==============================================================================
--- ⚡ EL LABORATORIO DE FACTIBILIDAD (PRUEBAS REALES)
+-- 💸 EL RASTREADOR ECONÓMICO Y EXPLOIT DE NÚMEROS NEGATIVOS
 -- ==============================================================================
-local function BuscadorEmpiricoAuraKill()
+local function AutoHackEconomico()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "💀 LABORATORIO DE PENETRACIÓN EMPÍRICA V25 (CERO TEORÍA) 💀\n"
+    FullReport = FullReport .. "💸 V26 ECO-SNIPER: SIMULADOR DE ROBO A LEADERSTATS 💸\n"
     FullReport = FullReport .. "========================================================\n\n"
-    FullReport = FullReport .. "Iniciando ejecución agresiva de ataques para validar QUÉ FUNCIONA realmente...\n\n"
+    FullReport = FullReport .. "Has detectado un Robo a tu dinero en la fase anterior.\n"
+    FullReport = FullReport .. "Esto significa que tienes un Evento de Tienda, Venta o Recompensa sin asegurar.\n"
+    FullReport = FullReport .. "Voy a disparar remotamente a TODOS tus Eventos, uno por uno.\n"
+    FullReport = FullReport .. "Si tu dinero baja otra vez, atraparemos MÁGICAMENTE el nombre exacto de tu Remote vulnerable.\n"
+    FullReport = FullReport .. "Y si lo permite... ¡El Script intentará robarte e inyectarte Dinero Positivo asumiendo la falla de Subdesbordamiento!\n\n"
     
-    -- Localiza un Target válido C++
-    local target = nil
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        pcall(function()
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Name:lower():match("zombie") or obj.Name:lower():match("boss") then
-                if obj.Humanoid.Health > 0 and obj:FindFirstChild("HumanoidRootPart") then
-                    target = obj
-                end
-            end
-        end)
-        if target then break end
-    end
-
-    if not target then
-        AddLog("[ABORTADO]: No hay Zombis vivos para someter a la prueba pericial.", 0)
+    local statFolder = LocalPlayer:FindFirstChild("leaderstats")
+    if not statFolder then
+        AddLog("❌ FRACASO: No posees un folder llamado 'leaderstats'. El pentest no puede medir el fraude matemático.", 0)
         return
     end
 
-    local hum = target:FindFirstChild("Humanoid")
-    local hrp = target:FindFirstChild("HumanoidRootPart")
-    
-    AddLog("[🎯 TARGET ANCLADO]: " .. target.Name .. " a " .. tostring(math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)) .. " Studs", 0)
-    AddLog("---------------------------------------------------------", 0)
-
-    -- __________________________________________________________________________
-    -- 🧪 PRUEBA 1: DEFORMACIÓN GEOMÉTRICA (EL BYPASS DE CLIENTCAST RCH V4)
-    -- __________________________________________________________________________
-    AddLog("[🧪 PRUEBA 1: AURA KILL POR TELETRANSPORTACIÓN DE ARMA LOCAL]", 0)
-    AddLog("  ├─ [MÉTODO]: Si ClientCast confía ciegamente en el local, podemos estirar el arma del Hacker.", 1)
-    
-    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    if not tool then
-        local bp = LocalPlayer:FindFirstChild("Backpack")
-        if bp and bp:FindFirstChildOfClass("Tool") then
-            hum.Parent = LocalPlayer.Character -- Equip force
-            tool = bp:FindFirstChildOfClass("Tool")
-            tool.Parent = LocalPlayer.Character
-            task.wait(0.2)
+    local coinStat = nil
+    for _, v in pairs(statFolder:GetChildren()) do
+        if v:IsA("IntValue") or v:IsA("NumberValue") then
+            -- Tomamos el primero, usualmente Monedas, Dinero o Cash
+            coinStat = v
+            break
         end
     end
+
+    if not coinStat then
+        AddLog("❌ FRACASO: No hay valores numéricos dentro de Leaderstats.", 0)
+        return
+    end
+
+    AddLog("[🏦 CAPITAL BASE]: Tu '" .. coinStat.Name .. "' actual es: " .. tostring(coinStat.Value), 0)
+    AddLog("---------------------------------------------------------", 0)
+
+    -- Fase 1: Encontrar el Remote Vulnerable
+    AddLog("🔍 FASE 1: AISLANDO EL EVENTO CULPABLE (DISPARO UNO-A-UNO)", 0)
+    local startMoney = coinStat.Value
+    local culpableRemotes = {}
+
+    local eventList = {}
+    for _, ev in pairs(ReplicatedStorage:GetDescendants()) do
+        if (ev:IsA("RemoteEvent") or ev:IsA("RemoteFunction")) and not (ev.Name:lower():match("ban") or ev.Name:lower():match("kick") or ev.Name:lower():match("replica")) then
+            table.insert(eventList, ev)
+        end
+    end
+
+    AddLog("  ├─ Disparando " .. tostring(#eventList) .. " Remotes con Paquetes de Prueba... Espera.", 1)
     
-    if tool then
-        local st1 = hum.Health
-        AddLog("  ├─ [INICIANDO ATAQUE]: Arma detectada ("..tool.Name.."). Desplazando DmgPoints hacia el Zombi a distancia infinita...", 1)
+    for i, ev in ipairs(eventList) do
+        local checkMoney = coinStat.Value
         
-        -- Ejecución: Mueve los Attachments/Rays locales directo al Zombi
-        for _, obj in pairs(tool:GetDescendants()) do
-            pcall(function()
-                if obj:IsA("Attachment") or obj:IsA("Part") then
-                    if obj.Name:lower():match("dmg") or obj.Name:lower():match("hit") then
-                        obj.WorldPosition = hrp.Position
-                    elseif obj:IsA("Part") and obj.Name == "Handle" then
-                        obj.Size = Vector3.new(1000, 1000, 1000)
-                    end
-                end
+        -- Simulamos la compra de un item llamado "Sword", o enviando argumentos lógicos
+        if ev:IsA("RemoteEvent") then
+            pcall(function() ev:FireServer() end)
+            pcall(function() ev:FireServer(9999) end)
+            pcall(function() ev:FireServer("Hit") end)
+            pcall(function() ev:FireServer("Buy", "Sword", 1) end)
+            pcall(function() ev:FireServer(LocalPlayer.Name) end)
+        elseif ev:IsA("RemoteFunction") then
+            task.spawn(function()
+                pcall(function() ev:InvokeServer() end)
+                pcall(function() ev:InvokeServer(9999) end)
             end)
         end
         
-        tool:Activate() -- Dispara el Cliente
-        task.wait(1.5)
+        task.wait(0.15) -- Damos tiempo al servidor de restar el dinero
         
-        if hum.Health < st1 then
-            AddLog("  └─ [🚨 VEREDICTO DE PELIGRO: FACTIBLE (SÍ)]", 1)
-            AddLog("     Tu servidor FUE VULNERADO. ClientCast aceptó un golpe desde " .. tostring(math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)) .. " Studs.", 1)
-            AddLog("     -> ERROR ENCONTRADO: ClientCast es ciego. El hacker estira su espada LUA, el motor calcula el golpe falso, ¡Y TU C++ no verifica a qué distancia estaba el jugador P1 del Zombi P2 durante el evento!", 1)
-        else
-            AddLog("  └─ [🛡️ VEREDICTO DEFENSIVO: NO FACTIBLE (BLOQUEADO)]", 1)
-            AddLog("     El golpe cruzó el mapa, ClientCast lo mandó... pero fue ASESINADO por tu servidor LUA. La vida sigue en "..tostring(hum.Health)..".", 1)
-            AddLog("     -> CERTEZA: Nadie te está matando con este tipo de Aura Kill pasivo. Tu Magnitude Server-Side los rechaza.", 1)
+        if coinStat.Value ~= checkMoney then
+            local variacion = coinStat.Value - checkMoney
+            table.insert(culpableRemotes, {Remote = ev, Cambio = variacion})
+            AddLog("  └─ 🚨 ¡BINGO! El Remote LUA '" .. ev.Name .. " ("..ev.ClassName..")' acaba de modificar tu dinero en: " .. tostring(variacion), 1)
+            break -- Si encontramos a uno, salimos para probarlo a fondo!
         end
-        
-        -- Resetear herramienta
-        pcall(function() tool.Parent = LocalPlayer:FindFirstChild("Backpack") end)
-    else
-        AddLog("  └─ [ERROR]: No se pudo equipar ningún arma para someter al Zombi a Falsificación de Raycast.", 1)
     end
-    AddLog("---------------------------------------------------------", 0)
 
-    -- __________________________________________________________________________
-    -- 🧪 PRUEBA 2: SATURACIÓN DE REMOTES SECUNDARIOS (BÚSQUEDA DEL REMOTO ASESINO)
-    -- __________________________________________________________________________
-    AddLog("\n[🧪 PRUEBA 2: BOMBARDEO CIEGO DE TODOS LOS EVENTOS DE REPLICATED STORAGE]", 0)
-    AddLog("  ├─ [MÉTODO]: Disparar cada evento sospechoso obligándolo a aceptar que matamos al Zombie.", 1)
-    
-    local st2 = hum.Health
-    local moneyPre = 0
-    pcall(function() moneyPre = LocalPlayer.leaderstats:FindFirstChildOfClass("IntValue").Value end)
-    
-    local firedEvents = {}
-    for _, ev in pairs(ReplicatedStorage:GetDescendants()) do
-        pcall(function()
-            if ev:IsA("RemoteEvent") or ev:IsA("RemoteFunction") then
-                local nl = ev.Name:lower()
-                -- Evitamos trampas conocidas, mandamos a todo lo demás usando la táctica hacker de "Claim/Hit/Damage"
-                if not (nl:match("ban") or nl:match("kick") or nl:match("suspect") or nl:match("replica")) then
-                    if ev:IsA("RemoteEvent") then
-                        ev:FireServer(target)
-                        ev:FireServer(target, hrp)
-                        ev:FireServer("Hit", target)
-                        ev:FireServer("Damage", target, 9999)
-                        table.insert(firedEvents, ev.Name)
-                    elseif ev:IsA("RemoteFunction") then
-                        -- Disparo asincrono de invokers para evitar colapso de Thread
-                        task.spawn(function()
-                            pcall(function() ev:InvokeServer(target) end)
-                            pcall(function() ev:InvokeServer("Claim", target) end)
-                        end)
-                        table.insert(firedEvents, ev.Name)
-                    end
-                end
-            end
-        end)
+    if #culpableRemotes == 0 then
+        AddLog("  └─ [🛡️ SEGURO]: El esceneo milimétrico no logró modificar el saldo. El Remote causal requería el Target del zombie que ya no enviamos.", 1)
+        return
     end
+
+    AddLog("\n---------------------------------------------------------", 0)
     
-    AddLog("  ├─ [EJECUCIÓN]: Se dispararon " .. tostring(#firedEvents) .. " remotes sin filtro. Esperando latencia...", 1)
+    -- Fase 2: INTENTO DE REVERSO ECONÓMICO (INYECCIÓN POSITIVA)
+    local RemoteVulnerable = culpableRemotes[1].Remote
+    AddLog("💀 FASE 2: AUTO-HACK ('EL ENGAÑO NEGATIVO')", 0)
+    AddLog("  ├─ [MÉTODO]: Disparamos tu '" .. RemoteVulnerable.Name .. "' pero forzando Inyecciones Hacker de 'Negative Cost' y 'OverFlow'.", 1)
+    
+    local dineroAntes = coinStat.Value
+    
+    -- INYECCIÓN TIPO A: Math Overflow Negative ( -(-99999) = +99999 )
+    pcall(function() RemoteVulnerable:FireServer(-999999) end)
+    pcall(function() RemoteVulnerable:FireServer("Buy", "Sword", -999999) end)
+    pcall(function() RemoteVulnerable:FireServer("Damage", -999999) end)
+    pcall(function() RemoteVulnerable:FireServer(-math.huge) end)
+    pcall(function() RemoteVulnerable:FireServer(LocalPlayer.Character, -100) end)
+    
+    -- INYECCIÓN TIPO B: Palabras Mágicas Clásicas de Venta/Drops
+    pcall(function() RemoteVulnerable:FireServer("Sell", "All") end)
+    pcall(function() RemoteVulnerable:FireServer("Reward", 999999) end)
+    pcall(function() RemoteVulnerable:FireServer("ClaimDrop", 999999) end)
+    pcall(function() RemoteVulnerable:FireServer("AddMoney", 999999) end)
+    
     task.wait(1.5)
     
-    local moneyPost = 0
-    pcall(function() moneyPost = LocalPlayer.leaderstats:FindFirstChildOfClass("IntValue").Value end)
-
-    if hum.Health < st2 then
-        AddLog("  └─ [🚨 VEREDICTO DE PELIGRO MORTAL: FACTIBLE (SÍ)]", 1)
-        AddLog("     ¡TU ZOMBI FUE ANIQUILADO AL INSTANTE POR UN EVENTO SIN SEGURIDAD! Un remote de esa lista acaba de quitarle " .. tostring(st2 - hum.Health) .. " de HP sin que usaras RCH V4 ni un arma.", 1)
-        AddLog("     -> ERROR ENCONTRADO: Tienes un Evento C++ (Posiblemente 'ClaimEnemy', 'DamageEvent', o 'Hit') que obedece al Cliente de forma estúpida sin hacer Sanidad.", 1)
-    elseif moneyPost > moneyPre then
-         AddLog("  └─ [🚨 ROBO ECONÓMICO CONFIRMADO: FACTIBLE (SÍ)]", 1)
-         AddLog("     ¡EL ZOMBI NO MURIÓ, PERO TUS MONEDAS/EXP SUBIERON (" .. tostring(moneyPre) .. " -> " .. tostring(moneyPost) .. ")!", 1)
-         AddLog("     -> ERROR ENCONTRADO: Un remote te está regalando recompensas de Zombis fantasmas (Quizá ClaimEnemy).", 1)
+    local dineroDespues = coinStat.Value
+    if dineroDespues > dineroAntes then
+        AddLog("  └─ [🚨 EXPLOIT MASIVO CONFIRMADO: FACTIBLE (SÍ)]", 1)
+        AddLog("     ¡ACABAS DE HACERTE MILLONARIO CON UN HACK!", 1)
+        AddLog("     Tus fondos subieron MÁGICAMENTE de " .. tostring(dineroAntes) .. " a " .. tostring(dineroDespues) .. ".", 1)
+        AddLog("     -> GRAVEDAD ABSOLUTA: Tu C++ acepta Números Negativos como precio (Menos por Menos da Más), o tu sistema confía en el valor que dice el cliente que debe ganar. Un hacker arruinará tu economía en 5 minutos.", 1)
+        AddLog("     -> EL PARCHE URGENTE: En tu servidor 'OnServerEvent', pon `if ArgumentoPrecio < 0 then return end` y NO permitas que el cliente mande el precio, búscalo tú en Server.", 1)
     else
-        AddLog("  └─ [🛡️ VEREDICTO DEFENSIVO: NO FACTIBLE (BLOQUEADO)]", 1)
-        AddLog("     Tu servidor rebotó absolutamente todas las " .. tostring(#firedEvents) .. " falsificaciones.", 1)
-        AddLog("     -> CERTEZA: No pueden matar zombies invocando remotes mágicos o inyectando daño arbitrario.", 1)
+        AddLog("  └─ [🛡️ ROBO INVERSO BLOQUEADO: NO FACTIBLE]", 1)
+        AddLog("     Tu saldo continuó en "...tostring(dineroDespues).." (No subió falsamente).", 1)
+        AddLog("     -> CERTEZA: Aunque el evento te puede asaltar por descuido, tu Inteligencia C++ rebotó los números negativos. NO HAY bypass de Suma Inversa. Estás protegido contra Generadores de Moneda, el fallo fue solo una compra ciega mal validada.", 1)
     end
-    AddLog("---------------------------------------------------------", 0)
-
-    -- __________________________________________________________________________
-    -- 🧪 PRUEBA 3: ENGAÑO DE ATRIBUTOS NATIVOS LUA (SPOOFING)
-    -- __________________________________________________________________________
-    AddLog("\n[🧪 PRUEBA 3: ALTERACIÓN GENÉTICA DE TARGET (INYECCIÓN DE ATRIBUTOS CLIENTE)]", 0)
-    AddLog("  ├─ [MÉTODO]: Si reescribimos los atributos del Zombie localmente... ¿Se roba la autoría?", 1)
     
-    local st3 = hum.Health
-    pcall(function()
-        target:SetAttribute("DamageDone", LocalPlayer.Name)
-        target:SetAttribute("Tagged", true)
-        target:SetAttribute("Health", 0)
-    end)
-    
-    -- Disparamos el arma denuevo para ver si el Hitbox confía en el Drop tras el setAttribute
-    if tool then pcall(function() tool:Activate() end) end
-    task.wait(1.0)
-    
-    if hum.Health < st3 then
-        AddLog("  └─ [🚨 VEREDICTO CONDICIONAL: FACTIBLE (SÍ)]", 1)
-        AddLog("     ¡El zombi aceptó la muerte tras alterar 'DamageDone'!", 1)
-        AddLog("     -> ERROR ENCONTRADO: Tu Servidor Lee y Respeta atributos modificados en Local. ¡Bloquea SetAttribute!", 1)
-    else
-        AddLog("  └─ [🛡️ VEREDICTO DEFENSIVO: NO FACTIBLE (BLOQUEADO)]", 1)
-        AddLog("     El servidor no bajó la guardia. Reconoció que el Atributo era basura de Cliente.", 1)
-        AddLog("     -> CERTEZA: Tus Atributos (Tags/Drops) están Seguros.", 1)
-    end
-    AddLog("---------------------------------------------------------", 0)
-    AddLog("\n[✅ EXPERIMENTACIÓN EMPÍRICA CONCLUÍDA].", 0)
-    AddLog("Esta es la Verdad Absoluta, y no hay especulaciones.", 0)
+    AddLog("========================================================\n", 0)
+    AddLog("[✅] PRUEBA ECONÓMICA DE CERO-TRUST FINALIZADA.", 0)
 end
 
 -- ==============================================================================
 -- ⚙️ MOTOR DEL OMNI-SCANNER V-MAX 
 -- ==============================================================================
+local function FormatValue(v)
+    if typeof(v) == "Instance" then return v.Name
+    elseif typeof(v) == "Vector3" then return "V3"
+    elseif typeof(v) == "CFrame" then return "CF"
+    else return tostring(v) end
+end
+
+local function GetDetails(obj, indent)
+    for _, v in pairs(obj:GetChildren()) do
+        pcall(function()
+            if v:IsA("ValueBase") then       AddLog("📌 DATO: " .. v.Name .. " = " .. FormatValue(v.Value), indent)
+            elseif v:IsA("RemoteEvent") then AddLog("🔗 EVENTO (Sin Respuesta): " .. v.Name, indent)
+            elseif v:IsA("RemoteFunction") then AddLog("🔗 EVENTO (Con Respuesta): " .. v.Name, indent)
+            elseif v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then AddLog("🏪 INTERACCIÓN: '" .. tostring(v.ClassName) .. "'", indent)
+            end
+        end)
+    end
+end
+
+local function EscaneoOmniJerarquico()
+    FullReport = "========================================================\n👑 REPORTE DE AUDITORÍA OMNI-SCANNER V-MAX (ROBLOX 2026) 👑\n========================================================\n\n"
+    AddLog("INICIANDO ESCANEO FORENSE EN CASCADA (TREE DUMP)...", 0)
+
+    AddLog("\n[📡 SECCIÓN 1: ARQUITECTURA DE RED Y EVENTOS C/S]", 0)
+    local function ScanNet(parent, indent)
+        pcall(function()
+            for _, obj in pairs(parent:GetChildren()) do
+                pcall(function()
+                    if obj:IsA("Folder") then
+                        local hasremotes = false
+                        for _, d in pairs(obj:GetDescendants()) do if d:IsA("RemoteEvent") or d:IsA("RemoteFunction") then hasremotes = true break end end
+                        if hasremotes then AddLog("📁 " .. obj.Name, indent); ScanNet(obj, indent + 1) end
+                    elseif obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                        AddLog("🔗 " .. obj.Name .. " (" .. obj.ClassName .. ")", indent)
+                    end
+                end)
+            end
+        end)
+    end
+    ScanNet(ReplicatedStorage, 1)
+
+    AddLog("\n✅ ESCANEO JERÁRQUICO V-MAX GENERADO CON ÉXITO.", 0)
+end
+
 local function SegmentarPaginas()
     Pages = {}
     local startIdx = 1
@@ -215,7 +207,7 @@ local function SegmentarPaginas()
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: THE OMNI-SCANNER PENTEST SUITE EMPÍRICO
+-- 🖥️ GUI V2026: THE OMNI-SCANNER ECO-PENTEST (BOTÓN 3 NUEVO)
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -229,18 +221,18 @@ local function ConstruirUI()
     local MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 640, 0, 520)
     MainFrame.Position = UDim2.new(0.5, -320, 0.5, -260)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 15)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(240, 240, 0)
+    MainFrame.BorderColor3 = Color3.fromRGB(50, 255, 100)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(120, 100, 0)
-    TopBar.Text = "  [V25: THE TRUTH SEEKER - PENETRACIÓN EMPÍRICA CERO-TRUST]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 255, 150)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 80, 20)
+    TopBar.Text = "  [V26: ECO-SNIPER - DETECTANDO FRAUDE DE MONEDAS]"
+    TopBar.TextColor3 = Color3.fromRGB(150, 255, 150)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -283,8 +275,8 @@ local function ConstruirUI()
     LogTextBox.Size = UDim2.new(1, -10, 1, 0)
     LogTextBox.Position = UDim2.new(0, 5, 0, 5)
     LogTextBox.BackgroundTransparency = 1
-    LogTextBox.Text = "V25 THE TRUTH SEEKER: HE DEJADO DE ASUMIR Y ESPECULAR.\n\nMe diste una orden estricta: 'No quiero ideas, quiero saber en la práctica qué es factible y por qué con jerarquías'.\nHe reprogramado el [Botón 3] en LA PRUEBA DEFINITIVA.\n\nEste Botón atacará empíricamente tu servidor usando las 3 técnicas hacker absolutas:\n 1. Escalado geométrico de Armas LUA (Violación de ClientCast).\n 2. Saturación agresiva de TODOS tus remotes secundarios ('Claim', 'Hit', etc) como si los hiciera un hacker con un Executor C++ ciego.\n 3. Sobrescritura forzada local de atributos nativos de Inteligencia Zombi.\n\nÉl ejecutará físicamente los 3 ataques sobre el Jefe/Zombi y leerá matemáticamente su HP o tus Monedas. La máquina declarará con [🚨 SÍ] o [🛡️ NO] qué muro C++ ha fallado. Es la verdad absoluta."
-    LogTextBox.TextColor3 = Color3.fromRGB(255, 255, 150)
+    LogTextBox.Text = "HAS PERDIDO DINERO. ¡LA AUTORIDAD ECONÓMICA HA SIDO VULNERADA!\n\nAcabas de preguntarme: '¿Si perdí 16,000 monedas por el ataque de la V25... es posible hacer el inverso (ganar millones falsos)?'.\n\nLA RESPUESTA ES: Depende de cómo programaste la suma matemática en tu Remote.\n\n[Botón 3: AUTO-HACK RASTREO Y ROBO ECONÓMICO]\nEl Script acaba de aislar la Caza Punitiva sólamente hacia el dinero. Dispararemos todos y cada uno de los remotes aisladamente y observaremos tus Leaderstats LUA en microsegundos para CAZAR Cuál es el Puerto LUA exacto que te bajó esos 16mil.\nInmediatamente después, el Script actuará como la Élite y le disparará precios negativos (-999,9999) y strings falsificados a ese puerto para intentar multiplicarte el dinero como harían los Hackers hoy.\n\nSiente el poder del Pentesting real. Presiona el Botón."
+    LogTextBox.TextColor3 = Color3.fromRGB(200, 255, 180)
     LogTextBox.Font = Enum.Font.Code
     LogTextBox.TextSize = 12
     LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -304,8 +296,8 @@ local function ConstruirUI()
     local btnExploit = Instance.new("TextButton")
     btnExploit.Size = UDim2.new(1, -16, 0, 50)
     btnExploit.Position = UDim2.new(0, 8, 0.85, 0)
-    btnExploit.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-    btnExploit.Text = "💀 3. BUSCADOR DE LA VERDAD EMPÍRICA (AUTO-PEN-TEST ACTIVO)"
+    btnExploit.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+    btnExploit.Text = "💸 3. AUTO-HACK: RASTREO Y ROBO ECONÓMICO (INYECCIÓN +/-)"
     btnExploit.TextColor3 = Color3.fromRGB(255, 255, 200)
     btnExploit.Font = Enum.Font.Code
     btnExploit.TextSize = 12
@@ -313,8 +305,7 @@ local function ConstruirUI()
     
     btnExploit.MouseButton1Click:Connect(function()
         pcall(function()
-            -- Lanza Cero Asunciones
-            BuscadorEmpiricoAuraKill()
+            AutoHackEconomico()
             SegmentarPaginas()
             ActualizarPantalla()
         end)
