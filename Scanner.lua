@@ -1,9 +1,8 @@
--- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V1.6 (DUAL-BYPASS & SERVER COMMS)
+-- 🗡️ FORGE OMNI-ANALYZER V1.7 (FULL GUI & RETURN ANALYZER)
 -- Analiza cómo el servidor maneja los minijuegos y permite probar saltos o Auto-Rhythm.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V1.6 - ANALISTA TOTAL .TXT"
+local SCRIPT_VERSION = "V1.7 - ANALISTA TOTAL"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +29,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(100, 80, 20)
-Title.Text = " 📡 FORGE ANALYZER V1.6 (GUI, RED & AUTO-BOT)"
-Title.TextColor3 = Color3.fromRGB(255, 255, 150)
+Title.BackgroundColor3 = Color3.fromRGB(100, 40, 60)
+Title.Text = " 📡 FORGE ANALYZER V1.7 (GUI, RED & BOT)"
+Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -89,6 +88,31 @@ LogScroll.Parent = Panel
 local ListLayout = Instance.new("UIListLayout", LogScroll)
 ListLayout.Padding = UDim.new(0, 2)
 
+local ControlsFrame = Instance.new("Frame")
+ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
+ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
+ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+ControlsFrame.Parent = Panel
+
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0.5, -2, 1, 0)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ClearBtn.Text = "🗑️ LIMPIAR LOGS"
+ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearBtn.Font = Enum.Font.Code
+ClearBtn.TextSize = 12
+ClearBtn.Parent = ControlsFrame
+
+local CopyBtn = Instance.new("TextButton")
+CopyBtn.Size = UDim2.new(0.5, -2, 1, 0)
+CopyBtn.Position = UDim2.new(0.5, 2, 0, 0)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
+CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES"
+CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyBtn.Font = Enum.Font.Code
+CopyBtn.TextSize = 12
+CopyBtn.Parent = ControlsFrame
+
 -- ==========================================
 -- SISTEMA DE LOGS Y .TXT (SIN LÍMITES)
 -- ==========================================
@@ -135,6 +159,18 @@ local function AddUILog(logType, message, color)
     txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
     LogScroll.CanvasPosition = Vector2.new(0, 999999)
 end
+
+ClearBtn.MouseButton1Click:Connect(function()
+    for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
+    MasterLogList = {}
+end)
+
+CopyBtn.MouseButton1Click:Connect(function()
+    local result = "=== REPORTE TOTAL SIN FILTROS (V1.7) ===\n\n"
+    for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
+    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
+    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
+end)
 
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
@@ -285,7 +321,10 @@ PerfectAutoBtn.MouseButton1Click:Connect(function()
         local t0 = os.clock()
         AddUILog("TEST_2", "Fase 1/5: Arrancando (Melt) - 0.00s", Color3.fromRGB(150,200,255))
         local s1, r1 = pcall(function() return forgeRF:InvokeServer("Melt", {FastForge = false, ItemType = "Weapon", Ores = LastOresDetected}) end)
-        AddUILog("TEST_2", " -> Resp: " .. tostring(r1), Color3.fromRGB(100,150,200))
+        
+        -- DUMP DE LA RESPUESTA (Aquí el servidor nos revela los secretos del minijuego)
+        local responseStr = (typeof(r1) == "table" and DumpTableDeep(r1) or tostring(r1))
+        AddUILog("SERVER_REVEAL", "Melt retornó: " .. responseStr, Color3.fromRGB(255,255,100))
         
         -- TIEMPOS BASADOS EN TU REPORTE FORENSE (Para que el servidor crea que somos perfectos)
         -- Melt -> Pour (Inflador) tarda ~11 a 12 seg
