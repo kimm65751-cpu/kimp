@@ -33,6 +33,11 @@ local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
 local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
 local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 
+-- SELECTOR DE OBJETIVOS: Qué tipos de mobs y minas farmear
+-- Clave = nombre base (lowercase, sin números), Valor = true/false
+local SelectedMobs = {} -- Se llena con el Scanner
+local SelectedOres = {} -- Se llena con el Scanner
+
 -- ==========================================
 -- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
 -- ==========================================
@@ -98,7 +103,7 @@ for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "OmniFarmUI" then v:D
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 280, 0, 310)
+Panel.Size = UDim2.new(0, 280, 0, 400)
 Panel.Position = UDim2.new(0.5, -140, 0.5, -155)
 Panel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
 Panel.BorderSizePixel = 2
@@ -201,17 +206,219 @@ MineBtn.Font = Enum.Font.Code
 MineBtn.TextSize = 12
 MineBtn.Parent = Panel
 
+local ScannerBtn = Instance.new("TextButton")
+ScannerBtn.Size = UDim2.new(1, -8, 0, 30)
+ScannerBtn.Position = UDim2.new(0, 4, 0, 160)
+ScannerBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
+ScannerBtn.Text = "🔍 SCANNER: Seleccionar Mobs y Minas"
+ScannerBtn.TextColor3 = Color3.fromRGB(255, 220, 255)
+ScannerBtn.Font = Enum.Font.Code
+ScannerBtn.TextSize = 11
+ScannerBtn.Parent = Panel
+
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -8, 0, 140)
-StatusLabel.Position = UDim2.new(0, 4, 0, 162)
+StatusLabel.Size = UDim2.new(1, -8, 0, 150)
+StatusLabel.Position = UDim2.new(0, 4, 0, 195)
 StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata zombis de tu nivel o menor.\n⛏️ FARM MINAS: Farm piedras y minerales (NO rocks).\n\nSi un zombi se acerca mientras mineas, te defiende."
+StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata mobs seleccionados.\n⛏️ FARM MINAS: Pica minas seleccionadas.\n🔍 SCANNER: Detecta y selecciona objetivos.\n\nUsa el SCANNER primero para elegir qué farmear."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
 StatusLabel.TextWrapped = true
 StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
 StatusLabel.Parent = Panel
+
+-- ==========================================
+-- SCANNER PANEL (Panel Flotante de Selección)
+-- ==========================================
+local ScannerPanel = Instance.new("Frame")
+ScannerPanel.Size = UDim2.new(0, 320, 0, 420)
+ScannerPanel.Position = UDim2.new(0.5, 160, 0.5, -210)
+ScannerPanel.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+ScannerPanel.BorderSizePixel = 2
+ScannerPanel.BorderColor3 = Color3.fromRGB(150, 80, 255)
+ScannerPanel.Active = true
+ScannerPanel.Draggable = true
+ScannerPanel.Visible = false
+ScannerPanel.Parent = ScreenGui
+
+local ScanTitle = Instance.new("TextLabel")
+ScanTitle.Size = UDim2.new(1, -40, 0, 30)
+ScanTitle.BackgroundColor3 = Color3.fromRGB(80, 30, 120)
+ScanTitle.Text = " 🔍 SELECTOR DE OBJETIVOS"
+ScanTitle.TextColor3 = Color3.fromRGB(220, 180, 255)
+ScanTitle.TextSize = 13
+ScanTitle.Font = Enum.Font.Code
+ScanTitle.TextXAlignment = Enum.TextXAlignment.Left
+ScanTitle.Parent = ScannerPanel
+
+local ScanCloseBtn = Instance.new("TextButton")
+ScanCloseBtn.Size = UDim2.new(0, 40, 0, 30)
+ScanCloseBtn.Position = UDim2.new(1, -40, 0, 0)
+ScanCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ScanCloseBtn.Text = "X"
+ScanCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScanCloseBtn.Font = Enum.Font.Code
+ScanCloseBtn.TextSize = 16
+ScanCloseBtn.Parent = ScannerPanel
+ScanCloseBtn.MouseButton1Click:Connect(function() ScannerPanel.Visible = false end)
+
+local MobsHeader = Instance.new("TextLabel")
+MobsHeader.Size = UDim2.new(1, 0, 0, 22)
+MobsHeader.Position = UDim2.new(0, 0, 0, 32)
+MobsHeader.BackgroundColor3 = Color3.fromRGB(120, 50, 30)
+MobsHeader.Text = " 🧟 MOBS DETECTADOS (Click para ON/OFF)"
+MobsHeader.TextColor3 = Color3.fromRGB(255, 200, 180)
+MobsHeader.TextSize = 11
+MobsHeader.Font = Enum.Font.Code
+MobsHeader.TextXAlignment = Enum.TextXAlignment.Left
+MobsHeader.Parent = ScannerPanel
+
+local MobScroll = Instance.new("ScrollingFrame")
+MobScroll.Size = UDim2.new(1, -8, 0, 140)
+MobScroll.Position = UDim2.new(0, 4, 0, 56)
+MobScroll.BackgroundColor3 = Color3.fromRGB(20, 15, 15)
+MobScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+MobScroll.ScrollBarThickness = 5
+MobScroll.Parent = ScannerPanel
+Instance.new("UIListLayout", MobScroll).Padding = UDim.new(0, 2)
+
+local OresHeader = Instance.new("TextLabel")
+OresHeader.Size = UDim2.new(1, 0, 0, 22)
+OresHeader.Position = UDim2.new(0, 0, 0, 200)
+OresHeader.BackgroundColor3 = Color3.fromRGB(30, 80, 50)
+OresHeader.Text = " ⛏️ MINAS/PIEDRAS DETECTADAS (Click ON/OFF)"
+OresHeader.TextColor3 = Color3.fromRGB(180, 255, 200)
+OresHeader.TextSize = 11
+OresHeader.Font = Enum.Font.Code
+OresHeader.TextXAlignment = Enum.TextXAlignment.Left
+OresHeader.Parent = ScannerPanel
+
+local OreScroll = Instance.new("ScrollingFrame")
+OreScroll.Size = UDim2.new(1, -8, 0, 140)
+OreScroll.Position = UDim2.new(0, 4, 0, 224)
+OreScroll.BackgroundColor3 = Color3.fromRGB(15, 20, 15)
+OreScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+OreScroll.ScrollBarThickness = 5
+OreScroll.Parent = ScannerPanel
+Instance.new("UIListLayout", OreScroll).Padding = UDim.new(0, 2)
+
+local ScanStatusLabel = Instance.new("TextLabel")
+ScanStatusLabel.Size = UDim2.new(1, -8, 0, 45)
+ScanStatusLabel.Position = UDim2.new(0, 4, 0, 370)
+ScanStatusLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+ScanStatusLabel.Text = "Presiona el botón Scanner para detectar."
+ScanStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+ScanStatusLabel.TextSize = 10
+ScanStatusLabel.Font = Enum.Font.Code
+ScanStatusLabel.TextWrapped = true
+ScanStatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+ScanStatusLabel.Parent = ScannerPanel
+
+-- Función para extraer nombre base (sin números del final)
+local function GetBaseName(name)
+    return string.gsub(name, "%d+$", "")
+end
+
+-- Función para crear un botón toggle en un scroll
+local function CreateToggleRow(parent, displayName, selectionTable, key, defaultOn)
+    if selectionTable[key] ~= nil then return end -- Ya existe, no duplicar
+    selectionTable[key] = defaultOn
+    
+    local row = Instance.new("TextButton")
+    row.Size = UDim2.new(1, -4, 0, 24)
+    row.BackgroundColor3 = defaultOn and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(80, 30, 30)
+    row.Text = (defaultOn and "  ✅ " or "  ❌ ") .. displayName
+    row.TextColor3 = Color3.fromRGB(255, 255, 255)
+    row.TextXAlignment = Enum.TextXAlignment.Left
+    row.Font = Enum.Font.Code
+    row.TextSize = 11
+    row.Parent = parent
+    
+    row.MouseButton1Click:Connect(function()
+        selectionTable[key] = not selectionTable[key]
+        if selectionTable[key] then
+            row.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+            row.Text = "  ✅ " .. displayName
+        else
+            row.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+            row.Text = "  ❌ " .. displayName
+        end
+    end)
+end
+
+-- Función de escaneo del mundo
+local function RunScanner()
+    -- Limpiar listas visuales
+    for _, v in pairs(MobScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    for _, v in pairs(OreScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    
+    local mobTypes = {} -- {baseName = {count, sampleHP, sampleLvl}}
+    local oreTypes = {} -- {baseName = {count, sampleHP}}
+    local char = LocalPlayer.Character
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("Model") and obj ~= char then
+                local hum = obj:FindFirstChildWhichIsA("Humanoid")
+                -- Es un MOB (NPC con Humanoid e IsNpc)
+                if hum and hum.Health > 0 and obj:GetAttribute("IsNpc") == true then
+                    local baseName = GetBaseName(obj.Name)
+                    if not mobTypes[baseName] then
+                        local mobLvl = GetMobLevel(obj)
+                        mobTypes[baseName] = {count = 1, hp = math.floor(hum.MaxHealth), lvl = mobLvl}
+                    else
+                        mobTypes[baseName].count = mobTypes[baseName].count + 1
+                    end
+                end
+                -- Es una MINA/PIEDRA (Tiene Health como atributo)
+                local oreHP = obj:GetAttribute("Health")
+                if oreHP and oreHP > 0 and not hum then
+                    local baseName = GetBaseName(obj.Name)
+                    if not oreTypes[baseName] then
+                        oreTypes[baseName] = {count = 1, hp = math.floor(oreHP)}
+                    else
+                        oreTypes[baseName].count = oreTypes[baseName].count + 1
+                    end
+                end
+            end
+        end)
+    end
+    
+    -- Crear toggle rows para mobs
+    local mobCount = 0
+    for baseName, data in pairs(mobTypes) do
+        mobCount = mobCount + 1
+        local display = baseName .. " (x" .. data.count .. " | HP:" .. data.hp
+        if data.lvl > 0 then display = display .. " | Lvl:" .. data.lvl end
+        display = display .. ")"
+        -- Por defecto ON si no existía antes
+        local defaultVal = true
+        if SelectedMobs[baseName] ~= nil then defaultVal = SelectedMobs[baseName] end
+        SelectedMobs[baseName] = nil -- Reset para que CreateToggleRow lo cree
+        CreateToggleRow(MobScroll, display, SelectedMobs, baseName, defaultVal)
+    end
+    
+    -- Crear toggle rows para minas
+    local oreCount = 0
+    for baseName, data in pairs(oreTypes) do
+        oreCount = oreCount + 1
+        local display = baseName .. " (x" .. data.count .. " | HP:" .. data.hp .. ")"
+        local defaultVal = true
+        if SelectedOres[baseName] ~= nil then defaultVal = SelectedOres[baseName] end
+        SelectedOres[baseName] = nil
+        CreateToggleRow(OreScroll, display, SelectedOres, baseName, defaultVal)
+    end
+    
+    ScanStatusLabel.Text = "✅ Detectados: " .. mobCount .. " tipos de mobs, " .. oreCount .. " tipos de minas. Click para activar/desactivar."
+end
+
+ScannerBtn.MouseButton1Click:Connect(function()
+    ScannerPanel.Visible = not ScannerPanel.Visible
+    if ScannerPanel.Visible then
+        RunScanner()
+    end
+end)
 
 -- ==========================================
 -- EVENTOS DE INTERFAZ
@@ -223,7 +430,7 @@ MinBtn.MouseButton1Click:Connect(function()
         Panel.Size = UDim2.new(0, 200, 0, 30)
         OpenIcon.Visible = false
     else
-        Panel.Size = UDim2.new(0, 280, 0, 360)
+        Panel.Size = UDim2.new(0, 280, 0, 400)
     end
 end)
 
@@ -395,6 +602,11 @@ local function IniciarFarm()
                             if o:IsA("Model") and o ~= char then
                                 local h = o:FindFirstChildWhichIsA("Humanoid")
                                 if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
+                                    -- FILTRO POR SELECCIÓN: Solo atacar tipos seleccionados en Scanner
+                                    local baseName = GetBaseName(o.Name)
+                                    if next(SelectedMobs) ~= nil and SelectedMobs[baseName] == false then
+                                        return false -- Tipo deseleccionado, ignorar
+                                    end
                                     -- FILTRO DE NIVEL: Solo aplica cuando CAZAS (KiteActivo)
                                     -- En auto-defensa (MineActivo) pelea con CUALQUIERA que se acerque
                                     if KiteActivo and not MineActivo then
@@ -419,11 +631,22 @@ local function IniciarFarm()
 
                         oreTarget, oDist = findNearest(function(o)
                             if o:IsA("Model") and o ~= char and not OreBlacklist[o] then
-                                local n = string.lower(o.Name)
                                 local h = o:GetAttribute("Health")
-                                -- SOLO pebb y ore, SIN rocks
-                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "ore")) then
-                                    return true
+                                if h and h > 0 then
+                                    -- FILTRO POR SELECCIÓN: Solo minar tipos seleccionados en Scanner
+                                    local baseName = GetBaseName(o.Name)
+                                    if next(SelectedOres) ~= nil and SelectedOres[baseName] == false then
+                                        return false -- Tipo deseleccionado, ignorar
+                                    end
+                                    -- Si Scanner no se ha usado aún, aceptar todo lo que tenga Health
+                                    if next(SelectedOres) == nil then
+                                        return true
+                                    end
+                                    -- Solo minar si está en la lista y está ON
+                                    if SelectedOres[baseName] == true then
+                                        return true
+                                    end
+                                    return false
                                 end
                             end
                             return false
