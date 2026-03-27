@@ -1,389 +1,473 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V46 THE REPULSOR SHIELD (KITING ORGÁNICO PERFECTO)
--- Bloqueo C/S Físico mediante WalkSpeed relativo y Levitación Reducida (Sweet-Spot).
+-- 🗡️ OMNI-FARM V2.0 (PURGADO: SOLO COMBATE INTELIGENTE + MURO CRISTAL)
+-- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-local VIM = game:GetService("VirtualInputManager")
+local LocalPlayer = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+-- ==========================================
+-- REFERENCIA CRÍTICA DEL SERVIDOR (Knit ToolService)
+-- ==========================================
+local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
 
-local FullReport = ""
-local Pages = {}
-local CurrentPage = 1
-local CHARS_PER_PAGE = 7000
+-- ==========================================
+-- VARIABLES DE ESTADO
+-- ==========================================
+local NoclipActivo = false
+local ShieldActivo = false
+local KiteActivo = false
+local FarmTask = nil
+local MyShield = nil
 
-local function AddLog(text, indentLevel)
-    local prefix = string.rep("  ", indentLevel or 0)
-    FullReport = FullReport .. prefix .. text .. "\n"
-end
-
-private_G = {}
-
--- ==============================================================================
--- 🔬 BUSCADOR ESTRICTO POR NOMBRES (SIN ERRORES C++)
--- ==============================================================================
-local function GetViableTarget(maxDist)
-    local myChar = LocalPlayer.Character
-    local closestTarget = nil
-    local closestDist = maxDist or math.huge
-    
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        pcall(function()
-            local name = obj.Name:lower()
-            if name:match("zombie") or name:match("delver") or name:match("brute") or name:match("elite") or name:match("boss") then
-                local hum = obj:FindFirstChildOfClass("Humanoid")
-                local targetHRP = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-                
-                if hum and targetHRP and hum.Health > 0.1 then
-                    local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-                    if myHrp then
-                        local dist = (myHrp.Position - targetHRP.Position).Magnitude
-                        if dist < closestDist then closestDist = dist; closestTarget = obj end
-                    else closestTarget = obj end
-                end
+-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
+-- ==========================================
+local function GetMyLevel()
+    local lvl = 1
+    pcall(function()
+        -- Buscar en leaderstats
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            local lv = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("Nivel")
+            if lv then lvl = tonumber(lv.Value) or 1 end
+        end
+        -- Buscar como atributo directo del jugador
+        local attrLvl = LocalPlayer:GetAttribute("Level") or LocalPlayer:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or lvl end
+        -- Buscar en carpeta Data/Profile/Stats
+        for _, folderName in pairs({"Data", "Profile", "Stats"}) do
+            local f = LocalPlayer:FindFirstChild(folderName)
+            if f then
+                local lv = f:FindFirstChild("Level") or f:FindFirstChild("Lvl")
+                if lv and lv:IsA("ValueBase") then lvl = tonumber(lv.Value) or lvl end
             end
-        end)
-    end
-    return closestTarget
-end
-
-local function ForzarClickVirtual()
-    pcall(function()
-        local cam = Workspace.CurrentCamera
-        local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-        VirtualUser:Button1Down(center)
-        task.wait(0.01)
-        VirtualUser:Button1Up(center)
-    end)
-    pcall(function()
-        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.01)
-        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-    end)
-end
-
--- ==============================================================================
--- 🚀 M1: LEVITACIÓN DE COMBATE (SWEET-SPOT 4.5 STUDS)
--- ==============================================================================
-local function ToggleLevitationCombat()
-    FullReport = "========================================================\n"
-    FullReport = FullReport .. "👻 V46. M1: THE COMBAT LEVITATION 👻\n"
-    FullReport = FullReport .. "========================================================\n\n"
-    
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then AddLog("❌ ERROR: Avatar Roto.", 0); return end
-    
-    pcall(function()
-        if hum.HipHeight > 3 then
-            hum.HipHeight = 0 
-            AddLog("[🟩 NORMALIDAD]: Has tocado tierra de nuevo.", 0)
-        else
-            -- EL SWEET-SPOT. 7.5 era muy alto para la espada. 4.5 evita el puño del zombie y permite que la espada baje!
-            hum.HipHeight = 4.5
-            AddLog("[👻 GOD MODE LEVITACIÓN 4.5]: ¡Me informaste que Levitar SÍ te hizo invulnerable pero tu hoja no llegaba!. He bajado la altura milimétricamente. Ahora a 4.5 Studs, flotarás a la altura perfecta: Estás justo por encima de sus brazos torpes de rango bajo, PERO tu espada larguirucha podrá rajar sus cabezas desde arriba. Ataca con tu mouse manual.", 0)
         end
     end)
+    return lvl
 end
 
--- ==============================================================================
--- 🚀 M2: ESCUDO KINÉTICO (REPULSOR MAGNETIC SHIELD) MANUAL
--- ==============================================================================
-local RepulsorConnection = nil
+-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL ZOMBIE
+-- ==========================================
+local function GetMobLevel(mob)
+    local lvl = 0
+    pcall(function()
+        -- 1. Buscar atributo "Level"
+        local attrLvl = mob:GetAttribute("Level") or mob:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or 0; return end
+        -- 2. Buscar NumberValue/IntValue hijo
+        for _, v in pairs(mob:GetChildren()) do
+            if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name == "Level" or v.Name == "Lvl") then
+                lvl = tonumber(v.Value) or 0; return
+            end
+        end
+        -- 3. Buscar en BillboardGui texto "[Lvl. X]"
+        for _, gui in pairs(mob:GetDescendants()) do
+            if gui:IsA("TextLabel") then
+                local text = gui.Text or ""
+                local match = string.match(text, "%[Lvl%.%s*(%d+)%]")
+                if match then lvl = tonumber(match) or 0; return end
+            end
+        end
+    end)
+    return lvl
+end
 
-local function ToggleRepulsorShield()
-    FullReport = "========================================================\n"
-    FullReport = FullReport .. "🛡️ V46. M2: ESCUDO REPULSOR (KITING MAGNÉTICO LUA) 🛡️\n"
-    FullReport = FullReport .. "========================================================\n\n"
-    
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then AddLog("❌ ERROR: Avatar Roto.", 0); return end
-    
-    if RepulsorConnection then
-        RepulsorConnection:Disconnect()
-        RepulsorConnection = nil
-        AddLog("[🟩 APAGADO]: Tu Escudo Repulsor Kinético ha sido destituido.", 0)
+-- ==========================================
+-- GUI PRINCIPAL (COMPACTA)
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "OmniFarmUI"
+ScreenGui.ResetOnSpawn = false
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "OmniFarmUI" then v:Destroy() end end
+ScreenGui.Parent = parentUI
+
+local Panel = Instance.new("Frame")
+Panel.Size = UDim2.new(0, 280, 0, 310)
+Panel.Position = UDim2.new(0.5, -140, 0.5, -155)
+Panel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
+Panel.BorderSizePixel = 2
+Panel.BorderColor3 = Color3.fromRGB(0, 200, 100)
+Panel.Active = true
+Panel.Draggable = true
+Panel.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -80, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
+Title.Text = " 🗡️ OMNI-FARM V2 (INTELIGENTE)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
+Title.TextSize = 13
+Title.Font = Enum.Font.Code
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Panel
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 40, 0, 30)
+CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.Code
+CloseBtn.TextSize = 16
+CloseBtn.Parent = Panel
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 40, 0, 30)
+MinBtn.Position = UDim2.new(1, -80, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 16
+MinBtn.Parent = Panel
+
+local ReloadBtn = Instance.new("TextButton")
+ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
+ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
+ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
+ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
+ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+ReloadBtn.Font = Enum.Font.Code
+ReloadBtn.TextSize = 11
+ReloadBtn.Parent = Panel
+
+local OpenIcon = Instance.new("ImageButton")
+OpenIcon.Size = UDim2.new(0, 50, 0, 50)
+OpenIcon.Position = UDim2.new(0.5, -25, 0, 20)
+OpenIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+OpenIcon.Image = "rbxassetid://10886105073"
+OpenIcon.Visible = false
+OpenIcon.Active = true
+OpenIcon.Draggable = true
+OpenIcon.Parent = ScreenGui
+Instance.new("UICorner", OpenIcon).CornerRadius = UDim.new(1, 0)
+
+-- ==========================================
+-- BOTONES (SIN AIMBOT, SIN FARM MINAS)
+-- ==========================================
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.5, -6, 0, 35)
+NoclipBtn.Position = UDim2.new(0, 4, 0, 68)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+NoclipBtn.Text = "👻 NOCLIP: OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.Font = Enum.Font.Code
+NoclipBtn.TextSize = 11
+NoclipBtn.Parent = Panel
+
+local ShieldBtn = Instance.new("TextButton")
+ShieldBtn.Size = UDim2.new(0.5, -6, 0, 35)
+ShieldBtn.Position = UDim2.new(0.5, 2, 0, 68)
+ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+ShieldBtn.Text = "🛡️ MURO CRISTAL"
+ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShieldBtn.Font = Enum.Font.Code
+ShieldBtn.TextSize = 11
+ShieldBtn.Parent = Panel
+
+local KiteBtn = Instance.new("TextButton")
+KiteBtn.Size = UDim2.new(1, -8, 0, 45)
+KiteBtn.Position = UDim2.new(0, 4, 0, 110)
+KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+KiteBtn.Text = "🗡️ FARM MOBS (SOLO TU NIVEL O MENOR)"
+KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+KiteBtn.Font = Enum.Font.Code
+KiteBtn.TextSize = 12
+KiteBtn.Parent = Panel
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -8, 0, 140)
+StatusLabel.Position = UDim2.new(0, 4, 0, 162)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Camina y mata solo zombis de TU nivel o menor. Ignora zombis más fuertes que tú.\n\n⚠️ Sin minería de Rocks (aún no puedes).\n⚠️ Sin Aimbot (no funciona en este juego)."
+StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+StatusLabel.Parent = Panel
+
+-- ==========================================
+-- EVENTOS DE INTERFAZ
+-- ==========================================
+local Minimizado = false
+MinBtn.MouseButton1Click:Connect(function()
+    Minimizado = not Minimizado
+    if Minimizado then
+        Panel.Size = UDim2.new(0, 200, 0, 30)
+        OpenIcon.Visible = false
     else
-        RepulsorConnection = RunService.RenderStepped:Connect(function()
-            if not char or not hrp or hum.Health <= 0 then return end
-            
-            -- Bloquear zombis cercanos
-            local target = GetViableTarget(8) -- Scanner perimetral a 8 studs
-            if target then
-                local tHrp = target:FindFirstChild("HumanoidRootPart")
-                if tHrp then
-                    -- Calculamos distancia 2D (solo piso)
-                    local dist = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(tHrp.Position.X, 0, tHrp.Position.Z)).Magnitude
-                    
-                    -- Si pisa mi perímetro de 6.5 Studs (Rango de daño)
-                    if dist < 6.5 then
-                        -- Me empujo violentamente a la inversa matemáticamente y usando el Mando Nativo (Sin teletransporte)
-                        local escapeVector = (hrp.Position - tHrp.Position).Unit * Vector3.new(1, 0, 1)
-                        hum:Move(escapeVector, false)
+        Panel.Size = UDim2.new(0, 280, 0, 310)
+    end
+end)
+
+OpenIcon.MouseButton1Click:Connect(function()
+    Panel.Visible = true
+    OpenIcon.Visible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    ScreenGui:Destroy()
+end)
+
+ReloadBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
+end)
+
+-- ==========================================
+-- MOTOR NOCLIP
+-- ==========================================
+RunService.Stepped:Connect(function()
+    if not NoclipActivo then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide = false end
+    end
+end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    NoclipActivo = not NoclipActivo
+    if NoclipActivo then
+        NoclipBtn.Text = "👻 NOCLIP: ON"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+    else
+        NoclipBtn.Text = "👻 NOCLIP: OFF"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        pcall(function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r then r.Anchored = false end
+        end)
+    end
+end)
+
+-- ==========================================
+-- MURO CRISTAL (FUNCIONAL DEL BACKUP)
+-- ==========================================
+ShieldBtn.MouseButton1Click:Connect(function()
+    ShieldActivo = not ShieldActivo
+    if ShieldActivo then
+        ShieldBtn.Text = "🛡️ CRISTAL: ON ✅"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
+        
+        MyShield = Instance.new("Part")
+        MyShield.Name = "MuroDefensivo"
+        MyShield.Size = Vector3.new(12, 12, 2)
+        MyShield.Transparency = 0.5
+        MyShield.Material = Enum.Material.ForceField
+        MyShield.BrickColor = BrickColor.new("Cyan")
+        MyShield.Anchored = true
+        MyShield.CanCollide = true
+        MyShield.Parent = Workspace
+        
+        task.spawn(function()
+            while ShieldActivo and MyShield do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if myRoot then
+                        for _, v in pairs(char:GetDescendants()) do
+                            if v:IsA("BasePart") then
+                                local cName = "NCC_" .. v.Name
+                                if not MyShield:FindFirstChild(cName) then
+                                    local nc = Instance.new("NoCollisionConstraint")
+                                    nc.Name = cName
+                                    nc.Part0 = v
+                                    nc.Part1 = MyShield
+                                    nc.Parent = MyShield
+                                end
+                            end
+                        end
+                        MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
                     end
-                end
+                end)
+                task.wait()
             end
         end)
-        AddLog("[🛡️ ACTIVADO REPULSOR]: Escuché el requerimiento de 'empujar o encerrar': El servidor bloquea jaulas falsas y no te deja tocar al zombie, pero... SÍ PUEDO MANEJAR TU CUERPO! \nHe implementado el Joystick Invisible de LUA ('Move'). Cuando camines hacia un zombie e intente pisar los 6.5 Studs de tu rango de castigo, mi script usará tus piernas virtuales del Roblox para RESBALAR hacia atrás copiando exactamente su velocidad.\nEfecto = El zombie correrá persiguiéndote por el mapa como si estuviera en una cinta de correr y JAMÁS te tocará, mientras tú tranquilamente estás sosteniendo le clic rajándole desde 6.5 Studs CERO TP Kick!!", 0)
+        StatusLabel.Text = "🛡️ Muro Cristal activo. Los Zombis se atoran en él."
+    else
+        ShieldBtn.Text = "🛡️ MURO CRISTAL"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+        if MyShield then MyShield:Destroy(); MyShield = nil end
     end
-end
+end)
 
--- ==============================================================================
--- 🚀 M3: AUTO-FARM REPULSOR (EL AUTÓMATA PERFECTO)
--- ==============================================================================
-local function RunAutoKiteFarm()
-    FullReport = "========================================================\n"
-    FullReport = FullReport .. "🔥 V46. M3: AUTO-FARM REPULSOR DEFINITIVO 🔥\n"
-    FullReport = FullReport .. "========================================================\n\n"
-    
+-- ==========================================
+-- FUNCIONES DE FARM (CON FILTRO DE NIVEL)
+-- ==========================================
+local function findNearest(condFn)
     local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local miHum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not miHum then AddLog("❌ ERROR: Avatar Roto.", 0); return end
-    
-    local target = GetViableTarget(800)
-    if not target then AddLog("❌ ERROR: No hay zombies en rango.", 0); return end
-    
-    local targetHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
-    local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
-    
-    AddLog("[+] TARGET: '" .. target.Name .. "'.", 0)
-    AddLog("[🚀] MÉTODO AUTO-REPULSOR: Te liberará las manos. Yo mismo lo guiaré hacia el Monstruo. Al llegar a 7.0 Studs (Aura segurísima), miHum:Move() forzará las piernitas de tu Roblox al revés como si estuvieras huyendo si se acerca. Si se aleja te persigo. Resultado: Es Masacrado impunemente.", 0)
-    
-    pcall(function()
-        local TimeOut = tick()
-        while target and target.Parent and target:FindFirstChildOfClass("Humanoid") and target:FindFirstChildOfClass("Humanoid").Health > 0.1 do
-            if miHum.Health <= 0 then break end
-            if (tick() - TimeOut) > 40 then break end
-            
-            local tHrp = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
-            if not tHrp then break end
-            
-            local dist = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(tHrp.Position.X, 0, tHrp.Position.Z)).Magnitude
-            
-            if dist > 7.5 then
-                -- Corre orgánicamente a él
-                miHum:MoveTo(tHrp.Position)
-            elseif dist < 6.0 then
-                -- Retroceso Defensivo (Mando LUA - Cero Kicks)
-                local awayVector = (hrp.Position - tHrp.Position).Unit * Vector3.new(1, 0, 1)
-                miHum:Move(awayVector, false)
-                ForzarClickVirtual()
-            else
-                -- El Sweet-Spot exacto (Freno de Caza) -> Anulamos aceleración
-                miHum:MoveTo(hrp.Position) 
-                ForzarClickVirtual()
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest, closestDist = nil, math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if condFn(obj) then
+            local p = nil
+            pcall(function()
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                if hrp then p = hrp.Position end
+            end)
+            if p then
+                local d = (root.Position - p).Magnitude
+                if d < closestDist then closestDist = d; closest = obj end
             end
-            
-            -- Apuntamos cámara siempre a la cara del zombi
-            Workspace.CurrentCamera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, tHrp.Position)
-            task.wait(0.1)
         end
-    end)
-    
-    -- Frenamos todo rezago
-    pcall(function() miHum:MoveTo(hrp.Position) end)
-    
-    task.wait(1.5)
-    
-    AddLog("\n[🔍 DIAGNÓSTICO DEL ATAQUE]", 0)
-    AddLog("├─ [🚨 RESULTADO ORGÁNICO]: Cero Kicks TP Registrados. Terminó el Baile Sangriento.", 1)
-end
-
--- ==============================================================================
--- ⚙️ MOTOR DEL OMNI-SCANNER Y CHUNKER
--- ==============================================================================
-local function SegmentarPaginas()
-    Pages = {}
-    local startIdx = 1
-    while startIdx <= #FullReport do
-        local endIdx = startIdx + CHARS_PER_PAGE - 1
-        table.insert(Pages, string.sub(FullReport, startIdx, endIdx))
-        startIdx = endIdx + 1
     end
-    CurrentPage = 1
-    if #Pages == 0 then table.insert(Pages, "No hay datos generados que mostrar.") end
+    return closest, closestDist
 end
 
--- ==============================================================================
--- 🖥️ GUI V46: THE FORCEFIELD & REPULSOR SUITE
--- ==============================================================================
-local function ConstruirUI()
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "MasterBypass2026UI"
-    sg.ResetOnSpawn = false
+local function DetenerFarm()
+    if not KiteActivo then
+        if FarmTask then task.cancel(FarmTask); FarmTask = nil end
+        pcall(function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r then r.Anchored = false end
+        end)
+        StatusLabel.Text = "Estado: Inactivo"
+    end
+end
+
+local function IniciarFarm()
+    if FarmTask then return end
     
-    local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-    for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "MasterBypass2026UI" then v:Destroy() end end
-    sg.Parent = parentUI
+    FarmTask = task.spawn(function()
+        local loopTick = 0
+        local zTarget = nil
+        local zDist = math.huge
 
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 720, 0, 560)
-    MainFrame.Position = UDim2.new(0.5, -360, 0.5, -280)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
-    MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.Parent = sg
+        while KiteActivo do
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local currentHum = char:FindFirstChild("Humanoid")
+                local myRoot = char:FindFirstChild("HumanoidRootPart")
+                if not myRoot or not currentHum then return end
 
-    local TopBar = Instance.new("TextLabel")
-    TopBar.Size = UDim2.new(1, -120, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 80, 60)
-    TopBar.Text = "  [V46: THE MAGNETIC REPULSOR SUITE - AL QUITE PERFECTO]"
-    TopBar.TextColor3 = Color3.fromRGB(200, 255, 200)
-    TopBar.Font = Enum.Font.Code
-    TopBar.TextSize = 13
-    TopBar.TextXAlignment = Enum.TextXAlignment.Left
-    TopBar.Parent = MainFrame
+                loopTick = loopTick + 1
+                local myLevel = GetMyLevel()
 
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Size = UDim2.new(0, 40, 0, 30)
-    CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseBtn.Font = Enum.Font.Code
-    CloseBtn.TextSize = 16
-    CloseBtn.Parent = MainFrame
+                -- ESCANEO CON FILTRO DE NIVEL
+                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) then
+                    zTarget, zDist = findNearest(function(o)
+                        if o:IsA("Model") and o ~= char then
+                            local h = o:FindFirstChildWhichIsA("Humanoid")
+                            if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
+                                -- FILTRO DE NIVEL: Solo atacar zombis de tu nivel o menor
+                                local mobLvl = GetMobLevel(o)
+                                if mobLvl > 0 and mobLvl > myLevel then
+                                    return false -- ¡MUY FUERTE! Ignorar este zombie
+                                end
+                                return true
+                            end
+                        end
+                        return false
+                    end)
+                else
+                    if zTarget and zTarget.Parent then
+                        local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
+                        if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
+                    else zTarget = nil end
+                end
 
-    local MinBtn = Instance.new("TextButton")
-    MinBtn.Size = UDim2.new(0, 40, 0, 30)
-    MinBtn.Position = UDim2.new(1, -80, 0, 0)
-    MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
-    MinBtn.Text = "-"
-    MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MinBtn.Font = Enum.Font.Code
-    MinBtn.TextSize = 16
-    MinBtn.Parent = MainFrame
+                if zTarget then
+                    local targetPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso") or zTarget:FindFirstChildWhichIsA("BasePart")
+                    if not targetPart then return end
+                    
+                    local dist = zDist
+                    local targetDist = ShieldActivo and 4 or 7
 
-    local ReloadBtn = Instance.new("TextButton")
-    ReloadBtn.Size = UDim2.new(0, 40, 0, 30)
-    ReloadBtn.Position = UDim2.new(1, -120, 0, 0)
-    ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 200)
-    ReloadBtn.Text = "↻"
-    ReloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ReloadBtn.Font = Enum.Font.Code
-    ReloadBtn.TextSize = 18
-    ReloadBtn.Parent = MainFrame
+                    -- == 1. EQUIPO DE ARMA ==
+                    local isEquipped = false
+                    for _, t in pairs(char:GetChildren()) do
+                        if t:IsA("Tool") and string.find(string.lower(t.Name), "weapon") then
+                            isEquipped = true; break
+                        end
+                    end
 
-    local InfoScroll = Instance.new("ScrollingFrame")
-    InfoScroll.Size = UDim2.new(1, -16, 0.55, 0)
-    InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
-    InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    InfoScroll.ScrollBarThickness = 6
-    InfoScroll.Parent = MainFrame
+                    if not isEquipped then
+                        local bpTools = LocalPlayer.Backpack:GetChildren()
+                        for _, t in pairs(bpTools) do
+                            if string.find(string.lower(t.Name), "weapon") then
+                                currentHum:EquipTool(t); break
+                            end
+                        end
+                    end
 
-    local LogTextBox = Instance.new("TextBox")
-    LogTextBox.Size = UDim2.new(1, -10, 1, 0)
-    LogTextBox.Position = UDim2.new(0, 5, 0, 5)
-    LogTextBox.BackgroundTransparency = 1
-    LogTextBox.Text = "¡LISTO! Leí toda tu confirmación técnica: 'La levitación sí sirve, el zombi no me podía tocar de lejos (!)... PERO yo tampoco a él porque estaba muy alto'. Confirmaste que Flotar es Dios en este juego para bloquear ataques y sobrevivir. Lo único que fallaba era tu alcance.\n\nTambién leí lo más brillante de todo: 'Piensa en encerrarlo, o EMPUJARLO al pegarle para mantenerlo lejos y que no toque'.\nEn Roblox, el Servidor te impide manipular a los zombis... PERO YO ACABO DE PROGRAMAR EXACTAMENTE ESE EFECTO INVERSAMENTE USANDO TU PROPIO CONCEPTO MAESTRO:\n\nEL ESCUDO REPULSOR DE 6.5 STUDS (V46 LLEGÓ):\n\nEsta táctica se llama 'Kiting MMORPG Orgánico'. Al prender el M2, el Script se aferra al Mando Virtual Joystick nativo del juego (`Humanoid:Move`). Caminas normalmente tú enfrente del zombie, y en cuanto él intente pasar tu Escudo Radial Cero (6.5 Studs), el motor OBLIGARÁ matemáticamente a tus piernitas a HACER LUNA PARK O CAMINAR DE ESPALDAS igualando la velocidad del zombi.\n\nEfecto Visual = ¡El zombi está corriendo furioso hacia ti como en una caminadora sin llegar a tocarte JAMÁS su rango, mientras tú le partes la cara con la espada (porque tú sí tienes 6.5 studs de largo en la hoja)! Imposible dar más ventaja sin alterar códigos baneables.\n\n1. [M1]: He re-calibrado la Levitación. En V45 medía 7.5. La hemos bajado a 4.5. Ahora flotarás A LA ALTURA EXACTA para que sus brazos no te den, pero tu raycast que cae de arriba sí los parta.\n2. [M2]: Activa la capa invisible magnética de 6.5 Studs. Lo prendes y solo corretea manualmente aplastando a los bichos.\n3. [M3]: El propio bot lo atrapará y jugará de Escudo solito persiguiéndolos. \n\nNo olvides suicidarte (reset) si usaste mis viejas amputaciones para destrabar a tu muñeco. Ve y diviértete con este Forcefield orgánico 100% legal e imparable para este Anti-Cheat C++."
-    LogTextBox.TextColor3 = Color3.fromRGB(220, 255, 230)
-    LogTextBox.Font = Enum.Font.Code
-    LogTextBox.TextSize = 12
-    LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
-    LogTextBox.TextYAlignment = Enum.TextYAlignment.Top
-    LogTextBox.TextWrapped = true
-    LogTextBox.ClearTextOnFocus = false
-    LogTextBox.TextEditable = false
-    LogTextBox.MultiLine = true
-    LogTextBox.Parent = InfoScroll
+                    -- == 2. MOVIMIENTO ==
+                    if dist > targetDist then
+                        if NoclipActivo then
+                            myRoot.Anchored = false
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if not bv then
+                                bv = Instance.new("BodyVelocity")
+                                bv.Name = "_NoclipBV"
+                                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                                bv.Parent = myRoot
+                            end
+                            local speed = currentHum.WalkSpeed or 16
+                            local dir = (targetPart.Position - myRoot.Position).Unit
+                            bv.Velocity = dir * speed * 2.5
+                            myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(dir.X, 0, dir.Z))
+                        else
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if bv then bv:Destroy() end
+                            myRoot.Anchored = false
+                            currentHum:MoveTo(targetPart.Position)
+                        end
+                    else
+                        local bv = myRoot:FindFirstChild("_NoclipBV")
+                        if bv then bv.Velocity = Vector3.zero end
+                        myRoot.Anchored = false
+                        currentHum:MoveTo(myRoot.Position)
+                    end
 
-    -- EVENTOS GUI
-    local Minimizado = false
-    MinBtn.MouseButton1Click:Connect(function()
-        Minimizado = not Minimizado
-        if Minimizado then
-            MainFrame.Size = UDim2.new(0, 200, 0, 30); InfoScroll.Visible = false
-        else
-            MainFrame.Size = UDim2.new(0, 720, 0, 560); InfoScroll.Visible = true
+                    -- == 3. GOLPE ==
+                    local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                    myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+
+                    if dist <= targetDist + 1.5 then
+                        ToolRF:InvokeServer("Weapon")
+                        local mobLvl = GetMobLevel(zTarget)
+                        StatusLabel.Text = "🗡️ Atacando: " .. zTarget.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Dist: " .. tostring(math.floor(dist)) .. "m | Tu Lvl: " .. tostring(myLevel)
+                    else
+                        StatusLabel.Text = "🏃 Cazando a: " .. zTarget.Name .. " (" .. tostring(math.floor(dist)) .. "m) | Tu Lvl: " .. tostring(myLevel)
+                    end
+                else
+                    StatusLabel.Text = "🗡️ Buscando zombis de Lvl " .. tostring(myLevel) .. " o menor..."
+                end
+            end)
+            task.wait()
         end
+        DetenerFarm()
     end)
-    ReloadBtn.MouseButton1Click:Connect(function() 
-        pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end) 
-    end)
-    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-
-    local function ActualizarPantalla()
-        if #Pages == 0 then return end
-        LogTextBox.Text = Pages[CurrentPage]
-        InfoScroll.CanvasPosition = Vector2.new(0, 0)
-    end
-
-    -- BOTONES TÁCTICOS
-    local btnAtk1 = Instance.new("TextButton")
-    btnAtk1.Size = UDim2.new(0.32, 0, 0, 40)
-    btnAtk1.Position = UDim2.new(0, 8, 0.70, 0)
-    btnAtk1.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-    btnAtk1.Text = "👻 M1: LEVITACIÓN 4.5 (BAJADA)"
-    btnAtk1.TextColor3 = Color3.fromRGB(200, 255, 255)
-    btnAtk1.Font = Enum.Font.Code
-    btnAtk1.TextSize = 11
-    btnAtk1.Parent = MainFrame
-    
-    local btnAtk2 = Instance.new("TextButton")
-    btnAtk2.Size = UDim2.new(0.32, 0, 0, 40)
-    btnAtk2.Position = UDim2.new(0.34, 0, 0.70, 0)
-    btnAtk2.BackgroundColor3 = Color3.fromRGB(150, 0, 50)
-    btnAtk2.Text = "🛡️ M2: PRENDER ESCUDO REPULSOR"
-    btnAtk2.TextColor3 = Color3.fromRGB(255, 200, 255)
-    btnAtk2.Font = Enum.Font.Code
-    btnAtk2.TextSize = 11
-    btnAtk2.Parent = MainFrame
-
-    local btnAtk3 = Instance.new("TextButton")
-    btnAtk3.Size = UDim2.new(0.32, 0, 0, 40)
-    btnAtk3.Position = UDim2.new(0.66, 8, 0.70, 0)
-    btnAtk3.BackgroundColor3 = Color3.fromRGB(50, 100, 0)
-    btnAtk3.Text = "🏃 M3: AUTO-FARM CINTA MAGNÉTICA"
-    btnAtk3.TextColor3 = Color3.fromRGB(200, 255, 200)
-    btnAtk3.Font = Enum.Font.Code
-    btnAtk3.TextSize = 11
-    btnAtk3.Parent = MainFrame
-
-    btnAtk1.MouseButton1Click:Connect(function() pcall(function() ToggleLevitationCombat() SegmentarPaginas() ActualizarPantalla() end) end)
-    btnAtk2.MouseButton1Click:Connect(function() pcall(function() ToggleRepulsorShield() SegmentarPaginas() ActualizarPantalla() end) end)
-    btnAtk3.MouseButton1Click:Connect(function() pcall(function() RunAutoKiteFarm() SegmentarPaginas() ActualizarPantalla() end) end)
-    
-    local btnPrev = Instance.new("TextButton")
-    btnPrev.Size = UDim2.new(0.32, 0, 0, 30)
-    btnPrev.Position = UDim2.new(0, 8, 0.85, 0)
-    btnPrev.BackgroundColor3 = Color3.fromRGB(20, 30, 40)
-    btnPrev.Text = "< Pielgues"
-    btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnPrev.Parent = MainFrame
-
-    local PageLabel = Instance.new("TextLabel")
-    PageLabel.Size = UDim2.new(0.32, 0, 0, 30)
-    PageLabel.Position = UDim2.new(0.34, 0, 0.85, 0)
-    PageLabel.BackgroundTransparency = 1
-    PageLabel.Text = "Página.. "
-    PageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    PageLabel.Parent = MainFrame
-
-    local btnNext = Instance.new("TextButton")
-    btnNext.Size = UDim2.new(0.32, 0, 0, 30)
-    btnNext.Position = UDim2.new(0.66, 8, 0.85, 0)
-    btnNext.BackgroundColor3 = Color3.fromRGB(20, 30, 40)
-    btnNext.Text = "Lectura >"
-    btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnNext.Parent = MainFrame
-    
-    local function UptLabel() PageLabel.Text = "Página " .. tostring(CurrentPage) .. " / " .. tostring(#Pages) end
-    btnPrev.MouseButton1Click:Connect(function() if CurrentPage > 1 then CurrentPage = CurrentPage - 1; ActualizarPantalla(); UptLabel() end end)
-    btnNext.MouseButton1Click:Connect(function() if CurrentPage < #Pages then CurrentPage = CurrentPage + 1; ActualizarPantalla(); UptLabel() end end)
 end
 
-ConstruirUI()
+-- ==========================================
+-- CONEXIÓN DEL BOTÓN DE FARM
+-- ==========================================
+KiteBtn.MouseButton1Click:Connect(function()
+    KiteActivo = not KiteActivo
+    if KiteActivo then
+        KiteBtn.Text = "🗡️ FARM MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        IniciarFarm()
+    else
+        KiteBtn.Text = "🗡️ FARM MOBS (SOLO TU NIVEL O MENOR)"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+        DetenerFarm()
+    end
+end)
