@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V3.2 (GOD-BOT MATHEMATICS FIX)
--- Bloqueo verdadero en red para suprimir interrupciones del script nativo.
+-- 🗡️ FORGE OMNI-ANALYZER V3.3 (GOD-BOT IDENTITY FIX)
+-- Tunelización de red segura para evitar Sabotaje y Self-Blocking.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V3.2 - DIOS DE LA FORJA SAFE"
+local SCRIPT_VERSION = "V3.3 - DIOS DE LA FORJA SAFE"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(120, 20, 60)
-Title.Text = " 📡 FORGE V3.2 (GOD-BOT MATHEMATICS)"
-Title.TextColor3 = Color3.fromRGB(255, 100, 100)
+Title.BackgroundColor3 = Color3.fromRGB(150, 0, 30)
+Title.Text = " 📡 FORGE V3.3 (FINAL GOD-BOT)"
+Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -110,6 +110,7 @@ CopyBtn.Parent = ControlsFrame
 local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
+local BotBypassingNetwork = false
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -261,6 +262,16 @@ local function DestroyNativeMinigames()
 end
 
 -- ==========================================
+-- TÚNEL SEGURO DE RED (Evasión de Self-Block)
+-- ==========================================
+local function SafeInvoke(forgeRF, phase, argsParam)
+    BotBypassingNetwork = true
+    local s, r = pcall(function() return forgeRF:InvokeServer(phase, argsParam) end)
+    BotBypassingNetwork = false
+    return s, r
+end
+
+-- ==========================================
 -- EXECUCIÓN AUTOMATIZADA MATEMÁTICA EN HILO SEPARADO
 -- ==========================================
 local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
@@ -277,7 +288,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         task.wait(req1)
         
         AddUILog("BOT_V3", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(150,255,150))
-        local s2, r2 = pcall(function() return forgeRF:InvokeServer("Pour", {ClientTime = start1 + req1}) end)
+        local s2, r2 = SafeInvoke(forgeRF, "Pour", {ClientTime = start1 + req1})
         
         local req2, start2 = ExtractTimes(r2)
         req2 = req2 or 3.00
@@ -286,7 +297,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         task.wait(req2)
         
         AddUILog("BOT_V3", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(150,255,150))
-        local s3, r3 = pcall(function() return forgeRF:InvokeServer("Hammer", {ClientTime = start2 + req2}) end)
+        local s3, r3 = SafeInvoke(forgeRF, "Hammer", {ClientTime = start2 + req2})
         
         local req3, start3 = ExtractTimes(r3)
         req3 = req3 or 3.00
@@ -295,7 +306,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         task.wait(req3)
         
         AddUILog("BOT_V3", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(150,255,150))
-        local s4, r4 = pcall(function() return forgeRF:InvokeServer("Water", {ClientTime = start3 + req3}) end)
+        local s4, r4 = SafeInvoke(forgeRF, "Water", {ClientTime = start3 + req3})
         
         local req4, start4 = ExtractTimes(r4)
         req4 = req4 or 3.00
@@ -304,7 +315,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         task.wait(req4)
         
         AddUILog("BOT_V3", ">> Completado con éxito! Enviando reclamación de material (Showcase)", Color3.fromRGB(255,255,50))
-        pcall(function() forgeRF:InvokeServer("Showcase", {}) end)
+        SafeInvoke(forgeRF, "Showcase", {})
         AddUILog("BOT_V3", "=== FIN DEL CRAFTEO PERFECTO EN LA SOMBRA ===", Color3.fromRGB(0,255,0))
         
         BotJugandoAhoraMismo = false
@@ -342,10 +353,14 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local fullName = self.GetFullName(self)
         local nameLower = string.lower(fullName)
         
-        -- INTERCEPTAMOS EL INICIO DEL JUEGO DIRECTO DEL USUARIO Y LO RETENEMOS!
         if string.find(nameLower, "changesequence") then
+            -- TUNEL PARA QUE NUESTRO BOT NUNCA SE BLOQUEE A SÍ MISMO
+            if BotBypassingNetwork then
+                return OriginalNamecall(self, ...)
+            end
+            
             -- ==========================================
-            -- BLOQUEO VERDADERO (ANTI-SABOTAJE LOCAL)
+            -- BLOQUEO VERDADERO AL SCRIPT NATIVO DE ROBLOX
             -- ==========================================
             if tostring(args[1]) ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
                 task.spawn(function() AddUILog("BLOCK", "Señal SUJA nativa [" .. tostring(args[1]) .. "] Anulada para proteger el cálculo perfecto.", Color3.fromRGB(255, 50, 50)) end)
@@ -398,5 +413,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V3.2 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "Cálculo Matemático Perfeccionado. Ahora no habrá sabotajes del minijuego local.", Color3.fromRGB(255, 200, 100))
+AddUILog("SISTEMA", "V3.3 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "Túnel Seguro de Red Activado. El Bot ya no bloqueará sus propios comandos. 100% QUALITY ENABLED.", Color3.fromRGB(255, 200, 100))
