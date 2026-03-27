@@ -248,6 +248,23 @@ local function ExtractTimes(tbl)
 end
 
 -- ==========================================
+-- ELIMINADOR DE CÁMARAS Y BUGS LOCALES
+-- ==========================================
+local function PlayerCleanup()
+    pcall(function()
+        local cam = workspace.CurrentCamera
+        cam.CameraType = Enum.CameraType.Custom
+        local char = Players.LocalPlayer.Character
+        if char then
+            cam.CameraSubject = char:FindFirstChild("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Anchored = false end
+        end
+        AddUILog("SISTEMA", "¡Cámara y controles liberados con éxito!", Color3.fromRGB(150,255,255))
+    end)
+end
+
+-- ==========================================
 -- DESTRUCTOR DE MINIJUEGOS NATIVOS
 -- ==========================================
 local function DestroyNativeMinigames()
