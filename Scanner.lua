@@ -1,8 +1,9 @@
--- 🗡️ FORGE OMNI-ANALYZER V1.7 (FULL GUI & RETURN ANALYZER)
--- Analiza cómo el servidor maneja los minijuegos y permite probar saltos o Auto-Rhythm.
+-- ==============================================================================
+-- 🗡️ FORGE OMNI-ANALYZER V3.0 (GOD-BOT: INTERCEPTACIÓN Y AUTO-QUALITY)
+-- Intercepta el arranque legítimo, destruye la UI local y completa matemáticamente la forja.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V1.7 - ANALISTA TOTAL"
+local SCRIPT_VERSION = "V3.0 - DIOS DE LA FORJA"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(100, 40, 60)
-Title.Text = " 📡 FORGE ANALYZER V1.7 (GUI, RED & BOT)"
-Title.TextColor3 = Color3.fromRGB(255, 150, 150)
+Title.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
+Title.Text = " 📡 FORGE V3.0 (GOD-BOT MATHEMATICS)"
+Title.TextColor3 = Color3.fromRGB(255, 150, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -48,34 +49,24 @@ CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 
 -- ==========================================
--- BOTONES DE TESTEO (DUAL BYPASS)
+-- BOTON DE CONTROL MULTI-HILO (V3.0)
 -- ==========================================
 local BypassFrame = Instance.new("Frame")
 BypassFrame.Size = UDim2.new(1, -8, 0, 45)
 BypassFrame.Position = UDim2.new(0, 4, 0, 35)
-BypassFrame.BackgroundColor3 = Color3.fromRGB(30, 20, 10)
+BypassFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 30)
 BypassFrame.Parent = Panel
 Instance.new("UICorner", BypassFrame).CornerRadius = UDim.new(0, 4)
 
-local FastSkipBtn = Instance.new("TextButton")
-FastSkipBtn.Size = UDim2.new(0.5, -6, 1, -8)
-FastSkipBtn.Position = UDim2.new(0, 4, 0, 4)
-FastSkipBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 50)
-FastSkipBtn.Text = "1️⃣ TEST: SALTAR MINIJUEGOS (INSTANT)"
-FastSkipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FastSkipBtn.Font = Enum.Font.Code
-FastSkipBtn.TextSize = 11
-FastSkipBtn.Parent = BypassFrame
-
-local PerfectAutoBtn = Instance.new("TextButton")
-PerfectAutoBtn.Size = UDim2.new(0.5, -6, 1, -8)
-PerfectAutoBtn.Position = UDim2.new(0.5, 2, 0, 4)
-PerfectAutoBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 200)
-PerfectAutoBtn.Text = "2️⃣ TEST: AUTO-JUGAR PERFECTO (MATH)"
-PerfectAutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PerfectAutoBtn.Font = Enum.Font.Code
-PerfectAutoBtn.TextSize = 11
-PerfectAutoBtn.Parent = BypassFrame
+local AutoBotBtn = Instance.new("TextButton")
+AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
+AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
+AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+AutoBotBtn.Text = "🤖 START: HABILITAR AUTO-BOT DE CALIDAD PERFECTA"
+AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoBotBtn.Font = Enum.Font.Code
+AutoBotBtn.TextSize = 13
+AutoBotBtn.Parent = BypassFrame
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -8, 1, -125)
@@ -114,16 +105,16 @@ CopyBtn.TextSize = 12
 CopyBtn.Parent = ControlsFrame
 
 -- ==========================================
--- SISTEMA DE LOGS Y .TXT (SIN LÍMITES)
+-- SISTEMA DE LOGS Y MEMÓRIA A ARCHIVO
 -- ==========================================
 local MasterLogList = {}
-local ModosBypass = {Fast = false, Auto = false}
-local LastOresDetected = {} 
+local ModosBypass = {BotActivo = false}
+local BotJugandoAhoraMismo = false
 
 local function SaveLogToFile(message)
     task.spawn(function()
         pcall(function()
-            local filename = "ForgeAnalyzerLogs_V16.txt"
+            local filename = "ForgeAnalyzerLogs_V3.txt"
             if appendfile then
                 appendfile(filename, message .. "\n")
             elseif readfile and writefile then
@@ -159,6 +150,19 @@ local function AddUILog(logType, message, color)
     txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
     LogScroll.CanvasPosition = Vector2.new(0, 999999)
 end
+
+AutoBotBtn.MouseButton1Click:Connect(function()
+    ModosBypass.BotActivo = not ModosBypass.BotActivo
+    if ModosBypass.BotActivo then
+        AutoBotBtn.Text = "🛑 STOP: BOT HABILITADO (Esperando que prestiones GO)"
+        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        AddUILog("SISTEMA", "V3.0 Bot ARMADO. Juega normal (presiona GO) y yo haré el resto.", Color3.fromRGB(100,255,100))
+    else
+        AutoBotBtn.Text = "🤖 START: HABILITAR AUTO-BOT DE CALIDAD PERFECTA"
+        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        AddUILog("SISTEMA", "Bot APAGADO.", Color3.fromRGB(255,100,100))
+    end
+end)
 
 ClearBtn.MouseButton1Click:Connect(function()
     for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
@@ -214,7 +218,90 @@ end
 CatchServerResponses()
 
 -- ==========================================
--- EL HOOK BESTIAL V1.6 (Cliente -> Servidor)
+-- BUSCADOR RECURSIVO DEL SANTO GRIAL (Tiempos)
+-- ==========================================
+local function ExtractTimes(tbl)
+    local req, start = nil, nil
+    local function search(t)
+        if type(t) ~= "table" then return end
+        for k, v in pairs(t) do
+            if type(k) == "string" and k == "RequiredTime" then req = v end
+            if type(k) == "string" and k == "StartTime" then start = v end
+            if type(v) == "table" then search(v) end
+        end
+    end
+    search(tbl)
+    return req, start
+end
+
+-- ==========================================
+-- DESTRUCTOR DE MINIJUEGOS NATIVOS
+-- ==========================================
+local function DestroyNativeMinigames()
+    for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+        if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
+            -- Para no borrar nuestra interfaz:
+            if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
+                v:Destroy()
+                AddUILog("HACK", "UI de Minijuego Local ELIMINADA. Liberando el mouse.", Color3.fromRGB(255,100,50))
+            end
+        end
+    end
+end
+
+-- ==========================================
+-- EXECUCIÓN AUTOMATIZADA MATEMÁTICA EN HILO SEPARADO
+-- ==========================================
+local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
+    task.spawn(function()
+        BotJugandoAhoraMismo = true
+        DestroyNativeMinigames()
+        
+        AddUILog("BOT_V3", ">> Calculando matemática fase 1 (Melt a Pour)...", Color3.fromRGB(150,255,150))
+        local req1, start1 = ExtractTimes(primerMeltReturn)
+        req1 = req1 or 2.12
+        start1 = start1 or os.clock()
+        
+        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req1), Color3.fromRGB(200,200,200))
+        task.wait(req1)
+        
+        AddUILog("BOT_V3", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(150,255,150))
+        local s2, r2 = pcall(function() return forgeRF:InvokeServer("Pour", {ClientTime = start1 + req1}) end)
+        
+        local req2, start2 = ExtractTimes(r2)
+        req2 = req2 or 3.00
+        start2 = start2 or (start1 + req1)
+        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req2), Color3.fromRGB(200,200,200))
+        task.wait(req2)
+        
+        AddUILog("BOT_V3", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(150,255,150))
+        local s3, r3 = pcall(function() return forgeRF:InvokeServer("Hammer", {ClientTime = start2 + req2}) end)
+        
+        local req3, start3 = ExtractTimes(r3)
+        req3 = req3 or 3.00
+        start3 = start3 or (start2 + req2)
+        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req3), Color3.fromRGB(200,200,200))
+        task.wait(req3)
+        
+        AddUILog("BOT_V3", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(150,255,150))
+        local s4, r4 = pcall(function() return forgeRF:InvokeServer("Water", {ClientTime = start3 + req3}) end)
+        
+        local req4, start4 = ExtractTimes(r4)
+        req4 = req4 or 3.00
+        start4 = start4 or (start3 + req3)
+        AddUILog("BOT_V3", string.format("Durmiento %.2fs EXACTOS.", req4), Color3.fromRGB(200,200,200))
+        task.wait(req4)
+        
+        AddUILog("BOT_V3", ">> Completado con éxito! Enviando reclamación de material (Showcase)", Color3.fromRGB(255,255,50))
+        pcall(function() forgeRF:InvokeServer("Showcase", {}) end)
+        AddUILog("BOT_V3", "=== FIN DEL CRAFTEO PERFECTO EN LA SOMBRA ===", Color3.fromRGB(0,255,0))
+        
+        BotJugandoAhoraMismo = false
+    end)
+end
+
+-- ==========================================
+-- EL HOOK BESTIAL V3.0 (Cliente -> Servidor)
 -- ==========================================
 local DumpTableDeep
 DumpTableDeep = function(tbl, depth)
@@ -240,28 +327,46 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
+    if not checkcaller() and method == "InvokeServer" then
+        local fullName = self.GetFullName(self)
+        local nameLower = string.lower(fullName)
+        
+        -- INTERCEPTAMOS EL INICIO DEL JUEGO DIRECTO DEL USUARIO Y LO RETENEMOS!
+        if string.find(nameLower, "changesequence") then
+            -- OJO: ESTO BLOQUEARÁ EL HILO HASTA RECIBIR RESPUESTA, PERMITIENDO ROBARLA
+            local returnVal = OriginalNamecall(self, ...)
+            
+            task.spawn(function()
+                if tostring(args[1]) == "Melt" then
+                    AddUILog("INTERCEPT", "Has presionado GO legalmente. Obteniendo respuesta del servidor...", Color3.fromRGB(255,100,255))
+                    local dumpRet = (type(returnVal) == "table" and DumpTableDeep(returnVal) or tostring(returnVal))
+                    AddUILog("INTERCEPT", "Resp: " .. dumpRet, Color3.fromRGB(200,200,200))
+                    
+                    if ModosBypass.BotActivo and not BotJugandoAhoraMismo then
+                        ExecutePerfectSequence(self, returnVal)
+                    end
+                else
+                    -- Si el usuario presiona algo manualmente y el Bot está activo, bloquemos su spam de red
+                    if ModosBypass.BotActivo and BotJugandoAhoraMismo then
+                        AddUILog("BLOCK", "Ignorando tu click porque el BOT está jugando la fase " .. tostring(args[1]), Color3.fromRGB(150,150,150))
+                    end
+                end
+            end)
+            
+            return returnVal -- Devolvemos normalmente para que el juego no haga crash
+        end
+    end
+    
+    -- LOGEO DE RED EXCLUYÉNDONOS PARA NO LLENAR LA PANTALLA
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
         task.spawn(function()
             pcall(function()
-                local fullName = self.GetFullName(self)
-                local nameLower = string.lower(fullName)
-                
-                -- INTERCEPTAMOS EL BOTON "GO" DEL MINIJUEGO
-                if string.find(nameLower, "changesequence") and tostring(args[1]) == "Melt" then
-                    -- Guardamos las Ores si están presentes (Robamos la configuración de la Olla)
-                    if typeof(args[2]) == "table" and args[2].Ores then
-                        LastOresDetected = {}
-                        for k,v in pairs(args[2].Ores) do LastOresDetected[k] = v end
-                        AddUILog("MEMORIA", "¡Ores copiados a memoria RAM! " .. DumpTableDeep(LastOresDetected), Color3.fromRGB(255,255,50))
-                        ScanLocalForgeGUI() -- Analizamos qué GUi se abrió
-                    end
-                end
-                
+                local nameLower = string.lower(self.GetFullName(self))
                 local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "character", "root", "position", "look"}
                 local skip = false
                 for _, w in pairs(BlacklistWords) do if string.find(nameLower, w) then skip = true; break end end
                 
-                if not skip then
+                if not skip and not string.find(nameLower, "changesequence") then
                     local argDump = ""
                     for i, v in ipairs(args) do
                         local vt = typeof(v)
@@ -270,7 +375,7 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                             argDump = argDump .. "Arg["..i.."]=" .. (s and r or "ERR") .. " "
                         else pcall(function() argDump = argDump .. "Arg["..i.."]="..tostring(v).." " end) end
                     end
-                    AddUILog("NET_OUT:"..method, fullName .. "\n >> " .. argDump, Color3.fromRGB(200, 200, 200))
+                    AddUILog("NET_OUT:"..method, self.Name .. " >> " .. argDump, Color3.fromRGB(100, 100, 100))
                 end
             end)
         end)
@@ -278,90 +383,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
--- ==========================================
--- BOTON TEST 1: FAST SKIP
--- ==========================================
-FastSkipBtn.MouseButton1Click:Connect(function()
-    task.spawn(function()
-        if not next(LastOresDetected) then AddUILog("TEST_1", "ERROR: Olla vacía. Mete minerales y presiona el boton GO verde del juego primero.", Color3.fromRGB(255,50,50)); return end
-        if ModosBypass.Fast then return end
-        ModosBypass.Fast = true
-        
-        AddUILog("TEST_1", "== INICIANDO BYPASS INSTANTÁNEO ==", Color3.fromRGB(255,100,100))
-        local forgeRF = GetForgeRF()
-        if not forgeRF then AddUILog("TEST_1", "ERROR: No se halló el RF", Color3.fromRGB(255,0,0)); return end
-        
-        local mArgs = {FastForge = true, ItemType = "Weapon", Ores = LastOresDetected}
-        AddUILog("TEST_1", "1. Enviando Melt(FastForge=true)...", Color3.fromRGB(255,150,150))
-        local s1, r1 = pcall(function() return forgeRF:InvokeServer("Melt", mArgs) end)
-        AddUILog("TEST_1", "  -> Respuesta: " .. tostring(r1), s1 and Color3.fromRGB(150,255,150) or Color3.fromRGB(255,50,50))
-        
-        AddUILog("TEST_1", "2. Forzando cierre (Showcase)...", Color3.fromRGB(255,150,150))
-        local s2, r2 = pcall(function() return forgeRF:InvokeServer("Showcase", {}) end)
-        AddUILog("TEST_1", "  -> Respuesta: " .. tostring(r2), s2 and Color3.fromRGB(150,255,150) or Color3.fromRGB(255,50,50))
-        
-        AddUILog("TEST_1", "== PRUEBA FINALIZADA. REVISA INVENTARIO ==", Color3.fromRGB(255,100,100))
-        ModosBypass.Fast = false
-    end)
-end)
-
--- ==========================================
--- BOTON TEST 2: AUTO-PLAY (AUTO-FORGE A.I.)
--- ==========================================
-PerfectAutoBtn.MouseButton1Click:Connect(function()
-    task.spawn(function()
-        if not next(LastOresDetected) then AddUILog("TEST_2", "ERROR: Olla vacía. Mete minerales y presiona el boton GO verde del juego primero.", Color3.fromRGB(255,50,50)); return end
-        if ModosBypass.Auto then return end
-        ModosBypass.Auto = true
-        
-        AddUILog("BOT_AI", "== INICIANDO BOT MATEMÁTICO (PERFECT 100% SCORE) ==", Color3.fromRGB(100,255,255))
-        local forgeRF = GetForgeRF()
-        if not forgeRF then return end
-        
-        -- FASE 1 (Arranca Inflador)
-        AddUILog("BOT_AI", "Fase 1: Enviando Datos de Metales (Melt)...", Color3.fromRGB(150,200,255))
-        local s1, r1 = pcall(function() return forgeRF:InvokeServer("Melt", {FastForge = false, ItemType = "Weapon", Ores = LastOresDetected}) end)
-        
-        local req1 = (type(r1)=="table" and r1.MinigameData and r1.MinigameData.RequiredTime) or 3
-        local start1 = (type(r1)=="table" and r1.MinigameData and r1.MinigameData.StartTime) or os.clock()
-        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req1) .. "s. Esperando...", Color3.fromRGB(255,255,50))
-        task.wait(req1)
-        
-        -- FASE 2 (Arranca Barra Amarilla)
-        AddUILog("BOT_AI", "Fase 2: Evadiendo Inflador y pidiendo fase Barra Amarilla (Pour)...", Color3.fromRGB(150,200,255))
-        local s2, r2 = pcall(function() return forgeRF:InvokeServer("Pour", {ClientTime = start1 + req1}) end)
-        
-        local req2 = (type(r2)=="table" and r2.MinigameData and r2.MinigameData.RequiredTime) or 3
-        local start2 = (type(r2)=="table" and r2.MinigameData and r2.MinigameData.StartTime) or (start1 + req1)
-        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req2) .. "s. Esperando...", Color3.fromRGB(255,255,50))
-        task.wait(req2)
-
-        -- FASE 3 (Arranca Círculos / Yunque)
-        AddUILog("BOT_AI", "Fase 3: Evadiendo Barra Amarilla y pidiendo fase Yunque (Hammer)...", Color3.fromRGB(150,200,255))
-        local s3, r3 = pcall(function() return forgeRF:InvokeServer("Hammer", {ClientTime = start2 + req2}) end)
-        
-        local req3 = (type(r3)=="table" and r3.MinigameData and r3.MinigameData.RequiredTime) or 3
-        local start3 = (type(r3)=="table" and r3.MinigameData and r3.MinigameData.StartTime) or (start2 + req2)
-        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req3) .. "s. Esperando...", Color3.fromRGB(255,255,50))
-        task.wait(req3)
-        
-        -- FASE 4 (Termina Círculos)
-        AddUILog("BOT_AI", "Fase 4: Evadiendo Yunque y pidiendo fase de Círculos (Water)...", Color3.fromRGB(150,200,255))
-        local s4, r4 = pcall(function() return forgeRF:InvokeServer("Water", {ClientTime = start3 + req3}) end)
-        
-        local req4 = (type(r4)=="table" and r4.MinigameData and r4.MinigameData.RequiredTime) or 3
-        local start4 = (type(r4)=="table" and r4.MinigameData and r4.MinigameData.StartTime) or (start3 + req3)
-        AddUILog("BOT_AI", ">> El Server ha exigido un tiempo exacto de " .. string.format("%.2f", req4) .. "s. Esperando...", Color3.fromRGB(255,255,50))
-        task.wait(req4)
-        
-        -- SHOWCASE
-        AddUILog("BOT_AI", "Fase 5: Círculos evadidos completando forja 100% Quality (Showcase)...", Color3.fromRGB(150,200,255))
-        pcall(function() forgeRF:InvokeServer("Showcase", {}) end)
-        
-        AddUILog("BOT_AI", "== AUTO-FORGE A.I. COMPLETADO. DISFRUTA TU ARMA ==", Color3.fromRGB(100,255,100))
-        ModosBypass.Auto = false
-    end)
-end)
-
-AddUILog("SISTEMA", "V1.6 INICIADA. LOGS A .TXT ACTIVADOS (ForgeAnalyzerLogs_V16.txt).", Color3.fromRGB(150, 255, 150))
-AddUILog("AYUDA", "Inicia en Test: Mete items, presiona GO, espera a que el Inflador aparezca, e INMEDIATAMENTE aprieta el boton ROJO(Instant) o el boton AZUL(Perfect) de mi ventana. El archivo .txt guardará errores, respuestas y componentes.", Color3.fromRGB(255, 200, 100))
+AddUILog("SISTEMA", "V3.0 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
+AddUILog("AYUDA", "Ya no necesitas botones mágicos. Solo activa el Auto-Bot y presiona 'GO' desde el propio juego y miralo trabajar.", Color3.fromRGB(255, 200, 100))
