@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V34 THE ANATOMY FILTER FIX (IGNORAR PAREDES Y LÁMPARAS)
--- Reparación de la V33 para centrarse únicamente en verdaderos Zombies biológicos.
+-- 💀 ROBLOX EXPERT: V35 THE AIMBOT FIX (LA DIRECTIVA DE LOS NOMBRES)
+-- Fix definitivo para que el Avatar Miren al Zombie y no ataque al "Aire Fantasma".
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -27,7 +27,7 @@ end
 private_G = {}
 
 -- ==============================================================================
--- 🔬 BUSCADOR E INYECTOR DE GATILLO VIRTUAL (NUEVO FILTRO EXCLUYENTE)
+-- 🔬 BUSCADOR ESTRICTO POR NOMBRES (ZOMBIE1617, DELVER, ELITE, BRUTE)
 -- ==============================================================================
 local function GetViableTarget()
     local myChar = LocalPlayer.Character
@@ -36,28 +36,14 @@ local function GetViableTarget()
     
     for _, obj in pairs(Workspace:GetDescendants()) do
         pcall(function()
-            if obj:IsA("Model") and obj ~= myChar and not Players:GetPlayerFromCharacter(obj) then
+            local name = obj.Name:lower()
+            -- DIRECTIVA ORDENADA POR USUARIO: Buscar solo Nombres literales. Ignorar el resto del mundo.
+            if name:match("zombie") or name:match("delver") or name:match("brute") or name:match("elite") or name:match("boss") then
+                
                 local hum = obj:FindFirstChildOfClass("Humanoid")
                 local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
                 
-                -- ============================================================
-                -- FIX V34: FILTRO BIOLÓGICO Y DE ATRIBUTOS
-                -- ============================================================
-                local name = obj.Name:lower()
-                -- Excluimos Props inanimados a los que el desarrollador les puso vida erróneamente
-                local isProp = name:match("lamp") or name:match("light") or name:match("wall") or name:match("door") or name:match("rock") or name:match("tree") or name:match("chest") or name:match("crate") or name:match("box")
-                
-                -- Checkeamos el atributo del Omni-Scanner: "IsNpc = true"
-                local isTrueNpc = obj:GetAttribute("IsNpc") == true or obj:FindFirstChild("IsNpc") ~= nil
-                
-                -- Solo lo damos por válido si tiene IsNpc=true, o si NO ES un prop y explícitamente tiene nombre agresivo
-                local valid = false
-                if isTrueNpc then valid = true 
-                elseif not isProp and (name:match("zom") or name:match("boss") or name:match("enem") or name:match("mob")) then valid = true 
-                -- Si no tiene Atributo y el nombre es genérico (Ej: ModeloA), pero no es pared, pedimos que TENGA estrictamente HumanoidRootPart real
-                elseif not isProp and obj:FindFirstChild("HumanoidRootPart") and hum.Health > 10 then valid = true end
-                
-                if hum and hrp and hum.Health > 0.1 and valid then
+                if hum and hrp and hum.Health > 0.1 then
                     local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
                     if myHrp then
                         local dist = (myHrp.Position - hrp.Position).Magnitude
@@ -75,9 +61,11 @@ end
 
 local function ForzarClickVirtual()
     pcall(function()
-        VirtualUser:Button1Down(Vector2.new(0,0))
+        local cam = Workspace.CurrentCamera
+        local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+        VirtualUser:Button1Down(center)
         task.wait(0.02)
-        VirtualUser:Button1Up(Vector2.new(0,0))
+        VirtualUser:Button1Up(center)
     end)
     pcall(function()
         VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
@@ -88,11 +76,11 @@ local function ForzarClickVirtual()
 end
 
 -- ==============================================================================
--- 🚀 ATAQUE 1: HIT & RUN (MICRO-TELEPORTACIÓN RÁPIDA)
+-- 🚀 ATAQUE 1: HIT & RUN (SEGURO AUTO-CLICK + ORIENTACIÓN V35)
 -- ==============================================================================
 local function RunAttack1()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "⚔️ V34. ATAQUE 1: HIT & RUN (SEGURO AUTO-CLICK) ⚔️\n"
+    FullReport = FullReport .. "⚔️ V35. ATAQUE 1: HIT & RUN VIRTUAL ESTRICTO ⚔️\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
@@ -100,24 +88,29 @@ local function RunAttack1()
     if not hrp then AddLog("❌ ERROR: No tienes personaje o RootPart.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: Literalmente no existen Modelos con Humanoides vivos (Excluidas Lámparas/Paredes).", 0); return end
+    if not target then AddLog("❌ ERROR: No pude encontrar ninguno de tus puros Zombies. Revisa los nombres.", 0); return end
     
-    local PosOriginal = hrp.Position
+    local PosOriginal = hrp.CFrame
     local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     
-    AddLog("[+] TARGET OBTENIDO: '" .. target.Name .. "' (Vida: " .. tostring(math.floor(StartHealth)) .. ").", 0)
-    AddLog("[🚀] MÉTODO HIT & RUN: Teletransporte -> Virtual Click Sincronizado -> Regreso CFrame.", 0)
+    AddLog("[+] TARGET OBTENIDO EXACTO: '" .. target.Name .. "' (Vida: " .. tostring(math.floor(StartHealth)) .. ").", 0)
+    AddLog("[🚀] MÉTODO HIT & RUN: CFrame.LookAt al Zombie -> Click Certero -> Regreso.", 0)
     
     pcall(function()
         local targetHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
         if not targetHRP then return end
         
         for i=1, 4 do
-            char:PivotTo(targetHRP.CFrame * CFrame.new(0, 0, 3.5)) -- Aumentamos 0.5 por seguridad del Sword
+            -- Calcular posición frente al Zombie
+            local enfrente = targetHRP.Position + (targetHRP.CFrame.LookVector * 4)
+            -- Forzar que nuestro cuerpo y nuestra cámara Miren directamente a su pecho (No más fallar el swing)
+            char:PivotTo(CFrame.lookAt(enfrente, targetHRP.Position))
+            Workspace.CurrentCamera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, targetHRP.Position)
             task.wait(0.05) 
+            
             ForzarClickVirtual()
-            task.wait(0.15)
-            char:PivotTo(CFrame.new(PosOriginal))
+            task.wait(0.25)
+            char:PivotTo(PosOriginal) -- Volvemos a exactamente donde estábamos mirando con CFrame en vez de Position
             task.wait(0.5) 
         end
     end)
@@ -126,8 +119,8 @@ local function RunAttack1()
     local EndHealth = target:FindFirstChildOfClass("Humanoid").Health
     
     AddLog("\n[🔍 DIAGNÓSTICO DEL ATAQUE 1]", 0)
-    if EndHealth < StartHealth then AddLog("├─ [🚨 FACTIBLE (VULNERABLE)]: Afectaste su HP (-" .. tostring(math.floor(StartHealth - EndHealth)) .. ").", 1)
-    else AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El NPC sigue integro.", 1) end
+    if EndHealth < StartHealth then AddLog("├─ [🚨 FACTIBLE (VULNERABLE)]: Le diste al Zombie (-" .. tostring(math.floor(StartHealth - EndHealth)) .. " HP).", 1)
+    else AddLog("├─ [🛡️ BLOQUEADO (SEGURO)]: El NPC sigue integro (Aire = " .. tostring(math.floor(EndHealth)) .. " HP).", 1) end
 end
 
 -- ==============================================================================
@@ -135,7 +128,7 @@ end
 -- ==============================================================================
 local function RunAttack2()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "👻 V34. ATAQUE 2: ZONA OSCURA GHOSTING (SEGURO AUTO-CLICK) 👻\n"
+    FullReport = FullReport .. "👻 V35. ATAQUE 2: ZONA OSCURA GHOSTING ESTRICTO 👻\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
@@ -143,14 +136,14 @@ local function RunAttack2()
     if not hrp then AddLog("❌ ERROR: Tu personaje no tiene RootPart original.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: No hay Humanoides NPCs vivos.", 0); return end
+    if not target then AddLog("❌ ERROR: No hay Humanoides NPCs vivos llamados 'Zombie'.", 0); return end
     
     local PosOriginal = hrp.Position
     local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     local SafeZone = PosOriginal + Vector3.new(0, 1500, 0)
     
-    AddLog("[+] TARGET OBTENIDO: '" .. target.Name .. "' (Vida: " .. tostring(math.floor(StartHealth)) .. ").", 0)
-    AddLog("[🚀] MÉTODO GHOST: Subimos 1500 Studs -> Amputamos HRP para Anular 267 -> Bajamos a Pegar con Virtual Click.", 0)
+    AddLog("[+] TARGET OBTENIDO EXACTO: '" .. target.Name .. "' (Vida: " .. tostring(math.floor(StartHealth)) .. ").", 0)
+    AddLog("[🚀] MÉTODO GHOST: Subimos a 1500 -> Amputamos -> Bajamos 100% Mirando al Objetivo.", 0)
     
     pcall(function()
         hrp.Name = "NullPhysics"
@@ -165,10 +158,13 @@ local function RunAttack2()
         if not targetHRP then return end
 
         for i=1, 4 do
-            torso.CFrame = targetHRP.CFrame * CFrame.new(0, 4, 0)
+            local enfrente = targetHRP.Position + (targetHRP.CFrame.LookVector * 4) + Vector3.new(0,0.5,0)
+            torso.CFrame = CFrame.lookAt(enfrente, targetHRP.Position)
+            Workspace.CurrentCamera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, targetHRP.Position)
             task.wait(0.1)
+            
             ForzarClickVirtual()
-            task.wait(0.2)
+            task.wait(0.3)
             torso.CFrame = CFrame.new(SafeZone)
             task.wait(0.5)
         end
@@ -190,7 +186,7 @@ end
 -- ==============================================================================
 local function RunAttack3()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "🌪️ V34. ATAQUE 3: SECUESTRO FÍSICO (SEGURO AUTO-CLICK) 🌪️\n"
+    FullReport = FullReport .. "🌪️ V35. ATAQUE 3: SECUESTRO FÍSICO ESTRICTO 🌪️\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     local char = LocalPlayer.Character
@@ -198,7 +194,7 @@ local function RunAttack3()
     if not hrp then AddLog("❌ ERROR: No tienes personaje.", 0); return end
     
     local target = GetViableTarget()
-    if not target then AddLog("❌ ERROR: No hay NPCs vivos.", 0); return end
+    if not target then AddLog("❌ ERROR: No hay Zombies detectados.", 0); return end
     
     local zHRP = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
     if not zHRP then AddLog("❌ ERROR: El NPC no tiene física.", 0); return end
@@ -206,8 +202,8 @@ local function RunAttack3()
     local PosOriginal = hrp.Position
     local StartHealth = target:FindFirstChildOfClass("Humanoid").Health
     
-    AddLog("[+] TARGET: '" .. target.Name .. "'.", 0)
-    AddLog("[🚀] MÉTODO SECUESTRO: Teletransportamos al Zombi hacia nuestra Espada y le damos Clicks Virtuales.", 0)
+    AddLog("[+] TARGET EXACTO: '" .. target.Name .. "'.", 0)
+    AddLog("[🚀] MÉTODO SECUESTRO: Teletransportamos al Zombi hacia nuestra Espada enfocada y damos Clicks Virtuales.", 0)
     
     pcall(function()
         task.spawn(function()
@@ -219,6 +215,7 @@ local function RunAttack3()
         end)
         
         task.wait(0.3)
+        Workspace.CurrentCamera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, zHRP.Position)
         for i=1, 5 do ForzarClickVirtual(); task.wait(0.3) end
     end)
     
@@ -246,7 +243,7 @@ local function SegmentarPaginas()
 end
 
 -- ==============================================================================
--- 🖥️ GUI V34: THE ANTI-CHEAT BREAKER UI FIX
+-- 🖥️ GUI V35: EL CIERRE VECTORIAL C/S
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -260,28 +257,27 @@ local function ConstruirUI()
     local MainFrame = Instance.new("Frame")
     MainFrame.Size = UDim2.new(0, 720, 0, 560)
     MainFrame.Position = UDim2.new(0.5, -360, 0.5, -280)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 30)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 10, 20)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 180, 0)
+    MainFrame.BorderColor3 = Color3.fromRGB(255, 30, 80)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -120, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(100, 60, 0)
-    TopBar.Text = "  [V34: FILTRO BIOLÓGICO Y ATRIBUTOS C++]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 230, 150)
+    TopBar.BackgroundColor3 = Color3.fromRGB(120, 20, 40)
+    TopBar.Text = "  [V35: AIMBOT C/S - DIRECTIVA NOMBRES DE USUARIO]"
+    TopBar.TextColor3 = Color3.fromRGB(255, 200, 200)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
     TopBar.Parent = MainFrame
 
-    -- FIX GUI CONTROLS
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 40, 0, 30)
     CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
     CloseBtn.Text = "X"
     CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     CloseBtn.Font = Enum.Font.Code
@@ -291,7 +287,7 @@ local function ConstruirUI()
     local MinBtn = Instance.new("TextButton")
     MinBtn.Size = UDim2.new(0, 40, 0, 30)
     MinBtn.Position = UDim2.new(1, -80, 0, 0)
-    MinBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
     MinBtn.Text = "-"
     MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     MinBtn.Font = Enum.Font.Code
@@ -301,7 +297,7 @@ local function ConstruirUI()
     local ReloadBtn = Instance.new("TextButton")
     ReloadBtn.Size = UDim2.new(0, 40, 0, 30)
     ReloadBtn.Position = UDim2.new(1, -120, 0, 0)
-    ReloadBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 200)
+    ReloadBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
     ReloadBtn.Text = "↻"
     ReloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ReloadBtn.Font = Enum.Font.Code
@@ -311,7 +307,7 @@ local function ConstruirUI()
     local InfoScroll = Instance.new("ScrollingFrame")
     InfoScroll.Size = UDim2.new(1, -16, 0.55, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(15, 10, 15)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
@@ -320,8 +316,8 @@ local function ConstruirUI()
     LogTextBox.Size = UDim2.new(1, -10, 1, 0)
     LogTextBox.Position = UDim2.new(0, 5, 0, 5)
     LogTextBox.BackgroundTransparency = 1
-    LogTextBox.Text = "ES CULPA DE TU JUEGO, PERO YA LO FIXEE.\n\nEl Bot Atacaba lámparas o Paredes en vez de los zombies porque en toda tu estructura usas la clase `Humanoid` dentro de tus objetos destructibles para reciclar la barrita de daño de Roblox, en lugar de usar un Script de Damage C++ custom para Inanimados. \n\nEso provoca que el radar vea el objeto y diga 'Esa puerta tiene cabeza y vida, es un Enemigo'.\n\nACTUALIZACIONES DE LA V34 (FILTRO BIOLÓGICO LETAL):\nHe inyectado un parche brutal usando la recolección de metadata forense que me pasaste antes. Ahora mi Script Lanza a raya todos los objetos llamados 'Lámpara, Cofre, Pared, Roca, Puerta' y EXIGE revisar el atributo físico `IsNpc = true` de tus Zombies, o la presencia de su HumanoidRootPart real antes de ir a pegarles. El Robot ya se quitó la venda.\n\nSaca tu espada. Prueba los tres ataques por mi, esta es la V34 perfecta."
-    LogTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LogTextBox.Text = "ORDEN OÍDA DE INMEDIATO:\n'Buscalos por los nombres que te di y no pegues al aire'.\n\nHABÍAN 2 PROBLEMAS FÍSICOS:\n1. El Radar Fantasma te mandaba a otro lado porque algún dev desastre puso enemigos debajo del mapa. Con la V35 LUA Estricta, el Bot ya NO PIENSA. Si el objeto no se llama 'Zombie', 'Delver', 'Brute' o 'Elite' (Como probó tu Dump V20), lo ignora por completo. Vas a ir DE FRENTE al zombie que ves.\n\n2. 'Pegaba al aire': Mi error matemático. En las V anteriores yo teletransportaba tu Cuerpo basándome en coordenadas crudas, pero tu pecho seguía mirando para otro lado. El Framework ClientCast lanza un RayCast INVISIBLE desde el Pecho o de la Cámara. Si mirabas a una pared u otra dirección porque el Spawn te dejó así, el Zombie no perdía ni 1 HP.\n\nEn V35 te añadí un Aimbot Espacial. Te teletransporta y además usa `CFrame.lookAt()` sobre todo tu cuerpo y te gira la Cámara 100% clavada hacia su garganta en milésimas de segundo antes de enviar el Auto-Click a la pantalla. \n\nNo puedes fallar. Haz la triple prueba."
+    LogTextBox.TextColor3 = Color3.fromRGB(255, 230, 230)
     LogTextBox.Font = Enum.Font.Code
     LogTextBox.TextSize = 12
     LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -358,7 +354,7 @@ local function ConstruirUI()
     btnAtk1.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk1.Position = UDim2.new(0, 8, 0.70, 0)
     btnAtk1.BackgroundColor3 = Color3.fromRGB(150, 40, 0)
-    btnAtk1.Text = "🔥 ATK 1: HIT & RUN VIRTUAL"
+    btnAtk1.Text = "🔥 ATK 1: HIT & RUN LETA"
     btnAtk1.TextColor3 = Color3.fromRGB(255, 230, 200)
     btnAtk1.Font = Enum.Font.Code
     btnAtk1.TextSize = 12
@@ -367,9 +363,9 @@ local function ConstruirUI()
     local btnAtk2 = Instance.new("TextButton")
     btnAtk2.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk2.Position = UDim2.new(0.34, 0, 0.70, 0)
-    btnAtk2.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
+    btnAtk2.BackgroundColor3 = Color3.fromRGB(180, 0, 80)
     btnAtk2.Text = "👻 ATK 2: FANTASMA"
-    btnAtk2.TextColor3 = Color3.fromRGB(255, 220, 255)
+    btnAtk2.TextColor3 = Color3.fromRGB(255, 220, 220)
     btnAtk2.Font = Enum.Font.Code
     btnAtk2.TextSize = 12
     btnAtk2.Parent = MainFrame
@@ -377,9 +373,9 @@ local function ConstruirUI()
     local btnAtk3 = Instance.new("TextButton")
     btnAtk3.Size = UDim2.new(0.32, 0, 0, 40)
     btnAtk3.Position = UDim2.new(0.66, 8, 0.70, 0)
-    btnAtk3.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+    btnAtk3.BackgroundColor3 = Color3.fromRGB(0, 60, 180)
     btnAtk3.Text = "🌪️ ATK 3: SECUESTRO FÍSICO"
-    btnAtk3.TextColor3 = Color3.fromRGB(200, 240, 255)
+    btnAtk3.TextColor3 = Color3.fromRGB(200, 220, 255)
     btnAtk3.Font = Enum.Font.Code
     btnAtk3.TextSize = 12
     btnAtk3.Parent = MainFrame
@@ -391,7 +387,7 @@ local function ConstruirUI()
     local btnPrev = Instance.new("TextButton")
     btnPrev.Size = UDim2.new(0.32, 0, 0, 30)
     btnPrev.Position = UDim2.new(0, 8, 0.85, 0)
-    btnPrev.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnPrev.BackgroundColor3 = Color3.fromRGB(50, 20, 40)
     btnPrev.Text = "< Pielgues"
     btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnPrev.Parent = MainFrame
@@ -407,7 +403,7 @@ local function ConstruirUI()
     local btnNext = Instance.new("TextButton")
     btnNext.Size = UDim2.new(0.32, 0, 0, 30)
     btnNext.Position = UDim2.new(0.66, 8, 0.85, 0)
-    btnNext.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnNext.BackgroundColor3 = Color3.fromRGB(50, 20, 40)
     btnNext.Text = "Lectura >"
     btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnNext.Parent = MainFrame
