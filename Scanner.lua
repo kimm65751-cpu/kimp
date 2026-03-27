@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: DEEP RECON EXCAVATOR V16 (ANÁLISIS DE DATOS)
+-- 💀 ROBLOX EXPERT: DEEP RECON EXCAVATOR V16.1 (HOTFIX)
 -- Lee la genética, atributos, estados ocultos y dependencias de ataque Server.
 -- ==============================================================================
 
@@ -51,58 +51,67 @@ local function ScanEntity(entity, title)
     local foundData = 0
 
     -- 1. Atributos Ocultos (Roblox 2026+)
-    local attrs = entity:GetAttributes()
-    local hasAttr = false
-    for k, v in pairs(attrs) do
-        if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS NATIVOS]:") hasAttr = true end
-        Analyzer:Log(" - " .. k .. " = " .. FormatValue(v))
-        foundData = foundData + 1
-    end
-    
-    if entity:FindFirstChild("Humanoid") then
-        local humAttrs = entity.Humanoid:GetAttributes()
-        for k, v in pairs(humAttrs) do
-            if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS HUMANOID]:") hasAttr = true end
+    pcall(function()
+        local attrs = entity:GetAttributes()
+        local hasAttr = false
+        for k, v in pairs(attrs) do
+            if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS NATIVOS]:") hasAttr = true end
             Analyzer:Log(" - " .. k .. " = " .. FormatValue(v))
             foundData = foundData + 1
         end
+    end)
+    
+    local hum = entity:FindFirstChild("Humanoid")
+    if hum then
+        pcall(function()
+            local humAttrs = hum:GetAttributes()
+            local hasAttr = false
+            for k, v in pairs(humAttrs) do
+                if not hasAttr then Analyzer:Log("\n[💎 ATRIBUTOS HUMANOID]:") hasAttr = true end
+                Analyzer:Log(" - " .. k .. " = " .. FormatValue(v))
+                foundData = foundData + 1
+            end
+        end)
     end
 
     -- 2. Variables Clásicas (Values) y Scripts Relevantes
     Analyzer:Log("\n[📂 VALORES, SCRIPTS Y SENSORES]:")
     for _, obj in pairs(entity:GetDescendants()) do
-        if obj:IsA("ValueBase") then
-            Analyzer:Log(" 📌 " .. obj.ClassName .. ": " .. obj.Name .. " -> [" .. FormatValue(obj.Value) .. "]")
-            foundData = foundData + 1
-        elseif obj:IsA("TouchTransmitter") then
-            Analyzer:Log(" 🖐️ TouchSensor detectado en: " .. obj.Parent.Name .. " (Esto significa que su ataque te toca físicamente, no es Raycast).")
-            foundData = foundData + 1
-        elseif obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
-            Analyzer:Log(" 🔗 Vínculo Server: " .. obj.Name)
-            foundData = foundData + 1
-        elseif obj:IsA("StringValue") and string.find(string.lower(obj.Name), "target") then
-            Analyzer:Log(" 🎯 TARGET SYSTEM ENCONTRADO: " .. obj.Name .. " -> " .. FormatValue(obj.Value))
-            foundData = foundData + 1
-        elseif obj:IsA("ObjectValue") and obj.Name == "creator" then
-            Analyzer:Log(" 🗡️ SYSTEM KILL-TAG: 'creator' -> Registra quién le pegó último.")
-        end
+        pcall(function()
+            if obj:IsA("ValueBase") then
+                Analyzer:Log(" 📌 " .. obj.ClassName .. ": " .. obj.Name .. " -> [" .. FormatValue(obj.Value) .. "]")
+                foundData = foundData + 1
+            elseif obj:IsA("TouchTransmitter") then
+                Analyzer:Log(" 🖐️ TouchSensor detectado en: " .. obj.Parent.Name .. " (Esto significa que su ataque te toca físicamente, no es Raycast).")
+                foundData = foundData + 1
+            elseif obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
+                Analyzer:Log(" 🔗 Vínculo Server: " .. obj.Name)
+                foundData = foundData + 1
+            elseif obj:IsA("StringValue") and string.find(string.lower(obj.Name), "target") then
+                Analyzer:Log(" 🎯 TARGET SYSTEM ENCONTRADO: " .. obj.Name .. " -> " .. FormatValue(obj.Value))
+                foundData = foundData + 1
+            elseif obj:IsA("ObjectValue") and obj.Name == "creator" then
+                Analyzer:Log(" 🗡️ SYSTEM KILL-TAG: 'creator' -> Registra quién le pegó último.")
+            end
+        end)
     end
     
     -- 3. Estado del Humanoid
-    local hum = entity:FindFirstChild("Humanoid")
     if hum then
         Analyzer:Log("\n[🩸 STATUS DEL HUMANOID]:")
         Analyzer:Log(" - MaxHealth: " .. tostring(hum.MaxHealth))
         Analyzer:Log(" - WalkSpeed: " .. tostring(hum.WalkSpeed))
-        local state = hum:GetState()
-        Analyzer:Log(" - Estado Actual: " .. tostring(state))
+        pcall(function()
+            local state = hum:GetState()
+            Analyzer:Log(" - Estado Actual: " .. tostring(state))
+        end)
     end
     
     Analyzer:Log("--------------------------------------------------")
     if foundData == 0 then
-        Analyzer:Log("💀 ADVERTENCIA: Esta entidad está 100% blindada. No usa tags ni atributos. Su código es Código Servidor Puro con Raycast matemático.")
+        Analyzer:Log("💀 ADVERTENCIA: Esta entidad está blidada en atributos. Es altamente probable que el daño sea Lógica Aislada sin componentes visuales.")
     else
-        Analyzer:Log("✅ Análisis completado. Busca fallas en estas variables (Tags de 'Stun', 'Hit', 'Target', 'Cooldown').")
+        Analyzer:Log("✅ Análisis completado. Comparte screenshot de esta lista para diseñar el código destructor.")
     end
 end
 
@@ -126,7 +135,7 @@ local function ScanTargetZombie()
     if target then
         ScanEntity(target, "ZOMBIE CERCANO")
     else
-        Analyzer:Log("❌ No se detectan zombies vivos cerca para escanear.")
+        Analyzer:Log("❌ No se detectan zombies vivos a 99999m de ti.")
     end
 end
 
@@ -135,7 +144,7 @@ local function ScanMe()
     if char then
         ScanEntity(char, "TU PERSONAJE CLON C++")
     else
-        Analyzer:Log("❌ Error: No tienes personaje.")
+        Analyzer:Log("❌ Error: No tienes personaje Spawned.")
     end
 end
 
@@ -165,7 +174,7 @@ local function ConstruirUI()
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
     TopBar.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    TopBar.Text = "  [V16: DEEP RECON EXCAVATOR - EXTRACCIÓN DE DATOS]"
+    TopBar.Text = "  [V16.1: DEEP RECON EXCAVATOR - HOTFIX]"
     TopBar.TextColor3 = Color3.fromRGB(200, 150, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
@@ -220,7 +229,7 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -10, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "TIENES TODA LA RAZÓN. Te explico qué acaba de pasar con la 'Cadena' loca:\n\nTu PC (El Cliente) la agarró mediante físicas y la estrelló a millón contra el zombie. Tu PC calculó que el zombi explotó, dándole un 'Fling Falso' (Por eso desaparecieron de tu pantalla). Pero el juego tiene al Zombi bloqueado en Propiedad de Red... ¡El Servidor denegó esa explosión! Así que un Fantasma Zombi Invisible e invencible bajó a tu cueva y te partió a golpes sin que tú lo vieras porque tu PC pensaba que estaba muerto.\n\nPor culpa de ese blindaje físico, la única y absoluta forma de atacarlos es descubriendo QUÉ TIPO DE DATOS TIENEN OCULTOS para atacarte. Acabo de forjar un Escáner de Rayos X (Radiografía Forense).\n\nPárate al lado de un zombi o cueva y pégale una RADIOGRAFÍA. Me dirá si el zombi usa un StringValue llamado 'Target' a tu nombre, si tiene un TouchSensor en sus manos, o si usa 'Attributes' ocultos que yo pueda apagar (Invulnerabilidad por desvinculación)."
+    LogText.Text = "Iniciador del Motor Recon: Listo.\n\nInstrucciones:\n1. Acércate a un zombi (vivo).\n2. Presiona [RADIOGRAFÍA ZOMBIE] para que analice cómo piensa él.\n3. Presiona [RADIOGRAFÍA PERSONAJE] para ver qué te inyectó el juego a ti.\n\nEl resultado aparecerá justo aquí abajo."
     LogText.TextColor3 = Color3.fromRGB(220, 180, 255)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 12
@@ -228,6 +237,9 @@ local function ConstruirUI()
     LogText.TextYAlignment = Enum.TextYAlignment.Top
     LogText.TextWrapped = true
     LogText.Parent = InfoScroll
+
+    -- FIX: ASIGNAR EL LOGGER A LA GUI!
+    Analyzer.UI_LogBox = LogText
 
     -- Botones de Radiografía
     local btnZombie = Instance.new("TextButton")
