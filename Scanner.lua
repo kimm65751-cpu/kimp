@@ -115,7 +115,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2.3"
+Title.Text = " 🗡️ OMNI-FARM V2.4"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -785,21 +785,26 @@ local function IniciarFarm()
                     end
 
                     -- == 3. GOLPE ==
-                    -- Mirar al objetivo con Humanoid:Move (orgánico, no dispara anti-cheat)
-                    local dirToTarget = (targetPart.Position - myRoot.Position)
-                    local flatDir = Vector3.new(dirToTarget.X, 0, dirToTarget.Z)
-                    if flatDir.Magnitude > 0.1 then
-                        currentHum:Move(flatDir.Unit, false)
-                        task.wait() -- Un frame para que gire naturalmente
-                        currentHum:Move(Vector3.zero, false) -- Detener movimiento extra
-                    end
-
                     if dist <= targetDist + 1.5 then
+                        -- SNAP de puntería SOLO al golpear (un frame, no dispara anti-cheat)
+                        local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                        myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+                        
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
                         ToolRF:InvokeServer(serverArg)
+                        
                         if mode == "Combat" then
                             local mobLvl = GetMobLevel(targetObj)
                             StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
+                            
+                            -- KITING: Después de golpear, retroceder un paso para esquivar
+                            local retreatDir = (myRoot.Position - targetPart.Position)
+                            local flatRetreat = Vector3.new(retreatDir.X, 0, retreatDir.Z)
+                            if flatRetreat.Magnitude > 0.1 then
+                                currentHum:Move(flatRetreat.Unit, false)
+                                task.wait(0.15)
+                                currentHum:Move(Vector3.zero, false)
+                            end
                         else
                             StatusLabel.Text = "⛏️ Picando: " .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                         end
