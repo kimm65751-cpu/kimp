@@ -1,138 +1,607 @@
 -- ==============================================================================
--- 🛡️ REVERSE ENG: MASTER INJECTOR V5.0
--- Inyección de fuerza bruta dirigida al Servidor de Compras de Tycoon y Red.
+-- 🗡️ OMNI-FARM V2.0 (PURGADO: SOLO COMBATE INTELIGENTE + MURO CRISTAL)
+-- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
 
+local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-pcall(function()
-    for _, obj in pairs(CoreGui:GetChildren()) do
-        if obj.Name:match("Injector") or obj.Name:match("Analyzer") or obj.Name:match("Trace") or obj.Name:match("Defender") then 
-            obj:Destroy() 
+-- ==========================================
+-- REFERENCIA CRÍTICA DEL SERVIDOR (Knit ToolService)
+-- ==========================================
+local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
+
+-- ==========================================
+-- VARIABLES DE ESTADO
+-- ==========================================
+local NoclipActivo = false
+local ShieldActivo = false
+local KiteActivo = false
+local MineActivo = false
+local FarmTask = nil
+local MyShield = nil
+
+-- ANTI-STUCK MINING: Lista negra de minerales que no se pueden picar
+local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
+local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
+local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
+local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
+
+-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
+-- ==========================================
+local function GetMyLevel()
+    local lvl = 1
+    pcall(function()
+        -- Buscar en leaderstats
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            local lv = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("Nivel")
+            if lv then lvl = tonumber(lv.Value) or 1 end
         end
+        -- Buscar como atributo directo del jugador
+        local attrLvl = LocalPlayer:GetAttribute("Level") or LocalPlayer:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or lvl end
+        -- Buscar en carpeta Data/Profile/Stats
+        for _, folderName in pairs({"Data", "Profile", "Stats"}) do
+            local f = LocalPlayer:FindFirstChild(folderName)
+            if f then
+                local lv = f:FindFirstChild("Level") or f:FindFirstChild("Lvl")
+                if lv and lv:IsA("ValueBase") then lvl = tonumber(lv.Value) or lvl end
+            end
+        end
+    end)
+    return lvl
+end
+
+-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL ZOMBIE
+-- ==========================================
+local function GetMobLevel(mob)
+    local lvl = 0
+    pcall(function()
+        -- 1. Buscar atributo "Level"
+        local attrLvl = mob:GetAttribute("Level") or mob:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or 0; return end
+        -- 2. Buscar NumberValue/IntValue hijo
+        for _, v in pairs(mob:GetChildren()) do
+            if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name == "Level" or v.Name == "Lvl") then
+                lvl = tonumber(v.Value) or 0; return
+            end
+        end
+        -- 3. Buscar en BillboardGui texto "[Lvl. X]"
+        for _, gui in pairs(mob:GetDescendants()) do
+            if gui:IsA("TextLabel") then
+                local text = gui.Text or ""
+                local match = string.match(text, "%[Lvl%.%s*(%d+)%]")
+                if match then lvl = tonumber(match) or 0; return end
+            end
+        end
+    end)
+    return lvl
+end
+
+-- ==========================================
+-- GUI PRINCIPAL (COMPACTA)
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "OmniFarmUI"
+ScreenGui.ResetOnSpawn = false
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "OmniFarmUI" then v:Destroy() end end
+ScreenGui.Parent = parentUI
+
+local Panel = Instance.new("Frame")
+Panel.Size = UDim2.new(0, 280, 0, 310)
+Panel.Position = UDim2.new(0.5, -140, 0.5, -155)
+Panel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
+Panel.BorderSizePixel = 2
+Panel.BorderColor3 = Color3.fromRGB(0, 200, 100)
+Panel.Active = true
+Panel.Draggable = true
+Panel.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -80, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
+Title.Text = " 🗡️ OMNI-FARM V2 (INTELIGENTE)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
+Title.TextSize = 13
+Title.Font = Enum.Font.Code
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Panel
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 40, 0, 30)
+CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.Code
+CloseBtn.TextSize = 16
+CloseBtn.Parent = Panel
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 40, 0, 30)
+MinBtn.Position = UDim2.new(1, -80, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 16
+MinBtn.Parent = Panel
+
+local ReloadBtn = Instance.new("TextButton")
+ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
+ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
+ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
+ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
+ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+ReloadBtn.Font = Enum.Font.Code
+ReloadBtn.TextSize = 11
+ReloadBtn.Parent = Panel
+
+local OpenIcon = Instance.new("ImageButton")
+OpenIcon.Size = UDim2.new(0, 50, 0, 50)
+OpenIcon.Position = UDim2.new(0.5, -25, 0, 20)
+OpenIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+OpenIcon.Image = "rbxassetid://10886105073"
+OpenIcon.Visible = false
+OpenIcon.Active = true
+OpenIcon.Draggable = true
+OpenIcon.Parent = ScreenGui
+Instance.new("UICorner", OpenIcon).CornerRadius = UDim.new(1, 0)
+
+-- ==========================================
+-- BOTONES (SIN AIMBOT)
+-- ==========================================
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.5, -6, 0, 35)
+NoclipBtn.Position = UDim2.new(0, 4, 0, 68)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+NoclipBtn.Text = "👻 NOCLIP: OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.Font = Enum.Font.Code
+NoclipBtn.TextSize = 11
+NoclipBtn.Parent = Panel
+
+local ShieldBtn = Instance.new("TextButton")
+ShieldBtn.Size = UDim2.new(0.5, -6, 0, 35)
+ShieldBtn.Position = UDim2.new(0.5, 2, 0, 68)
+ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+ShieldBtn.Text = "🛡️ MURO CRISTAL"
+ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShieldBtn.Font = Enum.Font.Code
+ShieldBtn.TextSize = 11
+ShieldBtn.Parent = Panel
+
+local KiteBtn = Instance.new("TextButton")
+KiteBtn.Size = UDim2.new(0.5, -6, 0, 45)
+KiteBtn.Position = UDim2.new(0, 4, 0, 110)
+KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+KiteBtn.Text = "🗡️ FARM MOBS"
+KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+KiteBtn.Font = Enum.Font.Code
+KiteBtn.TextSize = 12
+KiteBtn.Parent = Panel
+
+local MineBtn = Instance.new("TextButton")
+MineBtn.Size = UDim2.new(0.5, -6, 0, 45)
+MineBtn.Position = UDim2.new(0.5, 2, 0, 110)
+MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+MineBtn.Text = "⛏️ FARM MINAS"
+MineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MineBtn.Font = Enum.Font.Code
+MineBtn.TextSize = 12
+MineBtn.Parent = Panel
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -8, 0, 140)
+StatusLabel.Position = UDim2.new(0, 4, 0, 162)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata zombis de tu nivel o menor.\n⛏️ FARM MINAS: Farm piedras y minerales (NO rocks).\n\nSi un zombi se acerca mientras mineas, te defiende."
+StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+StatusLabel.Parent = Panel
+
+-- ==========================================
+-- EVENTOS DE INTERFAZ
+-- ==========================================
+local Minimizado = false
+MinBtn.MouseButton1Click:Connect(function()
+    Minimizado = not Minimizado
+    if Minimizado then
+        Panel.Size = UDim2.new(0, 200, 0, 30)
+        OpenIcon.Visible = false
+    else
+        Panel.Size = UDim2.new(0, 280, 0, 360)
     end
 end)
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MasterInjectorV5"
-pcall(function() ScreenGui.Parent = CoreGui end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+OpenIcon.MouseButton1Click:Connect(function()
+    Panel.Visible = true
+    OpenIcon.Visible = false
+end)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 420, 0, 280)
-MainFrame.Position = UDim2.new(0.5, -210, 0.5, -140)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 255)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+CloseBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    ScreenGui:Destroy()
+end)
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(200, 100, 255)
-Title.Text = "🛡️ V5.0 MASTER BYPASS (FUERZA BRUTA DE RED)"
-Title.Font = Enum.Font.Code
-Title.TextSize = 15
-Title.Parent = MainFrame
+ReloadBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
+end)
 
-local LogHolder = Instance.new("ScrollingFrame")
-LogHolder.Size = UDim2.new(0.9, 0, 0, 180)
-LogHolder.Position = UDim2.new(0.05, 0, 0, 40)
-LogHolder.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-LogHolder.BorderSizePixel = 1
-LogHolder.BorderColor3 = Color3.fromRGB(200, 0, 255)
-LogHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogHolder.Parent = MainFrame
+-- ==========================================
+-- ANTI-AFK (Evita el kick por inactividad de 20 min)
+-- ==========================================
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end)
 
-local UIListLayout = Instance.new("UIListLayout", LogHolder)
+-- ==========================================
+-- MOTOR NOCLIP
+-- ==========================================
+RunService.Stepped:Connect(function()
+    if not NoclipActivo then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide = false end
+    end
+end)
 
-local logCount = 0
-local function AddLog(msg, color)
-    logCount = logCount + 1
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -10, 0, 20)
-    lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    lbl.Text = " " .. msg
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.AutomaticSize = Enum.AutomaticSize.Y
-    lbl.Font = Enum.Font.Code
-    lbl.TextSize = 12
-    lbl.LayoutOrder = logCount
-    lbl.Parent = LogHolder
-    LogHolder.CanvasPosition = Vector2.new(0, 99999)
+NoclipBtn.MouseButton1Click:Connect(function()
+    NoclipActivo = not NoclipActivo
+    if NoclipActivo then
+        NoclipBtn.Text = "👻 NOCLIP: ON"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+    else
+        NoclipBtn.Text = "👻 NOCLIP: OFF"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        pcall(function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r then r.Anchored = false end
+        end)
+    end
+end)
+
+-- ==========================================
+-- MURO CRISTAL (FUNCIONAL DEL BACKUP)
+-- ==========================================
+ShieldBtn.MouseButton1Click:Connect(function()
+    ShieldActivo = not ShieldActivo
+    if ShieldActivo then
+        ShieldBtn.Text = "🛡️ CRISTAL: ON ✅"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
+        
+        MyShield = Instance.new("Part")
+        MyShield.Name = "MuroDefensivo"
+        MyShield.Size = Vector3.new(12, 12, 2)
+        MyShield.Transparency = 0.5
+        MyShield.Material = Enum.Material.ForceField
+        MyShield.BrickColor = BrickColor.new("Cyan")
+        MyShield.Anchored = true
+        MyShield.CanCollide = true
+        MyShield.Parent = Workspace
+        
+        task.spawn(function()
+            while ShieldActivo and MyShield do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if myRoot then
+                        for _, v in pairs(char:GetDescendants()) do
+                            if v:IsA("BasePart") then
+                                local cName = "NCC_" .. v.Name
+                                if not MyShield:FindFirstChild(cName) then
+                                    local nc = Instance.new("NoCollisionConstraint")
+                                    nc.Name = cName
+                                    nc.Part0 = v
+                                    nc.Part1 = MyShield
+                                    nc.Parent = MyShield
+                                end
+                            end
+                        end
+                        MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
+                    end
+                end)
+                task.wait()
+            end
+        end)
+        StatusLabel.Text = "🛡️ Muro Cristal activo. Los Zombis se atoran en él."
+    else
+        ShieldBtn.Text = "🛡️ MURO CRISTAL"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+        if MyShield then MyShield:Destroy(); MyShield = nil end
+    end
+end)
+
+-- ==========================================
+-- FUNCIONES DE FARM (CON FILTRO DE NIVEL)
+-- ==========================================
+local function findNearest(condFn)
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest, closestDist = nil, math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if condFn(obj) then
+            local p = nil
+            pcall(function()
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                if hrp then p = hrp.Position end
+            end)
+            if p then
+                local d = (root.Position - p).Magnitude
+                if d < closestDist then closestDist = d; closest = obj end
+            end
+        end
+    end
+    return closest, closestDist
 end
 
-local BtnInject = Instance.new("TextButton")
-BtnInject.Size = UDim2.new(0.9, 0, 0, 35)
-BtnInject.Position = UDim2.new(0.05, 0, 0, 230)
-BtnInject.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
-BtnInject.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnInject.Text = "🚀 FORZAR BLOQUEO / SALTO AL SERVIDOR"
-BtnInject.Font = Enum.Font.Code
-BtnInject.TextSize = 14
-BtnInject.Parent = MainFrame
-
-AddLog("✅ Archivos base analizados. Ya descubrimos por qué pasa esto.", Color3.fromRGB(100, 255, 100))
-
-BtnInject.MouseButton1Click:Connect(function()
-    AddLog("\n🚀 CORTOCIRCUITANDO CÓDIGO LOCAL, COMUNICANDO AL SERVER...", Color3.fromRGB(255, 50, 50))
-    
-    local TargetButton = nil
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name == "Main" and obj.Parent and obj.Parent.Name == "PlotBlock" then
-            TargetButton = obj
-            break
-        end
+local function DetenerFarm()
+    if not KiteActivo and not MineActivo then
+        if FarmTask then task.cancel(FarmTask); FarmTask = nil end
+        pcall(function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r then r.Anchored = false end
+        end)
+        StatusLabel.Text = "Estado: Inactivo"
     end
-    
-    local netFolder = ReplicatedStorage:FindFirstChild("Packages")
-    if not netFolder then
-        AddLog("❌ No se encontró la base de red Packages.Net", Color3.fromRGB(255, 50, 50))
-        return
-    end
+end
 
-    local Remotes = {}
-    for _, desc in pairs(netFolder:GetDescendants()) do
-        if desc:IsA("RemoteEvent") then
-            table.insert(Remotes, desc)
-        end
-    end
-
-    AddLog("🔄 Inyectando payloads en PlotService, ShopService y Ocultos...", Color3.fromRGB(200, 150, 255))
+local function IniciarFarm()
+    if FarmTask then return end
     
-    local shots = 0
-    for _, remote in pairs(Remotes) do
-        local name = remote.Name
-        -- Candidatos más probables del reporte de scanner
-        if name:match("Plot") or name:match("Purchase") or name == "ToggleFriends" or name == "Place" or name == "Open" or name:match("Set") then
+    FarmTask = task.spawn(function()
+        local loopTick = 0
+        local zTarget, oreTarget = nil, nil
+        local zDist, oDist = math.huge, math.huge
+
+        while KiteActivo or MineActivo do
             pcall(function()
-                -- Enviar sin argumentos (Activadores vacios)
-                remote:FireServer()
-                -- Argumento String (Si es una base de compra)
-                remote:FireServer("PlotBlock")
-                -- Argumento Objeto (Si el servidor espera el botón)
-                if TargetButton then
-                    remote:FireServer(TargetButton)
-                    remote:FireServer(TargetButton.Parent)
+                local char = LocalPlayer.Character
+                if not char then return end
+                local currentHum = char:FindFirstChild("Humanoid")
+                local myRoot = char:FindFirstChild("HumanoidRootPart")
+                if not myRoot or not currentHum then return end
+
+                loopTick = loopTick + 1
+                local myLevel = GetMyLevel()
+
+                -- ESCANEO CON FILTRO DE NIVEL
+                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
+                    if KiteActivo or MineActivo then
+                        zTarget, zDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= char then
+                                local h = o:FindFirstChildWhichIsA("Humanoid")
+                                if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
+                                    -- FILTRO DE NIVEL: Solo aplica cuando CAZAS (KiteActivo)
+                                    -- En auto-defensa (MineActivo) pelea con CUALQUIERA que se acerque
+                                    if KiteActivo and not MineActivo then
+                                        local mobLvl = GetMobLevel(o)
+                                        if mobLvl > 0 and mobLvl > myLevel then
+                                            return false
+                                        end
+                                    end
+                                    return true
+                                end
+                            end
+                            return false
+                        end)
+                    end
+
+                    if MineActivo then
+                        -- Limpiar blacklist expirada
+                        local now = tick()
+                        for bOre, bTime in pairs(OreBlacklist) do
+                            if now - bTime > BLACKLIST_EXPIRE then OreBlacklist[bOre] = nil end
+                        end
+
+                        oreTarget, oDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= char and not OreBlacklist[o] then
+                                local n = string.lower(o.Name)
+                                local h = o:GetAttribute("Health")
+                                -- SOLO pebb y ore, SIN rocks
+                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "ore")) then
+                                    return true
+                                end
+                            end
+                            return false
+                        end)
+                    end
+                else
+                    if zTarget and zTarget.Parent then
+                        local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
+                        if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
+                    else zTarget = nil end
+
+                    if oreTarget and oreTarget.Parent then
+                        local oPart = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
+                        if oPart then oDist = (myRoot.Position - oPart.Position).Magnitude else oreTarget = nil end
+                    else oreTarget = nil end
                 end
-                -- Argumento Lógico
-                remote:FireServer(true)
-                remote:FireServer("Lock")
-                
-                shots = shots + 1
+
+                local targetObj = nil
+                local dist = 0
+                local targetDist = 7
+                local mode = "Combat"
+                local toolId = "weapon"
+
+                -- PRIORIDAD 1: COMBATE (Caza o Auto-Defensa si mineas)
+                if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
+                    targetObj = zTarget
+                    dist = zDist
+                    targetDist = ShieldActivo and 4 or 7
+                    mode = "Combat"
+                    toolId = "weapon"
+                -- PRIORIDAD 2: MINADO (pebb/ore, sin rocks)
+                elseif oreTarget and MineActivo then
+                    targetObj = oreTarget
+                    dist = oDist
+                    targetDist = 4
+                    mode = "Mining"
+                    toolId = "pickaxe"
+
+                    -- ANTI-STUCK: Detectar si el mineral no baja de vida
+                    local oreHP = oreTarget:GetAttribute("Health") or 0
+                    if MiningTracker.ore ~= oreTarget then
+                        -- Nuevo objetivo, resetear tracker
+                        MiningTracker.ore = oreTarget
+                        MiningTracker.startHP = oreHP
+                        MiningTracker.startTime = tick()
+                    else
+                        -- Mismo objetivo, checar si bajó de vida
+                        if tick() - MiningTracker.startTime > MINE_TIMEOUT then
+                            if oreHP >= MiningTracker.startHP then
+                                -- NO BAJÓ. Blacklistear y forzar rescan
+                                OreBlacklist[oreTarget] = tick()
+                                StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
+                                oreTarget = nil
+                                MiningTracker.ore = nil
+                                targetObj = nil
+                            else
+                                -- Sí bajó, resetear timer con el nuevo HP
+                                MiningTracker.startHP = oreHP
+                                MiningTracker.startTime = tick()
+                            end
+                        end
+                    end
+                end
+
+                if targetObj then
+                    local targetPart = targetObj:FindFirstChild("HumanoidRootPart") or targetObj:FindFirstChild("Torso") or targetObj:FindFirstChildWhichIsA("BasePart")
+                    if not targetPart then return end
+                    
+                    dist = (myRoot.Position - targetPart.Position).Magnitude
+                    -- dist ya fue calculado arriba
+                    -- targetDist ya fue calculado arriba
+
+                    -- == 1. EQUIPO DE ARMA ==
+                    local isEquipped = false
+                    for _, t in pairs(char:GetChildren()) do
+                        if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
+                            isEquipped = true; break
+                        end
+                    end
+
+                    if not isEquipped then
+                        local bpTools = LocalPlayer.Backpack:GetChildren()
+                        local equippedCorrectly = false
+                        for _, t in pairs(bpTools) do
+                            if string.find(string.lower(t.Name), toolId) then
+                                currentHum:EquipTool(t); equippedCorrectly = true; break
+                            end
+                        end
+                        if not equippedCorrectly and #bpTools > 0 then
+                            if toolId == "pickaxe" then
+                                currentHum:EquipTool(bpTools[1])
+                            elseif #bpTools >= 2 then
+                                currentHum:EquipTool(bpTools[2])
+                            else
+                                currentHum:EquipTool(bpTools[1])
+                            end
+                        end
+                    end
+
+                    -- == 2. MOVIMIENTO ==
+                    if dist > targetDist then
+                        if NoclipActivo then
+                            myRoot.Anchored = false
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if not bv then
+                                bv = Instance.new("BodyVelocity")
+                                bv.Name = "_NoclipBV"
+                                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                                bv.Parent = myRoot
+                            end
+                            local speed = currentHum.WalkSpeed or 16
+                            local dir = (targetPart.Position - myRoot.Position).Unit
+                            bv.Velocity = dir * speed * 2.5
+                            myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(dir.X, 0, dir.Z))
+                        else
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if bv then bv:Destroy() end
+                            myRoot.Anchored = false
+                            currentHum:MoveTo(targetPart.Position)
+                        end
+                    else
+                        local bv = myRoot:FindFirstChild("_NoclipBV")
+                        if bv then bv.Velocity = Vector3.zero end
+                        myRoot.Anchored = false
+                        currentHum:MoveTo(myRoot.Position)
+                    end
+
+                    -- == 3. GOLPE ==
+                    local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                    myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+
+                    if dist <= targetDist + 1.5 then
+                        local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
+                        ToolRF:InvokeServer(serverArg)
+                        if mode == "Combat" then
+                            local mobLvl = GetMobLevel(targetObj)
+                            StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
+                        else
+                            StatusLabel.Text = "⛏️ Picando: " .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
+                        end
+                    else
+                        StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
+                    end
+                else
+                    StatusLabel.Text = "🗡️/⛏️ Buscando objetivo (Tu Lvl: " .. tostring(myLevel) .. ")..."
+                end
             end)
+            task.wait()
         end
+        DetenerFarm()
+    end)
+end
+
+-- ==========================================
+-- CONEXIÓN DEL BOTÓN DE FARM
+-- ==========================================
+KiteBtn.MouseButton1Click:Connect(function()
+    KiteActivo = not KiteActivo
+    if KiteActivo then
+        KiteBtn.Text = "🗡️ MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        IniciarFarm()
+    else
+        KiteBtn.Text = "🗡️ FARM MOBS"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+        DetenerFarm()
     end
-    
-    AddLog("✅ " .. shots .. " Puertos RemoteEvent ejecutados con éxito.", Color3.fromRGB(100, 255, 100))
-    AddLog("💡 Revisa las paredes/barreras. Si siguen abiertas, el servidor bloquea la red estrictamente por dinero/stats.", Color3.fromRGB(255, 200, 100))
+end)
+
+MineBtn.MouseButton1Click:Connect(function()
+    MineActivo = not MineActivo
+    if MineActivo then
+        MineBtn.Text = "⛏️ MINAS: ON"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        IniciarFarm()
+    else
+        MineBtn.Text = "⛏️ FARM MINAS"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+        DetenerFarm()
+    end
 end)
