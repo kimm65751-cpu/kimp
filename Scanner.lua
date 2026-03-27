@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V20 THE GOD-EYE OMNI-SCANNER (MAPA ESTRUCTURAL COMPLETO)
--- Auditoría Definitiva de Servidor: NPCs, Red, Economía, Físicas y Anti-Cheat.
+-- 💀 ROBLOX EXPERT: V21 OMNI-SCANNER PRO (EL FORENSE DE CAJA BLANCA)
+-- Diseccionando RaycastHitbox V4, Físicas de Motor y Variables de Recompensa.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -14,13 +14,14 @@ local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 local FullReport = ""
 
-local function AddLog(text)
-    FullReport = FullReport .. text .. "\n"
-    print("[OMNI-SCAN] " .. text)
+local function AddLog(text, indentLevel)
+    local prefix = string.rep("  ", indentLevel or 0)
+    FullReport = FullReport .. prefix .. text .. "\n"
+    print("[OMNI-SCAN PRO] " .. prefix .. text)
 end
 
 -- ==============================================================================
--- ⚙️ MOTOR DEL OMNI-SCANNER
+-- ⚙️ MOTOR DEL OMNI-SCANNER PRO (JERÁRQUICO)
 -- ==============================================================================
 local function FormatValue(v)
     if typeof(v) == "Instance" then return v.Name
@@ -29,152 +30,142 @@ local function FormatValue(v)
     else return tostring(v) end
 end
 
-local function EscaneoOmniAbsoluto()
-    FullReport = "========================================================\n"
-    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA OMNI-SCANNER V20 (ROBLOX 2026) 👑\n"
-    FullReport = FullReport .. "========================================================\n\n"
-    
-    AddLog("Iniciando DUMP Masivo de Memoria del Servidor...")
-
-    -- ------------------------------------------------------------------
-    -- 1. ANÁLISIS DE NETWORK / REMOTES Y TRAMPAS (HONEYPOTS)
-    -- ------------------------------------------------------------------
-    AddLog("\n[📡 SECCIÓN 1: ARQUITECTURA DE RED Y EVENTOS C/S]")
-    local Remotes = 0
-    local Honeypots = 0
-    for _, obj in pairs(game:GetDescendants()) do
+local function GetDetails(obj, indent)
+    for _, v in pairs(obj:GetChildren()) do
         pcall(function()
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                Remotes = Remotes + 1
-                local name = string.lower(obj.Name)
-                if string.find(name, "ban") or string.find(name, "kick") or string.find(name, "cheat") or string.find(name, "detect") then
-                    AddLog(" 🚨 HONEYPOT / TRAMPA DETECTADA: " .. obj:GetFullName())
-                    Honeypots = Honeypots + 1
-                else
-                    AddLog(" 🔗 Vía Abierta: " .. obj.Name .. " (" .. obj.ClassName .. ") en " .. obj.Parent.Name)
-                end
+            if v:IsA("ValueBase") then       AddLog("📌 DATO: " .. v.Name .. " = " .. FormatValue(v.Value), indent)
+            elseif v:IsA("RemoteEvent") then AddLog("🔗 EVENTO (Sin Respuesta): " .. v.Name, indent)
+            elseif v:IsA("RemoteFunction") then AddLog("🔗 EVENTO (Con Respuesta): " .. v.Name, indent)
+            elseif v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then AddLog("🏪 INTERACCIÓN/AGARRE: '" .. tostring(v.ClassName) .. "'", indent)
             end
         end)
     end
-    if Remotes == 0 then AddLog(" 🔒 SERVIDOR 100% AUTORITATIVO. Cero eventos remotos abiertos hallados. No hay huecos de inyección directa.") end
+end
+
+local function EscaneoOmniJerarquico()
+    FullReport = "========================================================\n"
+    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA JERÁRQUICA V21 (ROBLOX 2026) 👑\n"
+    FullReport = FullReport .. "========================================================\n\n"
+    
+    AddLog("INICIANDO ESCANEO FORENSE EN CASCADA (TREE DUMP)...", 0)
+
+    -- ------------------------------------------------------------------
+    -- 1. ANÁLISIS DE NETWORK / REMOTES (ESPECIALIZADO)
+    -- ------------------------------------------------------------------
+    AddLog("\n[📡 SECCIÓN 1: ARQUITECTURA DE RED Y EVENTOS C/S]", 0)
+    local function ScanNet(parent, indent)
+        for _, obj in pairs(parent:GetChildren()) do
+            if obj:IsA("Folder") then
+                local hasremotes = false
+                for _, d in pairs(obj:GetDescendants()) do if d:IsA("RemoteEvent") or d:IsA("RemoteFunction") then hasremotes = true break end end
+                if hasremotes then
+                    AddLog("📁 " .. obj.Name, indent)
+                    ScanNet(obj, indent + 1)
+                end
+            elseif obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local honeypot = (string.find(string.lower(obj.Name), "ban") or string.find(string.lower(obj.Name), "kick")) and " [🚨 TRAMPA/HONEYPOT]" or ""
+                local warning = (obj.Name == "HitboxClassRemote") and " [‼️ VULNERABILIDAD RCH V4 DETECTADA]" or ""
+                AddLog("🔗 " .. obj.Name .. " (" .. obj.ClassName .. ")" .. honeypot .. warning, indent)
+            end
+        end
+    end
+    ScanNet(ReplicatedStorage, 1)
     
     -- ------------------------------------------------------------------
     -- 2. ANÁLISIS DE MOBS, ZOMBIES Y ATRIBUTOS DE IA
     -- ------------------------------------------------------------------
-    AddLog("\n[🧟 SECCIÓN 2: BASE DE DATOS DE ZOMBIES Y ENEMIGOS]")
-    local mobsAnalyzed = {}
+    AddLog("\n[🧟 SECCIÓN 2: BASE DE DATOS DE ZOMBIES Y ENEMIGOS (INDIVIDUAL)]", 0)
     for _, obj in pairs(Workspace:GetDescendants()) do
         pcall(function()
             if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                if string.find(string.lower(obj.Name), "zombie") or string.find(string.lower(obj.Name), "mob") or string.find(string.lower(obj.Name), "boss") then
-                    if not mobsAnalyzed[obj.Name] then
-                        mobsAnalyzed[obj.Name] = true
-                        AddLog("\n 🧬 Entidad Detectada: " .. obj.Name)
-                        local hum = obj:FindFirstChild("Humanoid")
-                        AddLog("   - Salud Base: " .. tostring(hum.MaxHealth) .. " | Velocidad: " .. tostring(hum.WalkSpeed))
-                        
-                        -- Buscar TouchTransmitters, Scripts, y Atributos
-                        local hasTouch = false
-                        for _, v in pairs(obj:GetDescendants()) do
-                            if v:IsA("TouchTransmitter") then hasTouch = true end
-                            if v:IsA("ValueBase") then
-                                AddLog("   - Data Interna: " .. v.Name .. " = " .. FormatValue(v.Value))
-                            end
-                        end
-                        if hasTouch then AddLog("   - Sistema de Daño: FÍSICO (.Touched detectado. Puedes esquivarlo).")
-                        else AddLog("   - Sistema de Daño: MATEMÁTICO (Vectorial/Magnitude C++. Imposible evadir tocando).") end
-                        
-                        local attrs = obj:GetAttributes()
-                        for k, v in pairs(attrs) do AddLog("   - Atributo Oculto: " .. k .. " = " .. FormatValue(v)) end
-                    end
+                if string.find(string.lower(obj.Name), "zombie") or string.find(string.lower(obj.Name), "boss") then
+                    AddLog("🧬 " .. obj.Name, 1)
+                    local hum = obj:FindFirstChild("Humanoid")
+                    AddLog("🩸 Salud: " .. tostring(hum.MaxHealth) .. " | WalkSpeed: " .. tostring(hum.WalkSpeed), 2)
+                    GetDetails(obj, 2)
+                    
+                    local hasTouch = false
+                    for _, v in pairs(obj:GetDescendants()) do if v:IsA("TouchTransmitter") then hasTouch = true end end
+                    if hasTouch then AddLog("⚔️ Usa TouchTransmitters (.Touched activo).", 2) else AddLog("⚔️ Usa Magnitude (Matemático Puro).", 2) end
+                    
+                    local attrs = obj:GetAttributes()
+                    for k, v in pairs(attrs) do AddLog("💎 Atributo: " .. tostring(k) .. " = " .. FormatValue(v), 2) end
                 end
             end
         end)
     end
 
     -- ------------------------------------------------------------------
-    -- 3. ECONOMÍA, TIENDAS, EVENTOS HUMANOS Y DROP RATES
+    -- 3. UNIDADES FÍSICAS (PROPS, ORES, BASURA)
     -- ------------------------------------------------------------------
-    AddLog("\n[💰 SECCIÓN 3: TIENDAS, ECONOMÍA Y DROPS]")
+    AddLog("\n[🧱 SECCIÓN 3: ÁRBOL DE OBJETOS FÍSICOS SUELTOS]", 0)
+    AddLog("Detallando qué objetos se pueden mover libremente, su Masa y Estados de Agarre:", 0)
+    
+    local PhysicsTree = {}
+    local unanchoredCount = 0
+    
     for _, obj in pairs(Workspace:GetDescendants()) do
         pcall(function()
-            -- Tiendas
-            if obj:IsA("Model") and (string.find(string.lower(obj.Name), "shop") or string.find(string.lower(obj.Name), "npc") or string.find(string.lower(obj.Name), "store")) then
-                AddLog(" 🏪 Tienda/NPC Hallado: " .. obj.Name)
-                for _, prompt in pairs(obj:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") then
-                        AddLog("   - Interacción: '" .. tostring(prompt.ActionText) .. "' (Rango: " .. tostring(prompt.MaxActivationDistance) .. ")")
-                    elseif prompt:IsA("ValueBase") then
-                        AddLog("   - Dato Comercial: " .. prompt.Name .. " = " .. FormatValue(prompt.Value))
-                    end
+            if obj:IsA("BasePart") and not obj.Anchored and not obj.Parent:FindFirstChild("Humanoid") then
+                unanchoredCount = unanchoredCount + 1
+                local parentName = obj.Parent.Name
+                local itemType = obj.Name .. " (" .. obj.ClassName .. ")"
+                
+                if not PhysicsTree[parentName] then PhysicsTree[parentName] = {} end
+                if not PhysicsTree[parentName][itemType] then 
+                    
+                    local interactable = false
+                    if obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChildOfClass("ClickDetector") then interactable = true end
+                    
+                    PhysicsTree[parentName][itemType] = {
+                        count = 0, 
+                        mass = math.floor(obj:GetMass()),
+                        collision = obj.CanCollide and "Sólido" or "Fantasma",
+                        status = obj.Anchored and "Estático" or "Dinámico (Movible)",
+                        grabbable = interactable and "Sí (Tiene Prompt)" or "No (Físico Puro)"
+                    }
                 end
-            end
-            
-            -- Drop Rates y Cofres
-            if string.find(string.lower(obj.Name), "chest") or string.find(string.lower(obj.Name), "drop") or string.find(string.lower(obj.Name), "rate") then
-                 AddLog(" 💎 Loot/Cofre Detectado: " .. obj.Name)
-                 for _, v in pairs(obj:GetDescendants()) do
-                     if v:IsA("NumberValue") or v:IsA("IntValue") then
-                         AddLog("   - Probabilidad/Valor: " .. v.Name .. " = " .. FormatValue(v.Value))
-                     end
-                 end
+                PhysicsTree[parentName][itemType].count = PhysicsTree[parentName][itemType].count + 1
             end
         end)
     end
+    
+    for folder, items in pairs(PhysicsTree) do
+        AddLog("📁 Ubicación: " .. folder, 1)
+        for name, data in pairs(items) do
+            AddLog("▶ Modelos: " .. tostring(data.count) .. "x " .. name, 2)
+            AddLog("  ├─ Estado Físico: " .. data.status .. " | Colisión: " .. data.collision, 2)
+            AddLog("  ├─ Masa Estimada: " .. tostring(data.mass) .. " uds.", 2)
+            AddLog("  └─ ¿Interactuable/Sujetable?: " .. data.grabbable, 2)
+        end
+    end
+    AddLog("\nTOTAL UNIDADES DINÁMICAS HALLADAS: " .. tostring(unanchoredCount), 1)
 
     -- ------------------------------------------------------------------
-    -- 4. ANÁLISIS DEL PERSONAJE: INVENTARIO, ARMAS Y ERRORES LOCALES
+    -- 4. ANÁLISIS DEL PERSONAJE CLIENTE Y LÓGICA LOCAL
     -- ------------------------------------------------------------------
-    AddLog("\n[👤 SECCIÓN 4: TU AVATAR E INVENTARIO]")
+    AddLog("\n[👤 SECCIÓN 4: TU AVATAR E INVENTARIO]", 0)
     pcall(function()
         if LocalPlayer.Character then
-            AddLog(" 🟢 Personaje Vivo. Tool Equipado: " .. (LocalPlayer.Character:FindFirstChildOfClass("Tool") and LocalPlayer.Character:FindFirstChildOfClass("Tool").Name or "Ninguno"))
+            AddLog("🟢 Personaje Vivo: " .. LocalPlayer.Character.Name, 1)
+            GetDetails(LocalPlayer.Character, 2)
         end
         local backpack = LocalPlayer:FindFirstChild("Backpack")
         if backpack then
-            AddLog(" 🎒 Inventario (Backpack):")
+            AddLog("🎒 Inventario Local:", 1)
             for _, tool in pairs(backpack:GetChildren()) do
-                AddLog("   - Arma/Item: " .. tool.Name)
-                for _, req in pairs(tool:GetDescendants()) do
-                    if req:IsA("ValueBase") then AddLog("     > Requisito/Dato: " .. req.Name .. " = " .. FormatValue(req.Value)) end
-                end
+                AddLog("⚔️ " .. tool.Name, 2)
+                GetDetails(tool, 3)
             end
-        end
-        
-        local leader = LocalPlayer:FindFirstChild("leaderstats")
-        if leader then
-            AddLog(" 📊 Monedas/Economía de Perfil:")
-            for _, stat in pairs(leader:GetChildren()) do AddLog("   - " .. stat.Name .. ": " .. tostring(stat.Value)) end
         end
     end)
 
-    -- ------------------------------------------------------------------
-    -- 5. FÍSICAS ROTAS, ERRORES DE ESTRUCTURA Y TELEKINESIS
-    -- ------------------------------------------------------------------
-    AddLog("\n[🧱 SECCIÓN 5: ANOMALÍAS FÍSICAS Y MAPA ROTO]")
-    local looseParts = 0
-    local fallingParts = 0
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        pcall(function()
-            if obj:IsA("BasePart") then
-                if not obj.Anchored and not obj.Parent:FindFirstChild("Humanoid") then
-                    looseParts = looseParts + 1
-                end
-                if obj.Position.Y < -200 and obj.Anchored == false then
-                    fallingParts = fallingParts + 1
-                end
-            end
-        end)
-    end
-    AddLog(" 🌪️ Objetos sueltos movibles (Proyectiles Posibles): " .. tostring(looseParts))
-    AddLog(" 🕳️ Objetos crasheados tirados en el vacío (-Y): " .. tostring(fallingParts))
-
-    AddLog("\n========================================================")
-    AddLog("✅ ESCANEO OMNI-RECURSIVO COMPLETO.")
+    AddLog("\n========================================================", 0)
+    AddLog("✅ ESCANEO JERÁRQUICO V21 COMPLETO.", 0)
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: THE OMNI-SCANNER INTERFACE
+-- 🖥️ GUI V2026: THE OMNI-SCANNER PRO (TREE VIEWER)
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -190,16 +181,16 @@ local function ConstruirUI()
     MainFrame.Position = UDim2.new(0.5, -300, 0.5, -240)
     MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+    MainFrame.BorderColor3 = Color3.fromRGB(200, 255, 0)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 40, 50)
-    TopBar.Text = "  [V20: THE GOD-EYE OMNI-SCANNER (FULL SYSTEM DUMP)]"
-    TopBar.TextColor3 = Color3.fromRGB(100, 255, 255)
+    TopBar.BackgroundColor3 = Color3.fromRGB(60, 40, 0)
+    TopBar.Text = "  [V21: OMNI-SCANNER PRO Y REVERSE-ENGINEERING DEV]"
+    TopBar.TextColor3 = Color3.fromRGB(255, 255, 100)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -253,8 +244,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -10, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "Tienes razón. Adivinar y probar a ciegas agota el tiempo de ambos. \n\nHe forjado el OMNI-SCANNER. Un algoritmo recursivo gigante que leerá cada carpeta de tu servidor. Con un solo botón extraerá:\n1. Qué Eventos recibe el Servidor y si existen Trampas (Honeypots).\n2. El DNA de cada Mob: Drop Rates, Vida, Eventos Internos, Físicas.\n3. Tiendas, Cofres, Interacciones de NPCs y Economía.\n4. Tus armas, tu mochila, y tus stats (Leaderstats).\n5. Objetos rotos o inyectables en el Motor C++.\n\nPulsa [INICIAR OMNI-SCAN] abajo para generar el Dumpeo Absoluto. Luego usa [COPIAR REPORTE AL PORTAPAPELES] para que puedas pegarlo en un bloc de notas y ver el estado desnudo de tu videojuego."
-    LogText.TextColor3 = Color3.fromRGB(0, 255, 255)
+    LogText.Text = "V21: DUMPER JERÁRQUICO INSTALADO.\n\nPulsando el [BOTÓN 1] vas a deconstruir todo el mapa en forma de ÁRBOL DE JERARQUÍAS (carpetas, eventos y zombies anidados), con lujo de detalles sobre los 797 objetos físicos:\n- Dónde está agrupado cada uno (ej. Workspace > Drops).\n- Si es Estático o Dinámico.\n- Su Colisión y su Masa (Para saber si el hacker usa Fuerza para moverlo).\n- Si tiene ProximityPrompt o TouchSensors.\n\nY por supuesto, el [BOTÓN 2] te permite Copiar el reporte Crudísimo al portapapeles."
+    LogText.TextColor3 = Color3.fromRGB(255, 255, 150)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 12
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -270,11 +261,11 @@ local function ConstruirUI()
     local btnScan = Instance.new("TextButton")
     btnScan.Size = UDim2.new(0.48, 0, 0, 50)
     btnScan.Position = UDim2.new(0, 8, 0.85, 0)
-    btnScan.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-    btnScan.Text = "👁️ 1. INICIAR OMNI-SCAN DEL SERVER"
+    btnScan.BackgroundColor3 = Color3.fromRGB(150, 80, 0)
+    btnScan.Text = "🌳 1. INICIAR OMNI-SCAN JERÁRQUICO (CASCADA)"
     btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnScan.Font = Enum.Font.Code
-    btnScan.TextSize = 12
+    btnScan.TextSize = 11
     btnScan.Parent = MainFrame
 
     local btnCopy = Instance.new("TextButton")
@@ -284,12 +275,12 @@ local function ConstruirUI()
     btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
     btnCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnCopy.Font = Enum.Font.Code
-    btnCopy.TextSize = 12
+    btnCopy.TextSize = 11
     btnCopy.Parent = MainFrame
 
     btnScan.MouseButton1Click:Connect(function()
         pcall(function()
-            EscaneoOmniAbsoluto()
+            EscaneoOmniJerarquico()
             ActualizarPantalla()
         end)
     end)
@@ -302,7 +293,7 @@ local function ConstruirUI()
                 task.wait(2)
                 btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
             else
-                Warn("Tu exploit no soporta setclipboard(). Mira los logs en F9.")
+                Warn("Tu exploit no soporta setclipboard().")
             end
         end)
     end)
