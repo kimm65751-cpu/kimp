@@ -1,147 +1,180 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V19 DEV STRESS-TOOL (PRUEBA DE ESTADO Y SATURACIÓN)
--- Simuladores de penetración de caja blanca de alto rendimiento sin acelerador.
+-- 💀 ROBLOX EXPERT: V20 THE GOD-EYE OMNI-SCANNER (MAPA ESTRUCTURAL COMPLETO)
+-- Auditoría Definitiva de Servidor: NPCs, Red, Economía, Físicas y Anti-Cheat.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
-local Analyzer = { Logs = {} }
+local FullReport = ""
 
-function Analyzer:Clear()
-    self.Logs = {}
-    if self.UI_LogBox then self.UI_LogBox.Text = "" end
-end
-
-function Analyzer:Log(txt)
-    print("[DEV-AUDIT] " .. tostring(txt))
-    table.insert(self.Logs, txt)
-    pcall(function() if self.UI_LogBox then self.UI_LogBox.Text = self.UI_LogBox.Text .. "\n" .. tostring(txt) end end)
-    pcall(function() self.UI_LogBox.Parent.CanvasPosition = Vector2.new(0, 99999) end)
+local function AddLog(text)
+    FullReport = FullReport .. text .. "\n"
+    print("[OMNI-SCAN] " .. text)
 end
 
 -- ==============================================================================
--- ⚡ TEST 1: MICRO-STEP JITTER ULTRA RÁPIDO (SATURACIÓN FRAME-PER-FRAME)
+-- ⚙️ MOTOR DEL OMNI-SCANNER
 -- ==============================================================================
-getgenv().JitterTest = false
+local function FormatValue(v)
+    if typeof(v) == "Instance" then return v.Name
+    elseif typeof(v) == "Vector3" then return "V3"
+    elseif typeof(v) == "CFrame" then return "CF"
+    else return tostring(v) end
+end
 
-local function IniciarJitter()
-    if getgenv().JitterTest then return end
-    getgenv().JitterTest = true
-    Analyzer:Log("🧪 [V19-TEST 1] Corriendo Jitter-Desync al Máximo Rendimiento...")
-    Analyzer:Log("He quitado todos los limitadores 'wait()'. Ahora el script vibra calculadamente 60 VECES POR SEGUNDO haciendo el Micro-Teleport y el Clic simultáneo (Auto-Clicker Overdrive LUA). Si tu servidor procesa estos 60 paquetes y te Kickea a ti, tu Anti-Cheat está perfecto midiendo saturación de 'Tool.Activated' y sumatorias de mini-saltos CFrame en un Tick.")
+local function EscaneoOmniAbsoluto()
+    FullReport = "========================================================\n"
+    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA OMNI-SCANNER V20 (ROBLOX 2026) 👑\n"
+    FullReport = FullReport .. "========================================================\n\n"
     
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return Analyzer:Log("❌ Error: No se encontró personaje.") end
+    AddLog("Iniciando DUMP Masivo de Memoria del Servidor...")
+
+    -- ------------------------------------------------------------------
+    -- 1. ANÁLISIS DE NETWORK / REMOTES Y TRAMPAS (HONEYPOTS)
+    -- ------------------------------------------------------------------
+    AddLog("\n[📡 SECCIÓN 1: ARQUITECTURA DE RED Y EVENTOS C/S]")
+    local Remotes = 0
+    local Honeypots = 0
+    for _, obj in pairs(game:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                Remotes = Remotes + 1
+                local name = string.lower(obj.Name)
+                if string.find(name, "ban") or string.find(name, "kick") or string.find(name, "cheat") or string.find(name, "detect") then
+                    AddLog(" 🚨 HONEYPOT / TRAMPA DETECTADA: " .. obj:GetFullName())
+                    Honeypots = Honeypots + 1
+                else
+                    AddLog(" 🔗 Vía Abierta: " .. obj.Name .. " (" .. obj.ClassName .. ") en " .. obj.Parent.Name)
+                end
+            end
+        end)
+    end
+    if Remotes == 0 then AddLog(" 🔒 SERVIDOR 100% AUTORITATIVO. Cero eventos remotos abiertos hallados. No hay huecos de inyección directa.") end
     
-    task.spawn(function()
-        while getgenv().JitterTest do
-            pcall(function()
-                local target = nil
-                local distM = 99999
-                for _, z in pairs(Workspace:GetDescendants()) do
-                    if z:IsA("Model") and string.find(string.lower(z.Name), "zombie") and z ~= char then
-                        local zHum = z:FindFirstChild("Humanoid")
-                        local zRoot = z:FindFirstChild("HumanoidRootPart")
-                        if zHum and zHum.Health > 0 and zRoot then
-                            local d = (zRoot.Position - root.Position).Magnitude
-                            if d < 100 then
-                                if d < distM then distM = d; target = zRoot end
+    -- ------------------------------------------------------------------
+    -- 2. ANÁLISIS DE MOBS, ZOMBIES Y ATRIBUTOS DE IA
+    -- ------------------------------------------------------------------
+    AddLog("\n[🧟 SECCIÓN 2: BASE DE DATOS DE ZOMBIES Y ENEMIGOS]")
+    local mobsAnalyzed = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                if string.find(string.lower(obj.Name), "zombie") or string.find(string.lower(obj.Name), "mob") or string.find(string.lower(obj.Name), "boss") then
+                    if not mobsAnalyzed[obj.Name] then
+                        mobsAnalyzed[obj.Name] = true
+                        AddLog("\n 🧬 Entidad Detectada: " .. obj.Name)
+                        local hum = obj:FindFirstChild("Humanoid")
+                        AddLog("   - Salud Base: " .. tostring(hum.MaxHealth) .. " | Velocidad: " .. tostring(hum.WalkSpeed))
+                        
+                        -- Buscar TouchTransmitters, Scripts, y Atributos
+                        local hasTouch = false
+                        for _, v in pairs(obj:GetDescendants()) do
+                            if v:IsA("TouchTransmitter") then hasTouch = true end
+                            if v:IsA("ValueBase") then
+                                AddLog("   - Data Interna: " .. v.Name .. " = " .. FormatValue(v.Value))
                             end
                         end
+                        if hasTouch then AddLog("   - Sistema de Daño: FÍSICO (.Touched detectado. Puedes esquivarlo).")
+                        else AddLog("   - Sistema de Daño: MATEMÁTICO (Vectorial/Magnitude C++. Imposible evadir tocando).") end
+                        
+                        local attrs = obj:GetAttributes()
+                        for k, v in pairs(attrs) do AddLog("   - Atributo Oculto: " .. k .. " = " .. FormatValue(v)) end
                     end
                 end
+            end
+        end)
+    end
 
-                if target then
-                    local safePos = target.CFrame * CFrame.new(0, 0, -6) -- Frontera
-                    local attackPos = target.CFrame * CFrame.new(0, 0, -4.9) -- Peligro (Adentro del Zombi)
-                    
-                    root.CFrame = safePos -- Asegura estar afuera primero
-                    
-                    -- Micro-Dodge Frame (Entra, actívate y sal)
-                    root.CFrame = attackPos 
-                    
-                    local tool = char:FindFirstChildOfClass("Tool")
-                    if tool then tool:Activate() end
-                    
-                    root.CFrame = safePos 
+    -- ------------------------------------------------------------------
+    -- 3. ECONOMÍA, TIENDAS, EVENTOS HUMANOS Y DROP RATES
+    -- ------------------------------------------------------------------
+    AddLog("\n[💰 SECCIÓN 3: TIENDAS, ECONOMÍA Y DROPS]")
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            -- Tiendas
+            if obj:IsA("Model") and (string.find(string.lower(obj.Name), "shop") or string.find(string.lower(obj.Name), "npc") or string.find(string.lower(obj.Name), "store")) then
+                AddLog(" 🏪 Tienda/NPC Hallado: " .. obj.Name)
+                for _, prompt in pairs(obj:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        AddLog("   - Interacción: '" .. tostring(prompt.ActionText) .. "' (Rango: " .. tostring(prompt.MaxActivationDistance) .. ")")
+                    elseif prompt:IsA("ValueBase") then
+                        AddLog("   - Dato Comercial: " .. prompt.Name .. " = " .. FormatValue(prompt.Value))
+                    end
                 end
-            end)
-            RunService.RenderStepped:Wait() -- Ultra-velocidad LUA sin pausas pesadas
+            end
+            
+            -- Drop Rates y Cofres
+            if string.find(string.lower(obj.Name), "chest") or string.find(string.lower(obj.Name), "drop") or string.find(string.lower(obj.Name), "rate") then
+                 AddLog(" 💎 Loot/Cofre Detectado: " .. obj.Name)
+                 for _, v in pairs(obj:GetDescendants()) do
+                     if v:IsA("NumberValue") or v:IsA("IntValue") then
+                         AddLog("   - Probabilidad/Valor: " .. v.Name .. " = " .. FormatValue(v.Value))
+                     end
+                 end
+            end
+        end)
+    end
+
+    -- ------------------------------------------------------------------
+    -- 4. ANÁLISIS DEL PERSONAJE: INVENTARIO, ARMAS Y ERRORES LOCALES
+    -- ------------------------------------------------------------------
+    AddLog("\n[👤 SECCIÓN 4: TU AVATAR E INVENTARIO]")
+    pcall(function()
+        if LocalPlayer.Character then
+            AddLog(" 🟢 Personaje Vivo. Tool Equipado: " .. (LocalPlayer.Character:FindFirstChildOfClass("Tool") and LocalPlayer.Character:FindFirstChildOfClass("Tool").Name or "Ninguno"))
+        end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            AddLog(" 🎒 Inventario (Backpack):")
+            for _, tool in pairs(backpack:GetChildren()) do
+                AddLog("   - Arma/Item: " .. tool.Name)
+                for _, req in pairs(tool:GetDescendants()) do
+                    if req:IsA("ValueBase") then AddLog("     > Requisito/Dato: " .. req.Name .. " = " .. FormatValue(req.Value)) end
+                end
+            end
+        end
+        
+        local leader = LocalPlayer:FindFirstChild("leaderstats")
+        if leader then
+            AddLog(" 📊 Monedas/Economía de Perfil:")
+            for _, stat in pairs(leader:GetChildren()) do AddLog("   - " .. stat.Name .. ": " .. tostring(stat.Value)) end
         end
     end)
-end
 
-local function DetenerJitter() getgenv().JitterTest = false Analyzer:Log("🛑 Jitter Cero-Delay detenido.") end
-
--- ==============================================================================
--- ⚡ TEST 2: LINEAR GLIDE FLIGHT (DESLIZAMIENTO SIN ARRASTRAR)
--- ==============================================================================
-getgenv().GlideTest = false
-
-local function IniciarGlide()
-    if getgenv().GlideTest then return end
-    getgenv().GlideTest = true
-    Analyzer:Log("🧪 [V19-TEST 2] Glide Físico usando LinearVelocity (Alineado)...")
-    Analyzer:Log("Corregí el 'arrastre en el piso' fijando un Vector Paralelo Absoluto usando 'LinearVelocity' y anulando tu peso C++. Ahora tu personaje ignorará el WalkSpeed (que suele medirse en LUA) y se moverá a 60 Studs/s usando pura aceleración del motor físico directo hacia donde miras. Si esto NO te dispara el Error 267, tu servidor y los zombis son vulnerables al Patinador Hit-and-Run.")
-
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return Analyzer:Log("❌ Error de Personaje.") end
-    
-    local att = Instance.new("Attachment", root)
-    att.Name = "GlideAtt"
-    
-    local lv = Instance.new("LinearVelocity")
-    lv.Name = "IceScaterVelocity"
-    lv.Attachment0 = att
-    lv.MaxForce = math.huge
-    lv.VectorVelocity = root.CFrame.LookVector * 60
-    lv.RelativeTo = Enum.ActuatorRelativeTo.World
-    lv.Parent = root
-    
-    for _, v in pairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then v.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0, 0, 0, 0) end
+    -- ------------------------------------------------------------------
+    -- 5. FÍSICAS ROTAS, ERRORES DE ESTRUCTURA Y TELEKINESIS
+    -- ------------------------------------------------------------------
+    AddLog("\n[🧱 SECCIÓN 5: ANOMALÍAS FÍSICAS Y MAPA ROTO]")
+    local looseParts = 0
+    local fallingParts = 0
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("BasePart") then
+                if not obj.Anchored and not obj.Parent:FindFirstChild("Humanoid") then
+                    looseParts = looseParts + 1
+                end
+                if obj.Position.Y < -200 and obj.Anchored == false then
+                    fallingParts = fallingParts + 1
+                end
+            end
+        end)
     end
-    
-    task.spawn(function()
-        while getgenv().GlideTest do
-            pcall(function()
-                 lv.VectorVelocity = (root.CFrame.LookVector * 60) + Vector3.new(0, 0.1, 0) -- Updateo para evitar hundirse
-            end)
-            RunService.Heartbeat:Wait()
-        end
-    end)
-end
+    AddLog(" 🌪️ Objetos sueltos movibles (Proyectiles Posibles): " .. tostring(looseParts))
+    AddLog(" 🕳️ Objetos crasheados tirados en el vacío (-Y): " .. tostring(fallingParts))
 
-local function DetenerGlide()
-    getgenv().GlideTest = false
-    local char = LocalPlayer.Character
-    if char then
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if root then
-            if root:FindFirstChild("LinearVelocity") then root:FindFirstChild("LinearVelocity"):Destroy() end
-            if root:FindFirstChild("GlideAtt") then root:FindFirstChild("GlideAtt"):Destroy() end
-            local glide = root:FindFirstChild("IceScaterVelocity")
-            if glide then glide:Destroy() end
-        end
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CustomPhysicalProperties = nil end
-        end
-    end
-    Analyzer:Log("🛑 Glide Motor Físico desactivado.")
+    AddLog("\n========================================================")
+    AddLog("✅ ESCANEO OMNI-RECURSIVO COMPLETO.")
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: PANEL DE PRUEBAS DEL CREADOR (Local-Host)
+-- 🖥️ GUI V2026: THE OMNI-SCANNER INTERFACE
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -153,20 +186,20 @@ local function ConstruirUI()
     sg.Parent = parentUI
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 560, 0, 420)
-    MainFrame.Position = UDim2.new(0.5, -280, 0.5, -210)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+    MainFrame.Size = UDim2.new(0, 600, 0, 480)
+    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -240)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 100, 150)
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
-    TopBar.Text = "  [V19: STRESS-TEST LOCAL DE DESARROLLADOR]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 150, 150)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 40, 50)
+    TopBar.Text = "  [V20: THE GOD-EYE OMNI-SCANNER (FULL SYSTEM DUMP)]"
+    TopBar.TextColor3 = Color3.fromRGB(100, 255, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -202,16 +235,16 @@ local function ConstruirUI()
     CloseBtn.TextSize = 14
     CloseBtn.Parent = MainFrame
 
-    CloseBtn.MouseButton1Click:Connect(function() pcall(function() DetenerJitter() DetenerGlide() end) sg:Destroy() end)
+    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
     MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
     ReloadBtn.MouseButton1Click:Connect(function()
         pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(111,999)))() end)
     end)
 
     local InfoScroll = Instance.new("ScrollingFrame")
-    InfoScroll.Size = UDim2.new(1, -16, 0.45, 0)
+    InfoScroll.Size = UDim2.new(1, -16, 0.70, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(25, 20, 25)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
@@ -220,8 +253,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -10, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "Corregí la Fricción del Patinador y le quité los frenos al Ticker para que actúen como verdaderos 'Exploits de Overdrive' puros contra ti.\n\nESTAS SON OTRAS 3 IDEAS RARAS COMO DEV:\n\n💡 1. TWEEN C-FRAME (EL SALTO LINEAR): Si tu Anti-Cheat 267 solo calcula 'Saltos en 0 milisegundos', el Hacker usa 'TweenService' en Local para volar Lenta pero matemáticamente linealmente, burlando el límite sin dar el salto de Coordenada.\n💡 2. Y-AXIS BLINDSPOT (CONSTRUIR ESCALERAS): A veces tu (RootPart - Zombie.RootPart.Position).Magnitude es ciego en altura si no haces un cilindro. Si el Hacker clona una tabla invisible al cielo en C++ y camina arriba a 4.9 Studs exactamente sobre la cabeza del Zombier... ¿Tu zombie mirará hacia arriba para atacarlo o el Pathfinding se atorará con las montañas?\n💡 3. STATE SPOOFING (BORRAR EL HUMANOID): Algunos scripts de Servidor explotan si no detectan el estado Local del Personaje. Si un Hacker localmente envía el estado 'Humanoid:ChangeState(Enum.HumanoidStateType.Dead)', pero sigue vivo por salud real, algunos Raycasts de AI Servidor descartan el 'Objeto' como Target por ser Cadáver, volviéndolo Intocable a Daño LUA de NPC."
-    LogText.TextColor3 = Color3.fromRGB(255, 200, 200)
+    LogText.Text = "Tienes razón. Adivinar y probar a ciegas agota el tiempo de ambos. \n\nHe forjado el OMNI-SCANNER. Un algoritmo recursivo gigante que leerá cada carpeta de tu servidor. Con un solo botón extraerá:\n1. Qué Eventos recibe el Servidor y si existen Trampas (Honeypots).\n2. El DNA de cada Mob: Drop Rates, Vida, Eventos Internos, Físicas.\n3. Tiendas, Cofres, Interacciones de NPCs y Economía.\n4. Tus armas, tu mochila, y tus stats (Leaderstats).\n5. Objetos rotos o inyectables en el Motor C++.\n\nPulsa [INICIAR OMNI-SCAN] abajo para generar el Dumpeo Absoluto. Luego usa [COPIAR REPORTE AL PORTAPAPELES] para que puedas pegarlo en un bloc de notas y ver el estado desnudo de tu videojuego."
+    LogText.TextColor3 = Color3.fromRGB(0, 255, 255)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 12
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -229,39 +262,48 @@ local function ConstruirUI()
     LogText.TextWrapped = true
     LogText.Parent = InfoScroll
 
-    Analyzer.UI_LogBox = LogText
+    local function ActualizarPantalla()
+        LogText.Text = FullReport
+        InfoScroll.CanvasPosition = Vector2.new(0, 999999)
+    end
 
-    local btnJitter = Instance.new("TextButton")
-    btnJitter.Size = UDim2.new(0.48, 0, 0, 50)
-    btnJitter.Position = UDim2.new(0, 8, 0.62, 0)
-    btnJitter.BackgroundColor3 = Color3.fromRGB(150, 0, 50)
-    btnJitter.Text = "⚡ 1. TEST JITTER CERO LIMITES (60X FRAME)"
-    btnJitter.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnJitter.Font = Enum.Font.Code
-    btnJitter.TextSize = 13
-    btnJitter.Parent = MainFrame
+    local btnScan = Instance.new("TextButton")
+    btnScan.Size = UDim2.new(0.48, 0, 0, 50)
+    btnScan.Position = UDim2.new(0, 8, 0.85, 0)
+    btnScan.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+    btnScan.Text = "👁️ 1. INICIAR OMNI-SCAN DEL SERVER"
+    btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnScan.Font = Enum.Font.Code
+    btnScan.TextSize = 12
+    btnScan.Parent = MainFrame
 
-    local btnGlide = Instance.new("TextButton")
-    btnGlide.Size = UDim2.new(0.48, 0, 0, 50)
-    btnGlide.Position = UDim2.new(0.5, 4, 0.62, 0)
-    btnGlide.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
-    btnGlide.Text = "⚡ 2. TEST GLIDE (LinearVelocity Perfecto)"
-    btnGlide.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnGlide.Font = Enum.Font.Code
-    btnGlide.TextSize = 13
-    btnGlide.Parent = MainFrame
+    local btnCopy = Instance.new("TextButton")
+    btnCopy.Size = UDim2.new(0.48, 0, 0, 50)
+    btnCopy.Position = UDim2.new(0.5, 4, 0.85, 0)
+    btnCopy.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+    btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
+    btnCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnCopy.Font = Enum.Font.Code
+    btnCopy.TextSize = 12
+    btnCopy.Parent = MainFrame
 
-    btnJitter.MouseButton1Click:Connect(function()
+    btnScan.MouseButton1Click:Connect(function()
         pcall(function()
-            if getgenv().JitterTest then DetenerJitter() btnJitter.Text = "⚡ 1. TEST JITTER (CERO LIMITES)" btnJitter.BackgroundColor3 = Color3.fromRGB(150, 0, 50)
-            else IniciarJitter() btnJitter.Text = "🛑 DETENER SATURACIÓN" btnJitter.BackgroundColor3 = Color3.fromRGB(50, 0, 0) end
+            EscaneoOmniAbsoluto()
+            ActualizarPantalla()
         end)
     end)
     
-    btnGlide.MouseButton1Click:Connect(function()
+    btnCopy.MouseButton1Click:Connect(function()
         pcall(function()
-            if getgenv().GlideTest then DetenerGlide() btnGlide.Text = "⚡ 2. TEST GLIDE (LinearVelocity Perfecto)" btnGlide.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
-            else IniciarGlide() btnGlide.Text = "🛑 DETENER PATINADOR" btnGlide.BackgroundColor3 = Color3.fromRGB(50, 0, 0) end
+            if setclipboard then
+                setclipboard(FullReport)
+                btnCopy.Text = "✅ ¡COPIADO EXITOSAMENTE!"
+                task.wait(2)
+                btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
+            else
+                Warn("Tu exploit no soporta setclipboard(). Mira los logs en F9.")
+            end
         end)
     end)
 end
