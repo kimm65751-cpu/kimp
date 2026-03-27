@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V22 OMNI-SCANNER V-MAX (ÁRBOL JERÁRQUICO + COPIADO)
--- Anti-Crashes Integrado (Pcalls Extra) + Botón de Copiado Restaurado.
+-- 💀 ROBLOX EXPERT: V23 OMNI-SCANNER (FILE-EXPORTER & PAGINACIÓN MANUAL)
+-- Diseñado para evadir el colapso de Portapapeles (setclipboard) de Android/Delta.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -13,6 +13,9 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 local FullReport = ""
+local Pages = {}
+local CurrentPage = 1
+local CHARS_PER_PAGE = 12000 -- Limite seguro para evitar crasheo de TextBox
 
 local function AddLog(text, indentLevel)
     local prefix = string.rep("  ", indentLevel or 0)
@@ -20,7 +23,7 @@ local function AddLog(text, indentLevel)
 end
 
 -- ==============================================================================
--- ⚙️ MOTOR DEL OMNI-SCANNER V-MAX (A PRUEBA DE CRASHES)
+-- ⚙️ MOTOR DEL OMNI-SCANNER V23 (A PRUEBA DE CRASHES)
 -- ==============================================================================
 local function FormatValue(v)
     if typeof(v) == "Instance" then return v.Name
@@ -44,7 +47,7 @@ end
 
 local function EscaneoOmniJerarquico()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA OMNI-SCANNER V-MAX (ROBLOX 2026) 👑\n"
+    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA OMNI-SCANNER V23 (ROBLOX 2026) 👑\n"
     FullReport = FullReport .. "========================================================\n\n"
     
     AddLog("INICIANDO ESCANEO FORENSE EN CASCADA (TREE DUMP)...", 0)
@@ -136,7 +139,6 @@ local function EscaneoOmniJerarquico()
     -- 4. ÁRBOL FÍSICO (OBJETOS SUELTOS Y TELEKINESIS)
     -- ------------------------------------------------------------------
     AddLog("\n[🧱 SECCIÓN 4: ÁRBOL DE OBJETOS FÍSICOS (TELEKINESIS LUA)]", 0)
-    AddLog("Detallando qué objetos se pueden mover libremente, su Masa y Estados de Agarre:", 0)
     
     local PhysicsTree = {}
     local unanchoredCount = 0
@@ -204,10 +206,20 @@ local function EscaneoOmniJerarquico()
 
     AddLog("\n========================================================", 0)
     AddLog("✅ ESCANEO JERÁRQUICO COMPLETO GENERADO CON ÉXITO.", 0)
+    
+    -- SISTEMA DE PAGINACIÓN DE EMERGENICA (CHUNKER)
+    Pages = {}
+    local startIdx = 1
+    while startIdx <= #FullReport do
+        local endIdx = startIdx + CHARS_PER_PAGE - 1
+        table.insert(Pages, string.sub(FullReport, startIdx, endIdx))
+        startIdx = endIdx + 1
+    end
+    CurrentPage = 1
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: THE OMNI-SCANNER V-MAX
+-- 🖥️ GUI V2026: THE OMNI-SCANNER V23 (PAGINADOR TEXTBOX & FILE-WRITER)
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -219,44 +231,24 @@ local function ConstruirUI()
     sg.Parent = parentUI
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 600, 0, 480)
-    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -240)
+    MainFrame.Size = UDim2.new(0, 640, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -320, 0.5, -250)
     MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 100)
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 50, 0)
-    TopBar.Text = "  [V22: OMNI-SCANNER V-MAX DEV-AUDITOR]"
-    TopBar.TextColor3 = Color3.fromRGB(150, 255, 150)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 50, 80)
+    TopBar.Text = "  [V23: FILE-EXPORTER Y PAGINACIÓN DE RESCATE]"
+    TopBar.TextColor3 = Color3.fromRGB(150, 255, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
     TopBar.Parent = MainFrame
-
-    local ReloadBtn = Instance.new("TextButton")
-    ReloadBtn.Size = UDim2.new(0, 30, 0, 30)
-    ReloadBtn.Position = UDim2.new(1, -90, 0, 0)
-    ReloadBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 0)
-    ReloadBtn.Text = "↻"
-    ReloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ReloadBtn.Font = Enum.Font.Code
-    ReloadBtn.TextSize = 18
-    ReloadBtn.Parent = MainFrame
-
-    local MinimizeBtn = Instance.new("TextButton")
-    MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-    MinimizeBtn.Position = UDim2.new(1, -60, 0, 0)
-    MinimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
-    MinimizeBtn.Text = "_"
-    MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MinimizeBtn.Font = Enum.Font.Code
-    MinimizeBtn.TextSize = 14
-    MinimizeBtn.Parent = MainFrame
 
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -269,41 +261,57 @@ local function ConstruirUI()
     CloseBtn.Parent = MainFrame
 
     CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-    MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
-    ReloadBtn.MouseButton1Click:Connect(function()
-        pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(111,999)))() end)
-    end)
 
     local InfoScroll = Instance.new("ScrollingFrame")
-    InfoScroll.Size = UDim2.new(1, -16, 0.70, 0)
+    InfoScroll.Size = UDim2.new(1, -16, 0.65, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
     InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
 
-    -- PANTALLA DE PRE-VISUALIZACIÓN V-MAX
-    local LogText = Instance.new("TextLabel")
-    LogText.Size = UDim2.new(1, -10, 1, 0)
-    LogText.Position = UDim2.new(0, 5, 0, 5)
-    LogText.BackgroundTransparency = 1
-    LogText.Text = "V22: DUMPER JERÁRQUICO V-MAX.\n\nHe restaurado tu Botón de Copiar y he envuelto la recursividad del motor con pcalls para evitar que el escaneo colapse si choca contra carpetas de Roblox bloqueadas.\n\nAdemás, añadí las Secciones de Tiendas, Mobs, Interacciones y Físicas juntas. Cuando presiones [ESCANEAR], verás una pequeña vista previa aquí.\n\nPero para que la interfaz no crashee por superar los 16,000 límites de caracteres de la GUI de Roblox, EL REPORTE ABSOLUTO COMPLETO SÓLO SE INYECTARÁ A TU PORTAPAPELES CUANDO LE DES A [COPIAR REPORTE]."
-    LogText.TextColor3 = Color3.fromRGB(200, 255, 150)
-    LogText.Font = Enum.Font.Code
-    LogText.TextSize = 12
-    LogText.TextXAlignment = Enum.TextXAlignment.Left
-    LogText.TextYAlignment = Enum.TextYAlignment.Top
-    LogText.TextWrapped = true
-    LogText.Parent = InfoScroll
+    -- AHORA ES UN TEXTBOX SELECCIONABLE CON EL MOUSE
+    local LogTextBox = Instance.new("TextBox")
+    LogTextBox.Size = UDim2.new(1, -10, 1, 0)
+    LogTextBox.Position = UDim2.new(0, 5, 0, 5)
+    LogTextBox.BackgroundTransparency = 1
+    LogTextBox.Text = "El Botón de 'Copiar' (setclipboard) está ROTO en tu Ejecutor Android/LDPlayer. No puede hablarse con Windows.\n\nSOLUCIÓN 1 (ARCHIVO LÓGICO): Pulsa Escanear. Luego dale a [GUARDAR ARCHIVO .TXT]. Esto creará un archivo llamado 'OmniScan_Reporte.txt' directamente en la carpeta 'workspace' o 'scripts' de tu Emulador.\n\nSOLUCIÓN 2 (COPIA MANUAL SEGURA): He cortado el monstruoso texto en Múltiples Páginas pequeñas. Al terminar el Escaneo, esta pantalla se volverá un Cuadro de Texto seleccionable. Simplemente haz CLIC aquí, presiona CTRL+A para sombrearlo de azul, y CTRL+C para copiarlo manualmente. Luego usa los Botones [Siguiente >] para copiar la Página 2, la Página 3, etc."
+    LogTextBox.TextColor3 = Color3.fromRGB(200, 255, 150)
+    LogTextBox.Font = Enum.Font.Code
+    LogTextBox.TextSize = 12
+    LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
+    LogTextBox.TextYAlignment = Enum.TextYAlignment.Top
+    LogTextBox.TextWrapped = true
+    LogTextBox.ClearTextOnFocus = false
+    LogTextBox.TextEditable = false
+    LogTextBox.MultiLine = true
+    LogTextBox.Parent = InfoScroll
 
-    local function ActualizarPantalla()
-        if string.len(FullReport) > 10000 then
-            LogText.Text = string.sub(FullReport, 1, 10000) .. "\n\n... [¡ATENCIÓN! EL TEXTO DE AUDITORÍA ES DEMASIADO GRANDE. HE TRUNCADO LA VISUALIZACIÓN PARA NO CONGELAR TU JUEGO. USA EL BOTÓN DE ABAJO PARA COPIARLO ENTERO A TU BLOC DE NOTAS!]"
-        else
-            LogText.Text = FullReport
-        end
-        InfoScroll.CanvasPosition = Vector2.new(0, 0)
-    end
+    local PageLabel = Instance.new("TextLabel")
+    PageLabel.Size = UDim2.new(1, 0, 0, 20)
+    PageLabel.Position = UDim2.new(0, 0, 0.72, 0)
+    PageLabel.BackgroundTransparency = 1
+    PageLabel.Text = "Página 0 / 0"
+    PageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PageLabel.Font = Enum.Font.Code
+    PageLabel.TextSize = 14
+    PageLabel.Parent = MainFrame
+
+    local btnPrev = Instance.new("TextButton")
+    btnPrev.Size = UDim2.new(0.2, 0, 0, 30)
+    btnPrev.Position = UDim2.new(0, 8, 0.76, 0)
+    btnPrev.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnPrev.Text = "< Anterior"
+    btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnPrev.Parent = MainFrame
+
+    local btnNext = Instance.new("TextButton")
+    btnNext.Size = UDim2.new(0.2, 0, 0, 30)
+    btnNext.Position = UDim2.new(0.8, -8, 0.76, 0)
+    btnNext.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnNext.Text = "Siguiente >"
+    btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnNext.Parent = MainFrame
 
     local btnScan = Instance.new("TextButton")
     btnScan.Size = UDim2.new(0.48, 0, 0, 50)
@@ -312,18 +320,33 @@ local function ConstruirUI()
     btnScan.Text = "🌳 1. INICIAR OMNI-SCAN JERÁRQUICO"
     btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnScan.Font = Enum.Font.Code
-    btnScan.TextSize = 11
+    btnScan.TextSize = 12
     btnScan.Parent = MainFrame
 
-    local btnCopy = Instance.new("TextButton")
-    btnCopy.Size = UDim2.new(0.48, 0, 0, 50)
-    btnCopy.Position = UDim2.new(0.5, 4, 0.85, 0)
-    btnCopy.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
-    btnCopy.Text = "📋 2. COPIAR REPORTE COMPLETO"
-    btnCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnCopy.Font = Enum.Font.Code
-    btnCopy.TextSize = 11
-    btnCopy.Parent = MainFrame
+    local btnSave = Instance.new("TextButton")
+    btnSave.Size = UDim2.new(0.48, 0, 0, 50)
+    btnSave.Position = UDim2.new(0.5, 4, 0.85, 0)
+    btnSave.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+    btnSave.Text = "💾 2. GUARDAR ARCHIVO .TXT"
+    btnSave.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnSave.Font = Enum.Font.Code
+    btnSave.TextSize = 12
+    btnSave.Parent = MainFrame
+
+    local function ActualizarPantalla()
+        if #Pages == 0 then return end
+        LogTextBox.Text = Pages[CurrentPage]
+        PageLabel.Text = "Página " .. tostring(CurrentPage) .. " / " .. tostring(#Pages)
+        InfoScroll.CanvasPosition = Vector2.new(0, 0)
+    end
+
+    btnPrev.MouseButton1Click:Connect(function()
+        if CurrentPage > 1 then CurrentPage = CurrentPage - 1; ActualizarPantalla() end
+    end)
+
+    btnNext.MouseButton1Click:Connect(function()
+        if CurrentPage < #Pages then CurrentPage = CurrentPage + 1; ActualizarPantalla() end
+    end)
 
     btnScan.MouseButton1Click:Connect(function()
         pcall(function()
@@ -332,18 +355,19 @@ local function ConstruirUI()
         end)
     end)
     
-    btnCopy.MouseButton1Click:Connect(function()
+    btnSave.MouseButton1Click:Connect(function()
         pcall(function()
-            if setclipboard then
-                setclipboard(FullReport) -- Exporta la matriz masiva completa (Sin truncar) al entorno de Windows.
-                btnCopy.Text = "✅ ¡COPIADO EXITOSAMENTE A WINDOWS!"
-                btnCopy.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-                task.wait(2)
-                btnCopy.Text = "📋 2. COPIAR REPORTE COMPLETO"
-                btnCopy.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+            if writefile then
+                writefile("OmniScan_Report.txt", FullReport)
+                btnSave.Text = "✅ ¡GUARDADO EN CARPETA 'WORKSPACE'!"
+                btnSave.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
             else
-                Warn("Tu exploit no soporta setclipboard(). Asegúrate de estar en Desktop.")
+                Warn("Tu exploit no soporta writefile(). Usa la copia manual de páginas arriba.")
+                btnSave.Text = "¡Falla de writefile!"
             end
+            task.wait(3)
+            btnSave.Text = "💾 2. GUARDAR ARCHIVO .TXT"
+            btnSave.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
         end)
     end)
 end
