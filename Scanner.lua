@@ -23,8 +23,15 @@ local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.To
 local NoclipActivo = false
 local ShieldActivo = false
 local KiteActivo = false
+local MineActivo = false
 local FarmTask = nil
 local MyShield = nil
+
+-- ANTI-STUCK MINING: Lista negra de minerales que no se pueden picar
+local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
+local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
+local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
+local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 
 -- ==========================================
 -- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
@@ -152,7 +159,7 @@ OpenIcon.Parent = ScreenGui
 Instance.new("UICorner", OpenIcon).CornerRadius = UDim.new(1, 0)
 
 -- ==========================================
--- BOTONES (SIN AIMBOT, SIN FARM MINAS)
+-- BOTONES (SIN AIMBOT)
 -- ==========================================
 local NoclipBtn = Instance.new("TextButton")
 NoclipBtn.Size = UDim2.new(0.5, -6, 0, 35)
@@ -175,20 +182,30 @@ ShieldBtn.TextSize = 11
 ShieldBtn.Parent = Panel
 
 local KiteBtn = Instance.new("TextButton")
-KiteBtn.Size = UDim2.new(1, -8, 0, 45)
+KiteBtn.Size = UDim2.new(0.5, -6, 0, 45)
 KiteBtn.Position = UDim2.new(0, 4, 0, 110)
 KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
-KiteBtn.Text = "🗡️ FARM MOBS (SOLO TU NIVEL O MENOR)"
+KiteBtn.Text = "🗡️ FARM MOBS"
 KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 KiteBtn.Font = Enum.Font.Code
 KiteBtn.TextSize = 12
 KiteBtn.Parent = Panel
 
+local MineBtn = Instance.new("TextButton")
+MineBtn.Size = UDim2.new(0.5, -6, 0, 45)
+MineBtn.Position = UDim2.new(0.5, 2, 0, 110)
+MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+MineBtn.Text = "⛏️ FARM MINAS"
+MineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MineBtn.Font = Enum.Font.Code
+MineBtn.TextSize = 12
+MineBtn.Parent = Panel
+
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 140)
 StatusLabel.Position = UDim2.new(0, 4, 0, 162)
 StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Camina y mata solo zombis de TU nivel o menor. Ignora zombis más fuertes que tú.\n\n⚠️ Sin minería de Rocks (aún no puedes).\n⚠️ Sin Aimbot (no funciona en este juego)."
+StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata zombis de tu nivel o menor.\n⛏️ FARM MINAS: Farm piedras y minerales (NO rocks).\n\nSi un zombi se acerca mientras mineas, te defiende."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
@@ -206,7 +223,7 @@ MinBtn.MouseButton1Click:Connect(function()
         Panel.Size = UDim2.new(0, 200, 0, 30)
         OpenIcon.Visible = false
     else
-        Panel.Size = UDim2.new(0, 280, 0, 310)
+        Panel.Size = UDim2.new(0, 280, 0, 360)
     end
 end)
 
@@ -216,13 +233,13 @@ OpenIcon.MouseButton1Click:Connect(function()
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; ShieldActivo = false; NoclipActivo = false
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
     if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
     ScreenGui:Destroy()
 end)
 
 ReloadBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; ShieldActivo = false; NoclipActivo = false
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
     if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
     pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
 end)
@@ -331,7 +348,7 @@ local function findNearest(condFn)
 end
 
 local function DetenerFarm()
-    if not KiteActivo then
+    if not KiteActivo and not MineActivo then
         if FarmTask then task.cancel(FarmTask); FarmTask = nil end
         pcall(function()
             local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -346,10 +363,10 @@ local function IniciarFarm()
     
     FarmTask = task.spawn(function()
         local loopTick = 0
-        local zTarget = nil
-        local zDist = math.huge
+        local zTarget, oreTarget = nil, nil
+        local zDist, oDist = math.huge, math.huge
 
-        while KiteActivo do
+        while KiteActivo or MineActivo do
             pcall(function()
                 local char = LocalPlayer.Character
                 if not char then return end
@@ -361,48 +378,136 @@ local function IniciarFarm()
                 local myLevel = GetMyLevel()
 
                 -- ESCANEO CON FILTRO DE NIVEL
-                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) then
-                    zTarget, zDist = findNearest(function(o)
-                        if o:IsA("Model") and o ~= char then
-                            local h = o:FindFirstChildWhichIsA("Humanoid")
-                            if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
-                                -- FILTRO DE NIVEL: Solo atacar zombis de tu nivel o menor
-                                local mobLvl = GetMobLevel(o)
-                                if mobLvl > 0 and mobLvl > myLevel then
-                                    return false -- ¡MUY FUERTE! Ignorar este zombie
+                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
+                    if KiteActivo or MineActivo then
+                        zTarget, zDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= char then
+                                local h = o:FindFirstChildWhichIsA("Humanoid")
+                                if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
+                                    -- FILTRO DE NIVEL: Solo aplica cuando CAZAS (KiteActivo)
+                                    -- En auto-defensa (MineActivo) pelea con CUALQUIERA que se acerque
+                                    if KiteActivo and not MineActivo then
+                                        local mobLvl = GetMobLevel(o)
+                                        if mobLvl > 0 and mobLvl > myLevel then
+                                            return false
+                                        end
+                                    end
+                                    return true
                                 end
-                                return true
                             end
+                            return false
+                        end)
+                    end
+
+                    if MineActivo then
+                        -- Limpiar blacklist expirada
+                        local now = tick()
+                        for bOre, bTime in pairs(OreBlacklist) do
+                            if now - bTime > BLACKLIST_EXPIRE then OreBlacklist[bOre] = nil end
                         end
-                        return false
-                    end)
+
+                        oreTarget, oDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= char and not OreBlacklist[o] then
+                                local n = string.lower(o.Name)
+                                local h = o:GetAttribute("Health")
+                                -- SOLO pebb y ore, SIN rocks
+                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "ore")) then
+                                    return true
+                                end
+                            end
+                            return false
+                        end)
+                    end
                 else
                     if zTarget and zTarget.Parent then
                         local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
                         if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
                     else zTarget = nil end
+
+                    if oreTarget and oreTarget.Parent then
+                        local oPart = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
+                        if oPart then oDist = (myRoot.Position - oPart.Position).Magnitude else oreTarget = nil end
+                    else oreTarget = nil end
                 end
 
-                if zTarget then
-                    local targetPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso") or zTarget:FindFirstChildWhichIsA("BasePart")
+                local targetObj = nil
+                local dist = 0
+                local targetDist = 7
+                local mode = "Combat"
+                local toolId = "weapon"
+
+                -- PRIORIDAD 1: COMBATE (Caza o Auto-Defensa si mineas)
+                if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
+                    targetObj = zTarget
+                    dist = zDist
+                    targetDist = ShieldActivo and 4 or 7
+                    mode = "Combat"
+                    toolId = "weapon"
+                -- PRIORIDAD 2: MINADO (pebb/ore, sin rocks)
+                elseif oreTarget and MineActivo then
+                    targetObj = oreTarget
+                    dist = oDist
+                    targetDist = 4
+                    mode = "Mining"
+                    toolId = "pickaxe"
+
+                    -- ANTI-STUCK: Detectar si el mineral no baja de vida
+                    local oreHP = oreTarget:GetAttribute("Health") or 0
+                    if MiningTracker.ore ~= oreTarget then
+                        -- Nuevo objetivo, resetear tracker
+                        MiningTracker.ore = oreTarget
+                        MiningTracker.startHP = oreHP
+                        MiningTracker.startTime = tick()
+                    else
+                        -- Mismo objetivo, checar si bajó de vida
+                        if tick() - MiningTracker.startTime > MINE_TIMEOUT then
+                            if oreHP >= MiningTracker.startHP then
+                                -- NO BAJÓ. Blacklistear y forzar rescan
+                                OreBlacklist[oreTarget] = tick()
+                                StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
+                                oreTarget = nil
+                                MiningTracker.ore = nil
+                                targetObj = nil
+                            else
+                                -- Sí bajó, resetear timer con el nuevo HP
+                                MiningTracker.startHP = oreHP
+                                MiningTracker.startTime = tick()
+                            end
+                        end
+                    end
+                end
+
+                if targetObj then
+                    local targetPart = targetObj:FindFirstChild("HumanoidRootPart") or targetObj:FindFirstChild("Torso") or targetObj:FindFirstChildWhichIsA("BasePart")
                     if not targetPart then return end
                     
-                    local dist = zDist
-                    local targetDist = ShieldActivo and 4 or 7
+                    dist = (myRoot.Position - targetPart.Position).Magnitude
+                    -- dist ya fue calculado arriba
+                    -- targetDist ya fue calculado arriba
 
                     -- == 1. EQUIPO DE ARMA ==
                     local isEquipped = false
                     for _, t in pairs(char:GetChildren()) do
-                        if t:IsA("Tool") and string.find(string.lower(t.Name), "weapon") then
+                        if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
                             isEquipped = true; break
                         end
                     end
 
                     if not isEquipped then
                         local bpTools = LocalPlayer.Backpack:GetChildren()
+                        local equippedCorrectly = false
                         for _, t in pairs(bpTools) do
-                            if string.find(string.lower(t.Name), "weapon") then
-                                currentHum:EquipTool(t); break
+                            if string.find(string.lower(t.Name), toolId) then
+                                currentHum:EquipTool(t); equippedCorrectly = true; break
+                            end
+                        end
+                        if not equippedCorrectly and #bpTools > 0 then
+                            if toolId == "pickaxe" then
+                                currentHum:EquipTool(bpTools[1])
+                            elseif #bpTools >= 2 then
+                                currentHum:EquipTool(bpTools[2])
+                            else
+                                currentHum:EquipTool(bpTools[1])
                             end
                         end
                     end
@@ -440,14 +545,19 @@ local function IniciarFarm()
                     myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
 
                     if dist <= targetDist + 1.5 then
-                        ToolRF:InvokeServer("Weapon")
-                        local mobLvl = GetMobLevel(zTarget)
-                        StatusLabel.Text = "🗡️ Atacando: " .. zTarget.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Dist: " .. tostring(math.floor(dist)) .. "m | Tu Lvl: " .. tostring(myLevel)
+                        local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
+                        ToolRF:InvokeServer(serverArg)
+                        if mode == "Combat" then
+                            local mobLvl = GetMobLevel(targetObj)
+                            StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
+                        else
+                            StatusLabel.Text = "⛏️ Picando: " .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
+                        end
                     else
-                        StatusLabel.Text = "🏃 Cazando a: " .. zTarget.Name .. " (" .. tostring(math.floor(dist)) .. "m) | Tu Lvl: " .. tostring(myLevel)
+                        StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
                     end
                 else
-                    StatusLabel.Text = "🗡️ Buscando zombis de Lvl " .. tostring(myLevel) .. " o menor..."
+                    StatusLabel.Text = "🗡️/⛏️ Buscando objetivo (Tu Lvl: " .. tostring(myLevel) .. ")..."
                 end
             end)
             task.wait()
@@ -462,12 +572,25 @@ end
 KiteBtn.MouseButton1Click:Connect(function()
     KiteActivo = not KiteActivo
     if KiteActivo then
-        KiteBtn.Text = "🗡️ FARM MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
+        KiteBtn.Text = "🗡️ MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
         KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
         IniciarFarm()
     else
-        KiteBtn.Text = "🗡️ FARM MOBS (SOLO TU NIVEL O MENOR)"
+        KiteBtn.Text = "🗡️ FARM MOBS"
         KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+        DetenerFarm()
+    end
+end)
+
+MineBtn.MouseButton1Click:Connect(function()
+    MineActivo = not MineActivo
+    if MineActivo then
+        MineBtn.Text = "⛏️ MINAS: ON"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        IniciarFarm()
+    else
+        MineBtn.Text = "⛏️ FARM MINAS"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
         DetenerFarm()
     end
 end)
