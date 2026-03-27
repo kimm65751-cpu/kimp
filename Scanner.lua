@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMNI-FARM V2.9 (ESP OPTIMIZADO + ANTI-UNDERGROUND)
+-- 🗡️ OMNI-FARM V3.0 (ANTI-CLIPPING 100% SEGURO)
 -- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
@@ -117,7 +117,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2.9"
+Title.Text = " 🗡️ OMNI-FARM V3.0"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -701,8 +701,8 @@ local function IniciarFarm()
                                     if selected then
                                         local op = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
                                         if op then
-                                            -- ANTI-UNDERGROUND (Evitar minas glitcheadas bajo el mapa que dan Anti-Void Kick)
-                                            if op.Position.Y > -5 then
+                                            -- ANTI-UNDERGROUND (Absoluto Nivel del Mar)
+                                            if op.Position.Y > 0 then
                                                 local distToOre = (myRoot.Position - op.Position).Magnitude
                                                 
                                                 -- INTELIGENCIA: Contar zombies usando caché (0 LAG)
@@ -856,8 +856,9 @@ local function IniciarFarm()
                                     flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
                                 end
                             else
-                                -- Fase 3: Ya estamos encima del objetivo, bajamos en picada a minar/atacar
-                                flightWaypoint = targetPos
+                                -- Fase 3: Ya estamos encima del objetivo, bajamos en picada PERO frenamos 3.5 studs antes
+                                -- Esto evita que tus pies atraviesen el suelo real y el juego te mande al spawn.
+                                flightWaypoint = Vector3.new(targetPos.X, targetPos.Y + 3.5, targetPos.Z)
                             end
                             
                             local dir = (flightWaypoint - curPos).Unit
