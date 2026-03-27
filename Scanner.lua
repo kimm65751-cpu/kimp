@@ -1,607 +1,376 @@
+
 -- ==============================================================================
--- 🗡️ OMNI-FARM V2.0 (PURGADO: SOLO COMBATE INTELIGENTE + MURO CRISTAL)
--- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
+-- 💀 ROBLOX EXPERT: V23 OMNI-SCANNER (FILE-EXPORTER & PAGINACIÓN MANUAL)
+-- Diseñado para evadir el colapso de Portapapeles (setclipboard) de Android/Delta.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 
--- ==========================================
--- REFERENCIA CRÍTICA DEL SERVIDOR (Knit ToolService)
--- ==========================================
-local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- ==========================================
--- VARIABLES DE ESTADO
--- ==========================================
-local NoclipActivo = false
-local ShieldActivo = false
-local KiteActivo = false
-local MineActivo = false
-local FarmTask = nil
-local MyShield = nil
+local FullReport = ""
+local Pages = {}
+local CurrentPage = 1
+local CHARS_PER_PAGE = 12000 -- Limite seguro para evitar crasheo de TextBox
 
--- ANTI-STUCK MINING: Lista negra de minerales que no se pueden picar
-local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
-local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
-local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
-local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
-
--- ==========================================
--- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
--- ==========================================
-local function GetMyLevel()
-    local lvl = 1
-    pcall(function()
-        -- Buscar en leaderstats
-        local ls = LocalPlayer:FindFirstChild("leaderstats")
-        if ls then
-            local lv = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("Nivel")
-            if lv then lvl = tonumber(lv.Value) or 1 end
-        end
-        -- Buscar como atributo directo del jugador
-        local attrLvl = LocalPlayer:GetAttribute("Level") or LocalPlayer:GetAttribute("Lvl")
-        if attrLvl then lvl = tonumber(attrLvl) or lvl end
-        -- Buscar en carpeta Data/Profile/Stats
-        for _, folderName in pairs({"Data", "Profile", "Stats"}) do
-            local f = LocalPlayer:FindFirstChild(folderName)
-            if f then
-                local lv = f:FindFirstChild("Level") or f:FindFirstChild("Lvl")
-                if lv and lv:IsA("ValueBase") then lvl = tonumber(lv.Value) or lvl end
-            end
-        end
-    end)
-    return lvl
+local function AddLog(text, indentLevel)
+    local prefix = string.rep("  ", indentLevel or 0)
+    FullReport = FullReport .. prefix .. text .. "\n"
 end
 
--- ==========================================
--- FUNCIÓN PARA OBTENER EL NIVEL DEL ZOMBIE
--- ==========================================
-local function GetMobLevel(mob)
-    local lvl = 0
-    pcall(function()
-        -- 1. Buscar atributo "Level"
-        local attrLvl = mob:GetAttribute("Level") or mob:GetAttribute("Lvl")
-        if attrLvl then lvl = tonumber(attrLvl) or 0; return end
-        -- 2. Buscar NumberValue/IntValue hijo
-        for _, v in pairs(mob:GetChildren()) do
-            if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name == "Level" or v.Name == "Lvl") then
-                lvl = tonumber(v.Value) or 0; return
-            end
-        end
-        -- 3. Buscar en BillboardGui texto "[Lvl. X]"
-        for _, gui in pairs(mob:GetDescendants()) do
-            if gui:IsA("TextLabel") then
-                local text = gui.Text or ""
-                local match = string.match(text, "%[Lvl%.%s*(%d+)%]")
-                if match then lvl = tonumber(match) or 0; return end
-            end
-        end
-    end)
-    return lvl
+-- ==============================================================================
+-- ⚙️ MOTOR DEL OMNI-SCANNER V23 (A PRUEBA DE CRASHES)
+-- ==============================================================================
+local function FormatValue(v)
+    if typeof(v) == "Instance" then return v.Name
+    elseif typeof(v) == "Vector3" then return "V3"
+    elseif typeof(v) == "CFrame" then return "CF"
+    else return tostring(v) end
 end
 
--- ==========================================
--- GUI PRINCIPAL (COMPACTA)
--- ==========================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "OmniFarmUI"
-ScreenGui.ResetOnSpawn = false
-local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "OmniFarmUI" then v:Destroy() end end
-ScreenGui.Parent = parentUI
-
-local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 280, 0, 310)
-Panel.Position = UDim2.new(0.5, -140, 0.5, -155)
-Panel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
-Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(0, 200, 100)
-Panel.Active = true
-Panel.Draggable = true
-Panel.Parent = ScreenGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -80, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2 (INTELIGENTE)"
-Title.TextColor3 = Color3.fromRGB(0, 255, 100)
-Title.TextSize = 13
-Title.Font = Enum.Font.Code
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Panel
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 30)
-CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.Code
-CloseBtn.TextSize = 16
-CloseBtn.Parent = Panel
-
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 40, 0, 30)
-MinBtn.Position = UDim2.new(1, -80, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
-MinBtn.Text = "-"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Font = Enum.Font.Code
-MinBtn.TextSize = 16
-MinBtn.Parent = Panel
-
-local ReloadBtn = Instance.new("TextButton")
-ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
-ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
-ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
-ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
-ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
-ReloadBtn.Font = Enum.Font.Code
-ReloadBtn.TextSize = 11
-ReloadBtn.Parent = Panel
-
-local OpenIcon = Instance.new("ImageButton")
-OpenIcon.Size = UDim2.new(0, 50, 0, 50)
-OpenIcon.Position = UDim2.new(0.5, -25, 0, 20)
-OpenIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-OpenIcon.Image = "rbxassetid://10886105073"
-OpenIcon.Visible = false
-OpenIcon.Active = true
-OpenIcon.Draggable = true
-OpenIcon.Parent = ScreenGui
-Instance.new("UICorner", OpenIcon).CornerRadius = UDim.new(1, 0)
-
--- ==========================================
--- BOTONES (SIN AIMBOT)
--- ==========================================
-local NoclipBtn = Instance.new("TextButton")
-NoclipBtn.Size = UDim2.new(0.5, -6, 0, 35)
-NoclipBtn.Position = UDim2.new(0, 4, 0, 68)
-NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-NoclipBtn.Text = "👻 NOCLIP: OFF"
-NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-NoclipBtn.Font = Enum.Font.Code
-NoclipBtn.TextSize = 11
-NoclipBtn.Parent = Panel
-
-local ShieldBtn = Instance.new("TextButton")
-ShieldBtn.Size = UDim2.new(0.5, -6, 0, 35)
-ShieldBtn.Position = UDim2.new(0.5, 2, 0, 68)
-ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
-ShieldBtn.Text = "🛡️ MURO CRISTAL"
-ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ShieldBtn.Font = Enum.Font.Code
-ShieldBtn.TextSize = 11
-ShieldBtn.Parent = Panel
-
-local KiteBtn = Instance.new("TextButton")
-KiteBtn.Size = UDim2.new(0.5, -6, 0, 45)
-KiteBtn.Position = UDim2.new(0, 4, 0, 110)
-KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
-KiteBtn.Text = "🗡️ FARM MOBS"
-KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-KiteBtn.Font = Enum.Font.Code
-KiteBtn.TextSize = 12
-KiteBtn.Parent = Panel
-
-local MineBtn = Instance.new("TextButton")
-MineBtn.Size = UDim2.new(0.5, -6, 0, 45)
-MineBtn.Position = UDim2.new(0.5, 2, 0, 110)
-MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
-MineBtn.Text = "⛏️ FARM MINAS"
-MineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MineBtn.Font = Enum.Font.Code
-MineBtn.TextSize = 12
-MineBtn.Parent = Panel
-
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -8, 0, 140)
-StatusLabel.Position = UDim2.new(0, 4, 0, 162)
-StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Cuadro de cristal que atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata zombis de tu nivel o menor.\n⛏️ FARM MINAS: Farm piedras y minerales (NO rocks).\n\nSi un zombi se acerca mientras mineas, te defiende."
-StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-StatusLabel.Font = Enum.Font.Code
-StatusLabel.TextSize = 11
-StatusLabel.TextWrapped = true
-StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
-StatusLabel.Parent = Panel
-
--- ==========================================
--- EVENTOS DE INTERFAZ
--- ==========================================
-local Minimizado = false
-MinBtn.MouseButton1Click:Connect(function()
-    Minimizado = not Minimizado
-    if Minimizado then
-        Panel.Size = UDim2.new(0, 200, 0, 30)
-        OpenIcon.Visible = false
-    else
-        Panel.Size = UDim2.new(0, 280, 0, 360)
-    end
-end)
-
-OpenIcon.MouseButton1Click:Connect(function()
-    Panel.Visible = true
-    OpenIcon.Visible = false
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
-    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
-    ScreenGui:Destroy()
-end)
-
-ReloadBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
-    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
-    pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
-end)
-
--- ==========================================
--- ANTI-AFK (Evita el kick por inactividad de 20 min)
--- ==========================================
-local VirtualUser = game:GetService("VirtualUser")
-LocalPlayer.Idled:Connect(function()
-    pcall(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end)
-end)
-
--- ==========================================
--- MOTOR NOCLIP
--- ==========================================
-RunService.Stepped:Connect(function()
-    if not NoclipActivo then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    for _, v in ipairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then v.CanCollide = false end
-    end
-end)
-
-NoclipBtn.MouseButton1Click:Connect(function()
-    NoclipActivo = not NoclipActivo
-    if NoclipActivo then
-        NoclipBtn.Text = "👻 NOCLIP: ON"
-        NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
-    else
-        NoclipBtn.Text = "👻 NOCLIP: OFF"
-        NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+local function GetDetails(obj, indent)
+    for _, v in pairs(obj:GetChildren()) do
         pcall(function()
-            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if r then r.Anchored = false end
+            if v:IsA("ValueBase") then       AddLog("📌 DATO: " .. v.Name .. " = " .. FormatValue(v.Value), indent)
+            elseif v:IsA("RemoteEvent") then AddLog("🔗 EVENTO (Sin Respuesta): " .. v.Name, indent)
+            elseif v:IsA("RemoteFunction") then AddLog("🔗 EVENTO (Con Respuesta): " .. v.Name, indent)
+            elseif v:IsA("ProximityPrompt") then AddLog("🏪 INTERACCIÓN: '" .. tostring(v.ActionText) .. "'", indent)
+            elseif v:IsA("ClickDetector") then AddLog("🏪 AGARABLE: '" .. tostring(v.ClassName) .. "'", indent)
+            end
         end)
     end
-end)
+end
 
--- ==========================================
--- MURO CRISTAL (FUNCIONAL DEL BACKUP)
--- ==========================================
-ShieldBtn.MouseButton1Click:Connect(function()
-    ShieldActivo = not ShieldActivo
-    if ShieldActivo then
-        ShieldBtn.Text = "🛡️ CRISTAL: ON ✅"
-        ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
-        
-        MyShield = Instance.new("Part")
-        MyShield.Name = "MuroDefensivo"
-        MyShield.Size = Vector3.new(12, 12, 2)
-        MyShield.Transparency = 0.5
-        MyShield.Material = Enum.Material.ForceField
-        MyShield.BrickColor = BrickColor.new("Cyan")
-        MyShield.Anchored = true
-        MyShield.CanCollide = true
-        MyShield.Parent = Workspace
-        
-        task.spawn(function()
-            while ShieldActivo and MyShield do
+local function EscaneoOmniJerarquico()
+    FullReport = "========================================================\n"
+    FullReport = FullReport .. "👑 REPORTE DE AUDITORÍA OMNI-SCANNER V23 (ROBLOX 2026) 👑\n"
+    FullReport = FullReport .. "========================================================\n\n"
+    
+    AddLog("INICIANDO ESCANEO FORENSE EN CASCADA (TREE DUMP)...", 0)
+
+    -- ------------------------------------------------------------------
+    -- 1. ANÁLISIS DE NETWORK / REMOTES (ESPECIALIZADO)
+    -- ------------------------------------------------------------------
+    AddLog("\n[📡 SECCIÓN 1: ARQUITECTURA DE RED Y EVENTOS C/S]", 0)
+    local function ScanNet(parent, indent)
+        pcall(function()
+            for _, obj in pairs(parent:GetChildren()) do
                 pcall(function()
-                    local char = LocalPlayer.Character
-                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                    if myRoot then
-                        for _, v in pairs(char:GetDescendants()) do
-                            if v:IsA("BasePart") then
-                                local cName = "NCC_" .. v.Name
-                                if not MyShield:FindFirstChild(cName) then
-                                    local nc = Instance.new("NoCollisionConstraint")
-                                    nc.Name = cName
-                                    nc.Part0 = v
-                                    nc.Part1 = MyShield
-                                    nc.Parent = MyShield
-                                end
-                            end
+                    if obj:IsA("Folder") then
+                        local hasremotes = false
+                        for _, d in pairs(obj:GetDescendants()) do if d:IsA("RemoteEvent") or d:IsA("RemoteFunction") then hasremotes = true break end end
+                        if hasremotes then
+                            AddLog("📁 " .. obj.Name, indent)
+                            ScanNet(obj, indent + 1)
                         end
-                        MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
+                    elseif obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                        local honeypot = (string.find(string.lower(obj.Name), "ban") or string.find(string.lower(obj.Name), "kick")) and " [🚨 HONEYPOT]" or ""
+                        local warning = (obj.Name == "HitboxClassRemote") and " [‼️ VULNERABILIDAD RCH V4 DETECTADA]" or ""
+                        AddLog("🔗 " .. obj.Name .. " (" .. obj.ClassName .. ")" .. honeypot .. warning, indent)
                     end
                 end)
-                task.wait()
             end
         end)
-        StatusLabel.Text = "🛡️ Muro Cristal activo. Los Zombis se atoran en él."
-    else
-        ShieldBtn.Text = "🛡️ MURO CRISTAL"
-        ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
-        if MyShield then MyShield:Destroy(); MyShield = nil end
     end
-end)
-
--- ==========================================
--- FUNCIONES DE FARM (CON FILTRO DE NIVEL)
--- ==========================================
-local function findNearest(condFn)
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
-    local closest, closestDist = nil, math.huge
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if condFn(obj) then
-            local p = nil
-            pcall(function()
-                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
-                if hrp then p = hrp.Position end
-            end)
-            if p then
-                local d = (root.Position - p).Magnitude
-                if d < closestDist then closestDist = d; closest = obj end
-            end
-        end
-    end
-    return closest, closestDist
-end
-
-local function DetenerFarm()
-    if not KiteActivo and not MineActivo then
-        if FarmTask then task.cancel(FarmTask); FarmTask = nil end
-        pcall(function()
-            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if r then r.Anchored = false end
-        end)
-        StatusLabel.Text = "Estado: Inactivo"
-    end
-end
-
-local function IniciarFarm()
-    if FarmTask then return end
+    ScanNet(ReplicatedStorage, 1)
     
-    FarmTask = task.spawn(function()
-        local loopTick = 0
-        local zTarget, oreTarget = nil, nil
-        local zDist, oDist = math.huge, math.huge
-
-        while KiteActivo or MineActivo do
-            pcall(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local currentHum = char:FindFirstChild("Humanoid")
-                local myRoot = char:FindFirstChild("HumanoidRootPart")
-                if not myRoot or not currentHum then return end
-
-                loopTick = loopTick + 1
-                local myLevel = GetMyLevel()
-
-                -- ESCANEO CON FILTRO DE NIVEL
-                if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
-                    if KiteActivo or MineActivo then
-                        zTarget, zDist = findNearest(function(o)
-                            if o:IsA("Model") and o ~= char then
-                                local h = o:FindFirstChildWhichIsA("Humanoid")
-                                if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
-                                    -- FILTRO DE NIVEL: Solo aplica cuando CAZAS (KiteActivo)
-                                    -- En auto-defensa (MineActivo) pelea con CUALQUIERA que se acerque
-                                    if KiteActivo and not MineActivo then
-                                        local mobLvl = GetMobLevel(o)
-                                        if mobLvl > 0 and mobLvl > myLevel then
-                                            return false
-                                        end
-                                    end
-                                    return true
-                                end
-                            end
-                            return false
-                        end)
+    -- ------------------------------------------------------------------
+    -- 2. ANÁLISIS DE MOBS Y BASE DE DATOS ZOMBIE
+    -- ------------------------------------------------------------------
+    AddLog("\n[🧟 SECCIÓN 2: BASE DE DATOS DE ZOMBIES (INDIVIDUAL)]", 0)
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local nameLower = string.lower(obj.Name)
+                if string.find(nameLower, "zombie") or string.find(nameLower, "boss") or string.find(nameLower, "mob") then
+                    AddLog("🧬 " .. obj.Name, 1)
+                    local hum = obj:FindFirstChild("Humanoid")
+                    if hum then
+                        AddLog("🩸 Salud Base: " .. tostring(hum.MaxHealth) .. " | WalkSpeed: " .. tostring(hum.WalkSpeed), 2)
                     end
-
-                    if MineActivo then
-                        -- Limpiar blacklist expirada
-                        local now = tick()
-                        for bOre, bTime in pairs(OreBlacklist) do
-                            if now - bTime > BLACKLIST_EXPIRE then OreBlacklist[bOre] = nil end
-                        end
-
-                        oreTarget, oDist = findNearest(function(o)
-                            if o:IsA("Model") and o ~= char and not OreBlacklist[o] then
-                                local n = string.lower(o.Name)
-                                local h = o:GetAttribute("Health")
-                                -- SOLO pebb y ore, SIN rocks
-                                if h and h > 0 and (string.find(n, "pebb") or string.find(n, "ore")) then
-                                    return true
-                                end
-                            end
-                            return false
-                        end)
-                    end
-                else
-                    if zTarget and zTarget.Parent then
-                        local zPart = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
-                        if zPart then zDist = (myRoot.Position - zPart.Position).Magnitude else zTarget = nil end
-                    else zTarget = nil end
-
-                    if oreTarget and oreTarget.Parent then
-                        local oPart = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
-                        if oPart then oDist = (myRoot.Position - oPart.Position).Magnitude else oreTarget = nil end
-                    else oreTarget = nil end
-                end
-
-                local targetObj = nil
-                local dist = 0
-                local targetDist = 7
-                local mode = "Combat"
-                local toolId = "weapon"
-
-                -- PRIORIDAD 1: COMBATE (Caza o Auto-Defensa si mineas)
-                if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
-                    targetObj = zTarget
-                    dist = zDist
-                    targetDist = ShieldActivo and 4 or 7
-                    mode = "Combat"
-                    toolId = "weapon"
-                -- PRIORIDAD 2: MINADO (pebb/ore, sin rocks)
-                elseif oreTarget and MineActivo then
-                    targetObj = oreTarget
-                    dist = oDist
-                    targetDist = 4
-                    mode = "Mining"
-                    toolId = "pickaxe"
-
-                    -- ANTI-STUCK: Detectar si el mineral no baja de vida
-                    local oreHP = oreTarget:GetAttribute("Health") or 0
-                    if MiningTracker.ore ~= oreTarget then
-                        -- Nuevo objetivo, resetear tracker
-                        MiningTracker.ore = oreTarget
-                        MiningTracker.startHP = oreHP
-                        MiningTracker.startTime = tick()
-                    else
-                        -- Mismo objetivo, checar si bajó de vida
-                        if tick() - MiningTracker.startTime > MINE_TIMEOUT then
-                            if oreHP >= MiningTracker.startHP then
-                                -- NO BAJÓ. Blacklistear y forzar rescan
-                                OreBlacklist[oreTarget] = tick()
-                                StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
-                                oreTarget = nil
-                                MiningTracker.ore = nil
-                                targetObj = nil
-                            else
-                                -- Sí bajó, resetear timer con el nuevo HP
-                                MiningTracker.startHP = oreHP
-                                MiningTracker.startTime = tick()
-                            end
-                        end
-                    end
-                end
-
-                if targetObj then
-                    local targetPart = targetObj:FindFirstChild("HumanoidRootPart") or targetObj:FindFirstChild("Torso") or targetObj:FindFirstChildWhichIsA("BasePart")
-                    if not targetPart then return end
+                    GetDetails(obj, 2)
                     
-                    dist = (myRoot.Position - targetPart.Position).Magnitude
-                    -- dist ya fue calculado arriba
-                    -- targetDist ya fue calculado arriba
-
-                    -- == 1. EQUIPO DE ARMA ==
-                    local isEquipped = false
-                    for _, t in pairs(char:GetChildren()) do
-                        if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
-                            isEquipped = true; break
-                        end
+                    local hasTouch = false
+                    for _, v in pairs(obj:GetDescendants()) do 
+                        if v:IsA("TouchTransmitter") then hasTouch = true end
+                        if v:IsA("ValueBase") then AddLog("💎 Atributo Interno: " .. v.Name .. " = " .. FormatValue(v.Value), 2) end
                     end
-
-                    if not isEquipped then
-                        local bpTools = LocalPlayer.Backpack:GetChildren()
-                        local equippedCorrectly = false
-                        for _, t in pairs(bpTools) do
-                            if string.find(string.lower(t.Name), toolId) then
-                                currentHum:EquipTool(t); equippedCorrectly = true; break
-                            end
-                        end
-                        if not equippedCorrectly and #bpTools > 0 then
-                            if toolId == "pickaxe" then
-                                currentHum:EquipTool(bpTools[1])
-                            elseif #bpTools >= 2 then
-                                currentHum:EquipTool(bpTools[2])
-                            else
-                                currentHum:EquipTool(bpTools[1])
-                            end
-                        end
-                    end
-
-                    -- == 2. MOVIMIENTO ==
-                    if dist > targetDist then
-                        if NoclipActivo then
-                            myRoot.Anchored = false
-                            local bv = myRoot:FindFirstChild("_NoclipBV")
-                            if not bv then
-                                bv = Instance.new("BodyVelocity")
-                                bv.Name = "_NoclipBV"
-                                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                                bv.Parent = myRoot
-                            end
-                            local speed = currentHum.WalkSpeed or 16
-                            local dir = (targetPart.Position - myRoot.Position).Unit
-                            bv.Velocity = dir * speed * 2.5
-                            myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(dir.X, 0, dir.Z))
-                        else
-                            local bv = myRoot:FindFirstChild("_NoclipBV")
-                            if bv then bv:Destroy() end
-                            myRoot.Anchored = false
-                            currentHum:MoveTo(targetPart.Position)
-                        end
-                    else
-                        local bv = myRoot:FindFirstChild("_NoclipBV")
-                        if bv then bv.Velocity = Vector3.zero end
-                        myRoot.Anchored = false
-                        currentHum:MoveTo(myRoot.Position)
-                    end
-
-                    -- == 3. GOLPE ==
-                    local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
-                    myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
-
-                    if dist <= targetDist + 1.5 then
-                        local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
-                        ToolRF:InvokeServer(serverArg)
-                        if mode == "Combat" then
-                            local mobLvl = GetMobLevel(targetObj)
-                            StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
-                        else
-                            StatusLabel.Text = "⛏️ Picando: " .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
-                        end
-                    else
-                        StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
-                    end
-                else
-                    StatusLabel.Text = "🗡️/⛏️ Buscando objetivo (Tu Lvl: " .. tostring(myLevel) .. ")..."
+                    if hasTouch then AddLog("⚔️ Usa TouchTransmitters (.Touched activo).", 2) else AddLog("⚔️ Usa Magnitude (Matemático Puro).", 2) end
+                    
+                    local attrs = obj:GetAttributes()
+                    for k, v in pairs(attrs) do AddLog("💎 Atributo Oculto (Propiedad): " .. tostring(k) .. " = " .. FormatValue(v), 2) end
                 end
-            end)
-            task.wait()
+            end
+        end)
+    end
+
+    -- ------------------------------------------------------------------
+    -- 3. ECONOMÍA, TIENDAS, EVENTOS HUMANOS Y DROP RATES
+    -- ------------------------------------------------------------------
+    AddLog("\n[💰 SECCIÓN 3: TIENDAS, ECONOMÍA Y DROPS]", 0)
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            local nameLower = string.lower(obj.Name)
+            if obj:IsA("Model") and (string.find(nameLower, "shop") or string.find(nameLower, "npc") or string.find(nameLower, "store") or string.find(nameLower, "vendor")) then
+                AddLog(" 🏪 Tienda/NPC Hallado: " .. obj.Name, 1)
+                for _, prompt in pairs(obj:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        AddLog("   - Interacción: '" .. tostring(prompt.ActionText) .. "' (Rango: " .. tostring(prompt.MaxActivationDistance) .. ")", 2)
+                    elseif prompt:IsA("ValueBase") then
+                        AddLog("   - Dato Comercial: " .. prompt.Name .. " = " .. FormatValue(prompt.Value), 2)
+                    end
+                end
+            elseif string.find(nameLower, "chest") or string.find(nameLower, "drop") or string.find(nameLower, "rate") then
+                 AddLog(" 💎 Loot/Cofre Detectado: " .. obj.Name, 1)
+                 for _, v in pairs(obj:GetDescendants()) do
+                     if v:IsA("NumberValue") or v:IsA("IntValue") then
+                         AddLog("   - Probabilidad/Valor: " .. v.Name .. " = " .. FormatValue(v.Value), 2)
+                     end
+                 end
+            end
+        end)
+    end
+
+    -- ------------------------------------------------------------------
+    -- 4. ÁRBOL FÍSICO (OBJETOS SUELTOS Y TELEKINESIS)
+    -- ------------------------------------------------------------------
+    AddLog("\n[🧱 SECCIÓN 4: ÁRBOL DE OBJETOS FÍSICOS (TELEKINESIS LUA)]", 0)
+    
+    local PhysicsTree = {}
+    local unanchoredCount = 0
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("BasePart") and not obj.Anchored and not obj.Parent:FindFirstChild("Humanoid") then
+                unanchoredCount = unanchoredCount + 1
+                local parentName = obj.Parent and obj.Parent.Name or "Workspace_Root"
+                local itemType = obj.Name .. " (" .. obj.ClassName .. ")"
+                
+                if not PhysicsTree[parentName] then PhysicsTree[parentName] = {} end
+                if not PhysicsTree[parentName][itemType] then 
+                    
+                    local interactable = false
+                    if obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChildOfClass("ClickDetector") then interactable = true end
+                    
+                    PhysicsTree[parentName][itemType] = {
+                        count = 0, 
+                        mass = math.floor(obj:GetMass()),
+                        collision = obj.CanCollide and "Sólido" or "Fantasma",
+                        status = obj.Anchored and "Estático" or "Dinámico (Movible)",
+                        grabbable = interactable and "Sí (Tiene Prompt/Click)" or "No (Físico Puro)"
+                    }
+                end
+                PhysicsTree[parentName][itemType].count = PhysicsTree[parentName][itemType].count + 1
+            end
+        end)
+    end
+    
+    for folder, items in pairs(PhysicsTree) do
+        AddLog("📁 Agrupación Física en Mapa: " .. folder, 1)
+        for name, data in pairs(items) do
+            AddLog("▶ Modelos Iguales: " .. tostring(data.count) .. "x " .. name, 2)
+            AddLog("  ├─ Estado Físico: " .. data.status .. " | Colisión: " .. data.collision, 2)
+            AddLog("  ├─ Masa Estimada: " .. tostring(data.mass) .. " uds. de motor.", 2)
+            AddLog("  └─ ¿Interactuable/Sujetable?: " .. data.grabbable, 2)
         end
-        DetenerFarm()
+    end
+    AddLog("\n-> TOTAL UNIDADES FÍSICAS MALEABLES HALLADAS: " .. tostring(unanchoredCount), 1)
+
+    -- ------------------------------------------------------------------
+    -- 5. ANÁLISIS DEL PERSONAJE CLIENTE Y LÓGICA LOCAL
+    -- ------------------------------------------------------------------
+    AddLog("\n[👤 SECCIÓN 5: TU AVATAR E INVENTARIO]", 0)
+    pcall(function()
+        if LocalPlayer.Character then
+            AddLog("🟢 Personaje Vivo: " .. LocalPlayer.Character.Name, 1)
+            GetDetails(LocalPlayer.Character, 2)
+        end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            AddLog("🎒 Inventario Local (Tools):", 1)
+            for _, tool in pairs(backpack:GetChildren()) do
+                AddLog("⚔️ " .. tool.Name, 2)
+                GetDetails(tool, 3)
+            end
+        end
+        local leader = LocalPlayer:FindFirstChild("leaderstats")
+        if leader then
+            AddLog("📊 Stats/Monedas (Leaderstats):", 1)
+            GetDetails(leader, 2)
+        end
+    end)
+
+    AddLog("\n========================================================", 0)
+    AddLog("✅ ESCANEO JERÁRQUICO COMPLETO GENERADO CON ÉXITO.", 0)
+    
+    -- SISTEMA DE PAGINACIÓN DE EMERGENICA (CHUNKER)
+    Pages = {}
+    local startIdx = 1
+    while startIdx <= #FullReport do
+        local endIdx = startIdx + CHARS_PER_PAGE - 1
+        table.insert(Pages, string.sub(FullReport, startIdx, endIdx))
+        startIdx = endIdx + 1
+    end
+    CurrentPage = 1
+end
+
+-- ==============================================================================
+-- 🖥️ GUI V2026: THE OMNI-SCANNER V23 (PAGINADOR TEXTBOX & FILE-WRITER)
+-- ==============================================================================
+local function ConstruirUI()
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "MasterBypass2026UI"
+    sg.ResetOnSpawn = false
+    
+    local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+    for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "MasterBypass2026UI" then v:Destroy() end end
+    sg.Parent = parentUI
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 640, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -320, 0.5, -250)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+    MainFrame.BorderSizePixel = 3
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 255)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Parent = sg
+
+    local TopBar = Instance.new("TextLabel")
+    TopBar.Size = UDim2.new(1, -90, 0, 30)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 50, 80)
+    TopBar.Text = "  [V23: FILE-EXPORTER Y PAGINACIÓN DE RESCATE]"
+    TopBar.TextColor3 = Color3.fromRGB(150, 255, 255)
+    TopBar.Font = Enum.Font.Code
+    TopBar.TextSize = 13
+    TopBar.TextXAlignment = Enum.TextXAlignment.Left
+    TopBar.Parent = MainFrame
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseBtn.Font = Enum.Font.Code
+    CloseBtn.TextSize = 14
+    CloseBtn.Parent = MainFrame
+
+    CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+    local InfoScroll = Instance.new("ScrollingFrame")
+    InfoScroll.Size = UDim2.new(1, -16, 0.65, 0)
+    InfoScroll.Position = UDim2.new(0, 8, 0, 35)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
+    InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    InfoScroll.ScrollBarThickness = 6
+    InfoScroll.Parent = MainFrame
+
+    -- AHORA ES UN TEXTBOX SELECCIONABLE CON EL MOUSE
+    local LogTextBox = Instance.new("TextBox")
+    LogTextBox.Size = UDim2.new(1, -10, 1, 0)
+    LogTextBox.Position = UDim2.new(0, 5, 0, 5)
+    LogTextBox.BackgroundTransparency = 1
+    LogTextBox.Text = "El Botón de 'Copiar' (setclipboard) está ROTO en tu Ejecutor Android/LDPlayer. No puede hablarse con Windows.\n\nSOLUCIÓN 1 (ARCHIVO LÓGICO): Pulsa Escanear. Luego dale a [GUARDAR ARCHIVO .TXT]. Esto creará un archivo llamado 'OmniScan_Reporte.txt' directamente en la carpeta 'workspace' o 'scripts' de tu Emulador.\n\nSOLUCIÓN 2 (COPIA MANUAL SEGURA): He cortado el monstruoso texto en Múltiples Páginas pequeñas. Al terminar el Escaneo, esta pantalla se volverá un Cuadro de Texto seleccionable. Simplemente haz CLIC aquí, presiona CTRL+A para sombrearlo de azul, y CTRL+C para copiarlo manualmente. Luego usa los Botones [Siguiente >] para copiar la Página 2, la Página 3, etc."
+    LogTextBox.TextColor3 = Color3.fromRGB(200, 255, 150)
+    LogTextBox.Font = Enum.Font.Code
+    LogTextBox.TextSize = 12
+    LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
+    LogTextBox.TextYAlignment = Enum.TextYAlignment.Top
+    LogTextBox.TextWrapped = true
+    LogTextBox.ClearTextOnFocus = false
+    LogTextBox.TextEditable = false
+    LogTextBox.MultiLine = true
+    LogTextBox.Parent = InfoScroll
+
+    local PageLabel = Instance.new("TextLabel")
+    PageLabel.Size = UDim2.new(1, 0, 0, 20)
+    PageLabel.Position = UDim2.new(0, 0, 0.72, 0)
+    PageLabel.BackgroundTransparency = 1
+    PageLabel.Text = "Página 0 / 0"
+    PageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PageLabel.Font = Enum.Font.Code
+    PageLabel.TextSize = 14
+    PageLabel.Parent = MainFrame
+
+    local btnPrev = Instance.new("TextButton")
+    btnPrev.Size = UDim2.new(0.2, 0, 0, 30)
+    btnPrev.Position = UDim2.new(0, 8, 0.76, 0)
+    btnPrev.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnPrev.Text = "< Anterior"
+    btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnPrev.Parent = MainFrame
+
+    local btnNext = Instance.new("TextButton")
+    btnNext.Size = UDim2.new(0.2, 0, 0, 30)
+    btnNext.Position = UDim2.new(0.8, -8, 0.76, 0)
+    btnNext.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    btnNext.Text = "Siguiente >"
+    btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnNext.Parent = MainFrame
+
+    local btnScan = Instance.new("TextButton")
+    btnScan.Size = UDim2.new(0.48, 0, 0, 50)
+    btnScan.Position = UDim2.new(0, 8, 0.85, 0)
+    btnScan.BackgroundColor3 = Color3.fromRGB(150, 80, 0)
+    btnScan.Text = "🌳 1. INICIAR OMNI-SCAN JERÁRQUICO"
+    btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnScan.Font = Enum.Font.Code
+    btnScan.TextSize = 12
+    btnScan.Parent = MainFrame
+
+    local btnSave = Instance.new("TextButton")
+    btnSave.Size = UDim2.new(0.48, 0, 0, 50)
+    btnSave.Position = UDim2.new(0.5, 4, 0.85, 0)
+    btnSave.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+    btnSave.Text = "💾 2. GUARDAR ARCHIVO .TXT"
+    btnSave.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnSave.Font = Enum.Font.Code
+    btnSave.TextSize = 12
+    btnSave.Parent = MainFrame
+
+    local function ActualizarPantalla()
+        if #Pages == 0 then return end
+        LogTextBox.Text = Pages[CurrentPage]
+        PageLabel.Text = "Página " .. tostring(CurrentPage) .. " / " .. tostring(#Pages)
+        InfoScroll.CanvasPosition = Vector2.new(0, 0)
+    end
+
+    btnPrev.MouseButton1Click:Connect(function()
+        if CurrentPage > 1 then CurrentPage = CurrentPage - 1; ActualizarPantalla() end
+    end)
+
+    btnNext.MouseButton1Click:Connect(function()
+        if CurrentPage < #Pages then CurrentPage = CurrentPage + 1; ActualizarPantalla() end
+    end)
+
+    btnScan.MouseButton1Click:Connect(function()
+        pcall(function()
+            EscaneoOmniJerarquico()
+            ActualizarPantalla()
+        end)
+    end)
+    
+    btnSave.MouseButton1Click:Connect(function()
+        pcall(function()
+            if writefile then
+                writefile("OmniScan_Report.txt", FullReport)
+                btnSave.Text = "✅ ¡GUARDADO EN CARPETA 'WORKSPACE'!"
+                btnSave.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            else
+                Warn("Tu exploit no soporta writefile(). Usa la copia manual de páginas arriba.")
+                btnSave.Text = "¡Falla de writefile!"
+            end
+            task.wait(3)
+            btnSave.Text = "💾 2. GUARDAR ARCHIVO .TXT"
+            btnSave.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        end)
     end)
 end
 
--- ==========================================
--- CONEXIÓN DEL BOTÓN DE FARM
--- ==========================================
-KiteBtn.MouseButton1Click:Connect(function()
-    KiteActivo = not KiteActivo
-    if KiteActivo then
-        KiteBtn.Text = "🗡️ MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
-        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
-        IniciarFarm()
-    else
-        KiteBtn.Text = "🗡️ FARM MOBS"
-        KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
-        DetenerFarm()
-    end
-end)
-
-MineBtn.MouseButton1Click:Connect(function()
-    MineActivo = not MineActivo
-    if MineActivo then
-        MineBtn.Text = "⛏️ MINAS: ON"
-        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
-        IniciarFarm()
-    else
-        MineBtn.Text = "⛏️ FARM MINAS"
-        MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
-        DetenerFarm()
-    end
-end)
+ConstruirUI()
