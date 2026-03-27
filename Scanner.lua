@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🔨 FORGE OMNI-ANALYZER V1.1 (MODO DIOS - SIN FILTROS)
+-- 🗡️ FORGE OMNI-ANALYZER V1.2 (SAFE-THREADING & ANTI-CRASH)
 -- Diseñado para captar el 100% de la actividad de red en la forja.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V1.1 - MODO DIOS"
+local SCRIPT_VERSION = "V1.2 - ANTI-CRASH"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,16 +31,16 @@ Panel.Size = UDim2.new(0, 480, 0, 360)
 Panel.Position = UDim2.new(1, -500, 0.5, -180) -- Lado derecho de la pantalla
 Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(255, 50, 50) -- Rojo vivo para V1.1
+Panel.BorderColor3 = Color3.fromRGB(50, 150, 255) -- Azul para V1.2
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-Title.Text = " 📡 FORGE ANALYZER V1.1 (MODO DIOS)"
-Title.TextColor3 = Color3.fromRGB(255, 200, 200)
+Title.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
+Title.Text = " 📡 FORGE ANALYZER V1.2 (SAFE-THREAD)"
+Title.TextColor3 = Color3.fromRGB(200, 230, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -140,7 +140,7 @@ ClearBtn.MouseButton1Click:Connect(function()
 end)
 
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V1.1) ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V1.2) ===\n\n"
     for i, _ in ipairs(MasterLogList) do
         result = result .. MasterLogList[i] .. "\n"
     end
@@ -174,42 +174,51 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     
     -- Si es el Executor, ignóralo. Solo atrapamos los RemoteFunctions o RemoteEvents
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        local fullName = self:GetFullName()
-        local nameLower = string.lower(fullName)
-        
-        -- Filtramos la basura constante
-        local skip = false
-        for _, word in pairs(BlacklistWords) do
-            if string.find(nameLower, word) then
-                skip = true
-                break
-            end
-        end
-        
-        if not skip then
-            -- Mapear variables a texto puro
-            local argDump = ""
-            for i, v in ipairs(args) do
-                local vType = typeof(v)
-                if vType == "table" then
-                    argDump = argDump .. "Arg["..i.."]=TABLE{ "
-                    for k2, v2 in pairs(v) do
-                        argDump = argDump .. "["..tostring(k2).."]="..tostring(v2)..", "
+        -- Usamos pcall y task.spawn para evitar a toda costa que un error UI rompa el hilo del juego (Los Clics congelados)
+        task.spawn(function()
+            pcall(function()
+                local fullName = self.GetFullName(self)
+                local nameLower = string.lower(fullName)
+                
+                -- Filtramos la basura constante
+                local skip = false
+                for _, word in pairs(BlacklistWords) do
+                    if string.find(nameLower, word) then
+                        skip = true
+                        break
                     end
-                    argDump = argDump .. "} "
-                else
-                    argDump = argDump .. "Arg["..i.."]="..tostring(v).." ("..vType.."), "
                 end
-            end
-            if argDump == "" then argDump = "<Sin Argumentos>" end
-            
-            -- Imprimir en el Log UI
-            AddUILog(string.upper(method) .. " -> " .. fullName .. "\n   " .. argDump, Color3.fromRGB(200, 200, 255))
-        end
+                
+                if not skip then
+                    -- Mapear variables a texto puro con pcall interior
+                    local argDump = ""
+                    for i, v in ipairs(args) do
+                        local vType = typeof(v)
+                        if vType == "table" then
+                            argDump = argDump .. "Arg["..i.."]="..vType.."{ "
+                            for k2, v2 in pairs(v) do
+                                pcall(function()
+                                    argDump = argDump .. "["..tostring(k2).."]="..tostring(v2)..", "
+                                end)
+                            end
+                            argDump = argDump .. "} "
+                        else
+                            pcall(function()
+                                argDump = argDump .. "Arg["..i.."]="..tostring(v).." ("..vType.."), "
+                            end)
+                        end
+                    end
+                    if argDump == "" then argDump = "<Sin Argumentos>" end
+                    
+                    -- Imprimir en el Log UI
+                    AddUILog(string.upper(method) .. " -> " .. fullName .. "\n   " .. argDump, Color3.fromRGB(200, 200, 255))
+                end
+            end)
+        end)
     end
     
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("📡 V1.1 (MODO DIOS) INICIADO.", Color3.fromRGB(150, 255, 150))
-AddUILog("► Ve al forjador, crea el arma completa, dale al botón COPIAR LOGS (abajo en azul).", Color3.fromRGB(200, 255, 200))
+AddUILog("📡 V1.2 (ANTI-CRASH) INICIADO.", Color3.fromRGB(150, 255, 150))
+AddUILog("► Problema de Clics Bloqueados solucionado. Haz la Forja completa sin cortes.", Color3.fromRGB(200, 255, 200))
