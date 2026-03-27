@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🔨 FORGE OMNI-ANALYZER V1.0 - (Forgotten Kingdom Island 2)
--- Analizador Forense de Red, Logs y Eventos del NPC de Forja.
+-- 🔨 FORGE OMNI-ANALYZER V1.1 (MODO DIOS - SIN FILTROS)
+-- Diseñado para captar el 100% de la actividad de red en la forja.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V1.0 - ANALIZADOR DE FORJA"
+local SCRIPT_VERSION = "V1.1 - MODO DIOS"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,16 +31,16 @@ Panel.Size = UDim2.new(0, 480, 0, 360)
 Panel.Position = UDim2.new(1, -500, 0.5, -180) -- Lado derecho de la pantalla
 Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(255, 150, 0) -- Naranja de forja
+Panel.BorderColor3 = Color3.fromRGB(255, 50, 50) -- Rojo vivo para V1.1
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(100, 50, 0)
-Title.Text = " 🔨 FORGE OMNI-ANALYZER V1.0"
-Title.TextColor3 = Color3.fromRGB(255, 200, 50)
+Title.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+Title.Text = " 📡 FORGE ANALYZER V1.1 (MODO DIOS)"
+Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -56,20 +56,9 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 
-local SubTitle = Instance.new("TextLabel")
-SubTitle.Size = UDim2.new(1, 0, 0, 20)
-SubTitle.Position = UDim2.new(0, 0, 0, 30)
-SubTitle.BackgroundColor3 = Color3.fromRGB(40, 20, 10)
-SubTitle.Text = "  Interceptando tráfico de red hacia el servidor..."
-SubTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-SubTitle.TextSize = 11
-SubTitle.Font = Enum.Font.Code
-SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-SubTitle.Parent = Panel
-
 local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -100)
-LogScroll.Position = UDim2.new(0, 4, 0, 55)
+LogScroll.Size = UDim2.new(1, -8, 1, -80)
+LogScroll.Position = UDim2.new(0, 4, 0, 35)
 LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 6
@@ -106,13 +95,20 @@ CopyBtn.Parent = ControlsFrame
 -- ==========================================
 -- SISTEMA DE LOGS INTERNO (Almacenamiento y UI)
 -- ==========================================
-local MasterLogList = {} -- Para poder copiar todo el texto fácilmente
+local MasterLogList = {}
 
-local function AddUILog(logType, message, color)
+local function AddUILog(message, color)
     local timestamp = os.date("%H:%M:%S")
-    local fullString = "[" .. timestamp .. "] [" .. logType .. "] " .. message
+    local fullString = "[" .. timestamp .. "] " .. message
     
     table.insert(MasterLogList, fullString)
+    
+    -- Protección contra saturación de UI (Dejamos los últimos 300)
+    if #MasterLogList > 300 then
+        table.remove(MasterLogList, 1)
+        local first = LogScroll:FindFirstChildWhichIsA("TextLabel")
+        if first then first:Destroy() end
+    end
     
     local txt = Instance.new("TextLabel")
     txt.Size = UDim2.new(1, -4, 0, 0)
@@ -125,7 +121,7 @@ local function AddUILog(logType, message, color)
     txt.TextWrapped = true
     txt.Parent = LogScroll
     
-    -- Ajustar la altura dependiendo del texto (Simple fix)
+    -- Ajustar la altura dependiendo del texto
     local textSize = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
     txt.Size = UDim2.new(1, -4, 0, textSize.Y + 4)
     
@@ -144,7 +140,7 @@ ClearBtn.MouseButton1Click:Connect(function()
 end)
 
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE DE FORJA FORGOTTEN KINGDOM ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V1.1) ===\n\n"
     for i, _ in ipairs(MasterLogList) do
         result = result .. MasterLogList[i] .. "\n"
     end
@@ -152,10 +148,10 @@ CopyBtn.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard(result)
         CopyBtn.Text = "✅ ¡COPIADO!"
-        task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
     else
         CopyBtn.Text = "❌ ERROR: No soportado"
     end
+    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
@@ -163,76 +159,57 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- NÚCLEO SNIFFER: INTERCEPCIÓN DE RED (HOOK)
+-- EL HOOK BESTIAL SIN FILTROS (MODO DIOS)
 -- ==========================================
+-- Palabras a bloquear para no saturar con el movimiento/mouse inútil del jugador
+local BlacklistWords = {
+    "move", "mouse", "camera", "ping", "update", "render", "step", "chat", 
+    "character", "root", "position", "look"
+}
+
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    if not checkcaller() then return OriginalNamecall(self, ...) end
-    
-    -- Interceptar llamadas cliente-servidor
-    if method == "FireServer" or method == "InvokeServer" then
-        local remoteName = self.Name
-        local remoteNameLower = string.lower(remoteName)
-        local parentName = self.Parent and string.lower(self.Parent.Name) or "nil"
-        local grandParentName = self.Parent and self.Parent.Parent and string.lower(self.Parent.Parent.Name) or "nil"
+    -- Si es el Executor, ignóralo. Solo atrapamos los RemoteFunctions o RemoteEvents
+    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
+        local fullName = self:GetFullName()
+        local nameLower = string.lower(fullName)
         
-        -- Filtro: Solo buscamos eventos de Forge, Minigame, Hammer o Knit Core.
-        if string.find(remoteNameLower, "forge") or string.find(parentName, "forge") or string.find(grandParentName, "forge")
-           or string.find(remoteNameLower, "minigame") or string.find(parentName, "minigame")
-           or string.find(remoteNameLower, "hammer") or string.find(parentName, "hammer")
-           or string.find(parentName, "knit") then
-           
-            -- Analizar tabla de argumentos a un texto plano:
+        -- Filtramos la basura constante
+        local skip = false
+        for _, word in pairs(BlacklistWords) do
+            if string.find(nameLower, word) then
+                skip = true
+                break
+            end
+        end
+        
+        if not skip then
+            -- Mapear variables a texto puro
             local argDump = ""
             for i, v in ipairs(args) do
                 local vType = typeof(v)
                 if vType == "table" then
-                    argDump = argDump .. "Arg["..i.."]="..vType.." {\n"
+                    argDump = argDump .. "Arg["..i.."]=TABLE{ "
                     for k2, v2 in pairs(v) do
-                        argDump = argDump .. "  ["..tostring(k2).."] = " .. tostring(v2) .. " (" .. typeof(v2) .. ")\n"
+                        argDump = argDump .. "["..tostring(k2).."]="..tostring(v2)..", "
                     end
-                    argDump = argDump .. "}, "
+                    argDump = argDump .. "} "
                 else
-                    argDump = argDump .. "Arg["..i.."]=" .. tostring(v) .. " (" .. vType .. "), "
+                    argDump = argDump .. "Arg["..i.."]="..tostring(v).." ("..vType.."), "
                 end
             end
+            if argDump == "" then argDump = "<Sin Argumentos>" end
             
-            -- Mandar al Log
-            AddUILog("NETWORK", string.upper(method) .. " -> " .. self:GetFullName() .. "\n" .. argDump, Color3.fromRGB(255, 200, 50))
-            print("[FORGE ANALYZER] -> " .. self:GetFullName() .. " | " .. argDump)
+            -- Imprimir en el Log UI
+            AddUILog(string.upper(method) .. " -> " .. fullName .. "\n   " .. argDump, Color3.fromRGB(200, 200, 255))
         end
     end
     
     return OriginalNamecall(self, ...)
 end)
 
--- ==========================================
--- NÚCLEO BÚSQUEDA DE NPCs Y ESTRUCTURAS DE FORJA
--- ==========================================
--- Buscar de forma pasiva cosas rotuladas como "Forge" en workspace para sacar coordenadas
-task.spawn(function()
-    AddUILog("INFO", "Escaneando Workspace en busca de NPCs/Objetos de Forja...", Color3.fromRGB(150, 150, 255))
-    local foundSomething = false
-    
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if typeof(obj.Name) == "string" and string.find(string.lower(obj.Name), "forge") then
-            -- Verificamos si es un NPC o un Modelo con Position
-            if obj:IsA("Model") then
-                local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
-                if root then
-                    AddUILog("SCAN", "Hallado: [" .. obj.Name .. "] en " .. tostring(root.Position), Color3.fromRGB(150, 255, 150))
-                    foundSomething = true
-                end
-            end
-        end
-    end
-    
-    if not foundSomething then
-        AddUILog("SCAN", "No se encontraron Modelos nombrados 'Forge' a simple vista. (El NPC puede tener un nombre genérico).", Color3.fromRGB(255, 100, 100))
-    end
-end)
-
-AddUILog("SISTEMA", "Forge Omni-Analyzer Inyectado Exitosamente. Cierra esta ventana con la 'X'.\nVe a crear un arma de forma normal. Toda la comunicación de los círculos, el martillo y la olla quedará grabada aquí.", Color3.fromRGB(100, 255, 100))
+AddUILog("📡 V1.1 (MODO DIOS) INICIADO.", Color3.fromRGB(150, 255, 150))
+AddUILog("► Ve al forjador, crea el arma completa, dale al botón COPIAR LOGS (abajo en azul).", Color3.fromRGB(200, 255, 200))
