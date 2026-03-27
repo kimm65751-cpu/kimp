@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMNI-FARM V2.5 (SCANNER + LOGS DEBUG)
+-- 🗡️ OMNI-FARM V2.7 (SKY PATHING / ANTI-TELEPORT)
 -- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
@@ -145,7 +145,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2.6"
+Title.Text = " 🗡️ OMNI-FARM V2.7"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -972,12 +972,31 @@ local function IniciarFarm()
                                 bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
                                 bv.Parent = myRoot
                             end
-                            local speed = currentHum.WalkSpeed or 16
-                            local dir = (targetPart.Position - myRoot.Position).Unit
-                            -- FIX ANTI-VOID: Clampar Y a 0 para NO ir bajo tierra
-                            local safeDir = Vector3.new(dir.X, math.max(dir.Y, 0), dir.Z).Unit
-                            bv.Velocity = safeDir * speed * 2.5
-                            -- NO usar CFrame directo, el anti-cheat lo detecta y te manda al spawn
+                            
+                            local speed = (currentHum.WalkSpeed or 16) * 2.5
+                            local targetPos = targetPart.Position
+                            local curPos = myRoot.Position
+                            
+                            -- SKY PATHING (Evitar chocar montañas y activar Anti-Wallhack)
+                            local hDist = (Vector2.new(curPos.X, curPos.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
+                            local safeY = targetPos.Y + 60 -- 60 studs por encima del objetivo para volar a salvo
+                            
+                            local flightWaypoint
+                            if hDist > 20 then
+                                if curPos.Y < safeY then
+                                    -- Fase 1: Subir (Ascensor) para evitar chocar de frente con el terreno
+                                    flightWaypoint = Vector3.new(curPos.X, safeY + 15, curPos.Z)
+                                else
+                                    -- Fase 2: Volar directo en el aire (seguro, sin suelo)
+                                    flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
+                                end
+                            else
+                                -- Fase 3: Ya estamos encima del objetivo, bajamos en picada a minar/atacar
+                                flightWaypoint = targetPos
+                            end
+                            
+                            local dir = (flightWaypoint - curPos).Unit
+                            bv.Velocity = dir * speed
                         else
                             local bv = myRoot:FindFirstChild("_NoclipBV")
                             if bv then bv:Destroy() end
