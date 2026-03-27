@@ -1,9 +1,8 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V1.2 (SAFE-THREADING & ANTI-CRASH)
--- Diseñado para captar el 100% de la actividad de red en la forja.
+-- 🗡️ FORGE OMNI-ANALYZER V1.3 (SISTEMA JERÁRQUICO Y AUTO-BYPASS EXPERIMENTAL)
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V1.2 - ANTI-CRASH"
+local SCRIPT_VERSION = "V1.3 - JERARQUÍA Y BYPASS"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,7 +10,7 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
--- ELIMINAR GUI ANTERIOR (Si existe)
+-- ELIMINAR GUI ANTERIOR
 -- ==========================================
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 for _, v in ipairs(parentUI:GetChildren()) do
@@ -27,20 +26,20 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 480, 0, 360)
-Panel.Position = UDim2.new(1, -500, 0.5, -180) -- Lado derecho de la pantalla
+Panel.Size = UDim2.new(0, 520, 0, 400)
+Panel.Position = UDim2.new(1, -540, 0.5, -200)
 Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(50, 150, 255) -- Azul para V1.2
+Panel.BorderColor3 = Color3.fromRGB(200, 50, 255) -- Morado V1.3
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
-Title.Text = " 📡 FORGE ANALYZER V1.2 (SAFE-THREAD)"
-Title.TextColor3 = Color3.fromRGB(200, 230, 255)
+Title.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
+Title.Text = " 📡 FORGE ANALYZER V1.3 (DEEP SCAN & BYPASS)"
+Title.TextColor3 = Color3.fromRGB(255, 200, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -56,9 +55,37 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 
+-- PANEL DE BOTONES SUPERIORES (BYPASS)
+local BypassFrame = Instance.new("Frame")
+BypassFrame.Size = UDim2.new(1, -8, 0, 45)
+BypassFrame.Position = UDim2.new(0, 4, 0, 35)
+BypassFrame.BackgroundColor3 = Color3.fromRGB(20, 30, 20)
+BypassFrame.Parent = Panel
+Instance.new("UICorner", BypassFrame).CornerRadius = UDim.new(0, 4)
+
+local BypassBtn = Instance.new("TextButton")
+BypassBtn.Size = UDim2.new(0.5, -6, 1, -8)
+BypassBtn.Position = UDim2.new(0, 4, 0, 4)
+BypassBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+BypassBtn.Text = "🚀 EJECUTAR 'FAST-FORGE' BYPASS"
+BypassBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BypassBtn.Font = Enum.Font.Code
+BypassBtn.TextSize = 12
+BypassBtn.Parent = BypassFrame
+
+local PerfectBtn = Instance.new("TextButton")
+PerfectBtn.Size = UDim2.new(0.5, -6, 1, -8)
+PerfectBtn.Position = UDim2.new(0.5, 2, 0, 4)
+PerfectBtn.BackgroundColor3 = Color3.fromRGB(180, 100, 0)
+PerfectBtn.Text = "⏱️ EJECUTAR 'PERFECT TIMING' BYPASS"
+PerfectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PerfectBtn.Font = Enum.Font.Code
+PerfectBtn.TextSize = 11
+PerfectBtn.Parent = BypassFrame
+
 local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -80)
-LogScroll.Position = UDim2.new(0, 4, 0, 35)
+LogScroll.Size = UDim2.new(1, -8, 1, -125)
+LogScroll.Position = UDim2.new(0, 4, 0, 85)
 LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 6
@@ -68,8 +95,8 @@ local ListLayout = Instance.new("UIListLayout", LogScroll)
 ListLayout.Padding = UDim.new(0, 2)
 
 local ControlsFrame = Instance.new("Frame")
-ControlsFrame.Size = UDim2.new(1, -8, 0, 40)
-ControlsFrame.Position = UDim2.new(0, 4, 1, -42)
+ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
+ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
 ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 ControlsFrame.Parent = Panel
 
@@ -93,18 +120,17 @@ CopyBtn.TextSize = 12
 CopyBtn.Parent = ControlsFrame
 
 -- ==========================================
--- SISTEMA DE LOGS INTERNO (Almacenamiento y UI)
+-- SISTEMA DE LOGS Y MEMORIA (JERARQUÍA COMPLETA)
 -- ==========================================
 local MasterLogList = {}
+local LastOresDetected = {} -- Ores cacheados al enviar "Melt" nativo
 
-local function AddUILog(message, color)
+local function AddUILog(logType, message, color)
     local timestamp = os.date("%H:%M:%S")
-    local fullString = "[" .. timestamp .. "] " .. message
+    local fullString = "[" .. timestamp .. "] [" .. logType .. "] " .. message
     
     table.insert(MasterLogList, fullString)
-    
-    -- Protección contra saturación de UI (Dejamos los últimos 300)
-    if #MasterLogList > 300 then
+    if #MasterLogList > 400 then
         table.remove(MasterLogList, 1)
         local first = LogScroll:FindFirstChildWhichIsA("TextLabel")
         if first then first:Destroy() end
@@ -121,104 +147,180 @@ local function AddUILog(message, color)
     txt.TextWrapped = true
     txt.Parent = LogScroll
     
-    -- Ajustar la altura dependiendo del texto
     local textSize = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
     txt.Size = UDim2.new(1, -4, 0, textSize.Y + 4)
-    
-    -- Auto-scroll al fondo
     LogScroll.CanvasPosition = Vector2.new(0, 999999)
 end
 
--- ==========================================
--- EVENTOS BOTONES INFERIORES
--- ==========================================
-ClearBtn.MouseButton1Click:Connect(function()
-    for _, v in pairs(LogScroll:GetChildren()) do
-        if v:IsA("TextLabel") then v:Destroy() end
+local function DumpTableDeep(tbl, depth)
+    depth = depth or 0
+    if depth > 5 then return "{...}" end -- Límite de seguridad
+    local str = "{"
+    local count = 0
+    for k, v in pairs(tbl) do
+        count = count + 1
+        local vt = typeof(v)
+        if vt == "table" then
+            str = str .. "["..tostring(k).."]=" .. DumpTableDeep(v, depth + 1) .. ", "
+        else
+            str = str .. "["..tostring(k).."]=" .. tostring(v) .. " ("..vt.."), "
+        end
     end
-    MasterLogList = {}
-end)
-
-CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V1.2) ===\n\n"
-    for i, _ in ipairs(MasterLogList) do
-        result = result .. MasterLogList[i] .. "\n"
-    end
-    
-    if setclipboard then
-        setclipboard(result)
-        CopyBtn.Text = "✅ ¡COPIADO!"
-    else
-        CopyBtn.Text = "❌ ERROR: No soportado"
-    end
-    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+    if count == 0 then return "{}" end
+    return str .. "}"
+end
 
 -- ==========================================
--- EL HOOK BESTIAL SIN FILTROS (MODO DIOS)
+-- EL HOOK BESTIAL V1.3 (FULL DEEP SCAN)
 -- ==========================================
--- Palabras a bloquear para no saturar con el movimiento/mouse inútil del jugador
-local BlacklistWords = {
-    "move", "mouse", "camera", "ping", "update", "render", "step", "chat", 
-    "character", "root", "position", "look"
-}
+local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "character", "root", "position", "look"}
 
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    -- Si es el Executor, ignóralo. Solo atrapamos los RemoteFunctions o RemoteEvents
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        -- Usamos pcall y task.spawn para evitar a toda costa que un error UI rompa el hilo del juego (Los Clics congelados)
         task.spawn(function()
             pcall(function()
                 local fullName = self.GetFullName(self)
                 local nameLower = string.lower(fullName)
-                
-                -- Filtramos la basura constante
                 local skip = false
                 for _, word in pairs(BlacklistWords) do
-                    if string.find(nameLower, word) then
-                        skip = true
-                        break
-                    end
+                    if string.find(nameLower, word) then skip = true; break end
                 end
                 
                 if not skip then
-                    -- Mapear variables a texto puro con pcall interior
                     local argDump = ""
                     for i, v in ipairs(args) do
                         local vType = typeof(v)
                         if vType == "table" then
-                            argDump = argDump .. "Arg["..i.."]="..vType.."{ "
-                            for k2, v2 in pairs(v) do
-                                pcall(function()
-                                    argDump = argDump .. "["..tostring(k2).."]="..tostring(v2)..", "
-                                end)
-                            end
-                            argDump = argDump .. "} "
+                            local success, res = pcall(function() return DumpTableDeep(v) end)
+                            argDump = argDump .. "Arg["..i.."]=" .. (success and res or "ERROR_TABLE") .. " "
                         else
-                            pcall(function()
-                                argDump = argDump .. "Arg["..i.."]="..tostring(v).." ("..vType.."), "
-                            end)
+                            pcall(function() argDump = argDump .. "Arg["..i.."]="..tostring(v).." ("..vType..") " end)
                         end
                     end
                     if argDump == "" then argDump = "<Sin Argumentos>" end
                     
-                    -- Imprimir en el Log UI
-                    AddUILog(string.upper(method) .. " -> " .. fullName .. "\n   " .. argDump, Color3.fromRGB(200, 200, 255))
+                    AddUILog("NET:"..string.upper(method), fullName .. "\n   >> " .. argDump, Color3.fromRGB(200, 200, 255))
+                    
+                    -- CACHEAR LOS ORES PARA EL BYPASS!
+                    if string.find(nameLower, "changesequence") and typeof(args[1]) == "string" and args[1] == "Melt" then
+                        if typeof(args[2]) == "table" and args[2].Ores then
+                            LastOresDetected = args[2].Ores
+                            AddUILog("MEMORIA", "¡Se atraparon y guardaron los ORES seleccionados en memoria! ("..tostring(args[2].Ores)..")", Color3.fromRGB(255, 255, 100))
+                        end
+                    end
                 end
             end)
         end)
     end
-    
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("📡 V1.2 (ANTI-CRASH) INICIADO.", Color3.fromRGB(150, 255, 150))
-AddUILog("► Problema de Clics Bloqueados solucionado. Haz la Forja completa sin cortes.", Color3.fromRGB(200, 255, 200))
+-- ==========================================
+-- BYPASS LOGIC (BOTONES EXPERIMENTALES)
+-- ==========================================
+local function GetForgeRemotes()
+    local RS = game:GetService("ReplicatedStorage")
+    local knit = RS:FindFirstChild("Shared") and RS.Shared:FindFirstChild("Packages") and RS.Shared.Packages:FindFirstChild("Knit")
+    if knit then
+        local forgeService = knit.Services:FindFirstChild("ForgeService")
+        if forgeService and forgeService:FindFirstChild("RF") then
+            return forgeService.RF:FindFirstChild("ChangeSequence"), forgeService.RF:FindFirstChild("StartForge")
+        end
+    end
+    return nil, nil
+end
+
+BypassBtn.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        AddUILog("TEST_1", "Iniciando Test FAST-FORGE...", Color3.fromRGB(200, 255, 50))
+        local ChangeSequence, StartForge = GetForgeRemotes()
+        
+        if not ChangeSequence then
+            AddUILog("ERROR", "No se encontró ForgeService.RF.ChangeSequence. El script no puede continuar.", Color3.fromRGB(255, 50, 50))
+            return
+        end
+        
+        if next(LastOresDetected) == nil then
+            AddUILog("ADVERTENCIA", "No has metido ores a la olla recientemente o no los guardamos. Da click a 'GO' normal una vez para que atrape qué metales pusiste y luego cancela la forja.", Color3.fromRGB(255, 100, 50))
+            return
+        end
+
+        pcall(function()
+            AddUILog("TEST_1", "Enviando Solicitud Melt [FastForge = true]...", Color3.fromRGB(150, 255, 255))
+            local meltArgs = {
+                FastForge = true,
+                ItemType = "Weapon",
+                Ores = LastOresDetected
+            }
+            local success, res = pcall(function() return ChangeSequence:InvokeServer("Melt", meltArgs) end)
+            if success then
+                AddUILog("SERVER_REPLY", "Melt Reply: " .. tostring(res), Color3.fromRGB(100, 255, 100))
+                -- Finalizar inmediatamente
+                ChangeSequence:InvokeServer("Showcase", {})
+                AddUILog("TEST_1", "¡Secuencia Showcase enviada! Revisa si te dio el arma.", Color3.fromRGB(50, 255, 100))
+            else
+                AddUILog("ERROR", "El servidor rompió la conexión (¿Patcheado?): " .. tostring(res), Color3.fromRGB(255, 50, 50))
+            end
+        end)
+    end)
+end)
+
+PerfectBtn.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        AddUILog("TEST_2", "Iniciando Test TIMING PERFECTO Matemático...", Color3.fromRGB(255, 150, 50))
+        local ChangeSequence = GetForgeRemotes()
+        if not ChangeSequence then return end
+        
+        if next(LastOresDetected) == nil then
+            AddUILog("ADVERTENCIA", "Faltan los ORES. Haz una forja manual primero para robar los datos de tus metales.", Color3.fromRGB(255, 100, 50))
+            return
+        end
+
+        pcall(function()
+            -- Enviamos la falsa secuencia con tiempos irreales por detrás de cámaras
+            AddUILog("TEST_2", "Paso 1: Melt asíncrono...", Color3.fromRGB(200, 200, 200))
+            local t0 = os.clock()
+            ChangeSequence:InvokeServer("Melt", {FastForge = false, ItemType = "Weapon", Ores = LastOresDetected})
+            
+            task.wait(1)
+            AddUILog("TEST_2", "Paso 2: Pour (Falso Tiempo 5s)...", Color3.fromRGB(200, 200, 200))
+            ChangeSequence:InvokeServer("Pour", {ClientTime = t0 + 5.0}) -- Engañando reloj
+            
+            task.wait(1)
+            AddUILog("TEST_2", "Paso 3: Hammer (Falso Tiempo +12.5s)...", Color3.fromRGB(200, 200, 200))
+            ChangeSequence:InvokeServer("Hammer", {ClientTime = t0 + 17.5})
+            
+            task.wait(1)
+            AddUILog("TEST_2", "Paso 4: Water (Falso Tiempo +6s)...", Color3.fromRGB(200, 200, 200))
+            ChangeSequence:InvokeServer("Water", {ClientTime = t0 + 23.5})
+            
+            task.wait(1)
+            AddUILog("TEST_2", "Paso 5: Showcase...", Color3.fromRGB(200, 200, 200))
+            ChangeSequence:InvokeServer("Showcase", {})
+            
+            AddUILog("TEST_2", "Secuencia enviada usando Time-Spoof. ¿Qué recibiste?", Color3.fromRGB(150, 255, 100))
+        end)
+    end)
+end)
+
+-- ==========================================
+ClearBtn.MouseButton1Click:Connect(function()
+    for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
+    MasterLogList = {}
+end)
+
+CopyBtn.MouseButton1Click:Connect(function()
+    local result = "=== REPORTE TOTAL SIN FILTROS (V1.3) ===\n\n"
+    for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
+    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
+    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
+end)
+
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+AddUILog("SISTEMA", "📡 V1.3 INICIADA: Escaneo jerárquico profundo de tablas activo y Botones de Bypass listos.", Color3.fromRGB(150, 255, 150))
+AddUILog("INSTRUCCIÓN", "1. Acércate, mete los metales en la Olla y dale al botón VERDE GO del juego normal.\n2. Inmediatamente el log dirá '¡Se atraparon y guardaron los ORES!'.\n3. Salte del minijuego (cancélalo o ciérralo) y presiona los botones de Bypass de mi ventana para probar saltárnoslo del todo.", Color3.fromRGB(255, 200, 100))
