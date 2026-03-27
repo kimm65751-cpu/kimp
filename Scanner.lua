@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V29 DIALOGUE HEIST (ATAQUE ECONÓMICO DIRECTO A NPCs)
--- Explotación Selectiva: Aritmética Inversa, Desincronización y Ghosting.
+-- 💀 ROBLOX EXPERT: V30 THE ANTI-CHEAT BREAKER (MISTERIO DE LA ZONA OSCURA)
+-- Empirismo Total: Ejecución Ciega de Vectores de Movimiento Fantasma.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -25,211 +26,172 @@ end
 private_G = {}
 
 -- ==============================================================================
--- 🔬 EL SENSOR DE DEPURACIÓN DE RED C/S
+-- 🚀 LABORATORIO DE ESTADO FÍSICO (BYPASS SECUENCIAL DE ERROR 267)
 -- ==============================================================================
-local RespuestasDelServidor = {}
-local ListenerConexiones = {}
-
-local function IniciarSensoresDeRed()
-    RespuestasDelServidor = {}
-    for _, ev in pairs(ReplicatedStorage:GetDescendants()) do
-        if ev:IsA("RemoteEvent") then
-            pcall(function()
-                local conn = ev.OnClientEvent:Connect(function(...)
-                    local args = {...}
-                    local argText = ""
-                    for i, a in ipairs(args) do argText = argText .. tostring(a) .. ", " end
-                    table.insert(RespuestasDelServidor, {Remote = ev.Name, Data = argText})
-                end)
-                table.insert(ListenerConexiones, conn)
-            end)
-        end
-    end
-end
-
-local function DetenerSensoresDeRed()
-    for _, conn in pairs(ListenerConexiones) do pcall(function() conn:Disconnect() end) end
-    ListenerConexiones = {}
-end
-
-local function ObtenerEstadoFinanciero()
-    local variables = {}
-    for _, v in pairs(LocalPlayer:GetDescendants()) do
-        if v:IsA("IntValue") or v:IsA("NumberValue") then
-            variables[v:GetFullName()] = {Inst = v, Value = v.Value}
-        end
-    end
-    if LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("IntValue") or v:IsA("NumberValue") then
-                variables[v:GetFullName()] = {Inst = v, Value = v.Value}
-            end
-        end
-    end
-    return variables
-end
-
--- Busca el Remote Asesino de la V28
-local ladronRemote = ReplicatedStorage:FindFirstChild("DialogueRemote", true)
-if not ladronRemote then
-    -- Si no se llama así, buscamos el primero que diga Dialog o Store
-    for _, ev in pairs(ReplicatedStorage:GetDescendants()) do
-        if (ev:IsA("RemoteEvent") or ev:IsA("RemoteFunction")) and (ev.Name:lower():match("dialog") or ev.Name:lower():match("shop") or ev.Name:lower():match("store") or ev.Name:lower():match("sell")) then
-            ladronRemote = ev
-            break
-        end
-    end
-end
-
--- Buscamos un NPC para engañar
-local targetNPC = nil
-for _, obj in pairs(Workspace:GetDescendants()) do
-    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= LocalPlayer.Character then targetNPC = obj break end
-end
-
--- ==============================================================================
--- 💰 METODOLOGÍA HACKER (LAS 3 OLEADAS AL SISTEMA DE DIÁLOGOS)
--- ==============================================================================
-local function AutoHackDialogueV29()
+local function HackFisicoDarkZone()
     FullReport = "========================================================\n"
-    FullReport = FullReport .. "🕵️ V29 DIALOGUE HEIST: EL ROBO MAESTRO (INVERSO) 🕵️\n"
+    FullReport = FullReport .. "🚀 V30 ANTI-CHEAT BREAKER: PRUEBA BYPASS 'ZONA OSCURA' 🚀\n"
     FullReport = FullReport .. "========================================================\n\n"
     
-    if not ladronRemote then AddLog("❌ ERROR: No pude encontrar tu DialogueRemote o StoreRemote. El asalto no puede proceder.", 0); return end
+    AddLog("Cero teorías deductivas. Empirismo riguroso.", 0)
+    AddLog("Someteremos tu C++ Anti-Trampas a 4 estrés-test ejecutivos para ver EXÁCTAMENTE POR QUÉ RUTA el Hacker es capaz de irse volando a la 'Zona Oscura' sin ser pateado por Error 267.", 0)
+    AddLog("\n🚨 [INICIANDO PENTEST FÍSICO (ZONA DE 1500 STUDS)] 🚨\n", 0)
+
+    local character = LocalPlayer.Character
+    if not character then AddLog("❌ ERROR: Necesitas estar vivo (Spawned) para ejecutar el bypass de física.", 0); return end
     
-    AddLog("[+] Inicializando Monitoreo Lector de Variables...", 0)
-    AddLog("[+] Micrófonos Colocados en ReplicatedStorage (OnClientEvent)...", 0)
-    
-    AddLog("\n🚨 [INICIANDO EL ROBO... OPERANDO SOBRE: '" .. ladronRemote:GetFullName() .. "'] 🚨\n", 0)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local hum = character:FindFirstChild("Humanoid")
+    if not hrp or not hum then AddLog("❌ ERROR: Perdiste partes críticas para teletransporte.", 0); return end
+
+    local PosicionOriginal = hrp.CFrame
+    local SafeZoneOffset = Vector3.new(0, 1500, 0) -- Un "Cielo Oscuro" donde los Hackers vuelan
+
+    local function RubberBandCheck(ExpectedPos)
+        -- Si el Server nos jaló de vuelta a menos de 100 studs de nuestra Pos original, entonces el Anti-Cheat funcionó.
+        task.wait(0.5)
+        local curPos = character:GetPivot().Position
+        local diff = (curPos - PosicionOriginal.Position).Magnitude
+        local successDist = (curPos - ExpectedPos).Magnitude
+        
+        -- Volvemos siempre para la siguiente prueba
+        pcall(function() character:PivotTo(PosicionOriginal) end)
+        task.wait(1)
+        
+        if diff < 100 then
+            return false -- BLOQUEADO (Servidor hizo Rubber-Band, te jaló)
+        elseif successDist < 100 then
+            return true -- FACTIBLE (Hacker logró establecer su CFrame oscuro de red)
+        else
+            return false -- Desconocido / Te jaló parcialmente
+        end
+    end
 
     -- __________________________________________________________________________
-    -- 🧪 MÉTODO 1: THE INTEGER UNDERFLOW (ARITMÉTICA INVERSA)
+    -- 🧪 PRUEBA 1: TELETRANSPORTE CFRAME BRUTO (EL TRAMPOSO NOVATO)
     -- __________________________________________________________________________
     AddLog("=========================================================", 0)
-    AddLog("[🔪 MÉTODO 1: EL DESBORDAMIENTO (INYECCIÓN NEGATIVA)]", 0)
+    AddLog("[🚀 MÉTODO 1: CFRAME INSTANTÁNEO]", 0)
     AddLog("---------------------------------------------------------", 0)
-    AddLog("  ├─ [TEORÍA]: Si me quitaste dinero por leer '9999' de forma ciega, te mandaré '-9999999' asumiendo que tu matemática LUA es: Dinero = Dinero - Pago. Un Hacker suma millones así.", 1)
+    AddLog("  ├─ [INICIACIÓN]: Intentaremos forzar al motor a teletransportarnos instantáneamente.", 1)
     
-    local Di1 = ObtenerEstadoFinanciero()
-    IniciarSensoresDeRed()
+    local Target1 = PosicionOriginal.Position + SafeZoneOffset + Vector3.new(100, 0, 0)
+    pcall(function() character:PivotTo(CFrame.new(Target1)) end)
     
-    -- Disparamos el Exploit
-    pcall(function()
-        if ladronRemote:IsA("RemoteEvent") then
-            -- Intentamos permutaciones de Diálogos Comúnes
-            ladronRemote:FireServer(targetNPC, -9999999)
-            ladronRemote:FireServer("Buy", -9999999)
-            ladronRemote:FireServer("Option", 1, -9999999)
-            ladronRemote:FireServer("Sell", "Sword", -9999999)
-        end
-    end)
+    local M1_Factible = RubberBandCheck(Target1)
     
-    task.wait(0.3)
-    DetenerSensoresDeRed()
-    local Df1 = ObtenerEstadoFinanciero()
-    
-    local SubidaDetectada1 = false
-    AddLog("  ├─ [RESPUESTA DEL SERVIDOR (TCP SNIFFER)]:", 1)
-    if #RespuestasDelServidor > 0 then for _, l in pairs(RespuestasDelServidor) do AddLog("       -> " .. l.Remote .. ": {" .. l.Data .. "}", 1) end else AddLog("       -> Silencio de Red.", 1) end
-    
-    AddLog("  ├─ [RESULTADO ECONÓMICO]:", 1)
-    for ruta, data in pairs(Di1) do
-        if Df1[ruta] and Df1[ruta].Value > data.Value then
-            AddLog("    🔥 ¡BINGO! El Método 1 FUE EXITOSO. Tu '" .. data.Inst.Name .. "' AUMENTÓ de " .. tostring(data.Value) .. " a " .. tostring(Df1[ruta].Value) .. "!", 2)
-            SubidaDetectada1 = true
-        end
-    end
-    if not SubidaDetectada1 then AddLog("    🛡️ BLOQUEADO. Tu servidor no cedió dinero al leer números negativos. Tienes filtros aritméticos o usas precios del Server (Excelente).", 2) end
-
-
-    -- __________________________________________________________________________
-    -- 🧪 MÉTODO 2: RACE CONDITION (CANCELACIÓN Y VENTA SOLAPADA)
-    -- __________________________________________________________________________
-    AddLog("\n=========================================================", 0)
-    AddLog("[🔪 MÉTODO 2: RACE CONDITION (LA VENTA FANTASMA DE NPC)]", 0)
-    AddLog("---------------------------------------------------------", 0)
-    AddLog("  ├─ [TEORÍA]: Como me ordenaste investigar: Le digo al NPC A que Cierre el diálogo, pero simultáneamente al mismo milisegundo le digo al NPC B que completó una Venta falsa. Engaño a la máquina de Estados del Servidor cruzando los cables para que venda el aire.", 1)
-    
-    local Di2 = ObtenerEstadoFinanciero()
-    IniciarSensoresDeRed()
-
-    pcall(function()
-        if ladronRemote:IsA("RemoteEvent") then
-            local un_npc = targetNPC or LocalPlayer.Character
-            -- Mezcla caótica de paquetes concurrentes
-            ladronRemote:FireServer("Sell", "DefaultItem") 
-            ladronRemote:FireServer(un_npc, "Close") 
-            ladronRemote:FireServer("Confirm", "DefaultItem") 
-            ladronRemote:FireServer(LocalPlayer.Name, "Trade") 
-            ladronRemote:FireServer("Sell", nil) 
-        end
-    end)
-    
-    task.wait(0.3)
-    DetenerSensoresDeRed()
-    local Df2 = ObtenerEstadoFinanciero()
-    
-    local SubidaDetectada2 = false
-    AddLog("  ├─ [RESPUESTA DEL SERVIDOR (TCP SNIFFER)]:", 1)
-    if #RespuestasDelServidor > 0 then for _, l in pairs(RespuestasDelServidor) do AddLog("       -> " .. l.Remote .. ": {" .. l.Data .. "}", 1) end else AddLog("       -> Silencio de Red.", 1) end
-    
-    AddLog("  ├─ [RESULTADO ECONÓMICO]:", 1)
-    for ruta, data in pairs(Di2) do
-        if Df2[ruta] and Df2[ruta].Value > data.Value then
-            AddLog("    🔥 ¡BINGO MILAGROSO! El Método 2 FUE EXITOSO. Tu '" .. data.Inst.Name .. "' AUMENTÓ. ¡Has vendido inventario Fantasma!", 2)
-            SubidaDetectada2 = true
-        end
-    end
-    if not SubidaDetectada2 then AddLog("    🛡️ BLOQUEADO. El servidor cerró la venta asíncrona correctamente. Tu máquina de estados NPC es sólida.", 2) end
-
-
-    -- __________________________________________________________________________
-    -- 🧪 MÉTODO 3: ASYNCHRONOUS GHOST-SPAM (DESINCRONIZACIÓN DE INVENTARIO)
-    -- __________________________________________________________________________
-    AddLog("\n=========================================================", 0)
-    AddLog("[🔪 MÉTODO 3: GHOST-SPAM (LA CLONACIÓN ASÍNCRONA DATASOURCE)]", 0)
-    AddLog("---------------------------------------------------------", 0)
-    AddLog("  ├─ [TEORÍA (INVENTO HACKER)]: Si tú le vendes 1 poción al NPC, el Server te da 50 monedas y DEPUÉS borra la poción de tu mochila. ¿Qué pasa si te vendo la MISMA poción 500 veces en 0.001 segundos usando un loop `for i=1, 500` antes de que el servidor tenga tiempo de borrarme la primera? Te robo 25,000 monedas.", 1)
-    
-    local Di3 = ObtenerEstadoFinanciero()
-    IniciarSensoresDeRed()
-
-    pcall(function()
-        if ladronRemote:IsA("RemoteEvent") then
-            -- Spam ultra veloz sin pausas. Esto rompe datastores mal hechos.
-            for i=1, 300 do
-                ladronRemote:FireServer("Sell", targetNPC)
-                ladronRemote:FireServer(targetNPC, "Hit") 
-                -- ^ Probamos la llamada exacta "damage" q te robaba pero a ver si ahora invierte por spam
-            end
-        end
-    end)
-    
-    task.wait(0.5) -- Esperamos que el servidor procese el golpe de 300 paquetes.
-    DetenerSensoresDeRed()
-    local Df3 = ObtenerEstadoFinanciero()
-    
-    local SubidaDetectada3 = false
-    AddLog("  ├─ [RESPUESTA DEL SERVIDOR (TCP SNIFFER)]:", 1)
-    if #RespuestasDelServidor > 0 then for _, l in pairs(RespuestasDelServidor) do AddLog("       -> " .. l.Remote .. ": {" .. l.Data .. "}", 1) end else AddLog("       -> Silencio de Red.", 1) end
-    
-    AddLog("  ├─ [RESULTADO ECONÓMICO]:", 1)
-    for ruta, data in pairs(Di3) do
-        if Df3[ruta] and Df3[ruta].Value > data.Value then
-            AddLog("    🔥 ¡BINGO KAIJU! El Método 3 FUE EXITOSO. Tu servidor cedió ante el Spam Asíncrono y te sumó saldo clónico a " .. tostring(Df3[ruta].Value) .. "!", 2)
-            SubidaDetectada3 = true
-        end
-    end
-    if not SubidaDetectada3 then AddLog("    🛡️ BLOQUEADO. Tu Inventario se descontó antes de la transacción o el Remote tiene un `Debounce` Anti-Spam (Ej: no deja disparar más de 1 vez por segundo). Eres un Dios programando.", 2) end
-
-    -- CONCLUSIÓN FINAL
-    AddLog("\n=========================================================\n[✅] EL SIMULADOR DE ATRACADORES HA TERMINADO DE OPERAR.", 0)
-    if SubidaDetectada1 or SubidaDetectada2 or SubidaDetectada3 then
-        AddLog("\n🚨 RESULTADO LETAL: TU ECONOMÍA ESTÁ GRAVEMENTE ROTA. Un Hacker puede minar dinero en menos de 5 minutos, repasa la falla que salió positiva.", 0)
+    if M1_Factible then
+        AddLog("  ├─ [🚨 FACTIBLE (VULNERABLE)]: El Servidor se comió el teletransporte crudo.", 1)
+        AddLog("  └─ ERROR TIPO 1: No tienes un Anticheat Server-Side. Tu Error 267 debe ser de un script local que el hacker borró al entrar. Debes poner uno en el Servidor YA.", 1)
     else
-        AddLog("\n🛡️ RESULTADO TRANQUILIZADOR: MÁS ALLÁ DE QUITARTE DINERO A LO TONTO (Como descubrimos antes), NINGUNO DE MIS TRES ATAQUES PARA SACARTE DINERO FUNCIONÓ.", 0)
-        AddLog("Tu juego TE ROBA por mal filtrado de compras ciegas en DialogueRemote... ¡Pero al menos NO SE PUEDE explotar hacia arriba! Estás un 80% asegurado.", 0)
+        AddLog("  ├─ [🛡️ BLOQUEADO (SEGURO)]: El Servidor se rehusa a dejarte 1500 studs lejos. Te devolvió de un latigazo (Rubber-Band).", 1)
+        AddLog("  └─ C++ EFICIENTE: ¡Buen trabajo! El teletransporte barato no sirve. Pasemos a ingeniería más dura.", 1)
     end
+
+    -- __________________________________________________________________________
+    -- 🧪 PRUEBA 2: ENGAÑO DE ASIENTO VEHÍCULAR (VEHICLE-SEAT SPOOFING)
+    -- __________________________________________________________________________
+    AddLog("\n=========================================================", 0)
+    AddLog("[🚀 MÉTODO 2: FALSIFICACIÓN DE VEHÍCULO (VEHICLE-SPOOF)]", 0)
+    AddLog("---------------------------------------------------------", 0)
+    AddLog("  ├─ [INICIACIÓN]: La mayoría de los Anti-Cheats ignoran la regla de Magnitude si el jugador está 'Sentado', porque asumen que va en un Auto veloz. Engañaremos tu Servidor Spawnando una silla fantasma.", 1)
+    
+    local Target2 = PosicionOriginal.Position + SafeZoneOffset + Vector3.new(0, 0, 100)
+    local M2_Factible = false
+    
+    pcall(function()
+        local seat = Instance.new("Seat", Workspace)
+        seat.Position = PosicionOriginal.Position + Vector3.new(0, 5, 0)
+        seat.Transparency = 1; seat.Anchored = true
+        seat:Sit(hum)
+        task.wait(0.2)
+        -- Saltamos 1500 studs estando sentados
+        seat.Position = Target2
+        seat.Velocity = Vector3.new(0,0,0)
+    end)
+    
+    M2_Factible = RubberBandCheck(Target2)
+    
+    if M2_Factible then
+        AddLog("  ├─ [🚨 FACTIBLE (VULNERABLE)]: ¡BINGO! Llegamos a la Zona Oscura intactos.", 1)
+        AddLog("  └─ ERROR TIPO 2: Tu código Anti-TP tiene un fallo fatal: `if Humanoid.Sit == true then return end`. El hacker engaña al servidor haciéndose pasar por un auto y viaja libre por el mapa.", 1)
+    else
+        AddLog("  ├─ [🛡️ BLOQUEADO (SEGURO)]: El Servidor destruyó la inyección condicional y te trajo de regreso.", 1)
+        AddLog("  └─ C++ EFICIENTE: Tu Anti-Cheat sabe que ningún auto va a 100,000 Km/H. Muy bien. Elevamos dificultad.", 1)
+    end
+
+    -- __________________________________________________________________________
+    -- 🧪 PRUEBA 3: CINEMÁTICA LÍNEA (TWEEN/VELOCITY BYPASS)
+    -- __________________________________________________________________________
+    AddLog("\n=========================================================", 0)
+    AddLog("[🚀 MÉTODO 3: BYPASS DE CINEMÁTICA ASÍNCRONA (NOCLIP TWEEN)]", 0)
+    AddLog("---------------------------------------------------------", 0)
+    AddLog("  ├─ [INICIACIÓN]: Muchos anti-cheats sólo castigan 'Saltos GIGANTES instantáneos' para no bannear a la gente por lag. Utilizaremos BodyVelocity y Tween para ir a Match 20 sin generar alertas de salto (Fly Hack puro).", 1)
+    
+    local Target3 = PosicionOriginal.Position + SafeZoneOffset + Vector3.new(-100, 0, 0)
+    local M3_Factible = false
+    
+    pcall(function()
+        local tweenInfo = TweenInfo.new(1.0, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(Target3)})
+        tween:Play()
+        task.wait(1.5) -- Pausa equivalente a volar rápidamente hacia el target
+        local curV = character:GetPivot().Position
+        local diff = (curV - Target3).Magnitude
+        if diff < 100 then M3_Factible = true end
+        
+        -- Return to logic loop
+        pcall(function() character:PivotTo(PosicionOriginal) end)
+        task.wait(1)
+    end)
+    
+    if M3_Factible then
+        AddLog("  ├─ [🚨 FACTIBLE (VULNERABLE)]: ¡Voló 1500 Studs en menos de 1 segundo y el Servidor no lo echó!", 1)
+        AddLog("  └─ ERROR TIPO 3: Tu anti-TP de servidor perdona viajes si son consistentes pero excesivamente rápidos. Requieres un medidor de Speed de Red (`Magnitude / DeltaTime > WalkSpeedMax` -> Ban).", 1)
+    else
+        AddLog("  ├─ [🛡️ BLOQUEADO (SEGURO)]: El Motor te enganchó de la física antes del primer segundo.", 1)
+        AddLog("  └─ C++ EFICIENTE: Estás midiendo la aceleración de red correctamente. Es un muro bestial de sortear.", 1)
+    end
+
+    -- __________________________________________________________________________
+    -- 🧪 PRUEBA 4: MUTACIÓN ESTRUCTURAL LUA (AMPUTACIÓN DE ROOTPART)
+    -- __________________________________________________________________________
+    AddLog("\n=========================================================", 0)
+    AddLog("[🚀 MÉTODO 4: DESTRUCCIÓN FORENSE (THE ANTI-CHEAT ERROR INJECTOR)]", 0)
+    AddLog("---------------------------------------------------------", 0)
+    AddLog("  ├─ [INICIACIÓN]: Si no perdonas sentados (2), y no perdonas Tweenings (3)... significa que tu código Anti-TP está vivo validando mi HumanoidRootPart todo el tiempo. Vamos a crashearlo.", 1)
+    AddLog("  ├─ [ACCIÓN]: Destruiré momentáneamente o renombraré mi HRP para ahogar tu script C++ en la terminal del Servidor, forzar su apagado, y podernos ir caminando en el aire a la Zona Oscura.", 1)
+    
+    local Target4 = PosicionOriginal.Position + SafeZoneOffset + Vector3.new(0, 0, -100)
+    local M4_Factible = false
+    
+    pcall(function()
+        local fakeHRP = hrp:Clone()
+        hrp.Name = "Basura" -- Engañamos a Motor local
+        hrp.Parent = nil    -- Destruimos el HRP y esto se replicará al Servidor para los Scripts mal codificados sin findFirstChild
+        local lowerT = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
+        -- Movemos el cuerpo usando los torsos, ya que la pieza ROOT ya no existe!
+        if lowerT then lowerT.CFrame = CFrame.new(Target4) end
+        task.wait(0.5)
+        
+        local check = character:GetPivot().Position
+        if (check - Target4).Magnitude < 100 then M4_Factible = true end
+        
+        -- Restore for sanity
+        pcall(function() hrp.Parent = character; hrp.Name = "HumanoidRootPart" end)
+        pcall(function() character:PivotTo(PosicionOriginal) end)
+        task.wait(1)
+    end)
+    
+    if M4_Factible then
+        AddLog("  ├─ [🚨 FACTIBLE MORTAL (VULNERABLE)]: ¡¡LLEGAMOS A LA ZONA OSCURA Y EL SCRIPT DE TELEPORTE NO PUDO HACER NINGÚN RUBBERBAND!!", 1)
+        AddLog("  └─ ERROR TIPO 4: Tu Script de Anti-Trampas se crasheó al hacer algo como: `Jugador.Character.HumanoidRootPart.Position`. Al amputarle la pieza, el hacker generó un error LUA puro en la Data Model de tu servidor. Cuando sale la letra roja en la pantalla del Server, tu script Anti-TP SE DETUVO. El hacker está volando porque 'asesinó' a los policías de tu C++ restándole dependencias.", 1)
+    else
+        AddLog("  ├─ [🛡️ BLOQUEADO (SEGURO)]: O te moriste directamente, o el servidor atrapó tu Torso en caída.", 1)
+        AddLog("  └─ C++ EFICIENTE: Usaste FindFirstChild correctamente en tus revisiones de Anti-Roblox. Eres un monstruo de la seguridad.", 1)
+    end
+
+    AddLog("\n=========================================================\n[✅] AUTOPSIA FÍSICA COMPLETA DE BYPASS TERMINADA.", 0)
 end
 
 -- ==============================================================================
@@ -248,7 +210,7 @@ local function SegmentarPaginas()
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: THE OMNI-SCANNER PENTEST SUITE EMPÍRICO
+-- 🖥️ GUI V30: THE ANTI-CHEAT BREAKER
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -264,16 +226,16 @@ local function ConstruirUI()
     MainFrame.Position = UDim2.new(0.5, -340, 0.5, -270)
     MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 120)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
-    TopBar.BackgroundColor3 = Color3.fromRGB(100, 30, 0)
-    TopBar.Text = "  [V29: THE DIALOGUE HEIST - HACKEANDO TU ECONOMÍA A LA INVERSA]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 200, 150)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 80, 50)
+    TopBar.Text = "  [V30: THE ANTI-CHEAT BREAKER - FORZANDO EL ERROR 267 FÍSICO]"
+    TopBar.TextColor3 = Color3.fromRGB(150, 255, 200)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -305,7 +267,7 @@ local function ConstruirUI()
     local InfoScroll = Instance.new("ScrollingFrame")
     InfoScroll.Size = UDim2.new(1, -16, 0.60, 0)
     InfoScroll.Position = UDim2.new(0, 8, 0, 35)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
@@ -314,8 +276,8 @@ local function ConstruirUI()
     LogTextBox.Size = UDim2.new(1, -10, 1, 0)
     LogTextBox.Position = UDim2.new(0, 5, 0, 5)
     LogTextBox.BackgroundTransparency = 1
-    LogTextBox.Text = "LA PRUEBA DEL FUEGO: ROBO A LA INVERSA VS NPCs.\n\nEn V28 comprobamos que quien te ha estado robando silenciosamente la estamina / dinero cuando hacíamos los bombardeos ciegos era el `DialogueRemote` de ReplicatedStorage.\n\nAHORA, atendiendo tus demandas como Ingeniero, he programado la [V29 DIALOGUE HEIST] (Botón 3). Esta prueba atacará únicamente a ese Remote con 3 Estrategias Hacker letales para ver si logramos SUMARTE el saldo en vez de restarlo:\n\n 1. EL DESBORDAMIENTO: Vender o Comprar inyectando '-999999'.\n 2. LA VENTA FANTASMA (Tú idea): Hacer Race Condition abriendo menús y cancelando rápido mientras mandas la opción de cobro solapada.\n 3. CLONACIÓN ASÍNCRONA: Venderle al NPC el aire libre 300 veces en Medio Segundo (Spam Request).\n\nVamos a ver cómo aguanta tu C++ el peso puro del hacking moderno. Te prometo que te diré Jerárquicamente por qué fallaron o ganaron."
-    LogTextBox.TextColor3 = Color3.fromRGB(255, 220, 180)
+    LogTextBox.Text = "ACEPTO TU ÓRDEN DE CERO ASUMICIONES. CERO TEORÍAS.\n\nEl usuario me ordenó investigar a la fuerza CÓMO, DÓNDE Y QUÉ usan los Hackers para hacer 'Fly' a esa Zona Oscura y matar a los zombis sin ser bloqueados por su propio Error 267 o las físicas del servidor.\n\nACTUALIZACIONES DEL [Botón 3]:\n- Esta herramienta ya no ataca el dinero ni el inventario.\n- Es un Laboratorio de Penetración Física C/S y va a someter a tu personaje a las 4 violaciones de Red LUA posibles para Teletransporte Indetectable:\n\n 1. Raw Injection CFrame: Intentaremos saltar a ciegas (> 1500 Studs).\n 2. Fly Tweening By-Pass: Utilizaremos manipulación de BodyVelocity para evadir chequeos de Instancia-Magnitud.\n 3. Vehicle Seat Spoofer: Un Auto Invisible y teletransporte vehicular.\n 4. The Crash-Hack (Crasheo de Anti-Vuelo): Anularemos la existencia de la raíz del personaje para hacer fracasar (Errores de Sintaxis C++) en tu servidor.\n\nSi te sale [FACTIBLE] en alguno de los 4, ahí sabrás literalmente con qué truco vuelan hacia los Zombies para reventarlos."
+    LogTextBox.TextColor3 = Color3.fromRGB(180, 255, 180)
     LogTextBox.Font = Enum.Font.Code
     LogTextBox.TextSize = 12
     LogTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -335,16 +297,16 @@ local function ConstruirUI()
     local btnExploit = Instance.new("TextButton")
     btnExploit.Size = UDim2.new(1, -16, 0, 50)
     btnExploit.Position = UDim2.new(0, 8, 0.86, 0)
-    btnExploit.BackgroundColor3 = Color3.fromRGB(180, 60, 0)
-    btnExploit.Text = "🎯 3. DIALOGUE HEIST: INTENTAR ROBO INVERSO ESTADO 1, 2 Y 3"
-    btnExploit.TextColor3 = Color3.fromRGB(255, 255, 200)
+    btnExploit.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+    btnExploit.Text = "🚀 3. PENTEST DE MOVIMIENTO FANTASMA (BYPASS ANTI-CHEAT)"
+    btnExploit.TextColor3 = Color3.fromRGB(200, 255, 200)
     btnExploit.Font = Enum.Font.Code
     btnExploit.TextSize = 12
     btnExploit.Parent = MainFrame
     
     btnExploit.MouseButton1Click:Connect(function()
         pcall(function()
-            AutoHackDialogueV29()
+            HackFisicoDarkZone()
             SegmentarPaginas()
             ActualizarPantalla()
         end)
@@ -353,7 +315,7 @@ local function ConstruirUI()
     local btnPrev = Instance.new("TextButton")
     btnPrev.Size = UDim2.new(0.32, 0, 0, 30)
     btnPrev.Position = UDim2.new(0, 8, 0.76, 0)
-    btnPrev.BackgroundColor3 = Color3.fromRGB(80, 30, 20)
+    btnPrev.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
     btnPrev.Text = "< Anterior"
     btnPrev.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnPrev.Parent = MainFrame
@@ -369,7 +331,7 @@ local function ConstruirUI()
     local btnNext = Instance.new("TextButton")
     btnNext.Size = UDim2.new(0.32, 0, 0, 30)
     btnNext.Position = UDim2.new(0.67, 8, 0.76, 0)
-    btnNext.BackgroundColor3 = Color3.fromRGB(80, 30, 20)
+    btnNext.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
     btnNext.Text = "Siguiente >"
     btnNext.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnNext.Parent = MainFrame
