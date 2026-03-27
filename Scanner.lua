@@ -1,42 +1,34 @@
 -- ==============================================================================
--- 🛡️ REVERSE ENG: NETWORK ANALYZER V2.0 (GUI V2)
--- Analiza la desincronización entre lo "Visual" y el "Servidor".
--- Intercepta las llamadas de Red (RemoteEvents) para ver por qué falla la puerta.
+-- 🛡️ REVERSE ENG: DEEP ANALYZER V3.0 (ROOT CAUSE)
+-- Creado para escanear a fondo el Botón Amarillo y descubrir CÓMO y DÓNDE 
+-- se comunican las verificaciones de tu base.
 -- ==============================================================================
-
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Paso 1: Limpieza
-for _, obj in pairs(CoreGui:GetChildren()) do
-    if obj.Name == "AutoDefender_V2" or obj.Name == "NetworkAnalyzerV2" then
-        obj:Destroy()
-    end
-end
-if LocalPlayer:FindFirstChild("PlayerGui") then
-    for _, obj in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        if obj.Name == "AutoDefender_V2" or obj.Name == "NetworkAnalyzerV2" then
-            obj:Destroy()
+-- Paso 1: Limpieza Total
+pcall(function()
+    for _, obj in pairs(CoreGui:GetChildren()) do
+        if obj.Name == "NetworkAnalyzerV2" or obj.Name == "DeepAnalyzerV3" or obj.Name == "AutoDefender_V2" then 
+            obj:Destroy() 
         end
     end
-end
+end)
 
--- Paso 2: Creación de GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NetworkAnalyzerV2"
+ScreenGui.Name = "DeepAnalyzerV3"
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 420, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -210, 0.5, -160)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Size = UDim2.new(0, 440, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -220, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -44,49 +36,46 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(0, 150, 255)
-Title.Text = "🛡️ NETWORK ANALYZER V2.0"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.Text = "🛡️ DEEP ANALYZER V3.0 (AUTORIDAD)"
 Title.Font = Enum.Font.Code
-Title.TextSize = 18
+Title.TextSize = 15
 Title.Parent = MainFrame
 
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -20, 0, 30)
-Status.Position = UDim2.new(0, 10, 0, 35)
-Status.BackgroundTransparency = 1
-Status.TextColor3 = Color3.fromRGB(200, 200, 200)
-Status.Text = "Estado: Localizando Botón..."
-Status.TextXAlignment = Enum.TextXAlignment.Left
-Status.Font = Enum.Font.Code
-Status.TextSize = 13
-Status.Parent = MainFrame
+-- Botones interactivos
+local BtnScan = Instance.new("TextButton")
+BtnScan.Size = UDim2.new(0.45, 0, 0, 35)
+BtnScan.Position = UDim2.new(0.025, 0, 0, 40)
+BtnScan.BackgroundColor3 = Color3.fromRGB(60, 60, 150)
+BtnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnScan.Text = "1. ESCANEAR BOTÓN"
+BtnScan.Font = Enum.Font.Code
+BtnScan.TextSize = 14
+BtnScan.Parent = MainFrame
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0.9, 0, 0, 35)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0, 70)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Text = "INICIAR AUTO-BLOCK + SNIFFER (OFF)"
-ToggleBtn.Font = Enum.Font.Code
-ToggleBtn.TextSize = 14
-ToggleBtn.BorderSizePixel = 1
-ToggleBtn.Parent = MainFrame
+local BtnAttack = Instance.new("TextButton")
+BtnAttack.Size = UDim2.new(0.45, 0, 0, 35)
+BtnAttack.Position = UDim2.new(0.525, 0, 0, 40)
+BtnAttack.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+BtnAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnAttack.Text = "2. FORZAR BARRERA"
+BtnAttack.Font = Enum.Font.Code
+BtnAttack.TextSize = 14
+BtnAttack.Parent = MainFrame
 
--- Zona de Log de Red (Para capturar los RemoteEvents)
 local LogHolder = Instance.new("ScrollingFrame")
-LogHolder.Size = UDim2.new(0.9, 0, 0, 180)
-LogHolder.Position = UDim2.new(0.05, 0, 0, 120)
-LogHolder.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+LogHolder.Size = UDim2.new(0.95, 0, 0, 280)
+LogHolder.Position = UDim2.new(0.025, 0, 0, 85)
+LogHolder.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 LogHolder.BorderSizePixel = 1
-LogHolder.BorderColor3 = Color3.fromRGB(0, 150, 255)
+LogHolder.BorderColor3 = Color3.fromRGB(0, 255, 150)
 LogHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogHolder.ScrollBarThickness = 6
 LogHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogHolder.BottomImage = ""
 LogHolder.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout", LogHolder)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 2)
 
 local logCount = 0
 local function AddLog(msg, color)
@@ -100,84 +89,41 @@ local function AddLog(msg, color)
     lbl.TextWrapped = true
     lbl.AutomaticSize = Enum.AutomaticSize.Y
     lbl.Font = Enum.Font.Code
-    lbl.TextSize = 11
-    lbl.LayoutOrder = -logCount -- Los nuevos aparecen arriba
+    lbl.TextSize = 12
+    lbl.LayoutOrder = logCount
     lbl.Parent = LogHolder
+    LogHolder.CanvasPosition = Vector2.new(0, 99999) -- Auto Scroll
 end
 
-AddLog("✅ GUI V2.0 Cargada exitosamente sin caché.", Color3.fromRGB(100, 255, 100))
-AddLog("📡 Sniffer listo. Parate en el botón para ver qué pasa en el servidor.", Color3.fromRGB(0, 200, 255))
+AddLog("✅ V3.0 Lista. Párate junto al botón amarillo.", Color3.fromRGB(100, 255, 100))
 
--- ========================================================================
--- NETWORK HOOK DETECTOR (SNIFFER)
--- intercepta los datos Cliente -> Servidor (Para descubrir el fallo visual)
--- ========================================================================
+-- Metamétodo pasivo para escuchar remotos por si acaso
 task.spawn(function()
     pcall(function()
         local mt = getrawmetatable(game)
         if setreadonly and mt then
-            local oldNamecall = mt.__namecall
             setreadonly(mt, false)
-
+            local oldNC = mt.__namecall
             mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-                
-                if method == "FireServer" or method == "InvokeServer" then
-                    if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
-                        local name = tostring(self.Name)
-                        -- Filtramos eventos irrelevantes de mouse/update para no causar lag
-                        if not name:match("Mouse") and not name:match("Move") and not name:match("Update") then
-                            local argStr = ""
-                            for _, v in pairs(args) do
-                                argStr = argStr .. tostring(v) .. ", "
-                            end
-                            if argStr == "" then argStr = "Vacío" end
-                            
-                            -- Enviar el evento capturado a la GUI
-                            task.spawn(AddLog, "📤 ENVIADO: ["..name.."] Args: {"..argStr.."}", Color3.fromRGB(255, 170, 0))
-                        end
+                local m = getnamecallmethod()
+                if m == "FireServer" or m == "InvokeServer" then
+                    local n = tostring(self.Name)
+                    if not n:match("Mouse") and not n:match("Move") then
+                        task.spawn(AddLog, "📡 REMOTO INTENTÓ ENVIAR: " .. n, Color3.fromRGB(255, 100, 0))
                     end
                 end
-                
-                return oldNamecall(self, ...)
+                return oldNC(self, ...)
             end)
             setreadonly(mt, true)
-            AddLog("🔌 Interceptor de Red Anclado.", Color3.fromRGB(200, 100, 255))
-        else
-            AddLog("⚠️ Tu ejecutor prohíbe el análisis de red (getrawmetatable bloqueado).", Color3.fromRGB(255, 50, 50))
         end
     end)
 end)
 
--- ========================================================================
--- DETECTAR RESPUESTAS DEL SERVIDOR
--- Loggea todo lo que el Servidor nos responde de PlotService
--- ========================================================================
-task.spawn(function()
-    local netFolder = ReplicatedStorage:FindFirstChild("Packages")
-    if netFolder then
-        for _, desc in pairs(netFolder:GetDescendants()) do
-            if desc:IsA("RemoteEvent") and (desc.Name:match("Plot") or desc.Name:match("Toggle") or desc.Name:match("Lock")) then
-                desc.OnClientEvent:Connect(function(...)
-                    local args = {...}
-                    local argStr = ""
-                    for _, v in pairs(args) do argStr = argStr .. tostring(v) .. ", " end
-                    AddLog("📥 SERVIDOR RESPONDE ["..desc.Name.."]: " .. argStr, Color3.fromRGB(50, 255, 150))
-                end)
-            end
-        end
-    end
-end)
-
--- ========================================================================
--- LOGICA DEL AUTO BOTON
--- ========================================================================
-local AutoActive = false
+-- Variables globales
 local TargetButton = nil
 local TargetTimerText = nil
 
-local function FindInteractiveCircle()
+local function FindYellowButton()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
     local myPos = char.HumanoidRootPart.Position
@@ -187,24 +133,20 @@ local function FindInteractiveCircle()
     local closestDist = 150
 
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("TextLabel") then
-            local txt = tostring(obj.Text)
-            -- Identifica timers como "56s", "0s", "Lock Base"
-            if string.match(txt, "%d+s") then
-                local guiObj = obj:FindFirstAncestorWhichIsA("BillboardGui") or obj:FindFirstAncestorWhichIsA("SurfaceGui")
-                local part = nil
-                if guiObj then
-                    if guiObj.Adornee then part = guiObj.Adornee end
-                    if not part and guiObj.Parent and guiObj.Parent:IsA("BasePart") then part = guiObj.Parent end
-                end
+        if obj:IsA("TextLabel") and (string.match(obj.Text, "%d+s") or obj.Text:match("LockBase") or obj.Text:match("Locked")) then
+            local guiObj = obj:FindFirstAncestorWhichIsA("BillboardGui") or obj:FindFirstAncestorWhichIsA("SurfaceGui")
+            local part = nil
+            if guiObj then
+                if guiObj.Adornee then part = guiObj.Adornee end
+                if not part and guiObj.Parent and guiObj.Parent:IsA("BasePart") then part = guiObj.Parent end
+            end
 
-                if part then
-                    local dist = (part.Position - myPos).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        TargetButton = part
-                        TargetTimerText = obj
-                    end
+            if part then
+                local dist = (part.Position - myPos).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    TargetButton = part
+                    TargetTimerText = obj
                 end
             end
         end
@@ -212,56 +154,74 @@ local function FindInteractiveCircle()
     return TargetButton ~= nil
 end
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    AutoActive = not AutoActive
-    if AutoActive then
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-        ToggleBtn.Text = "AUTO-BLOCK + SNIFFER (ON)"
-        AddLog("⚡ Modo prueba iniciado. Esperando a que el timer decaiga...", Color3.fromRGB(200, 200, 200))
+-- ================== MÉTODO 1: DESCUBRIMIENTO ==================
+BtnScan.MouseButton1Click:Connect(function()
+    AddLog("\n🔍 [ESTADO] Escaneando interior del botón...", Color3.fromRGB(200, 200, 255))
+    if FindYellowButton() then
+        AddLog("🎯 Botón Identificado: " .. TargetButton.Name, Color3.fromRGB(0, 255, 150))
+        AddLog("📄 Ruta Absoluta: " .. TargetButton:GetFullName(), Color3.fromRGB(150, 150, 255))
+        
+        -- Diseccionar la comunicación
+        local hasClick = TargetButton:FindFirstChildWhichIsA("ClickDetector")
+        local hasPrompt = TargetButton:FindFirstChildWhichIsA("ProximityPrompt")
+        local scripts = 0
+        local localScripts = 0
+        local remotes = 0
+        
+        for _, desc in pairs(TargetButton:GetChildren()) do
+            if desc:IsA("Script") then scripts = scripts + 1 end
+            if desc:IsA("LocalScript") then localScripts = localScripts + 1 end
+            if desc:IsA("RemoteEvent") then remotes = remotes + 1 end
+        end
+        
+        if hasClick then AddLog("⚙️ Hallazgo: Tiene 'ClickDetector' (Se activa con el Mouse)", Color3.fromRGB(255, 255, 100)) end
+        if hasPrompt then AddLog("⚙️ Hallazgo: Tiene 'ProximityPrompt' (Se activa con E)", Color3.fromRGB(255, 255, 100)) end
+        if not hasClick and not hasPrompt then
+            AddLog("⚙️ Hallazgo: Se basa 100% en colisión física (El .Touched te engaña).", Color3.fromRGB(255, 100, 100))
+        end
+        
+        AddLog("🧾 Arquitectura: ["..scripts.."] ServerScripts | ["..localScripts.."] LocalScripts | ["..remotes.."] Remotes.", Color3.fromRGB(255, 150, 255))
+        
+        -- Veredicto preliminar
+        if localScripts > 0 and scripts == 0 then
+            AddLog("❌ ERROR CRÍTICO: ¡Vulnerabilidad de cliente detectada! Tienes un LocalScript adentro manejando visuales sin validarse en el server.", Color3.fromRGB(255, 50, 50))
+        end
     else
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        ToggleBtn.Text = "INICIAR AUTO-BLOCK + SNIFFER (OFF)"
-        TargetButton = nil
+        AddLog("⚠️ No se encontró el círculo de la base cerca.", Color3.fromRGB(255, 50, 50))
     end
 end)
 
-task.spawn(function()
-    while task.wait(0.25) do
-        if not AutoActive then continue end
-        
-        if not TargetButton then
-            Status.Text = "📡 Buscando botón..."
-            FindInteractiveCircle()
-            continue
-        end
-        
-        if TargetButton and TargetTimerText then
-            local currentText = tostring(TargetTimerText.Text)
-            Status.Text = "🛑 Apuntando a: " .. TargetButton.Name .. " | Timer: " .. currentText
-            
-            local numStr = string.match(currentText, "%d+")
-            local num = tonumber(numStr)
-            
-            if num and num <= 1 then
-                Status.Text = "⚡ [ACCION] Pisando botón..."
-                AddLog("¡Timer 0s verificado! Simulando pisada. Observando la red...", Color3.fromRGB(255, 255, 50))
-                
-                pcall(function()
-                    if firetouchinterest and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                        firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 0)
-                        task.wait(0.05)
-                        firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 1)
-                    else
-                        if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                            LocalPlayer.Character.PrimaryPart.CFrame = TargetButton.CFrame
-                        end
-                    end
-                end)
-                TargetButton = nil
-                task.wait(3) -- Cooldown largo para leer el log tranquilo
-            end
-        else
-            TargetButton = nil
-        end
+-- ================== MÉTODO 2: FORZAR COMUNICACIÓN ==================
+BtnAttack.MouseButton1Click:Connect(function()
+    if not TargetButton then
+        AddLog("❌ Primero debes presionar [1. ESCANEAR BOTÓN]", Color3.fromRGB(255, 50, 50))
+        return
     end
+    
+    AddLog("\n⚔️ INYECTANDO TODOS LOS MÉTODOS SIMULTÁNEAMENTE...", Color3.fromRGB(255, 60, 60))
+    pcall(function()
+        -- Inyección 1: Click Detector nativo
+        local cd = TargetButton:FindFirstChildWhichIsA("ClickDetector")
+        if cd and fireclickdetector then
+            AddLog("▶️ ByPass 1: Ejecutando ClickDetector", Color3.fromRGB(100, 255, 100))
+            fireclickdetector(cd)
+        end
+        
+        -- Inyección 2: Prompts nativos invisibles
+        local pr = TargetButton:FindFirstChildWhichIsA("ProximityPrompt")
+        if pr and fireproximityprompt then
+            AddLog("▶️ ByPass 2: Ejecutando ProximityPrompt", Color3.fromRGB(100, 255, 100))
+            fireproximityprompt(pr)
+        end
+        
+        -- Inyección 3: Touched Físico C++ API
+        if firetouchinterest and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
+            AddLog("▶️ ByPass 3: Ejecutando OnTouch (C++)", Color3.fromRGB(100, 255, 100))
+            firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 0)
+            task.wait(0.05)
+            firetouchinterest(LocalPlayer.Character.PrimaryPart, TargetButton, 1)
+        end
+        
+        AddLog("✅ Pruebas enviadas al motor. Si la puerta no se cerró, es un error de los ServerScripts.", Color3.fromRGB(0, 255, 255))
+    end)
 end)
