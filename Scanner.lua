@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V4.0 (GHOST PROXY MITM)
--- Mantiene tu UI normal y limpia matemáticamente los datos mientras AFKeas.
+-- 🗡️ FORGE OMNI-ANALYZER V5.0 (THE OMEGA BOT)
+-- Calculador Anticheat Activo, Control Tolerante y Evasor de Cámaras Locales.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V4.0 - GHOST PROXY MITM"
+local SCRIPT_VERSION = "V5.0 - OMEGA BOT"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
-Title.Text = " 📡 FORGE V4.0 (GHOST PROXY MITM)"
-Title.TextColor3 = Color3.fromRGB(200, 255, 200)
+Title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Title.Text = " 📡 FORGE V5.0 (THE OMEGA BOT)"
+Title.TextColor3 = Color3.fromRGB(255, 255, 0)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -109,7 +109,9 @@ CopyBtn.Parent = ControlsFrame
 -- ==========================================
 local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
-local PerfectSimData = {StartTime = nil, RequiredTime = nil}
+local BotJugandoAhoraMismo = false
+local BotBypassingNetwork = false
+local DEFAULT_SAFE_DELAY = 8.50
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -251,26 +253,104 @@ end
 local function DestroyNativeMinigames()
     for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
         if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
-            -- Para no borrar nuestra interfaz:
             if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
                 v:Destroy()
-                AddUILog("HACK", "UI de Minijuego Local ELIMINADA. Liberando el mouse.", Color3.fromRGB(255,100,50))
             end
         end
     end
 end
 
+-- ==========================================
+-- TÚNEL SEGURO DE RED CON ANTI-FREEZE (V5)
+-- ==========================================
+local function SafeInvoke(forgeRF, phase, clientTimeParam)
+    local s, r = false, nil
+    local completed = false
+    BotBypassingNetwork = true
+    task.spawn(function()
+        local _s, _r = pcall(function() 
+            if clientTimeParam then
+                return forgeRF:InvokeServer(phase, {ClientTime = clientTimeParam})
+            else
+                return forgeRF:InvokeServer(phase, {})
+            end
+        end)
+        s, r = _s, _r
+        completed = true
+    end)
+    
+    local timeout = os.clock()
+    while not completed and (os.clock() - timeout) < 5 do task.wait() end
+    BotBypassingNetwork = false
+    
+    if not completed then AddUILog("TIMEOUT", "El servidor silenció (" .. phase .. ")", Color3.fromRGB(255,100,0)) end
+    return s, r
+end
+
 local function WaitUntilServerTime(targetTime)
-    local maxWait = targetTime + 4.0 -- Safety cap
+    local maxWait = targetTime + 2.0 -- Safety cap
     while workspace:GetServerTimeNow() < targetTime do
         if workspace:GetServerTimeNow() > maxWait then break end
         task.wait()
     end
     return workspace:GetServerTimeNow()
-end
+}
 
 -- ==========================================
--- EL HOOK BESTIAL V4.0 (Cliente -> Servidor)
+-- EXECUCIÓN AUTOMATIZADA CON CAÍDAS HEURÍSTICAS OMEGA
+-- ==========================================
+local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
+    task.spawn(function()
+        BotJugandoAhoraMismo = true
+        DestroyNativeMinigames()
+        
+        AddUILog("BOT_V5", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(150,255,150))
+        local req1, start1 = ExtractTimes(primerMeltReturn)
+        req1 = req1 or DEFAULT_SAFE_DELAY
+        start1 = start1 or workspace:GetServerTimeNow()
+        
+        local trueTime1 = WaitUntilServerTime(start1 + req1)
+        AddUILog("BOT_V5", string.format("Fase 1 completada. Duración: %.2fs", req1), Color3.fromRGB(200,200,200))
+        
+        AddUILog("BOT_V5", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(150,255,150))
+        local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
+        
+        local req2, start2 = ExtractTimes(r2)
+        req2 = req2 or DEFAULT_SAFE_DELAY
+        start2 = start2 or workspace:GetServerTimeNow()
+        local trueTime2 = WaitUntilServerTime(start2 + req2)
+        AddUILog("BOT_V5", string.format("Fase 2 completada. Duración: %.2fs", req2), Color3.fromRGB(200,200,200))
+        
+        AddUILog("BOT_V5", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(150,255,150))
+        local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
+        
+        local req3, start3 = ExtractTimes(r3)
+        req3 = req3 or DEFAULT_SAFE_DELAY
+        start3 = start3 or workspace:GetServerTimeNow()
+        local trueTime3 = WaitUntilServerTime(start3 + req3)
+        AddUILog("BOT_V5", string.format("Fase 3 completada. Duración: %.2fs", req3), Color3.fromRGB(200,200,200))
+        
+        AddUILog("BOT_V5", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(150,255,150))
+        local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
+        
+        local req4, start4 = ExtractTimes(r4)
+        req4 = req4 or DEFAULT_SAFE_DELAY
+        start4 = start4 or workspace:GetServerTimeNow()
+        WaitUntilServerTime(start4 + req4)
+        AddUILog("BOT_V5", string.format("Fase 4 completada. Duración: %.2fs", req4), Color3.fromRGB(200,200,200))
+        
+        AddUILog("BOT_V5", ">> ¡Se completó la orquestración de red! Enviando Showcase...", Color3.fromRGB(255,255,50))
+        SafeInvoke(forgeRF, "Showcase", nil)
+        AddUILog("BOT_V5", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
+        
+        task.wait(1)
+        PlayerCleanup()
+        BotJugandoAhoraMismo = false
+    end)
+}
+
+-- ==========================================
+-- EL HOOK BESTIAL V5.0 (Cliente -> Servidor)
 -- ==========================================
 local DumpTableDeep
 DumpTableDeep = function(tbl, depth)
@@ -285,12 +365,6 @@ DumpTableDeep = function(tbl, depth)
     return str .. "}"
 end
 
-local function GetForgeRF()
-    local RS = game:GetService("ReplicatedStorage")
-    local success, res = pcall(function() return RS.Shared.Packages.Knit.Services.ForgeService.RF.ChangeSequence end)
-    return success and res or nil
-end
-
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -303,39 +377,27 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         if string.find(nameLower, "changesequence") then
             local phaseName = tostring(args[1])
             
-            -- ==========================================
-            -- GHOST PROXY: DEPURACIÓN MATEMÁTICA EN RED
-            -- ==========================================
-            if ModosBypass.BotActivo and phaseName ~= "Melt" and phaseName ~= "Showcase" then
-                if PerfectSimData.StartTime and PerfectSimData.RequiredTime then
-                    local t_perfect = PerfectSimData.StartTime + PerfectSimData.RequiredTime
-                    AddUILog("MITM", "Interceptada señal NATIVA de: " .. phaseName, Color3.fromRGB(255,150,50))
-                    
-                    -- Retrasamos el hilo de forma segura para no caer en el futuro del server
-                    local actualTime = WaitUntilServerTime(t_perfect + 0.1)
-                    
-                    -- Modificamos los datos para inyectar nuestra perfección
-                    if type(args[2]) == "table" then
-                        args[2].ClientTime = t_perfect
-                    else
-                        args[2] = {ClientTime = t_perfect}
-                    end
-                    
-                    AddUILog("GHOST_HACK", ">> ¡Se reescribió la calidad a 100%! Payload Enviado.", Color3.fromRGB(0,255,100))
-                end
+            if BotBypassingNetwork then
+                return OriginalNamecall(self, ...)
             end
             
-            -- LLEVAMOS LA LLAMADA MODIFICADA AL SERVIDOR
-            local RetTuple = {OriginalNamecall(self, unpack(args))}
+            -- ==========================================
+            -- BLOQUEO VERDADERO AL SCRIPT NATIVO DE ROBLOX
+            -- ==========================================
+            if phaseName ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
+                task.spawn(function() AddUILog("BLOCK", "Señal NATIVA Anulada [" .. phaseName .. "].", Color3.fromRGB(255, 50, 50)) end)
+                return nil 
+            end
+            
+            local RetTuple = {OriginalNamecall(self, ...)}
             local returnVal = RetTuple[1]
             
-            -- EXTRAEMOS LA INSTRUCCIÓN DEL SERVIDOR PARA EL ENGAÑO DE LA SIGUIENTE FASE
             task.spawn(function()
-                local req, start = ExtractTimes(returnVal)
-                if req and start then
-                    PerfectSimData.RequiredTime = req
-                    PerfectSimData.StartTime = start
-                    AddUILog("SERVER_KEYS", "Variables aseguradas dictadas para => " .. phaseName .. " | req: " .. string.format("%.2f", req), Color3.fromRGB(255,255,50))
+                if phaseName == "Melt" then
+                    AddUILog("INTERCEPT", "Señal Legal Interceptada. Calculando Rutina OMEGA.", Color3.fromRGB(255,100,255))
+                    if ModosBypass.BotActivo and not BotJugandoAhoraMismo then
+                        ExecutePerfectSequence(self, returnVal)
+                    end
                 end
             end)
             
@@ -343,7 +405,6 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         end
     end
     
-    -- LOGEO DE RED EXCLUYÉNDONOS PARA NO LLENAR LA PANTALLA
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
         task.spawn(function()
             pcall(function()
@@ -369,5 +430,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V4.0 INICIADA. GHOST PROXY MITM ACTIVO.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "Juega (o quédate quieto). El Script limpiará tus errores e inyectará los tiempos perfectos sin destruir tu pantalla.", Color3.fromRGB(100, 255, 100))
+AddUILog("SISTEMA", "V5.0 INICIADA. THE OMEGA BOT ACTIVO.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El script te devolverá la cámara al finalizar, y calculará tolerancias humanas extremas. ¡A por la Perfección!", Color3.fromRGB(200, 255, 100))
