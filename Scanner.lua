@@ -533,8 +533,10 @@ LogBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- MONITOR DE POSICIÓN Y MUERTE (detecta teleports y respawns)
+-- MONITOR DE POSICIÓN Y MUERTE (detecta teleports y ANALIZA la causa)
 task.spawn(function()
+    local prevBvActive = false
+    local prevY = 0
     while true do
         pcall(function()
             local char = LocalPlayer.Character
@@ -548,21 +550,60 @@ task.spawn(function()
             
             local pos = r.Position
             local posStr = math.floor(pos.X) .. "," .. math.floor(pos.Y) .. "," .. math.floor(pos.Z)
+            local bv = r:FindFirstChild("_NoclipBV")
             
             -- Detectar muerte
             if hum and hum.Health <= 0 then
                 AddLog("☠️ MUERTE", "HP=0 en pos " .. posStr)
             end
             
+            -- Alerta de posición bajo el mapa
+            if pos.Y < -10 then
+                AddLog("⚠️ BAJO MAPA", "Y=" .. tostring(math.floor(pos.Y)) .. " | Noclip=" .. tostring(NoclipActivo) .. " | BV=" .. tostring(bv ~= nil))
+            end
+            
             -- Detectar teleport sospechoso
             if LastLogPos then
                 local jumpDist = (pos - LastLogPos).Magnitude
                 if jumpDist > 50 then
-                    AddLog("🚨 TELEPORT", "Salto de " .. tostring(math.floor(jumpDist)) .. " studs! De " .. tostring(math.floor(LastLogPos.X)) .. "," .. tostring(math.floor(LastLogPos.Z)) .. " a " .. posStr)
-                    -- Detectar si fue al spawn
-                    if SpawnPos and (pos - SpawnPos).Magnitude < 20 then
-                        AddLog("🚨 SPAWN", "¡REGRESADO AL SPAWN! Anti-cheat probable.")
+                    -- =========== ANÁLISIS DE CAUSA ===========
+                    local causa = ""
+                    
+                    -- CAUSA 1: Estaba bajo el mapa (anti-void del servidor)
+                    if LastLogPos.Y < -5 then
+                        causa = causa .. "\n  → CAUSA: Tu Y era " .. tostring(math.floor(LastLogPos.Y)) .. " (BAJO EL MAPA). El servidor te resetea si caes al vacío."
+                        if NoclipActivo then
+                            causa = causa .. "\n  → ORIGEN: Noclip ON + BodyVelocity te empujaron bajo tierra."
+                        end
                     end
+                    
+                    -- CAUSA 2: BodyVelocity estaba activo empujando en Y negativa
+                    if bv then
+                        local vel = bv.Velocity
+                        causa = causa .. "\n  → BV activo: vel=" .. tostring(math.floor(vel.X)) .. "," .. tostring(math.floor(vel.Y)) .. "," .. tostring(math.floor(vel.Z))
+                        if vel.Y < -5 then
+                            causa = causa .. " (¡EMPUJÁNDOTE HACIA ABAJO!)"
+                        end
+                    end
+                    
+                    -- CAUSA 3: Fue al spawn
+                    local fueAlSpawn = false
+                    if SpawnPos and (pos - SpawnPos).Magnitude < 20 then
+                        fueAlSpawn = true
+                        causa = causa .. "\n  → DESTINO: Spawn (el servidor te reseteo)"
+                    end
+                    
+                    -- CAUSA 4: Cayó por gravedad (Y bajó mucho sin BodyVelocity)
+                    if not bv and LastLogPos.Y - pos.Y > 30 then
+                        causa = causa .. "\n  → CAUSA: Caída libre de " .. tostring(math.floor(LastLogPos.Y - pos.Y)) .. " studs (sin BV). Noclip desactivó colisión del piso."
+                    end
+                    
+                    if causa == "" then
+                        causa = "\n  → CAUSA DESCONOCIDA. Revisar si el servidor hizo kick parcial."
+                    end
+                    
+                    AddLog("🚨 TELEPORT", "Salto de " .. tostring(math.floor(jumpDist)) .. " studs" .. causa)
+                    AddLog("🚨 POS", "De Y=" .. tostring(math.floor(LastLogPos.Y)) .. " a Y=" .. tostring(math.floor(pos.Y)) .. " | Noclip=" .. tostring(NoclipActivo) .. " | Farm=" .. (KiteActivo and "Mobs" or MineActivo and "Minas" or "OFF"))
                 end
             end
             LastLogPos = pos
@@ -933,7 +974,9 @@ local function IniciarFarm()
                             end
                             local speed = currentHum.WalkSpeed or 16
                             local dir = (targetPart.Position - myRoot.Position).Unit
-                            bv.Velocity = dir * speed * 2.5
+                            -- FIX ANTI-VOID: Clampar Y a 0 para NO ir bajo tierra
+                            local safeDir = Vector3.new(dir.X, math.max(dir.Y, 0), dir.Z).Unit
+                            bv.Velocity = safeDir * speed * 2.5
                             -- NO usar CFrame directo, el anti-cheat lo detecta y te manda al spawn
                         else
                             local bv = myRoot:FindFirstChild("_NoclipBV")
