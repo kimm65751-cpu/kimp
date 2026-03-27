@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: V21 OMNI-SCANNER PRO (EL FORENSE DE CAJA BLANCA)
--- Diseccionando RaycastHitbox V4, Físicas de Motor y Variables de Recompensa.
+-- 💀 ROBLOX EXPERT: V21.1 OMNI-SCANNER PRO (HOTFIX DE PORTAPAPELES)
+-- Fixeado Copiado Emulador Delta|LDPlayer + Árbol Jerárquico.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -189,7 +189,7 @@ local function ConstruirUI()
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -90, 0, 30)
     TopBar.BackgroundColor3 = Color3.fromRGB(60, 40, 0)
-    TopBar.Text = "  [V21: OMNI-SCANNER PRO Y REVERSE-ENGINEERING DEV]"
+    TopBar.Text = "  [V21.1: OMNI-SCANNER CAJA BLANCA - PATCHED]"
     TopBar.TextColor3 = Color3.fromRGB(255, 255, 100)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 13
@@ -240,17 +240,21 @@ local function ConstruirUI()
     InfoScroll.ScrollBarThickness = 6
     InfoScroll.Parent = MainFrame
 
-    local LogText = Instance.new("TextLabel")
+    -- [V21.1 FIX: CAMBIO DE TEXTLABEL A TEXTBOX CON MODO LECTURA PARA PERMITIR SELECCIÓN Y COPIA MANUAL]
+    local LogText = Instance.new("TextBox")
     LogText.Size = UDim2.new(1, -10, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "V21: DUMPER JERÁRQUICO INSTALADO.\n\nPulsando el [BOTÓN 1] vas a deconstruir todo el mapa en forma de ÁRBOL DE JERARQUÍAS (carpetas, eventos y zombies anidados), con lujo de detalles sobre los 797 objetos físicos:\n- Dónde está agrupado cada uno (ej. Workspace > Drops).\n- Si es Estático o Dinámico.\n- Su Colisión y su Masa (Para saber si el hacker usa Fuerza para moverlo).\n- Si tiene ProximityPrompt o TouchSensors.\n\nY por supuesto, el [BOTÓN 2] te permite Copiar el reporte Crudísimo al portapapeles."
+    LogText.Text = "Problema del Botón Copiar: Los emuladores de Android en PC (Como LDPlayer) a veces bloquean setclipboard() por temas de red.\n\nEL HOTFIX V21.1: He convertido esta pantalla negra en un Cuadro de Texto Libre (TextBox).\n\nDale al Escaneo (BOTÓN 1), espera a que se imprima toda la matriz... ¡Y ahora simplemente HAZ CLIC EN ESTE TEXTO CON EL RATÓN, presiona 'CTRL+A' (Para Seleccionar Todo) y luego 'CTRL+C' (Para Copiarlo manualmente)!\n\nLleva tu reporte al portapapeles o blocs de notas."
     LogText.TextColor3 = Color3.fromRGB(255, 255, 150)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 12
     LogText.TextXAlignment = Enum.TextXAlignment.Left
     LogText.TextYAlignment = Enum.TextYAlignment.Top
     LogText.TextWrapped = true
+    LogText.ClearTextOnFocus = false
+    LogText.TextEditable = false
+    LogText.MultiLine = true
     LogText.Parent = InfoScroll
 
     local function ActualizarPantalla()
@@ -259,42 +263,19 @@ local function ConstruirUI()
     end
 
     local btnScan = Instance.new("TextButton")
-    btnScan.Size = UDim2.new(0.48, 0, 0, 50)
+    btnScan.Size = UDim2.new(1, -16, 0, 50)
     btnScan.Position = UDim2.new(0, 8, 0.85, 0)
     btnScan.BackgroundColor3 = Color3.fromRGB(150, 80, 0)
     btnScan.Text = "🌳 1. INICIAR OMNI-SCAN JERÁRQUICO (CASCADA)"
     btnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
     btnScan.Font = Enum.Font.Code
-    btnScan.TextSize = 11
+    btnScan.TextSize = 13
     btnScan.Parent = MainFrame
-
-    local btnCopy = Instance.new("TextButton")
-    btnCopy.Size = UDim2.new(0.48, 0, 0, 50)
-    btnCopy.Position = UDim2.new(0.5, 4, 0.85, 0)
-    btnCopy.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
-    btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
-    btnCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnCopy.Font = Enum.Font.Code
-    btnCopy.TextSize = 11
-    btnCopy.Parent = MainFrame
 
     btnScan.MouseButton1Click:Connect(function()
         pcall(function()
             EscaneoOmniJerarquico()
             ActualizarPantalla()
-        end)
-    end)
-    
-    btnCopy.MouseButton1Click:Connect(function()
-        pcall(function()
-            if setclipboard then
-                setclipboard(FullReport)
-                btnCopy.Text = "✅ ¡COPIADO EXITOSAMENTE!"
-                task.wait(2)
-                btnCopy.Text = "📋 2. COPIAR REPORTE AL PORTAPAPELES"
-            else
-                Warn("Tu exploit no soporta setclipboard().")
-            end
         end)
     end)
 end
