@@ -245,6 +245,17 @@ ReloadBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
+-- ANTI-AFK (Evita el kick por inactividad de 20 min)
+-- ==========================================
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end)
+
+-- ==========================================
 -- MOTOR NOCLIP
 -- ==========================================
 RunService.Stepped:Connect(function()
