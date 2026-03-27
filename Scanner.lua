@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMNI-FARM V2.2 (SCANNER + ANTI-CHEAT FIX)
+-- 🗡️ OMNI-FARM V2.5 (SCANNER + LOGS DEBUG)
 -- Sin Aimbot, Sin Minería de Rocks, Con Filtro de Nivel Anti-Suicidio.
 -- ==============================================================================
 
@@ -37,6 +37,36 @@ local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 -- Clave = nombre base (lowercase, sin números), Valor = true/false
 local SelectedMobs = {} -- Se llena con el Scanner
 local SelectedOres = {} -- Se llena con el Scanner
+
+-- SISTEMA DE LOGS DEBUG
+local LogEntries = {}
+local MAX_LOGS = 60
+local LastLogPos = nil
+local LastLogTarget = nil
+local SpawnPos = nil -- Se guarda al cargar para detectar resets
+
+local function AddLog(tag, msg)
+    local t = os.clock()
+    local entry = string.format("[%.1f][%s] %s", t, tag, msg)
+    table.insert(LogEntries, 1, entry) -- Más reciente arriba
+    if #LogEntries > MAX_LOGS then table.remove(LogEntries, #LogEntries) end
+end
+
+local function GetLogText()
+    return table.concat(LogEntries, "\n")
+end
+
+-- Guardar posición de spawn al cargar
+task.defer(function()
+    task.wait(2)
+    pcall(function()
+        local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if r then
+            SpawnPos = r.Position
+            AddLog("INIT", "Spawn guardado: " .. tostring(math.floor(SpawnPos.X)) .. "," .. tostring(math.floor(SpawnPos.Y)) .. "," .. tostring(math.floor(SpawnPos.Z)))
+        end
+    end)
+end)
 
 -- ==========================================
 -- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
@@ -115,7 +145,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V2.4"
+Title.Text = " 🗡️ OMNI-FARM V2.5"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -207,14 +237,24 @@ MineBtn.TextSize = 12
 MineBtn.Parent = Panel
 
 local ScannerBtn = Instance.new("TextButton")
-ScannerBtn.Size = UDim2.new(1, -8, 0, 30)
+ScannerBtn.Size = UDim2.new(0.5, -6, 0, 30)
 ScannerBtn.Position = UDim2.new(0, 4, 0, 160)
 ScannerBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
-ScannerBtn.Text = "🔍 SCANNER: Seleccionar Mobs y Minas"
+ScannerBtn.Text = "🔍 SCANNER"
 ScannerBtn.TextColor3 = Color3.fromRGB(255, 220, 255)
 ScannerBtn.Font = Enum.Font.Code
 ScannerBtn.TextSize = 11
 ScannerBtn.Parent = Panel
+
+local LogBtn = Instance.new("TextButton")
+LogBtn.Size = UDim2.new(0.5, -6, 0, 30)
+LogBtn.Position = UDim2.new(0.5, 2, 0, 160)
+LogBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+LogBtn.Text = "📝 LOGS"
+LogBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+LogBtn.Font = Enum.Font.Code
+LogBtn.TextSize = 11
+LogBtn.Parent = Panel
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 150)
@@ -421,6 +461,117 @@ ScannerBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
+-- LOG PANEL (Panel Flotante de Debug)
+-- ==========================================
+local LogPanel = Instance.new("Frame")
+LogPanel.Size = UDim2.new(0, 380, 0, 350)
+LogPanel.Position = UDim2.new(0, 10, 0.5, -175)
+LogPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+LogPanel.BorderSizePixel = 2
+LogPanel.BorderColor3 = Color3.fromRGB(100, 100, 200)
+LogPanel.Active = true
+LogPanel.Draggable = true
+LogPanel.Visible = false
+LogPanel.Parent = ScreenGui
+
+local LogTitle = Instance.new("TextLabel")
+LogTitle.Size = UDim2.new(1, -40, 0, 25)
+LogTitle.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+LogTitle.Text = " 📝 DEBUG LOGS (Tiempo Real)"
+LogTitle.TextColor3 = Color3.fromRGB(180, 180, 255)
+LogTitle.TextSize = 12
+LogTitle.Font = Enum.Font.Code
+LogTitle.TextXAlignment = Enum.TextXAlignment.Left
+LogTitle.Parent = LogPanel
+
+local LogCloseBtn = Instance.new("TextButton")
+LogCloseBtn.Size = UDim2.new(0, 40, 0, 25)
+LogCloseBtn.Position = UDim2.new(1, -40, 0, 0)
+LogCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+LogCloseBtn.Text = "X"
+LogCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LogCloseBtn.Font = Enum.Font.Code
+LogCloseBtn.TextSize = 14
+LogCloseBtn.Parent = LogPanel
+LogCloseBtn.MouseButton1Click:Connect(function() LogPanel.Visible = false end)
+
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Size = UDim2.new(1, -8, 1, -30)
+LogScroll.Position = UDim2.new(0, 4, 0, 27)
+LogScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogScroll.ScrollBarThickness = 6
+LogScroll.Parent = LogPanel
+
+local LogText = Instance.new("TextLabel")
+LogText.Size = UDim2.new(1, -4, 0, 0)
+LogText.AutomaticSize = Enum.AutomaticSize.Y
+LogText.BackgroundTransparency = 1
+LogText.Text = "Esperando logs..."
+LogText.TextColor3 = Color3.fromRGB(150, 255, 150)
+LogText.TextSize = 9
+LogText.Font = Enum.Font.Code
+LogText.TextWrapped = true
+LogText.TextYAlignment = Enum.TextYAlignment.Top
+LogText.TextXAlignment = Enum.TextXAlignment.Left
+LogText.Parent = LogScroll
+
+-- Actualizar el panel de logs cada 0.5s
+task.spawn(function()
+    while true do
+        if LogPanel.Visible then
+            LogText.Text = GetLogText()
+        end
+        task.wait(0.5)
+    end
+end)
+
+LogBtn.MouseButton1Click:Connect(function()
+    LogPanel.Visible = not LogPanel.Visible
+    if LogPanel.Visible then
+        LogText.Text = GetLogText()
+    end
+end)
+
+-- MONITOR DE POSICIÓN Y MUERTE (detecta teleports y respawns)
+task.spawn(function()
+    while true do
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then
+                AddLog("☠️ MUERTE", "Sin Character detectado (muerto o cargando)")
+                return
+            end
+            local r = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if not r then return end
+            
+            local pos = r.Position
+            local posStr = math.floor(pos.X) .. "," .. math.floor(pos.Y) .. "," .. math.floor(pos.Z)
+            
+            -- Detectar muerte
+            if hum and hum.Health <= 0 then
+                AddLog("☠️ MUERTE", "HP=0 en pos " .. posStr)
+            end
+            
+            -- Detectar teleport sospechoso
+            if LastLogPos then
+                local jumpDist = (pos - LastLogPos).Magnitude
+                if jumpDist > 50 then
+                    AddLog("🚨 TELEPORT", "Salto de " .. tostring(math.floor(jumpDist)) .. " studs! De " .. tostring(math.floor(LastLogPos.X)) .. "," .. tostring(math.floor(LastLogPos.Z)) .. " a " .. posStr)
+                    -- Detectar si fue al spawn
+                    if SpawnPos and (pos - SpawnPos).Magnitude < 20 then
+                        AddLog("🚨 SPAWN", "¡REGRESADO AL SPAWN! Anti-cheat probable.")
+                    end
+                end
+            end
+            LastLogPos = pos
+        end)
+        task.wait(0.3)
+    end
+end)
+
+-- ==========================================
 -- EVENTOS DE INTERFAZ
 -- ==========================================
 local Minimizado = false
@@ -568,6 +719,7 @@ end
 local function DetenerFarm()
     if not KiteActivo and not MineActivo then
         if FarmTask then task.cancel(FarmTask); FarmTask = nil end
+        AddLog("FARM", "Farm DETENIDO")
         pcall(function()
             local char = LocalPlayer.Character
             if not char then return end
@@ -593,6 +745,7 @@ local function IniciarFarm()
         local loopTick = 0
         local zTarget, oreTarget = nil, nil
         local zDist, oDist = math.huge, math.huge
+        AddLog("FARM", "Farm INICIADO | Kite=" .. tostring(KiteActivo) .. " Mine=" .. tostring(MineActivo) .. " Noclip=" .. tostring(NoclipActivo))
 
         while KiteActivo or MineActivo do
             pcall(function()
@@ -607,6 +760,9 @@ local function IniciarFarm()
 
                 -- ESCANEO CON FILTRO DE NIVEL
                 if loopTick % 10 == 0 or not zTarget or (zTarget and not zTarget:FindFirstChildWhichIsA("Humanoid")) or (MineActivo and not oreTarget) then
+                    if loopTick % 10 == 0 then
+                        AddLog("SCAN", "Re-escaneando targets (tick " .. tostring(loopTick) .. ")")
+                    end
                     if KiteActivo or MineActivo then
                         zTarget, zDist = findNearest(function(o)
                             if o:IsA("Model") and o ~= char then
@@ -687,13 +843,21 @@ local function IniciarFarm()
                     targetDist = ShieldActivo and 4 or 7
                     mode = "Combat"
                     toolId = "weapon"
-                -- PRIORIDAD 2: MINADO (pebb/ore, sin rocks)
+                    if LastLogTarget ~= tostring(zTarget) then
+                        LastLogTarget = tostring(zTarget)
+                        AddLog("TARGET", "Combate: " .. zTarget.Name .. " dist=" .. tostring(math.floor(zDist)))
+                    end
+                -- PRIORIDAD 2: MINADO
                 elseif oreTarget and MineActivo then
                     targetObj = oreTarget
                     dist = oDist
                     targetDist = 4
                     mode = "Mining"
                     toolId = "pickaxe"
+                    if LastLogTarget ~= tostring(oreTarget) then
+                        LastLogTarget = tostring(oreTarget)
+                        AddLog("TARGET", "Minando: " .. oreTarget.Name .. " dist=" .. tostring(math.floor(oDist)))
+                    end
 
                     -- ANTI-STUCK: Detectar si el mineral no baja de vida
                     local oreHP = oreTarget:GetAttribute("Health") or 0
