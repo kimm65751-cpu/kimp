@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 💀 ROBLOX EXPERT: LAG-SWITCH TESTER (BLINK ASSASSIN V13)
--- Prueba forense real: Cortamiento de paquetes, CFrame Bouncing, y Logs de Red.
+-- 💀 ROBLOX EXPERT: OUT-OF-THE-BOX VULNERABILITY PROBER (V14)
+-- Pruebas Forenses Científicas para determinar tácticas sin sufrir Kick 267.
 -- ==============================================================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
@@ -8,9 +8,9 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/he
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local NetworkSettings = settings():GetService("NetworkSettings")
 local RunService = game:GetService("RunService")
+local NetworkSettings = settings():GetService("NetworkSettings")
+
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 -- 🧩 CORE LOGGER PARA LA PRUEBA
@@ -32,125 +32,127 @@ function Analyzer:Log(txt)
 end
 
 -- ==============================================================================
--- 📡 SCRIPT DE LAG-SWITCH CONTROLADO (EL TEST)
+-- 📡 MICRO-PRUEBAS CONTROLADAS (SIN KICKS DESTRUCTIVOS)
 -- ==============================================================================
-local TestEnProceso = false
 
-local function EjecutarPruebaLag()
-    if TestEnProceso then return end
-    TestEnProceso = true
+-- PRUEBA 1: NETWORK OWNERSHIP (PROP TELEKINESIS)
+local function TestPropTelekinesis()
     Analyzer:Clear()
-    Analyzer:Log("==============================================")
-    Analyzer:Log("🧪 INICIANDO TEST: 'LAG-SWITCH' BLINK ASSASSIN...")
+    Analyzer:Log("🧪 [TEST 1] ESCANEO DE PROPS FÍSICOS (TELEKINESIS)...")
+    Analyzer:Log("Buscando objetos en el mapa que no estén anclados y que podamos usar como proyectiles físicos...")
     
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-    local arma = LocalPlayer:FindFirstChild("Backpack") and LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") or char and char:FindFirstChildWhichIsA("Tool")
-    
-    if not root or not hum or not arma then
-        Analyzer:Log("❌ Error: No tienes Arma o tu personaje no cargó.")
-        TestEnProceso = false
-        return
-    end
-
-    -- Paso 1: Buscar a la víctima de prueba
-    local target = nil
-    local distM = 99999
-    
-    for _, z in pairs(Workspace:GetDescendants()) do
-        if z:IsA("Model") and string.find(string.lower(z.Name), "zombie") and z ~= char then
-            local zHum = z:FindFirstChild("Humanoid")
-            local zRoot = z:FindFirstChild("HumanoidRootPart")
-            if zHum and zHum.Health > 0 and zRoot then
-                local d = (zRoot.Position - root.Position).Magnitude
-                if d < distM then distM = d; target = zRoot end
+    local foundProps = 0
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and not obj.Anchored and obj.Name ~= "HumanoidRootPart" and obj.Name ~= "Head" and obj.Name ~= "Torso" then
+            -- Asegurarse que no sea de un Zombi o Jugador
+            if not obj.Parent:FindFirstChild("Humanoid") then
+                foundProps = foundProps + 1
             end
         end
     end
-
-    if not target then
-        Analyzer:Log("❌ Ningún Zombi vivo en el mapa de renderizado.")
-        TestEnProceso = false
-        return
+    
+    if foundProps > 0 then
+        Analyzer:Log("✅ ¡FACTIBLE! Se encontraron " .. tostring(foundProps) .. " objetos sueltos. Podríamos construir el Fling de Props hacia el zombie a distancia.")
+    else
+        Analyzer:Log("❌ FALLIDO: El creador ancló todo el mapa absoluto. No hay física suelta que podamos manipular. Telekinesis descartada.")
     end
+end
 
-    Analyzer:Log("1. Presa fijada: " .. target.Parent.Name .. " a " .. math.floor(distM) .. " metros.")
-    local vidaInicialMia = hum.Health
-    local vidaInicialZombi = target.Parent:FindFirstChild("Humanoid").Health
+-- PRUEBA 2: SPIN-FLING (HAVOK PHYSICS OVERLOAD)
+local function TestSpinFling()
+    Analyzer:Clear()
+    Analyzer:Log("🧪 [TEST 2] ESTABILIDAD DEL SPIN-FLING (ANTI-CHEAT TEST)...")
+    
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return Analyzer:Log("❌ Error: Personaje no encontrado.") end
 
-    -- 🛑 INICIAR LA FALLA DE RED (SPOOFING)
-    Analyzer:Log("📶 [RED] Ejecutando cortes de Hardware/Latencia LUA locales...")
+    Analyzer:Log("Inyectando 1,000 grados de Velocidad Angular por 1.5 Segundos...")
+    local bv = Instance.new("BodyAngularVelocity")
+    bv.MaxTorque = Vector3.new(Math.huge, math.huge, math.huge)
+    bv.AngularVelocity = Vector3.new(0, 100, 0)
+    bv.Parent = root
     
-    local lagExitoso = false
-    -- Método 1: Congelar la latencia de entrada para desfasar el Servidor.
-    local success1 = pcall(function() NetworkSettings.IncomingReplicationLag = 15 end)
-    -- Método 2: Detener temporalmente nuestras propias físicas obligando a Root a dormir en memoria C++.
-    root.Anchored = true 
+    task.wait(1.5)
     
-    Analyzer:Log("📶 [RED] Paquetes de ping retenidos. El servidor ahora ignora nuestro movimiento fluido.")
-    task.wait(0.5)
+    if bv and bv.Parent then
+        bv:Destroy()
+        -- Si llegamos aquí y no nos kickeó el Anti-TP:
+        Analyzer:Log("✅ ¡FACTIBLE! El servidor permitió la hiper-rotación C++ sin kickearte. Podemos usar tu cuerpo como un Trompo demoledor para aniquilarlos con rebote físico sin que logren pegarte.")
+        -- Si nos kickea durante esos 1.5seg, ya sabemos que el AC vigila Angulos.
+    end
+end
 
-    -- ⚔️ EL "BLINK" (Nos movemos, golpeamos y volvemos sin que el servidor nos haya visto el trayecto)
-    Analyzer:Log("🏃 [FÍSICA] Iniciando Salto Táctico mientras el servidor está sordo...")
-    local puntoSeguroBase = root.CFrame
+-- PRUEBA 3: TICK-WALKING (LAG-SWITCH SIN TELEPORT)
+local function TestTickWalking()
+    Analyzer:Clear()
+    Analyzer:Log("🧪 [TEST 3] PRUEBA DE LAG-SWITCH CONTROLADO (SIN CFRAME)...")
     
-    -- Quitamos el ancla solo para el salto C++
-    root.Anchored = false
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    if not hum then return Analyzer:Log("❌ Error: Personaje no encontrado.") end
+
+    Analyzer:Log("Congelando red y caminando legalmente (WalkSpeed) 5 metros adelante y atrás...")
+    local success = pcall(function() NetworkSettings.IncomingReplicationLag = 10 end)
+    if not success then return Analyzer:Log("❌ Error: Tu teléfono/Delta no soporta el comando de Lag-Switch API. Deberás apagar tu WiFi físico y encenderlo rápido para los Bypasses de red.") end
     
-    local posAtaque = target.CFrame * CFrame.new(0, 0, 4) -- A 4 Metros de él
+    local startPos = char.HumanoidRootPart.Position
+    local adelante = startPos + (char.HumanoidRootPart.CFrame.LookVector * 5)
     
-    -- Salto invisible indetectable (por el Lag)
-    root.CFrame = CFrame.new(posAtaque.Position, target.Position)
-    hum:EquipTool(arma)
-    task.wait(0.1) -- Micro-ajuste físico local
-    
-    Analyzer:Log("⚔️ [COMBATE] Asestando golpe desde el vacío...")
-    arma:Activate()
-    pcall(function() mouse1click() end)
-    
-    task.wait(0.2) -- Retraso del ataque del arma
-    
-    -- Salto Quirúrgico de vuelta a base antes de que el servidor reciba la reconexión
-    root.CFrame = puntoSeguroBase
-    Analyzer:Log("🏃 [FÍSICA] Retirada ejecutada. Volvimos al Campamento Base.")
-    
-    -- 🟢 RESTAURACIÓN DE LA RED (FLUSH QUEUE)
-    Analyzer:Log("📶 [RED] Reconectando puertos. Descargando ráfaga de colisiones al servidor...")
+    hum:MoveTo(adelante)
+    task.wait(0.5) -- caminar legalmente
+    hum:MoveTo(startPos)
+    task.wait(0.5) -- volver
     
     pcall(function() NetworkSettings.IncomingReplicationLag = 0 end)
     
-    -- Esperamos a que los paquetes de bajada nos cuenten si sufrimos o dimos daño (1.5 seg)
-    Analyzer:Log("⏱️ [SISTEMA] Esperando la sentencia matemática del Anti-Cheat (1.5 seg)...")
-    task.wait(1.5)
+    Analyzer:Log("Descargando Buffer al Servidor... Espera 2 segundos para ver si hay Kick.")
+    task.wait(2)
+    Analyzer:Log("✅ ¡FACTIBLE! Si sigues en el juego, significa que el Anti-TP solo te kickeó en el anterior porque usamos CFRAME. Si caminamos 'Lageados' somos dioses indetectables.")
+end
+
+-- PRUEBA 4: LA IDEA RARA (MOTOR6D OFFSET SPOOFER)
+local function TestGripSpoofer()
+    Analyzer:Clear()
+    Analyzer:Log("🧪 [TEST 4] IDEA RARA: MUTACIÓN DEL MOTOR6D...")
     
-    -- RESULTADOS
-    Analyzer:Log("\n======= RESULTADOS FORENSES DEL SERVIDOR =======")
+    local char = LocalPlayer.Character
+    if not char then return Analyzer:Log("❌ Error: Personaje no encontrado.") end
     
-    local dVidaMia = vidaInicialMia - hum.Health
-    local dVidaZombi = vidaInicialZombi - target.Parent:FindFirstChild("Humanoid").Health
+    local isR15 = char:FindFirstChild("UpperTorso") ~= nil
+    local jointName = isR15 and "RightGrip" or "RightGrip" -- Generalmente es siempre RightGrip
+    local weaponJoint = nil
     
-    if dVidaMia > 0 then
-        Analyzer:Log("❌ EL ZOMBI TE LOGRÓ DAÑAR: Has perdido " .. tostring(dVidaMia) .. " HP.")
-        Analyzer:Log("   (Análisis: El Motor del servidor reaccionó a la ráfaga de paquetes lo suficientemente rápido para usar su AoE contra tu RootPart virtual antes de que escaparas de la memoria).")
-    else
-        Analyzer:Log("✅ INMUNE: El Zombi no te rozó un solo pelo durante la prueba de Red.")
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("Weld") or v:IsA("Motor6D") then
+            if string.find(string.lower(v.Name), "grip") or string.find(string.lower(v.Name), "weapon") then
+                weaponJoint = v
+                break
+            end
+        end
     end
     
-    if dVidaZombi > 0 then
-        Analyzer:Log("✅ EL ATAQUE AL ZOMBI FUNCIONÓ: Le hemos quitado " .. tostring(dVidaZombi) .. " HP a la distancia.")
-        Analyzer:Log("   (Análisis: Logramos forzar que el Servidor se tragara nuestros clicks C++ a 5 metros de distancia como un ataque legal reteniendo la física).")
+    if weaponJoint then
+        Analyzer:Log("Se ubicó el Atornillado (Motor6D/Weld) de la Espada.")
+        Analyzer:Log("Estirándolo matemáticamente 50 Metros hacia adelante...")
+        
+        -- Guardar original
+        local originalC0 = weaponJoint.C0
+        weaponJoint.C0 = weaponJoint.C0 * CFrame.new(0, 50, 0) -- Movemos 50 studs visiblemente
+        
+        Analyzer:Log("✅ TU ESPADA ACABA DE CRECER HASTA 50 METROS EN TU PANTALLA.")
+        Analyzer:Log("🔍 [ACCIÓN REQUERIDA]: Párate a 30 Metros de un zombi, e intenta pegarle con esta espada mega-larga ANTES de que termine el tiempo de calibración (10 seg).")
+        
+        task.wait(10)
+        weaponJoint.C0 = originalC0
+        Analyzer:Log("Restaurado. ¿Logró darle al Zombi a distancia gracias a la espada estirada?")
     else
-        Analyzer:Log("❌ EL ZOMBI NO RECIBIÓ DAÑO: 0 HP pérdidos.")
-        Analyzer:Log("   (Análisis: El sistema Anti-TP del Servidor limpió nuestra ráfaga de red, anuló el salto y catalogó nuestro click local como inválido.)")
+        Analyzer:Log("❌ FALLIDO: Tu espada no usa 'Welds' o 'Grips' convencionales detectables. Parece integrada al modelo C++ puro.")
     end
-    
-    Analyzer:Log("==============================================")
-    TestEnProceso = false
 end
 
 -- ==============================================================================
--- 🖥️ GUI V2026: EL PANEL OPERATIVO DEFINITIVO
+-- 🖥️ GUI V2026: PANEL DE LABORATORIO SEGURO
 -- ==============================================================================
 local function ConstruirUI()
     local sg = Instance.new("ScreenGui")
@@ -162,20 +164,20 @@ local function ConstruirUI()
     sg.Parent = parentUI
 
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 850, 0, 600)
-    MainFrame.Position = UDim2.new(0.5, -425, 0.5, -300)
+    MainFrame.Size = UDim2.new(0, 850, 0, 750)
+    MainFrame.Position = UDim2.new(0.5, -425, 0.5, -375)
     MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
+    MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.Parent = sg
 
     local TopBar = Instance.new("TextLabel")
     TopBar.Size = UDim2.new(1, -120, 0, 35)
-    TopBar.BackgroundColor3 = Color3.fromRGB(50, 20, 0)
-    TopBar.Text = "  [TESTER FORENSE DE RED: LAG-SWITCH BLINK (V13)]"
-    TopBar.TextColor3 = Color3.fromRGB(255, 200, 100)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 50, 80)
+    TopBar.Text = "  [LABORATORIO FORENSE V14: PROBADOR EXTREMO - SIN KICKS]"
+    TopBar.TextColor3 = Color3.fromRGB(100, 200, 255)
     TopBar.Font = Enum.Font.Code
     TopBar.TextSize = 14
     TopBar.TextXAlignment = Enum.TextXAlignment.Left
@@ -214,18 +216,13 @@ local function ConstruirUI()
     CloseBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
     MinimizeBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
     ReloadBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            sg:Destroy()
-            if type(loadstring) == "function" then
-                loadstring(game:HttpGet(SCRIPT_URL .. "?reload=" .. tostring(math.random(11111, 99999))))()
-            end
-        end)
+        pcall(function() sg:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(111,999)))() end)
     end)
 
     local InfoScroll = Instance.new("ScrollingFrame")
-    InfoScroll.Size = UDim2.new(1, -20, 0.55, 0)
+    InfoScroll.Size = UDim2.new(1, -20, 0.45, 0)
     InfoScroll.Position = UDim2.new(0, 10, 0, 45)
-    InfoScroll.BackgroundColor3 = Color3.fromRGB(25, 20, 25)
+    InfoScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     InfoScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     InfoScroll.ScrollBarThickness = 8
     InfoScroll.Parent = MainFrame
@@ -234,8 +231,8 @@ local function ConstruirUI()
     LogText.Size = UDim2.new(1, -15, 1, 0)
     LogText.Position = UDim2.new(0, 5, 0, 5)
     LogText.BackgroundTransparency = 1
-    LogText.Text = ">>> TEST FORENSE DEL SERVIDOR ACTIVO <<<\n\nTienes la razón absoluta, ¿Cómo vamos a firmar una técnica hacker sin probar qué pasa en los escáners cuando la intentamos?\n\nHe diseñado este Botón Quirúrgico ('Blink'). La lógica exacta es:\n1. Mides una posición segura de lejos. Te quedas quieto.\n2. Mi código cortará tu envío/llegada de paquetes manipulando la memoria del cliente (Reduciendo tus FPS o forzando 'NetworkIncomingLag = 15s') y durmiendo tu física.\n3. En esa décima de segundo de Invisibilidad de Red, tu avatar es teletransportado Físicamente a la cara del monstruo, lanza un golpe limpio, y es devuelto a tu silla segura.\n4. La red se vuelve a encender y obligamos al Servidor a tragar nuestro golpe.\n\nCuando toques el Botón, todo esto pasará en menos de 1 segundo. Tu pantalla capturará 'QUÉ HIZO EXACTAMENTE EL SERVIDOR' y nos dirá LA VERDAD:\n- ¿Nos expulsó por Anti-Cheat (Error 267)?\n- ¿El Zombi logró aprovechar para darnos un golpe de área en ese microsegundo?\n- ¿El servidor aceptó el golpe y mató o dañó al monstruo?"
-    LogText.TextColor3 = Color3.fromRGB(255, 210, 150)
+    LogText.Text = ">>> ANÁLISIS METÓDICO DE SUPERVIVENCIA <<<\n\nTienes razón, ya no podemos ir probando código a ciegas para que nos boten del servidor (Kick) como nos acaba de pasar. Yo asumo mi propia ceguera. Un verdadero Cracker prueba el terreno con goteros microscópicos para medir las paredes sin hacer sonar la alarma.\n\nHe construido 4 Botones Analizadores. \nEstos botones C++ NO intentan matar Zombis agresivamente. En lugar de eso, le hacen micro-pruebas al Motor del Servidor y al Anti-Cheat para respondernos 4 dudas vitales sin expulsarnos de la sesión:\n\n1. ¿Podemos arrojar objetos físicos como misiles?\n2. ¿El motor prohibe que yo gire violentamente para reventar al monstruo con Havok Physics?\n3. ¿El Lag-Switch falló por teletransportar, o funcionará si 'Caminamos legalmente' congelados?\n4. ALGO RARO Y ÚNICO: ¿Qué pasa si manipulamos la Tuerca (Motor6D) del brazo y estiramos la propia espada por 50 metros visuales? ¿Acaso el RayCasting del Servidor toma como origen la punta de la espada estirada?\n\nRealiza estas 4 micropruebas, la Consola Negra nos dirá '✅ FACTIBLE' si el servidor no salta, así con datos en mano, sabremos exactamente qué arma blindada fabricar."
+    LogText.TextColor3 = Color3.fromRGB(150, 220, 255)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 13
     LogText.TextXAlignment = Enum.TextXAlignment.Left
@@ -245,19 +242,50 @@ local function ConstruirUI()
 
     Analyzer.UI_LogBox = LogText
 
-    local Btn2 = Instance.new("TextButton")
-    Btn2.Size = UDim2.new(1, -20, 0, 80)
-    Btn2.Position = UDim2.new(0, 10, 0.7, 50)
-    Btn2.BackgroundColor3 = Color3.fromRGB(180, 50, 0)
-    Btn2.Text = "⚡ INICIAR PRUEBA (LAG-SWITCH BLINK) ⚡\n(Acércate a un monstruo a unos 20 metros y toca el botón. No muevas nada.)"
-    Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn2.Font = Enum.Font.Code
-    Btn2.TextSize = 15
-    Btn2.Parent = MainFrame
+    local btnProps = Instance.new("TextButton")
+    btnProps.Size = UDim2.new(0.5, -15, 0, 55)
+    btnProps.Position = UDim2.new(0, 10, 0.5, 50)
+    btnProps.BackgroundColor3 = Color3.fromRGB(80, 50, 0)
+    btnProps.Text = "1. TEST: PROP TELEKINESIS"
+    btnProps.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnProps.Font = Enum.Font.Code
+    btnProps.TextSize = 14
+    btnProps.Parent = MainFrame
 
-    Btn2.MouseButton1Click:Connect(function()
-        task.spawn(EjecutarPruebaLag)
-    end)
+    local btnFling = Instance.new("TextButton")
+    btnFling.Size = UDim2.new(0.5, -15, 0, 55)
+    btnFling.Position = UDim2.new(0.5, 5, 0.5, 50)
+    btnFling.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+    btnFling.Text = "2. TEST: HAVOK SPIN-FLING"
+    btnFling.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnFling.Font = Enum.Font.Code
+    btnFling.TextSize = 14
+    btnFling.Parent = MainFrame
+
+    local btnTick = Instance.new("TextButton")
+    btnTick.Size = UDim2.new(0.5, -15, 0, 55)
+    btnTick.Position = UDim2.new(0, 10, 0.6, 60)
+    btnTick.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+    btnTick.Text = "3. TEST: LAG-WALKING SAFE"
+    btnTick.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnTick.Font = Enum.Font.Code
+    btnTick.TextSize = 14
+    btnTick.Parent = MainFrame
+
+    local btnGrip = Instance.new("TextButton")
+    btnGrip.Size = UDim2.new(0.5, -15, 0, 55)
+    btnGrip.Position = UDim2.new(0.5, 5, 0.6, 60)
+    btnGrip.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    btnGrip.Text = "4. TEST RARO: ESTIRAR ESPADA 50M"
+    btnGrip.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnGrip.Font = Enum.Font.Code
+    btnGrip.TextSize = 14
+    btnGrip.Parent = MainFrame
+
+    btnProps.MouseButton1Click:Connect(function() pcall(TestPropTelekinesis) end)
+    btnFling.MouseButton1Click:Connect(function() pcall(TestSpinFling) end)
+    btnTick.MouseButton1Click:Connect(function() pcall(TestTickWalking) end)
+    btnGrip.MouseButton1Click:Connect(function() pcall(TestGripSpoofer) end)
 end
 
 ConstruirUI()
