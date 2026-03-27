@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V3.0 (GOD-BOT: INTERCEPTACIÓN Y AUTO-QUALITY)
--- Intercepta el arranque legítimo, destruye la UI local y completa matemáticamente la forja.
+-- 🗡️ FORGE OMNI-ANALYZER V3.1 (GOD-BOT SAFE-THREADING)
+-- Intercepta el arranque, destruye el minijuego, y calcula matemática exacta.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V3.0 - DIOS DE LA FORJA"
+local SCRIPT_VERSION = "V3.1 - DIOS DE LA FORJA SAFE"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,7 +31,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
-Title.Text = " 📡 FORGE V3.0 (GOD-BOT MATHEMATICS)"
+Title.Text = " 📡 FORGE V3.1 (GOD-BOT MATHEMATICS)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -133,22 +133,33 @@ local function AddUILog(logType, message, color)
     SaveLogToFile(fullString)
     
     table.insert(MasterLogList, fullString)
-    if #MasterLogList > 500 then table.remove(MasterLogList, 1); local f = LogScroll:FindFirstChildWhichIsA("TextLabel"); if f then f:Destroy() end end
+    if #MasterLogList > 500 then 
+        table.remove(MasterLogList, 1)
+        task.defer(function()
+            local f = LogScroll:FindFirstChildWhichIsA("TextLabel")
+            if f then pcall(function() f:Destroy() end) end
+        end)
+    end
     
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -4, 0, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = fullString
-    txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    txt.Font = Enum.Font.Code
-    txt.TextSize = 11
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.TextWrapped = true
-    txt.Parent = LogScroll
-    
-    local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
-    txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
-    LogScroll.CanvasPosition = Vector2.new(0, 999999)
+    -- PREVENIR CRASHEO DEL EXECUTOR AL CREAR UI TRAS UN YIELD DE RED
+    task.defer(function()
+        pcall(function()
+            local txt = Instance.new("TextLabel")
+            txt.Size = UDim2.new(1, -4, 0, 0)
+            txt.BackgroundTransparency = 1
+            txt.Text = fullString
+            txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+            txt.Font = Enum.Font.Code
+            txt.TextSize = 11
+            txt.TextXAlignment = Enum.TextXAlignment.Left
+            txt.TextWrapped = true
+            txt.Parent = LogScroll
+            
+            local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
+            txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
+            LogScroll.CanvasPosition = Vector2.new(0, 999999)
+        end)
+    end)
 end
 
 AutoBotBtn.MouseButton1Click:Connect(function()
@@ -156,7 +167,7 @@ AutoBotBtn.MouseButton1Click:Connect(function()
     if ModosBypass.BotActivo then
         AutoBotBtn.Text = "🛑 STOP: BOT HABILITADO (Esperando que prestiones GO)"
         AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-        AddUILog("SISTEMA", "V3.0 Bot ARMADO. Juega normal (presiona GO) y yo haré el resto.", Color3.fromRGB(100,255,100))
+        AddUILog("SISTEMA", "V3.1 Bot ARMADO. Juega normal (presiona GO) y yo haré el resto.", Color3.fromRGB(100,255,100))
     else
         AutoBotBtn.Text = "🤖 START: HABILITAR AUTO-BOT DE CALIDAD PERFECTA"
         AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
@@ -333,12 +344,13 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         
         -- INTERCEPTAMOS EL INICIO DEL JUEGO DIRECTO DEL USUARIO Y LO RETENEMOS!
         if string.find(nameLower, "changesequence") then
-            -- OJO: ESTO BLOQUEARÁ EL HILO HASTA RECIBIR RESPUESTA, PERMITIENDO ROBARLA
-            local returnVal = OriginalNamecall(self, ...)
+            -- OJO: ESTO BLOQUEARÁ EL HILO AQUÍ HASTA RECIBIR RESPUESTA, PERMITIENDO ROBARLA
+            local RetTuple = {OriginalNamecall(self, ...)}
+            local returnVal = RetTuple[1]
             
             task.spawn(function()
                 if tostring(args[1]) == "Melt" then
-                    AddUILog("INTERCEPT", "Has presionado GO legalmente. Obteniendo respuesta del servidor...", Color3.fromRGB(255,100,255))
+                    AddUILog("INTERCEPT", "Tu click legal fue interceptado. Resp. Servidor Copiada V3.1", Color3.fromRGB(255,100,255))
                     local dumpRet = (type(returnVal) == "table" and DumpTableDeep(returnVal) or tostring(returnVal))
                     AddUILog("INTERCEPT", "Resp: " .. dumpRet, Color3.fromRGB(200,200,200))
                     
@@ -346,14 +358,13 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                         ExecutePerfectSequence(self, returnVal)
                     end
                 else
-                    -- Si el usuario presiona algo manualmente y el Bot está activo, bloquemos su spam de red
                     if ModosBypass.BotActivo and BotJugandoAhoraMismo then
-                        AddUILog("BLOCK", "Ignorando tu click porque el BOT está jugando la fase " .. tostring(args[1]), Color3.fromRGB(150,150,150))
+                        AddUILog("BLOCK", "Tu Minijuego local intentó jugar, pero nosotros lo bloqueamos para jugar perfecto.", Color3.fromRGB(150,150,150))
                     end
                 end
             end)
             
-            return returnVal -- Devolvemos normalmente para que el juego no haga crash
+            return unpack(RetTuple) -- Devolvemos exactamente lo que dio el servidor para prevenir que el juego se corrompa
         end
     end
     
@@ -383,5 +394,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V3.0 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
-AddUILog("AYUDA", "Ya no necesitas botones mágicos. Solo activa el Auto-Bot y presiona 'GO' desde el propio juego y miralo trabajar.", Color3.fromRGB(255, 200, 100))
+AddUILog("SISTEMA", "V3.1 INICIADA. LOGS A ForgeAnalyzerLogs_V3.txt.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El Bot tiene Protección Anti-Crash de Ejecutores. Ya puedes probar sin que se trabe.", Color3.fromRGB(255, 200, 100))
