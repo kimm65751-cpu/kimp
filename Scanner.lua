@@ -680,8 +680,8 @@ local function IniciarFarm()
                 local mode = "Combat"
                 local toolId = "weapon"
 
-                -- PRIORIDAD 1: COMBATE (Caza o Auto-Defensa si mineas)
-                if zTarget and (KiteActivo or (MineActivo and zDist < 40)) then
+                -- PRIORIDAD 1: COMBATE (Caza pura, o Auto-Defensa SOLO si el mob está MUY cerca mientras mineas)
+                if zTarget and (KiteActivo or (MineActivo and zDist < 15)) then
                     targetObj = zTarget
                     dist = zDist
                     targetDist = ShieldActivo and 4 or 7
