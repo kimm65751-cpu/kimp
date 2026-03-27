@@ -294,7 +294,7 @@ local function WaitUntilServerTime(targetTime)
         task.wait()
     end
     return workspace:GetServerTimeNow()
-}
+end
 
 -- ==========================================
 -- EXECUCIÓN AUTOMATIZADA CON CAÍDAS HEURÍSTICAS OMEGA
@@ -347,7 +347,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         PlayerCleanup()
         BotJugandoAhoraMismo = false
     end)
-}
+end
 
 -- ==========================================
 -- EL HOOK BESTIAL V5.0 (Cliente -> Servidor)
