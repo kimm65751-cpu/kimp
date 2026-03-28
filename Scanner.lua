@@ -1,37 +1,90 @@
 -- ==============================================================================
--- 🕵️ ANALIZADOR DE PARÁLISIS ABSOLUTO (METAMETODO __NEWINDEX)
+-- 💎 AUTO-VENDEDOR PRO V5.0 (SECUENCIA EXACTA VERIFICADA POR FORENSE)
 -- ==============================================================================
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
+
+-- ==========================================
+-- BUSCADOR DE REMOTOS
+-- ==========================================
+local RF_RunCommand, RF_ForceDialogue, RF_Dialogue = nil, nil, nil
+local RE_DialogueEvent = nil
+local SeyNPC = nil
+
+for _, obj in pairs(game.Workspace:GetDescendants()) do
+    if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+        SeyNPC = obj
+        break
+    end
+end
+
+for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("RemoteFunction") then
+        if obj.Name == "RunCommand" then RF_RunCommand = obj end
+        if obj.Name == "ForceDialogue" then RF_ForceDialogue = obj end
+        if obj.Name == "Dialogue" then RF_Dialogue = obj end
+    elseif obj:IsA("RemoteEvent") then
+        if obj.Name == "DialogueEvent" then RE_DialogueEvent = obj end
+    end
+end
+
+-- ==========================================
+-- DICCIONARIO DE MINERALES (SOLO BASURA, CERO ARMAS)
+-- ==========================================
+local MINERALES = {
+    {es="Excremento",       en="Excrement",       color=Color3.fromRGB(150, 100, 80)},
+    {es="Cartonita",        en="Cartonite",        color=Color3.fromRGB(200, 200, 200)},
+    {es="Boneita",          en="Boneita",          color=Color3.fromRGB(200, 200, 200)},
+    {es="Aite",             en="Aite",             color=Color3.fromRGB(200, 200, 200)},
+    {es="Cuarzo",           en="Quartz",           color=Color3.fromRGB(200, 200, 200)},
+    {es="Cuprita",          en="Cuprite",          color=Color3.fromRGB(200, 200, 200)},
+    {es="Cobalto",          en="Cobalt",           color=Color3.fromRGB(150, 150, 255)},
+    {es="Topaz",            en="Topaz",            color=Color3.fromRGB(100, 255, 100)},
+    {es="Bananita",         en="Bananite",         color=Color3.fromRGB(255, 255, 50)},
+    {es="Esmeralda",        en="Emerald",          color=Color3.fromRGB(50, 255, 100)},
+    {es="Zafiro",           en="Sapphire",         color=Color3.fromRGB(100, 150, 255)},
+    {es="Lapis Lazuli",     en="Lapis Lazuli",     color=Color3.fromRGB(50, 100, 255)},
+    {es="Titánio",          en="Titanium",         color=Color3.fromRGB(180, 200, 255)},
+    {es="Diamante",         en="Diamond",          color=Color3.fromRGB(150, 200, 255)},
+    {es="Mina ocular",      en="Eye Mine",         color=Color3.fromRGB(255, 150, 50)},
+    {es="Fichillium",       en="Fichillium",       color=Color3.fromRGB(255, 255, 100)},
+    {es="Ametista",         en="Amethyst",         color=Color3.fromRGB(200, 100, 255)},
+    {es="Esencia pequeña",  en="Small Essence",    color=Color3.fromRGB(220, 220, 220)},
+    {es="Esencia mediana",  en="Medium Essence",   color=Color3.fromRGB(150, 255, 150)},
+    {es="Esencia grande",   en="Large Essence",    color=Color3.fromRGB(100, 200, 255)},
+    {es="Esencia superior", en="Superior Essence",  color=Color3.fromRGB(255, 150, 255)},
+    {es="Chispa de fuego",  en="Fire Spark",       color=Color3.fromRGB(255, 100, 50)},
+}
 
 -- ==========================================
 -- GUI
 -- ==========================================
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ParalysisAnalyzer" then v:Destroy() end end
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "AutoVendorProUI" then v:Destroy() end end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ParalysisAnalyzer"
+ScreenGui.Name = "AutoVendorProUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 500, 0, 400)
-Panel.Position = UDim2.new(0, 20, 0.5, -200)
-Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+Panel.Size = UDim2.new(0, 480, 0, 580)
+Panel.Position = UDim2.new(0, 50, 0.5, -290)
+Panel.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(255, 100, 50)
+Panel.BorderColor3 = Color3.fromRGB(100, 150, 255)
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(80, 20, 40)
-Title.Text = " 🕵️ RASTREADOR DE PARÁLISIS (NÚCLEO)"
-Title.TextColor3 = Color3.fromRGB(255, 200, 220)
+Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
+Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -47,18 +100,9 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(1, 0, 0, 30)
-CopyBtn.Position = UDim2.new(0, 0, 1, -30)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 COPIAR ANÁLISIS"
-CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
-CopyBtn.Parent = Panel
-
+-- CONSOLA DE LOGS
 local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 1, -70)
+TermScroll.Size = UDim2.new(1, -10, 0, 160)
 TermScroll.Position = UDim2.new(0, 5, 0, 35)
 TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 TermScroll.ScrollBarThickness = 6
@@ -75,7 +119,7 @@ local function Log(texto, color)
     msg.Text = "[" .. os.date("%H:%M:%S") .. "] " .. texto
     msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
     msg.Font = Enum.Font.Code
-    msg.TextSize = 11
+    msg.TextSize = 10
     msg.TextXAlignment = Enum.TextXAlignment.Left
     msg.TextWrapped = true
     msg.Parent = TermScroll
@@ -85,60 +129,244 @@ local function Log(texto, color)
     table.insert(LogHistory, msg.Text)
 end
 
-CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(LogHistory, "\n")) end) end)
+-- ==========================================
+-- ESCUDO INMUNOLÓGICO Y RASTREADOR (__newindex)
+-- ==========================================
+if not getgenv().InmunidadV8Activa then
+    getgenv().InmunidadV8Activa = true
+    local OriginalNewIndex
+    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
+        if not checkcaller() then
+            -- Prevenir Anclaje Físico (Secuestro de movimiento)
+            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then
+                task.spawn(function()
+                    Log("🛡️ BLOQUEADO: Intento de anclaje físico evadido.", Color3.fromRGB(50, 255, 50))
+                    local trace = debug.traceback()
+                    for line in string.gmatch(trace, "[^\r\n]+") do
+                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
+                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
+                        end
+                    end
+                end)
+                return -- ABORTAMOS EL CAMBIO
+            end
+            
+            -- Prevenir Secuestro de Cámara
+            if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then
+                task.spawn(function()
+                    Log("🛡️ BLOQUEADO: Intento de rotar tu cámara a " .. tostring(v), Color3.fromRGB(50, 255, 50))
+                    local trace = debug.traceback()
+                    for line in string.gmatch(trace, "[^\r\n]+") do
+                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
+                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
+                        end
+                    end
+                end)
+                return -- ABORTAMOS EL CAMBIO
+            end
+            
+            -- Prevenir Reducción de Velocidad (Parálisis)
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then
+                task.spawn(function()
+                    Log("🛡️ BLOQUEADO: Intento de paralizar tu velocidad.", Color3.fromRGB(50, 255, 50))
+                    local trace = debug.traceback()
+                    for line in string.gmatch(trace, "[^\r\n]+") do
+                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
+                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
+                        end
+                    end
+                end)
+                return -- ABORTAMOS EL CAMBIO
+            end
+        end
+        return OriginalNewIndex(t, k, v)
+    end)
+    Log("🛡️ MOTOR DE INMUNIDAD Y RASTREO V8 ACTIVO.", Color3.fromRGB(0, 255, 255))
+end
+
+-- Controles de Log
+local LogControls = Instance.new("Frame")
+LogControls.Size = UDim2.new(1, -10, 0, 20)
+LogControls.Position = UDim2.new(0, 5, 0, 198)
+LogControls.BackgroundTransparency = 1
+LogControls.Parent = Panel
+
+local CopyLogBtn = Instance.new("TextButton")
+CopyLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
+CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+CopyLogBtn.Text = "📋 COPIAR LOG"
+CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyLogBtn.Font = Enum.Font.Code
+CopyLogBtn.TextSize = 10
+CopyLogBtn.Parent = LogControls
+CopyLogBtn.MouseButton1Click:Connect(function()
+    pcall(function() setclipboard(table.concat(LogHistory, "\n")) end)
+    CopyLogBtn.Text = "✅ COPIADO"
+    task.delay(1.5, function() CopyLogBtn.Text = "📋 COPIAR LOG" end)
+end)
+
+local ClearLogBtn = Instance.new("TextButton")
+ClearLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
+ClearLogBtn.Position = UDim2.new(0.5, 2, 0, 0)
+ClearLogBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ClearLogBtn.Text = "🗑️ LIMPIAR"
+ClearLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearLogBtn.Font = Enum.Font.Code
+ClearLogBtn.TextSize = 10
+ClearLogBtn.Parent = LogControls
+ClearLogBtn.MouseButton1Click:Connect(function()
+    for _, v in ipairs(TermScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
+    LogHistory = {}
+end)
+
+-- Estado
+Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") .. 
+    (RF_Dialogue and "✅ Dialogue " or "❌ Dialogue ") .. 
+    (RF_ForceDialogue and "✅ ForceDialogue " or "❌ ForceDialogue ") ..
+    (RE_DialogueEvent and "✅ DialogueEvent " or "❌ DialogueEvent ") ..
+    (SeyNPC and "✅ NPC" or "❌ NPC"))
 
 -- ==========================================
--- HOOK DE NÚCLEO FÍSICO (__NEWINDEX)
+-- LISTA DE ITEMS SCROLL
 -- ==========================================
-Log("🔴 HOOK DE PARÁLISIS ACTIVADO.", Color3.fromRGB(255, 100, 100))
-Log("🗣️ Ve y habla/vende a Sey. Si algún script toca tu RootPart, Cámara o Velocidad, será expuesto.", Color3.fromRGB(255, 255, 100))
-Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -10, 1, -290)
+Scroll.Position = UDim2.new(0, 5, 0, 223)
+Scroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
+Scroll.ScrollBarThickness = 6
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.Parent = Panel
+Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 3)
 
-local OriginalNewIndex
-OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
-    -- Si el intento de cambio proviene del juego (y no del exploit)
-    if not checkcaller() then
-        
-        -- CASO 1: Anclaron tu cuerpo
-        if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then
-            task.spawn(function()
-                Log("☠️ ¡SABOTAJE! Un script congeló tu cuerpo (Anchored=true)", Color3.fromRGB(255, 50, 50))
-                local trace = debug.traceback()
-                for line in string.gmatch(trace, "[^\r\n]+") do
-                    if string.find(line, "Player") or string.find(line, "ReplicatedStorage") then
-                        Log("   -> " .. line, Color3.fromRGB(255, 150, 150))
-                    end
-                end
-            end)
-        end
-        
-        -- CASO 2: Secuestraron tu cámara
-        if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then
-            task.spawn(function()
-                Log("🎥 ¡SECUESTRO! Un script alteró la cámara a: " .. tostring(v), Color3.fromRGB(50, 255, 255))
-                local trace = debug.traceback()
-                for line in string.gmatch(trace, "[^\r\n]+") do
-                    if string.find(line, "Player") or string.find(line, "ReplicatedStorage") then
-                        Log("   -> " .. line, Color3.fromRGB(150, 255, 255))
-                    end
-                end
-            end)
-        end
-        
-        -- CASO 3: Te dejaron sin velocidad de movimiento
-        if t:IsA("Humanoid") and k == "WalkSpeed" and v == 0 then
-            task.spawn(function()
-                Log("♿ ¡PARÁLISIS! WalkSpeed reducida a 0", Color3.fromRGB(255, 100, 255))
-                local trace = debug.traceback()
-                for line in string.gmatch(trace, "[^\r\n]+") do
-                    if string.find(line, "Player") or string.find(line, "ReplicatedStorage") then
-                        Log("   -> " .. line, Color3.fromRGB(255, 150, 255))
-                    end
-                end
-            end)
-        end
+local TablaDeCantidades = {}
 
+for _, item in ipairs(MINERALES) do
+    local fila = Instance.new("Frame")
+    fila.Size = UDim2.new(1, -10, 0, 28)
+    fila.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+    fila.Parent = Scroll
+    
+    local NameL = Instance.new("TextLabel")
+    NameL.Size = UDim2.new(0.6, 0, 1, 0)
+    NameL.Position = UDim2.new(0, 10, 0, 0)
+    NameL.BackgroundTransparency = 1
+    NameL.Text = item.es
+    NameL.TextColor3 = item.color
+    NameL.Font = Enum.Font.Code
+    NameL.TextSize = 13
+    NameL.TextXAlignment = Enum.TextXAlignment.Left
+    NameL.Parent = fila
+    
+    local BoxCont = Instance.new("Frame")
+    BoxCont.Size = UDim2.new(0.35, 0, 0, 20)
+    BoxCont.Position = UDim2.new(0.65, -5, 0.5, -10)
+    BoxCont.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    BoxCont.BorderSizePixel = 1
+    BoxCont.BorderColor3 = item.color
+    BoxCont.Parent = fila
+    
+    local TB = Instance.new("TextBox")
+    TB.Size = UDim2.new(1, 0, 1, 0)
+    TB.BackgroundTransparency = 1
+    TB.Text = ""
+    TB.PlaceholderText = "Cant."
+    TB.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TB.Font = Enum.Font.Code
+    TB.TextSize = 12
+    TB.Parent = BoxCont
+    
+    TablaDeCantidades[item.en] = TB
+end
+
+-- ==========================================
+-- BOTON VENDER (SECUENCIA EXACTA DEL FORENSE)
+-- ==========================================
+local SellBtn = Instance.new("TextButton")
+SellBtn.Size = UDim2.new(1, -10, 0, 50)
+SellBtn.Position = UDim2.new(0, 5, 1, -55)
+SellBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 50)
+SellBtn.Text = "💸 VENDER ITEMS SELECCIONADOS"
+SellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SellBtn.Font = Enum.Font.Code
+SellBtn.TextSize = 13
+SellBtn.Parent = Panel
+Instance.new("UICorner", SellBtn).CornerRadius = UDim.new(0, 6)
+
+SellBtn.MouseButton1Click:Connect(function()
+    -- Validar dependencias
+    if not RF_RunCommand then Log("❌ RunCommand no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RF_Dialogue then Log("❌ Dialogue no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RF_ForceDialogue then Log("❌ ForceDialogue no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RE_DialogueEvent then Log("❌ DialogueEvent no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not SeyNPC then Log("❌ NPC Sey no encontrado.", Color3.fromRGB(255,0,0)) return end
+    
+    -- Construir tabla Basket
+    local miBasket = {}
+    local cuenta = 0
+    for nombreEN, textBox in pairs(TablaDeCantidades) do
+        if textBox.Text ~= "" then
+            local cant = tonumber(textBox.Text)
+            if cant and cant > 0 then
+                miBasket[nombreEN] = cant
+                cuenta = cuenta + 1
+                textBox.Text = ""
+            end
+        end
     end
     
-    return OriginalNewIndex(t, k, v)
-end)
+    if cuenta == 0 then Log("⚠️ Escribe cantidades primero.", Color3.fromRGB(255,255,0)) return end
+    
+    local paqueteFinal = { Basket = miBasket }
+    
+    task.spawn(function()
+        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
+        Log("🚀 INICIANDO VENTA NINJA (SIN INTERFAZ)...", Color3.fromRGB(0, 255, 255))
+        
+        local basketStr = "{"
+        for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
+        basketStr = basketStr .. "}"
+        Log("📦 Basket: " .. basketStr, Color3.fromRGB(200, 200, 200))
+        
+        -- ========== PASO 1: ENGAÑAR CON EL MENÚ MISC DIRECTAMENTE ==========
+        -- ¡Omitimos Dialogue(SeyNPC) para ver si evitamos el Teleport forzado!
+        Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
+        local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        if not ok1 then Log("❌ ForceDialogue Falló: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) end
+        
+        task.wait(0.2)
+        
+        -- ========== PASO 2: VENTA PURA Y DURA ==========
+        Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
+        local ok2, resp = pcall(function()
+            return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
+        end)
+        
+        if ok2 then
+            Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
+        else
+            Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+        end
+        
+        task.wait(0.3)
+        
+        -- ========== PASO 3: LIMPIEZA SILENCIOSA ==========
+        Log("🔓 [3/3] Cerrando chat del Servidor y Ocultando UI", Color3.fromRGB(255, 150, 0))
+        
+        -- Le decimos al servidor que ya nos fuimos
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        
+        -- Cerramos cualquier barra de texto que se haya abierto
+        pcall(function()
+            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextLabel") and obj.Visible then
+                    if string.find(obj.Text, "Generoso") or string.find(obj.Text, "acuerdo") then
+                        local p = obj
+                        while p and not p:IsA("ScreenGui") do p = p.Parent end
+                        if p then p.Enabled = false end
+                    end
+                end
+            end
+        end)
+        
+Log("💎 ModNINJA 7.0: Escoge ítems, pon la cant, y clica Vender.")
