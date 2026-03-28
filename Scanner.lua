@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V5.0 (THE OMEGA BOT)
--- Calculador Anticheat Activo, Control Tolerante y Evasor de Cámaras Locales.
+-- 🗡️ FORGE OMNI-ANALYZER V5.1 (MOVEMENT UNLOCK Y QUALITY BOOST)
+-- Calculador Anticheat Activo, Desbaneo de Controles Nativos y Ajuste Heurístico.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V5.0 - OMEGA BOT"
+local SCRIPT_VERSION = "V5.1 - OMEGA UNLOCKED"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,8 +30,8 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Title.Text = " 📡 FORGE V5.0 (THE OMEGA BOT)"
+Title.BackgroundColor3 = Color3.fromRGB(0, 0, 100)
+Title.Text = " 📡 FORGE V5.1 (CALIDAD OMEGA & UNLOCKED)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 0)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -111,7 +111,7 @@ local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
 local BotBypassingNetwork = false
-local DEFAULT_SAFE_DELAY = 8.50
+local DEFAULT_SAFE_DELAY = 5.95 -- Optimizado para no disparar ban de velocidad (4.0s) y rozar el 100% de calidad
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -260,7 +260,9 @@ local function PlayerCleanup()
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp then hrp.Anchored = false end
         end
-        AddUILog("SISTEMA", "¡Cámara y controles liberados con éxito!", Color3.fromRGB(150,255,255))
+        local pm = require(Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
+        pm:GetControls():Enable()
+        AddUILog("SISTEMA", "¡Cámara y movimiento liberados (PlayerModule Override)!", Color3.fromRGB(150,255,255))
     end)
 end
 
@@ -447,5 +449,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V5.0 INICIADA. THE OMEGA BOT ACTIVO.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "El script te devolverá la cámara al finalizar, y calculará tolerancias humanas extremas. ¡A por la Perfección!", Color3.fromRGB(200, 255, 100))
+AddUILog("SISTEMA", "V5.1 INICIADA. THE OMEGA BOT UNLOCKED ACTIVO.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El script te devolverá la cámara con PlayerModule al finalizar. Tiempos Heurísticos ajustados a 5.95s para rozar el 100% de Calidad.", Color3.fromRGB(200, 255, 100))
