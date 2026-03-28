@@ -313,14 +313,60 @@ SellBtn.MouseButton1Click:Connect(function()
             Log("❌ Error Paso 6: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        task.wait(0.2)
+        -- ========== PASO 6.5: AUTO-CONFIRMAR "ACUERDO" ==========
+        task.wait(0.5) -- Esperar a que el diálogo aparezca en pantalla
         
-        -- ========== PASO 7: Cerrar todo ==========
-        Log("🔒 [7/7] FireServer -> DialogueEvent('Closed')", Color3.fromRGB(255, 150, 0))
+        Log("🤖 [6.5] Buscando botón de ACUERDO...", Color3.fromRGB(0, 255, 255))
+        local acuerdoClicked = false
+        
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextButton") and obj.Visible then
+                local txtLow = string.lower(obj.Text)
+                if string.find(txtLow, "acuerdo") or string.find(txtLow, "agree") or string.find(txtLow, "accept") then
+                    Log("✅ ¡Botón encontrado! -> " .. obj.Text .. " (" .. obj:GetFullName() .. ")", Color3.fromRGB(0, 255, 0))
+                    pcall(function() 
+                        -- Disparar el evento de clic
+                        for _, conn in pairs(getconnections(obj.MouseButton1Click)) do
+                            conn:Fire()
+                        end
+                    end)
+                    acuerdoClicked = true
+                    break
+                end
+            end
+        end
+        
+        -- Plan B: Buscar por la opción "1" del diálogo
+        if not acuerdoClicked then
+            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Visible then
+                    if string.find(obj.Text, "1.") or string.find(obj.Text, "1]") then
+                        Log("✅ Plan B: Clickeando opción 1 -> " .. obj.Text, Color3.fromRGB(0, 255, 0))
+                        pcall(function()
+                            for _, conn in pairs(getconnections(obj.MouseButton1Click)) do
+                                conn:Fire()
+                            end
+                        end)
+                        acuerdoClicked = true
+                        break
+                    end
+                end
+            end
+        end
+        
+        if not acuerdoClicked then
+            Log("⚠️ No se encontró el botón de Acuerdo. Haz clic manual.", Color3.fromRGB(255, 255, 0))
+        end
+        
+        task.wait(0.5)
+        
+        -- ========== PASO 7: Cerrar todo (doble cierre para liberar al jugador) ==========
+        Log("🔒 [7/7] Cerrando diálogos para liberar movimiento...", Color3.fromRGB(255, 150, 0))
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        task.wait(0.3)
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
         
-        Log("✅ SECUENCIA COMPLETA. Revisa tu inventario y monedas.", Color3.fromRGB(0, 255, 255))
-        Log("💬 Si viste diálogo de Sey ofreciendo oro, dale ACUERDO.", Color3.fromRGB(255, 255, 0))
+        Log("✅ ¡VENTA COMPLETADA! Revisa tu inventario y monedas.", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end)
