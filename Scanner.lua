@@ -55,22 +55,6 @@ TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 TermScroll.Parent = Panel
 Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
 
--- TextBox seleccionable para copiar manualmente (Ctrl+A, Ctrl+C)
-local ResultBox = Instance.new("TextBox")
-ResultBox.Size = UDim2.new(1, -10, 0, 45)
-ResultBox.Position = UDim2.new(0, 5, 1, -90)
-ResultBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ResultBox.TextColor3 = Color3.fromRGB(200, 255, 200)
-ResultBox.PlaceholderText = "Aquí aparecerán los resultados pddddara copiar (Ctrl+A, Ctrl+C)"
-ResultBox.Text = ""
-ResultBox.Font = Enum.Font.Code
-ResultBox.TextSize = 9
-ResultBox.TextXAlignment = Enum.TextXAlignment.Left
-ResultBox.ClearTextOnFocus = false
-ResultBox.MultiLine = true
-ResultBox.TextEditable = false
-ResultBox.Parent = Panel
-
 local LogHistory = {}
 local function Log(texto, color)
     local msg = Instance.new("TextLabel")
@@ -94,23 +78,72 @@ local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 VOLCAR TEXTO AL CUADRO (luego Ctrl+A, Ctrl+C)"
+CopyBtn.Text = "📋 ABRIR RESULTADOS"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 11
+CopyBtn.TextSize = 12
 CopyBtn.Parent = Panel
 CopyBtn.MouseButton1Click:Connect(function()
     local data = table.concat(LogHistory, "\n")
-    ResultBox.Text = data
-    CopyBtn.Text = "✅ TEXTO VOLCADO! Haz click en el cuadro gris, Ctrl+A, Ctrl+C"
-    CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    
+    -- Intentar portapapeles directamente
     pcall(function() setclipboard(data) end)
-    task.delay(4, function() CopyBtn.Text = "📋 VOLCAR TEXTO AL CUADRO"; CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200) end)
+    pcall(function() toclipboard(data) end)
+    
+    -- Plan B infalible: Cuadro Gigante
+    local pop = Instance.new("Frame", ScreenGui)
+    pop.Size = UDim2.new(1, 0, 1, 0)
+    pop.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    pop.ZIndex = 9999
+    
+    local tb = Instance.new("TextBox", pop)
+    tb.Size = UDim2.new(0.9, 0, 0.8, 0)
+    tb.Position = UDim2.new(0.05, 0, 0.05, 0)
+    tb.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    tb.TextColor3 = Color3.fromRGB(200, 255, 200)
+    tb.Text = data
+    tb.TextXAlignment = Enum.TextXAlignment.Left
+    tb.TextYAlignment = Enum.TextYAlignment.Top
+    tb.ClearTextOnFocus = false
+    tb.MultiLine = true
+    tb.TextEditable = false
+    tb.ZIndex = 10000
+    
+    local DescargarBtn = Instance.new("TextButton", pop)
+    DescargarBtn.Size = UDim2.new(0.9, 0, 0.1, 0)
+    DescargarBtn.Position = UDim2.new(0.05, 0, 0.75, 0)
+    DescargarBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+    DescargarBtn.Text = "💾 DESCARGAR BASE DE DATOS (.TXT)"
+    DescargarBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DescargarBtn.ZIndex = 10000
+    DescargarBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            if writefile then
+                writefile("soy una mierda.txt", data)
+                DescargarBtn.Text = "✅ ¡GUARDADO COMO: soy una mierda.txt EN TU WORKSPACE!"
+                DescargarBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            else
+                DescargarBtn.Text = "❌ ERROR: TU EJECUTOR NO TIENE WRITEFILE"
+                DescargarBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            end
+        end)
+    end)
+    
+    local bt = Instance.new("TextButton", pop)
+    bt.Size = UDim2.new(0.9, 0, 0.1, 0)
+    bt.Position = UDim2.new(0.05, 0, 0.88, 0)
+    bt.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    bt.Text = "CERRAR VENTANA"
+    bt.TextColor3 = Color3.fromRGB(255, 255, 255)
+    bt.ZIndex = 10000
+    bt.MouseButton1Click:Connect(function() pop:Destroy() end)
+
+    CopyBtn.Text = "✅ ¡COMPLETADO!"
+    task.delay(3, function() CopyBtn.Text = "📋 ABRIR RESULTADOS" end)
 end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
-Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO", Color3.fromRGB(255, 255, 0))
-Log("Presiona el Botón de abajo para Escanear estáticamente toda tu mochila y cazar su ID interior.", Color3.fromRGB(200, 255, 200))
+Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO (BASE DE DATOS COMPLETA)", Color3.fromRGB(255, 255, 0))
 Log("==========================================", Color3.fromRGB(150, 150, 150))
 
 local function AnalizarTodoElInventario()
@@ -122,8 +155,10 @@ local function AnalizarTodoElInventario()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
             if obj:IsA("TextLabel") and obj.Visible then
                 local txt = obj.Text
-                -- Ignorar textos demasiado cortos, números puros, o signos
-                if string.len(txt) > 2 and not tonumber(txt) and not string.match(txt, "^[xX]%d+") and not string.find(string.lower(txt), "capacidad") then
+                local low = string.lower(txt)
+                
+                -- Sin filtros! Extrae la base de datos completa de TODO!
+                if true then
                     local padre = obj.Parent
                     if padre and (padre:IsA("Frame") or padre:IsA("ImageLabel")) then
                         if not encontrados[txt] then
