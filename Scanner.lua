@@ -94,44 +94,39 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    -- Solo interceptar comunicación cliente -> servidor
     if method == "InvokeServer" or method == "FireServer" then
         local remoteName = self.Name
         
-        -- Ignorar remotes de movimiento o sonido para no saturar el log de basura
+        -- Filtro estricto para no saturar
         if remoteName ~= "CharacterSoundEvent" and remoteName ~= "UpdateMouse" and remoteName ~= "MoveEvent" then
             
-            -- Si es uno de los remotos críticos de tienda, registrar a máxima profundidad
             if remoteName == "RunCommand" or string.find(string.lower(remoteName), "dialogue") or string.find(string.lower(remoteName), "sell") or string.find(string.lower(remoteName), "shop") or string.find(string.lower(remoteName), "inventory") then
                 
-                Log("\n⚠️ [INTERCEPCIÓN CRÍTICA - " .. remoteName .. "]")
-                Log("-> [MÉTODO]: " .. method)
+                -- Ejecución ASÍNCRONA: No bloqueamos el hilo del juego mientras procesamos info pesada
+                task.spawn(function()
+                    Log("\n⚠️ [INTERCEPCIÓN CRÍTICA - " .. remoteName .. "]")
+                    Log("-> [MÉTODO]: " .. method)
+                    
+                    local caller = string.split(tostring(debug.traceback()), "\n")[3] or "Desconocido"
+                    Log("-> [ORIGEN]: " .. tostring(caller))
+                    
+                    local payloadDump = DeepDump(args)
+                    Log("-> [CLIENTE ENVIANDO]: " .. payloadDump)
+                end)
                 
-                -- Detectar llamador (módulo cliente) si es posible
-                local caller = debug.getinfo(2, "s")
-                if caller and caller.source then
-                    Log("-> [MÓDULO CLIENTE QUE LO ACTIVÓ]: " .. tostring(caller.source))
-                end
-                
-                Log("-> [CLIENTE ENVIANDO DATOS]: " .. DeepDump(args))
-                
-                -- Si es un InvokeServer, podemos interceptar EXACTAMENTE qué responde el servidor
+                -- Si es InvokeServer, capturar la respuesta
                 if method == "InvokeServer" then
                     local res = {oldNamecall(self, ...)}
-                    Log("<- [SERVIDOR RESPONDE]: " .. DeepDump(res))
-                    Log("=============================================")
+                    task.spawn(function()
+                        Log("<- [SERVIDOR RESPONDIÓ]: " .. DeepDump(res))
+                        Log("=============================================")
+                    end)
                     return unpack(res)
-                else
-                    Log("=============================================")
                 end
-            else
-                -- Si es otro remote desconocido, registrémoslo igual pero de forma más sutil
-                Log("-> [Remote Detectado]: " .. remoteName .. " | Data: " .. DeepDump(args))
             end
         end
     end
     
-    -- Dejar pasar la llamada real para que el juego no se rompa
     return oldNamecall(self, ...)
 end)
 
