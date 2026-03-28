@@ -74,7 +74,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 MÁQUINA DE LIMPIEZA INVENTARIO V9.1"
+Title.Text = " 💎 MÁQUINA DE LIMPIEZA INVENTARIO V9.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -160,11 +160,10 @@ if not getgenv().InmunidadV9Activa then
         if not checkcaller() then
             if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
             if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then return end
-            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then return end
         end
         return OriginalNewIndex(t, k, v)
     end)
-    Log("🛡️ ESCUDO METAMÉTODO ACTIVO. Inmune a parálisis.", Color3.fromRGB(0, 255, 255))
+    Log("🛡️ ESCUDO METAMÉTODO ACTIVO. Inmune a parálisis de cámara/anclaje.", Color3.fromRGB(0, 255, 255))
 end
 
 -- ==========================================
@@ -255,26 +254,23 @@ end)
 local function ObtenerCapacidad()
     local cur, maxm = nil, nil
     
-    -- 1. Límite Definitivo por Knit
     if InvController then
-        pcall(function()
-            if type(InvController.GetBagCapacity) == "function" then
-                maxm = InvController:GetBagCapacity()
-            end
-        end)
+        pcall(function() maxm = InvController:GetBagCapacity() end)
     end
+    if not maxm then maxm = 144 end -- Límite estructural de tu cuenta
     
-    -- 2. Lectura Híbrida del texto en caché (Inventario cerrado o abierto)
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextLabel") then
-                local txt = string.lower(obj.Text)
-                if string.find(txt, "capacidad") then
-                    local x, y = string.match(obj.Text, "(%d+)/(%d+)")
-                    if x and y then 
-                        cur = tonumber(x)
-                        if not maxm then maxm = tonumber(y) end
-                        break 
+            -- Solo buscamos en UI visibles para EVITAR leer las 'Templates' invisibles (0/144)
+            if obj:IsA("TextLabel") and obj.Visible then
+                local txt = obj.Text
+                local x, y = string.match(txt, "(%d+)/(%d+)")
+                if x and y then
+                    local valX, valY = tonumber(x), tonumber(y)
+                    -- Si el segundo número es tu máxima capacidad conocida, este es el label correcto.
+                    if valY == maxm or valY == 144 then
+                        cur = valX
+                        maxm = valY
                     end
                 end
             end
