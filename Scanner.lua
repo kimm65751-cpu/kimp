@@ -1,14 +1,13 @@
 -- ==============================================================================
--- 🕵️ FORGE FORENSIC OMNI-LOGGER V6.0 (RAW DATA EXTRACTOR)
--- Captura jerárquica de Clicks, Red, Textos GUI, Módulos y Paquetes de Servidor.
+-- 🗡️ FORGE OMNI-ANALYZER V7.0 (THE OMEGA RESOLUTION)
+-- El Autómata Definitivo con liberación de EndForge y Tiempos de Clase Mundial (6.65s).
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V6.0 - FORENSIC OMNI-LOGGER"
+local SCRIPT_VERSION = "V7.0 - OMEGA RESOLUTION"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
@@ -20,20 +19,20 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 600, 0, 450)
-Panel.Position = UDim2.new(1, -620, 0.5, -225)
-Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 15)
+Panel.Size = UDim2.new(0, 560, 0, 420)
+Panel.Position = UDim2.new(1, -580, 0.5, -210)
+Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(0, 255, 150)
+Panel.BorderColor3 = Color3.fromRGB(200, 200, 255)
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(10, 50, 40)
-Title.Text = " 🕵️ FORGE V6.0 (FORENSIC OMNI-LOGGER)"
-Title.TextColor3 = Color3.fromRGB(100, 255, 200)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 80)
+Title.Text = " 📡 FORGE V7.0 (OMEGA RESOLUTION)"
+Title.TextColor3 = Color3.fromRGB(200, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -49,20 +48,27 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 
-local RecordBtn = Instance.new("TextButton")
-RecordBtn.Size = UDim2.new(1, -8, 0, 35)
-RecordBtn.Position = UDim2.new(0, 4, 0, 35)
-RecordBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-RecordBtn.Text = "🔴 GRABANDO TODO AL .TXT (JUEGA NORMAL)"
-RecordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RecordBtn.Font = Enum.Font.Code
-RecordBtn.TextSize = 14
-RecordBtn.Parent = Panel
+local BypassFrame = Instance.new("Frame")
+BypassFrame.Size = UDim2.new(1, -8, 0, 45)
+BypassFrame.Position = UDim2.new(0, 4, 0, 35)
+BypassFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 30)
+BypassFrame.Parent = Panel
+Instance.new("UICorner", BypassFrame).CornerRadius = UDim.new(0, 4)
+
+local AutoBotBtn = Instance.new("TextButton")
+AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
+AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
+AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+AutoBotBtn.Text = "🤖 START: HABILITAR AUTO-BOT (V7.0 OMEGA)"
+AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoBotBtn.Font = Enum.Font.Code
+AutoBotBtn.TextSize = 13
+AutoBotBtn.Parent = BypassFrame
 
 local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -115)
-LogScroll.Position = UDim2.new(0, 4, 0, 75)
-LogScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+LogScroll.Size = UDim2.new(1, -8, 1, -125)
+LogScroll.Position = UDim2.new(0, 4, 0, 85)
+LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 6
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -79,9 +85,10 @@ ControlsFrame.Parent = Panel
 local ClearBtn = Instance.new("TextButton")
 ClearBtn.Size = UDim2.new(0.5, -2, 1, 0)
 ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-ClearBtn.Text = "🗑️ LIMPIAR PANTALLA"
+ClearBtn.Text = "🗑️ LIMPIAR LOGS"
 ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ClearBtn.Font = Enum.Font.Code
+ClearBtn.TextSize = 12
 ClearBtn.Parent = ControlsFrame
 
 local CopyBtn = Instance.new("TextButton")
@@ -91,39 +98,44 @@ CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
 CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
+CopyBtn.TextSize = 12
 CopyBtn.Parent = ControlsFrame
 
--- ==========================================
--- SISTEMA DE LOGS Y MEMÓRIA A ARCHIVO
--- ==========================================
 local MasterLogList = {}
+local ModosBypass = {BotActivo = false}
+local BotJugandoAhoraMismo = false
+local BotBypassingNetwork = false
+
+-- Ajuste de calidad supremo basado en tus 61% a 5.95s. Ahora usamos 6.65s (tiempo físico perfecto de anillos).
+local HAMMER_DELAY = 6.65
+local WATER_DELAY = 6.65
 
 local function SaveLogToFile(message)
     task.spawn(function()
         pcall(function()
-            local filename = "ForgeForensicLog_V6.txt"
-            if appendfile then
-                appendfile(filename, message .. "\n")
-            elseif readfile and writefile then
+            local filename = "ForgeAnalyzerLogs_V7.txt"
+            if appendfile then appendfile(filename, message .. "\n")
+            elseif writefile then
                 local current = ""
                 pcall(function() current = readfile(filename) end)
                 writefile(filename, current .. message .. "\n")
-            elseif writefile then
-                writefile(filename, message .. "\n")
             end
         end)
     end)
 end
 
-local function AddLog(logType, message, color)
-    local ms = tostring(math.floor((os.clock() % 1) * 1000))
-    if #ms == 1 then ms = "00"..ms elseif #ms == 2 then ms = "0"..ms end
-    local fullString = "[" .. os.date("%H:%M:%S") .. "." .. ms .. "] [" .. logType .. "] " .. message
-    
+local function AddUILog(logType, message, color)
+    local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
     SaveLogToFile(fullString)
     table.insert(MasterLogList, fullString)
     
-    if #MasterLogList > 1000 then table.remove(MasterLogList, 1) end
+    if #MasterLogList > 500 then 
+        table.remove(MasterLogList, 1)
+        task.defer(function()
+            local f = LogScroll:FindFirstChildWhichIsA("TextLabel")
+            if f then pcall(function() f:Destroy() end) end
+        end)
+    end
     
     task.defer(function()
         pcall(function()
@@ -145,23 +157,177 @@ local function AddLog(logType, message, color)
     end)
 end
 
+AutoBotBtn.MouseButton1Click:Connect(function()
+    ModosBypass.BotActivo = not ModosBypass.BotActivo
+    if ModosBypass.BotActivo then
+        AutoBotBtn.Text = "🛑 STOP: BOT HABILITADO (Esperando que presiones GO en Forja)"
+        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        AddUILog("SISTEMA", "V7.0 Bot ARMADO. Juega normal (presiona GO) y yo haré el resto.", Color3.fromRGB(100,255,100))
+    else
+        AutoBotBtn.Text = "🤖 START: HABILITAR AUTO-BOT (V7.0 OMEGA)"
+        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        AddUILog("SISTEMA", "Bot APAGADO.", Color3.fromRGB(255,100,100))
+    end
+end)
+
 ClearBtn.MouseButton1Click:Connect(function()
     for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
     MasterLogList = {}
 end)
-
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE FORENSE PROFUNDO (V6.0) ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V7.0) ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
+local function CatchServerResponses()
+    local RS = game:GetService("ReplicatedStorage")
+    for _, v in pairs(RS:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            if string.find(string.lower(v:GetFullName()), "knit") or string.find(string.lower(v.Name), "forge") then
+                v.OnClientEvent:Connect(function(...)
+                    local args = {...}
+                    local dump = ""
+                    for i, val in ipairs(args) do dump = dump .. "Arg["..i.."]="..tostring(val).." " end
+                    if dump ~= "" then AddUILog("SERVER_SAYS", v.Name .. " >> " .. dump, Color3.fromRGB(0, 255, 0)) end
+                end)
+            end
+        end
+    end
+end
+CatchServerResponses()
+
+local function ExtractTimes(tbl)
+    local req, start = nil, nil
+    local function search(t)
+        if type(t) ~= "table" then return end
+        for k, v in pairs(t) do
+            if type(k) == "string" and k == "RequiredTime" then req = v end
+            if type(k) == "string" and k == "StartTime" then start = v end
+            if type(v) == "table" then search(v) end
+        end
+    end
+    search(tbl)
+    return req, start
+end
+
+local function PlayerCleanup()
+    pcall(function()
+        game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+        local char = Players.LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Anchored = false end
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = 16 hum.JumpPower = 50 end
+        end
+        local pm = require(Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
+        pm:GetControls():Enable()
+        
+        local cam = workspace.CurrentCamera
+        if cam then cam:Destroy() end
+        task.wait(0.1)
+        cam = workspace.CurrentCamera
+        cam.CameraType = Enum.CameraType.Custom
+        if char then cam.CameraSubject = char:FindFirstChild("Humanoid") end
+        
+        AddUILog("SISTEMA", "¡HARD RESET COMPLETADO! Inventario, Cámara y Movimiento resucitados nativamente.", Color3.fromRGB(150,255,255))
+    end)
+end
+
+local function DestroyNativeMinigames()
+    for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+        if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
+            if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
+                v:Destroy()
+            end
+        end
+    end
+end
+
+local function SafeInvoke(forgeRF, phase, clientTimeParam)
+    local s, r = false, nil
+    local completed = false
+    BotBypassingNetwork = true
+    task.spawn(function()
+        local _s, _r = pcall(function() 
+            if clientTimeParam then return forgeRF:InvokeServer(phase, {ClientTime = clientTimeParam})
+            else return forgeRF:InvokeServer(phase, {}) end
+        end)
+        s, r = _s, _r
+        completed = true
+    end)
+    local timeout = os.clock()
+    while not completed and (os.clock() - timeout) < 5 do task.wait() end
+    BotBypassingNetwork = false
+    if not completed then AddUILog("TIMEOUT", "El servidor silenció (" .. phase .. ")", Color3.fromRGB(255,100,0)) end
+    return s, r
+end
+
+local function WaitUntilServerTime(targetTime)
+    local maxWait = targetTime + 2.0
+    while workspace:GetServerTimeNow() < targetTime do
+        if workspace:GetServerTimeNow() > maxWait then break end
+        task.wait()
+    end
+    return workspace:GetServerTimeNow()
+end
+
+local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
+    task.spawn(function()
+        BotJugandoAhoraMismo = true
+        DestroyNativeMinigames()
+        
+        AddUILog("BOT_V7", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
+        local req1, start1 = ExtractTimes(primerMeltReturn)
+        req1 = req1 or 2.15
+        start1 = start1 or workspace:GetServerTimeNow()
+        AddUILog("BOT_V7", "⏳ Esperando " .. string.format("%.2f", req1) .. "s seguros...", Color3.fromRGB(200, 150, 0))
+        local trueTime1 = WaitUntilServerTime(start1 + req1)
+        
+        AddUILog("BOT_V7", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
+        local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
+        local req2, start2 = ExtractTimes(r2)
+        req2 = req2 or 4.50
+        start2 = start2 or workspace:GetServerTimeNow()
+        AddUILog("BOT_V7", "⏳ Esperando " .. string.format("%.2f", req2) .. "s seguros...", Color3.fromRGB(200, 150, 0))
+        local trueTime2 = WaitUntilServerTime(start2 + req2)
+        
+        AddUILog("BOT_V7", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
+        local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
+        local req3, start3 = ExtractTimes(r3)
+        req3 = req3 or HAMMER_DELAY
+        start3 = start3 or workspace:GetServerTimeNow()
+        AddUILog("BOT_V7", "⏳ Esperando " .. string.format("%.2f", req3) .. "s (CALIBRACIÓN HUMANA)...", Color3.fromRGB(200, 150, 0))
+        local trueTime3 = WaitUntilServerTime(start3 + req3)
+        
+        AddUILog("BOT_V7", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(50,255,200))
+        local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
+        local req4, start4 = ExtractTimes(r4)
+        req4 = req4 or WATER_DELAY
+        start4 = start4 or workspace:GetServerTimeNow()
+        AddUILog("BOT_V7", "⏳ Esperando " .. string.format("%.2f", req4) .. "s (FASE FINAL, NO TE MUEVAS)...", Color3.fromRGB(255, 50, 50))
+        WaitUntilServerTime(start4 + req4)
+        
+        AddUILog("BOT_V7", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
+        SafeInvoke(forgeRF, "Showcase", nil)
+        
+        task.wait(0.5)
+        AddUILog("BOT_V7", ">> 🗝️ ROMPIENDO LA CADENA: Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
+        SafeInvoke(forgeRF, "EndForge", nil)
+        AddUILog("BOT_V7", "=== ESPADA CREADA Y RECIBIDA === (Ya eres libre)", Color3.fromRGB(0,255,0))
+        
+        task.wait(1)
+        PlayerCleanup()
+        BotJugandoAhoraMismo = false
+    end)
+end
+
 local DumpTableDeep
 DumpTableDeep = function(tbl, depth)
     depth = depth or 0
-    if type(tbl) ~= "table" then return tostring(tbl) end
     if depth > 5 then return "{MAX_DEPTH}" end
     local str = "{"
     for k, v in pairs(tbl) do
@@ -172,100 +338,59 @@ DumpTableDeep = function(tbl, depth)
     return str .. "}"
 end
 
--- ==========================================
--- 1. RASTREO FÍSICO DE CLICKS
--- ==========================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        AddLog("MOUSE_CLICK", string.format("X:%d, Y:%d | SobreUI: %s", input.Position.X, input.Position.Y, tostring(gameProcessed)), Color3.fromRGB(150,150,150))
-    end
-end)
-
--- ==========================================
--- 2. RASTREO JERÁRQUICO DE GUI (TEXTOS Y FRAMES)
--- ==========================================
-local TrackedGUIs = {}
-local function TrackGUI(inst)
-    if not inst:IsA("GuiObject") then return end
-    if TrackedGUIs[inst] then return end
-    TrackedGUIs[inst] = true
-    
-    -- Detectar etiquetas de "Perfect", "Bad", "Good"
-    if inst:IsA("TextLabel") or inst:IsA("TextButton") then
-        inst:GetPropertyChangedSignal("Text"):Connect(function()
-            if inst.Text ~= "" and inst.Text ~= " " then
-                AddLog("GUI_TEXT_CHANGE", string.format("[%s] -> '%s'", inst.Name, inst.Text), Color3.fromRGB(0, 255, 255))
-            end
-        end)
-    end
-    
-    -- Avisar si es una UI propia de Forja / Minijuego
-    if string.find(string.lower(inst.Name), "forge") or string.find(string.lower(inst.Name), "minigame") or string.find(string.lower(inst.Name), "circle") then
-        AddLog("GUI_SPAWNED", string.format("Apareció: %s (%s)", inst.Name, inst.ClassName), Color3.fromRGB(200, 100, 255))
-    end
-end
-LocalPlayer.PlayerGui.DescendantAdded:Connect(TrackGUI)
-for _, v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do TrackGUI(v) end
-
--- ==========================================
--- 3. RASTREO PURAMENTE FORENSE DE RED (SIN BLOQUEOS)
--- ==========================================
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     
-    if not checkcaller() and (method == "InvokeServer" or method == "FireServer") then
+    if not checkcaller() and method == "InvokeServer" then
         local fullName = self.GetFullName(self)
         local nameLower = string.lower(fullName)
         
+        if string.find(nameLower, "changesequence") then
+            local phaseName = tostring(args[1])
+            if BotBypassingNetwork then return OriginalNamecall(self, ...) end
+            
+            if phaseName ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
+                task.spawn(function() AddUILog("BLOCK", "Señal NATIVA Anulada [" .. phaseName .. "].", Color3.fromRGB(255, 50, 50)) end)
+                return nil 
+            end
+            
+            local RetTuple = {OriginalNamecall(self, ...)}
+            local returnVal = RetTuple[1]
+            task.spawn(function()
+                if phaseName == "Melt" then
+                    AddUILog("INTERCEPT", "Melt detectado. ¡El Omega Bot toma el control absoluto!", Color3.fromRGB(255,100,255))
+                    if ModosBypass.BotActivo and not BotJugandoAhoraMismo then ExecutePerfectSequence(self, returnVal) end
+                end
+            end)
+            return unpack(RetTuple)
+        end
+    end
+    
+    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
         task.spawn(function()
             pcall(function()
-                -- Ignorar basura irrelevante para no saturar
-                local Blacklist = {"mouse", "character", "ping", "move", "step", "chat", "render", "camera"}
+                local nameLower = string.lower(self.GetFullName(self))
+                local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "character", "root", "position", "look"}
                 local skip = false
-                for _, w in pairs(Blacklist) do if string.find(nameLower, w) then skip = true break end end
+                for _, w in pairs(BlacklistWords) do if string.find(nameLower, w) then skip = true break end end
                 
-                if not skip then
-                    local argStr = DumpTableDeep(args)
-                    -- Resaltar ChangeSequence y Forge
-                    local col = Color3.fromRGB(200,200,200)
-                    if string.find(nameLower, "changesequence") then col = Color3.fromRGB(255,0,0) end
-                    AddLog("NET_OUT:"..method, self.Name .. " => " .. argStr, col)
+                if not skip and not string.find(nameLower, "changesequence") then
+                    local argDump = ""
+                    for i, v in ipairs(args) do
+                        if typeof(v) == "table" then
+                            local s, r = pcall(function() return DumpTableDeep(v) end)
+                            argDump = argDump .. "Arg["..i.."]=" .. (s and r or "ERR") .. " "
+                        else pcall(function() argDump = argDump .. "Arg["..i.."]="..tostring(v).." " end) end
+                    end
+                    AddUILog("NET_OUT:"..method, self.Name .. " >> " .. argDump, Color3.fromRGB(100, 100, 100))
                 end
             end)
         end)
     end
-    
     return OriginalNamecall(self, ...)
 end)
 
--- ==========================================
--- 4. RASTREO DEL SERVIDOR INCOMING (OnClientEvent)
--- ==========================================
-task.spawn(function()
-    for _, event in pairs(ReplicatedStorage:GetDescendants()) do
-        if event:IsA("RemoteEvent") then
-            -- Solo nos interesan eventos reales del juego
-            if string.find(string.lower(event:GetFullName()), "knit") or string.find(string.lower(event.Name), "forge") then
-                event.OnClientEvent:Connect(function(...)
-                    local args = {...}
-                    local argStr = DumpTableDeep(args)
-                    AddLog("SERVER_INCOMING", event.Name .. " => " .. argStr, Color3.fromRGB(0, 255, 0))
-                end)
-            end
-        end
-    end
-end)
-
--- ==========================================
--- 5. RASTREO DE NUEVOS SCRIPTS
--- ==========================================
-LocalPlayer.PlayerScripts.ChildAdded:Connect(function(child)
-    if child:IsA("LocalScript") or child:IsA("ModuleScript") then
-        AddLog("NEW_SCRIPT", "Se añadió Script al jugador: " .. child.Name, Color3.fromRGB(255,255,0))
-    end
-end)
-
-AddLog("SISTEMA", "V6.0 FORENSE INICIADA. AHORA SOMOS SOLO UN FANTASMA OBSERVADOR.", Color3.fromRGB(150, 255, 150))
-AddLog("SISTEMA", "Ve, Juega normalmente (lo mejor que puedas) y captura cada interacción secreta.", Color3.fromRGB(255, 255, 150))
+AddUILog("SISTEMA", "V7.0 OMEGA RESOLUTION INICIADA.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "Se implementó el comando sagrado EndForge para soltarte al 100% y tiempos optimizados a 6.65s (61%+). NO te mates antes de tiempo.", Color3.fromRGB(200, 255, 100))
