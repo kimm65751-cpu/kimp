@@ -108,7 +108,7 @@ end)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.2"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.4"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -256,8 +256,24 @@ local function EjecutarVentaNinja(miBasket)
         end)
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
         
-        -- DESCONGELACIÓN FORZADA (Sin usar metahooks que rompen Delta)
+        -- DESCONGELACIÓN FORZADA (VÍA NATIVA)
         task.spawn(function()
+            -- 1. Forzar cierre de Módulos de la UI del juego que hunden el input
+            local mods = {"MiscSell", "WeaponSell", "MerchantShop"}
+            for _, modName in ipairs(mods) do
+                pcall(function()
+                    local m = require(game:GetService("ReplicatedStorage").Controllers.UIController[modName])
+                    if m and type(m.Close) == "function" then m.Close(m) end
+                end)
+            end
+            
+            -- 2. Rehabilitar PlayerModule Controls
+            pcall(function()
+                local controls = require(LocalPlayer.PlayerScripts.PlayerModule):GetControls()
+                if controls then controls:Enable() end
+            end)
+            
+            -- 3. Limpiar físicas atascadas por 2 segundos porsia
             for i = 1, 5 do
                 pcall(function()
                     local char = LocalPlayer.Character
