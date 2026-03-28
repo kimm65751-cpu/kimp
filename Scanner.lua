@@ -1,7 +1,6 @@
 -- ==============================================================================
--- 🎰 RACE SPIN FORENSIC ANALYZER V1.0
--- Interceptor Total del Sistema de Carreras/Razas y Giros (Spins).
--- Captura TODO: Red, GUI, Scripts, Módulos, Datos del Servidor.
+-- 🎰 RACE SPIN FORENSIC ANALYZER V1.1
+-- Captura perfecta del Reroll, filtro de ruido, y guardado .TXT en Delta.
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -9,9 +8,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- ==========================================
--- GUI FORENSE
--- ==========================================
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "RaceAnalyzerUI" then v:Destroy() end end
 
@@ -33,7 +29,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-Title.Text = " 🎰 RACE SPIN ANALYZER V1.0 (FORENSE TOTAL)"
+Title.Text = " 🎰 RACE SPIN ANALYZER V1.1 (JERÁRQUICO)"
 Title.TextColor3 = Color3.fromRGB(255, 180, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -51,18 +47,16 @@ CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Fase 1: Botón de Escaneo Profundo
 local ScanBtn = Instance.new("TextButton")
 ScanBtn.Size = UDim2.new(0.5, -6, 0, 35)
 ScanBtn.Position = UDim2.new(0, 4, 0, 35)
 ScanBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 200)
-ScanBtn.Text = "🔍 FASE 1: ESCANEAR REMOTOS DE RAZA"
+ScanBtn.Text = "🔍 FASE 1: ESCANEAR REMOTOS"
 ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ScanBtn.Font = Enum.Font.Code
 ScanBtn.TextSize = 11
 ScanBtn.Parent = Panel
 
--- Fase 2: Activar Interceptor
 local InterceptBtn = Instance.new("TextButton")
 InterceptBtn.Size = UDim2.new(0.5, -6, 0, 35)
 InterceptBtn.Position = UDim2.new(0.5, 2, 0, 35)
@@ -73,7 +67,6 @@ InterceptBtn.Font = Enum.Font.Code
 InterceptBtn.TextSize = 11
 InterceptBtn.Parent = Panel
 
--- Controles inferiores
 local ControlsFrame = Instance.new("Frame")
 ControlsFrame.Size = UDim2.new(1, -8, 0, 30)
 ControlsFrame.Position = UDim2.new(0, 4, 1, -34)
@@ -109,7 +102,6 @@ SaveTxtBtn.Font = Enum.Font.Code
 SaveTxtBtn.TextSize = 11
 SaveTxtBtn.Parent = ControlsFrame
 
--- Log Scroll
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -8, 1, -110)
 LogScroll.Position = UDim2.new(0, 4, 0, 75)
@@ -121,53 +113,54 @@ LogScroll.Parent = Panel
 Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 2)
 
 -- ==========================================
--- SISTEMA DE LOGS
+-- SISTEMA DE LOGS Y ARCHIVO
 -- ==========================================
 local MasterLogList = {}
+local LOG_FILENAME = "RaceSpinLog.txt"
 
-local DumpTableDeep
-DumpTableDeep = function(tbl, depth)
+local function SmartDump(val, depth)
     depth = depth or 0
-    if type(tbl) ~= "table" then return tostring(tbl) end
-    if depth > 8 then return "{MAX_DEPTH}" end
-    local seen_check = {}
-    local str = "{\n"
-    for k, v in pairs(tbl) do
-        if seen_check[k] then str = str .. string.rep("  ", depth+1) .. "[CIRCULAR_REF], "
-        else
-            seen_check[k] = true
-            local prefix = string.rep("  ", depth + 1) .. "[" .. tostring(k) .. "]="
-            if type(v) == "table" then
-                str = str .. prefix .. DumpTableDeep(v, depth + 1) .. ",\n"
+    if depth > 6 then return "{...}" end
+    local t = typeof(val)
+    if t == "Instance" then
+        return "<Instance:" .. val:GetFullName() .. ">"
+    elseif t == "table" then
+        local parts = {}
+        local seen = {}
+        for k, v in pairs(val) do
+            if seen[tostring(k)] then table.insert(parts, "[DUP]") 
             else
-                str = str .. prefix .. tostring(v) .. ",\n"
+                seen[tostring(k)] = true
+                table.insert(parts, "[" .. tostring(k) .. "]=" .. SmartDump(v, depth + 1))
             end
         end
+        return "{\n" .. string.rep("  ", depth+1) .. table.concat(parts, ",\n" .. string.rep("  ", depth+1)) .. "\n" .. string.rep("  ", depth) .. "}"
+    elseif t == "string" then
+        return '"' .. val .. '"'
+    else
+        return tostring(val)
     end
-    return str .. string.rep("  ", depth) .. "}"
 end
 
-local LOG_FILENAME = "RaceSpinAnalyzer_ForenseCompleto_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
-
-local function SaveLogToFile(message)
-    task.spawn(function()
-        pcall(function()
-            if appendfile then 
-                appendfile(LOG_FILENAME, message .. "\n")
-            elseif writefile then
-                local current = ""
-                pcall(function() current = readfile(LOG_FILENAME) end)
-                writefile(LOG_FILENAME, current .. message .. "\n")
+local function WriteToFile(text)
+    pcall(function()
+        if writefile then
+            local ok, existing = pcall(readfile, LOG_FILENAME)
+            if ok then
+                writefile(LOG_FILENAME, existing .. text .. "\n")
+            else
+                writefile(LOG_FILENAME, text .. "\n")
             end
-        end)
+        end
     end)
 end
 
 local function AddLog(logType, message, color)
-    local fullString = "[" .. os.date("%H:%M:%S.") .. string.format("%03d", math.floor(tick() * 1000) % 1000) .. "] [" .. logType .. "] " .. message
-    SaveLogToFile(fullString)
+    local ts = "[" .. os.date("%H:%M:%S") .. "." .. string.format("%03d", math.floor(tick()*1000)%1000) .. "]"
+    local fullString = ts .. " [" .. logType .. "] " .. message
     table.insert(MasterLogList, fullString)
-    if #MasterLogList > 1000 then table.remove(MasterLogList, 1) end
+    WriteToFile(fullString)
+    if #MasterLogList > 800 then table.remove(MasterLogList, 1) end
     task.defer(function()
         pcall(function()
             local txt = Instance.new("TextLabel")
@@ -180,8 +173,8 @@ local function AddLog(logType, message, color)
             txt.TextXAlignment = Enum.TextXAlignment.Left
             txt.TextWrapped = true
             txt.Parent = LogScroll
-            local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
-            txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
+            local ts2 = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
+            txt.Size = UDim2.new(1, -4, 0, ts2.Y + 4)
             LogScroll.CanvasPosition = Vector2.new(0, 999999)
         end)
     end)
@@ -192,148 +185,93 @@ ClearBtn.MouseButton1Click:Connect(function()
     MasterLogList = {}
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== RACE SPIN ANALYZER - REPORTE FORENSE ===\n\n"
-    for _, line in ipairs(MasterLogList) do result = result .. line .. "\n" end
-    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ COPIADO" else CopyBtn.Text = "❌ ERROR" end
+    local r = "=== RACE SPIN ANALYZER V1.1 ===\n\n"
+    for _, l in ipairs(MasterLogList) do r = r .. l .. "\n" end
+    if setclipboard then setclipboard(r); CopyBtn.Text = "✅ OK" else CopyBtn.Text = "❌" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR" end)
 end)
-
 SaveTxtBtn.MouseButton1Click:Connect(function()
     pcall(function()
-        local result = "=== RACE SPIN ANALYZER - REPORTE FORENSE COMPLETO ===\n"
-        result = result .. "Fecha: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
-        result = result .. "Total Lineas: " .. tostring(#MasterLogList) .. "\n"
-        result = result .. "============================================\n\n"
-        for _, line in ipairs(MasterLogList) do result = result .. line .. "\n" end
-        if writefile then
-            writefile(LOG_FILENAME, result)
-            SaveTxtBtn.Text = "✅ GUARDADO!"
-            AddLog("ARCHIVO", "💾 Guardado exitoso: workspace/" .. LOG_FILENAME .. " (" .. tostring(#result) .. " bytes)", Color3.fromRGB(100, 255, 100))
-        else
-            SaveTxtBtn.Text = "❌ SIN ACCESO"
-        end
+        local r = "=== RACE SPIN ANALYZER - FORENSE ===\nFecha: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\nLineas: " .. #MasterLogList .. "\n===\n\n"
+        for _, l in ipairs(MasterLogList) do r = r .. l .. "\n" end
+        writefile(LOG_FILENAME, r)
+        SaveTxtBtn.Text = "✅ GUARDADO"
+        AddLog("FILE", "💾 Guardado: " .. LOG_FILENAME, Color3.fromRGB(100, 255, 100))
     end)
     task.delay(3, function() SaveTxtBtn.Text = "💾 GUARDAR .TXT" end)
 end)
 
 -- ==========================================
--- FASE 1: ESCANEO DE REMOTOS RELACIONADOS CON RAZA/SPIN
+-- FASE 1: ESCANEO
 -- ==========================================
-local RaceRemotes = {} -- {name = instance}
+local RaceRemotes = {}
 
 ScanBtn.MouseButton1Click:Connect(function()
-    AddLog("SCAN", "═══════════════════════════════════════", Color3.fromRGB(255, 200, 100))
-    AddLog("SCAN", "INICIANDO ESCANEO PROFUNDO DE REMOTOS...", Color3.fromRGB(255, 200, 100))
+    AddLog("SCAN", "══════════════════════════════════", Color3.fromRGB(255, 200, 100))
+    AddLog("SCAN", "INICIANDO ESCANEO...", Color3.fromRGB(255, 200, 100))
     
-    local keywords = {"race", "spin", "reroll", "carrera", "reiniciar", "slot", "raza", "reincarnate", "rebirth", "class"}
+    local keywords = {"race", "spin", "reroll", "slot", "raza", "reincarnate", "rebirth", "class"}
     local foundCount = 0
     
     for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
         pcall(function()
             if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") then
-                local nameLower = string.lower(obj.Name)
-                local fullPath = obj:GetFullName()
-                local fullLower = string.lower(fullPath)
-                
-                local matched = false
+                local fullLower = string.lower(obj:GetFullName())
                 for _, kw in pairs(keywords) do
-                    if string.find(nameLower, kw) or string.find(fullLower, kw) then
-                        matched = true
+                    if string.find(fullLower, kw) then
+                        foundCount = foundCount + 1
+                        local tp = obj:IsA("RemoteFunction") and "RF" or "RE"
+                        RaceRemotes[obj.Name] = obj
+                        AddLog("FOUND", "🎯 [" .. tp .. "] " .. obj:GetFullName(), Color3.fromRGB(0, 255, 200))
+                        
+                        if obj:IsA("RemoteEvent") then
+                            obj.OnClientEvent:Connect(function(...)
+                                local args = {...}
+                                local dump = ""
+                                for i, val in ipairs(args) do dump = dump .. " Arg[" .. i .. "]=" .. SmartDump(val) end
+                                AddLog("RE_IN", "📥 " .. obj.Name .. " >>" .. dump, Color3.fromRGB(0, 255, 100))
+                            end)
+                        end
                         break
-                    end
-                end
-                
-                if matched then
-                    foundCount = foundCount + 1
-                    local typeStr = obj:IsA("RemoteFunction") and "RF" or "RE"
-                    RaceRemotes[obj.Name] = obj
-                    AddLog("FOUND_" .. typeStr, "🎯 " .. fullPath, Color3.fromRGB(0, 255, 200))
-                    
-                    -- Si es RemoteEvent, escuchar respuestas
-                    if obj:IsA("RemoteEvent") then
-                        obj.OnClientEvent:Connect(function(...)
-                            local args = {...}
-                            local dump = ""
-                            for i, val in ipairs(args) do
-                                if type(val) == "table" then
-                                    dump = dump .. "Arg[" .. i .. "]=" .. DumpTableDeep(val) .. " "
-                                else
-                                    dump = dump .. "Arg[" .. i .. "]=" .. tostring(val) .. " "
-                                end
-                            end
-                            AddLog("SERVER→CLIENT", "📥 " .. obj.Name .. " >> " .. dump, Color3.fromRGB(0, 255, 100))
-                        end)
-                        AddLog("LISTENER", "👂 Escuchando respuestas de: " .. obj.Name, Color3.fromRGB(150, 150, 255))
                     end
                 end
             end
         end)
     end
     
-    -- Escanear TODOS los servicios Knit para encontrar servicios ocultos
-    AddLog("SCAN", "───────────────────────────────────────", Color3.fromRGB(255, 200, 100))
-    AddLog("SCAN", "Buscando en Knit Services...", Color3.fromRGB(255, 200, 100))
-    
+    -- Buscar GUI de Raza para monitorear cambios
     pcall(function()
-        local knitServices = ReplicatedStorage:FindFirstChild("Shared")
-        if knitServices then
-            knitServices = knitServices:FindFirstChild("Packages")
-            if knitServices then
-                knitServices = knitServices:FindFirstChild("Knit")
-                if knitServices then
-                    knitServices = knitServices:FindFirstChild("Services")
-                    if knitServices then
-                        for _, service in pairs(knitServices:GetChildren()) do
-                            local sName = string.lower(service.Name)
-                            local isRelevant = false
-                            for _, kw in pairs(keywords) do
-                                if string.find(sName, kw) then isRelevant = true break end
-                            end
-                            
-                            if isRelevant then
-                                AddLog("KNIT_SERVICE", "🏢 SERVICIO ENCONTRADO: " .. service:GetFullName(), Color3.fromRGB(255, 255, 0))
-                                for _, child in pairs(service:GetDescendants()) do
-                                    if child:IsA("RemoteFunction") or child:IsA("RemoteEvent") then
-                                        RaceRemotes[child.Name] = child
-                                        foundCount = foundCount + 1
-                                        AddLog("KNIT_RF", "  └─ " .. child.Name .. " (" .. child.ClassName .. ")", Color3.fromRGB(255, 200, 0))
-                                    end
-                                end
-                            end
-                        end
+        local raceUI = LocalPlayer.PlayerGui:FindFirstChild("Sell")
+        if raceUI then
+            raceUI = raceUI:FindFirstChild("RaceUI")
+            if raceUI then
+                local currentRace = raceUI:FindFirstChild("CurrentRace")
+                if currentRace and currentRace:IsA("TextLabel") then
+                    AddLog("GUI_WATCH", "👁️ Vigilando cambios en CurrentRace: " .. currentRace.Text, Color3.fromRGB(255, 255, 0))
+                    currentRace:GetPropertyChangedSignal("Text"):Connect(function()
+                        AddLog("RACE_CHANGED", "🎲 ¡¡¡RAZA CAMBIÓ EN PANTALLA!!! Nuevo: " .. currentRace.Text, Color3.fromRGB(255, 50, 255))
+                    end)
+                end
+                local spinsLabel = raceUI:FindFirstChild("Reroll")
+                if spinsLabel then
+                    spinsLabel = spinsLabel:FindFirstChild("Spins")
+                    if spinsLabel and spinsLabel:IsA("TextLabel") then
+                        AddLog("GUI_WATCH", "👁️ Vigilando Spins: " .. spinsLabel.Text, Color3.fromRGB(255, 255, 0))
+                        spinsLabel:GetPropertyChangedSignal("Text"):Connect(function()
+                            AddLog("SPINS_CHANGED", "🎰 Spins cambió: " .. spinsLabel.Text, Color3.fromRGB(255, 200, 0))
+                        end)
                     end
                 end
             end
         end
     end)
     
-    -- Buscar en PlayerGui los elementos de UI de razas
-    AddLog("SCAN", "───────────────────────────────────────", Color3.fromRGB(255, 200, 100))
-    AddLog("SCAN", "Buscando GUIs de Razas en pantalla...", Color3.fromRGB(255, 200, 100))
-    
-    pcall(function()
-        for _, gui in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            local nLower = string.lower(gui.Name)
-            for _, kw in pairs(keywords) do
-                if string.find(nLower, kw) then
-                    local info = gui.Name .. " (" .. gui.ClassName .. ") en " .. gui:GetFullName()
-                    if gui:IsA("TextLabel") or gui:IsA("TextButton") then
-                        info = info .. " [Text=\"" .. (gui.Text or "") .. "\"]"
-                    end
-                    AddLog("GUI_RACE", "🖥️ " .. info, Color3.fromRGB(200, 150, 255))
-                    break
-                end
-            end
-        end
-    end)
-    
-    AddLog("SCAN", "═══════════════════════════════════════", Color3.fromRGB(255, 200, 100))
-    AddLog("SCAN", "✅ ESCANEO COMPLETO. " .. foundCount .. " remotos de Raza encontrados.", Color3.fromRGB(0, 255, 0))
-    AddLog("SCAN", "Ahora presiona FASE 2 y luego dale a REINICIAR en el juego.", Color3.fromRGB(255, 255, 0))
+    AddLog("SCAN", "✅ " .. foundCount .. " remotos encontrados.", Color3.fromRGB(0, 255, 0))
+    AddLog("SCAN", "Ahora activa FASE 2 y presiona Reiniciar.", Color3.fromRGB(255, 255, 0))
 end)
 
 -- ==========================================
--- FASE 2: INTERCEPTOR GLOBAL (__namecall hook)
+-- FASE 2: INTERCEPTOR (Mejorado V2)
 -- ==========================================
 local InterceptorActivo = false
 local GlobalOriginalNamecall = nil
@@ -343,9 +281,7 @@ InterceptBtn.MouseButton1Click:Connect(function()
     if InterceptorActivo then
         InterceptBtn.Text = "📡 INTERCEPTOR: ON 🔴"
         InterceptBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        AddLog("INTERCEPT", "═══════════════════════════════════════", Color3.fromRGB(255, 100, 100))
-        AddLog("INTERCEPT", "🔴 INTERCEPTOR ACTIVADO. Ahora presiona REINICIAR en el juego.", Color3.fromRGB(255, 100, 100))
-        AddLog("INTERCEPT", "Capturando TODA la comunicación cliente↔servidor...", Color3.fromRGB(255, 100, 100))
+        AddLog("INTERCEPT", "🔴 INTERCEPTOR ACTIVADO.", Color3.fromRGB(255, 100, 100))
         
         if not GlobalOriginalNamecall then
             GlobalOriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -357,60 +293,55 @@ InterceptBtn.MouseButton1Click:Connect(function()
                 end
                 
                 if not checkcaller() and (method == "InvokeServer" or method == "FireServer") then
-                    local fullName = ""
                     local selfName = ""
-                    pcall(function() fullName = self:GetFullName() end)
-                    pcall(function() selfName = self.Name end)
+                    local fullName = ""
+                    pcall(function() selfName = self.Name; fullName = self:GetFullName() end)
                     local fullLower = string.lower(fullName)
                     
-                    -- Filtrar ruido (movimiento, cámara, etc.)
-                    local noiseWords = {"move", "mouse", "camera", "ping", "render", "step", "chat", "position", "look", "heartbeat"}
-                    local isNoise = false
-                    for _, nw in pairs(noiseWords) do
-                        if string.find(fullLower, nw) then isNoise = true break end
+                    -- FILTRO DURO: Ignorar el spam de Event (inventario) y ruido
+                    local hardBlock = {"move", "mouse", "camera", "ping", "render", "step", "chat", "position", "look", "heartbeat"}
+                    local isBlocked = false
+                    for _, nw in pairs(hardBlock) do
+                        if string.find(fullLower, nw) then isBlocked = true break end
+                    end
+                    -- Filtrar el Event que manda el inventario cada 5 seg
+                    if selfName == "Event" and method == "FireServer" then
+                        local firstArg = args[1]
+                        if type(firstArg) == "table" then isBlocked = true end
                     end
                     
-                    if not isNoise then
-                        -- Construir dump de argumentos
+                    if not isBlocked then
+                        -- Detectar si es de RAZA
+                        local raceKW = {"race", "spin", "reroll", "slot", "raza"}
+                        local isRace = false
+                        for _, kw in pairs(raceKW) do
+                            if string.find(fullLower, kw) then isRace = true break end
+                        end
+                        
+                        -- Dump args
                         local argDump = ""
                         for i, v in ipairs(args) do
-                            if type(v) == "table" then
-                                argDump = argDump .. "\n  Arg[" .. i .. "]=" .. DumpTableDeep(v)
-                            else
-                                argDump = argDump .. "\n  Arg[" .. i .. "]=" .. tostring(v)
-                            end
+                            argDump = argDump .. " Arg[" .. i .. "]=" .. SmartDump(v)
                         end
-                        if argDump == "" then argDump = " (sin argumentos)" end
+                        if argDump == "" then argDump = " (sin args)" end
                         
-                        -- Detectar si es relacionado con Raza/Spin
-                        local raceKeywords = {"race", "spin", "reroll", "slot", "raza", "reiniciar", "reincarnate"}
-                        local isRaceRelated = false
-                        for _, kw in pairs(raceKeywords) do
-                            if string.find(fullLower, kw) then isRaceRelated = true break end
-                        end
+                        local color = isRace and Color3.fromRGB(255, 50, 255) or Color3.fromRGB(130, 130, 130)
+                        local tag = isRace and "🎯 " or ""
                         
-                        local color = isRaceRelated and Color3.fromRGB(255, 50, 255) or Color3.fromRGB(100, 100, 100)
-                        local prefix = isRaceRelated and "🎯 " or ""
+                        AddLog("OUT:" .. method, tag .. selfName .. argDump, color)
                         
-                        AddLog("CLIENT→SERVER:" .. method, prefix .. selfName .. argDump, color)
-                        
-                        -- Si es InvokeServer, capturar la RESPUESTA del servidor
+                        -- InvokeServer: capturar RESPUESTA
                         if method == "InvokeServer" then
                             local retValues = {GlobalOriginalNamecall(self, ...)}
                             
-                            -- Loguear la respuesta
                             local retDump = ""
                             for i, rv in ipairs(retValues) do
-                                if type(rv) == "table" then
-                                    retDump = retDump .. "\n  Return[" .. i .. "]=" .. DumpTableDeep(rv)
-                                else
-                                    retDump = retDump .. "\n  Return[" .. i .. "]=" .. tostring(rv)
-                                end
+                                retDump = retDump .. " Ret[" .. i .. "]=" .. SmartDump(rv)
                             end
-                            if retDump == "" then retDump = " (vacío)" end
+                            if retDump == "" then retDump = " (vacío/nil)" end
                             
-                            local retColor = isRaceRelated and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(80, 150, 80)
-                            AddLog("SERVER→CLIENT:Return", prefix .. selfName .. " RESPONDIÓ:" .. retDump, retColor)
+                            local retColor = isRace and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(80, 150, 80)
+                            AddLog("IN:Return", tag .. selfName .. " RESP:" .. retDump, retColor)
                             
                             return unpack(retValues)
                         end
@@ -428,35 +359,27 @@ InterceptBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- ESCUCHAR EVENTOS GLOBALES DE KNIT (Para replicaciones del servidor)
+-- LISTENER PASIVO: Escuchar TODOS los eventos Knit de datos
 -- ==========================================
 task.spawn(function()
     pcall(function()
-        local RS = ReplicatedStorage
-        for _, v in pairs(RS:GetDescendants()) do
+        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
             if v:IsA("RemoteEvent") then
                 local nLower = string.lower(v.Name)
                 local fLower = string.lower(v:GetFullName())
-                -- Escuchar TODOS los eventos Knit que contengan notify, progress, data, race, spin
                 if string.find(fLower, "knit") and (
-                    string.find(nLower, "notify") or 
-                    string.find(nLower, "progress") or 
-                    string.find(nLower, "data") or 
-                    string.find(nLower, "race") or 
+                    string.find(nLower, "notify") or
+                    string.find(nLower, "progress") or
+                    string.find(nLower, "data") or
+                    string.find(nLower, "race") or
                     string.find(nLower, "spin") or
                     string.find(nLower, "changed")
                 ) then
                     v.OnClientEvent:Connect(function(...)
                         local args = {...}
                         local dump = ""
-                        for i, val in ipairs(args) do
-                            if type(val) == "table" then
-                                dump = dump .. "\nArg[" .. i .. "]=" .. DumpTableDeep(val)
-                            else
-                                dump = dump .. "\nArg[" .. i .. "]=" .. tostring(val)
-                            end
-                        end
-                        AddLog("KNIT_EVENT", "📢 " .. v.Name .. " >>" .. dump, Color3.fromRGB(255, 255, 100))
+                        for i, val in ipairs(args) do dump = dump .. " Arg[" .. i .. "]=" .. SmartDump(val) end
+                        AddLog("KNIT_EVT", "📢 " .. v.Name .. " >>" .. dump, Color3.fromRGB(255, 255, 100))
                     end)
                 end
             end
@@ -464,8 +387,8 @@ task.spawn(function()
     end)
 end)
 
-AddLog("SISTEMA", "🎰 RACE SPIN ANALYZER V1.0 CARGADO.", Color3.fromRGB(150, 255, 150))
-AddLog("SISTEMA", "PASO 1: Presiona '🔍 FASE 1' para escanear remotos de Raza.", Color3.fromRGB(255, 255, 200))
-AddLog("SISTEMA", "PASO 2: Presiona '📡 FASE 2' para activar el interceptor.", Color3.fromRGB(255, 255, 200))
-AddLog("SISTEMA", "PASO 3: Ve al menú de Carreras y presiona REINICIAR.", Color3.fromRGB(255, 255, 200))
-AddLog("SISTEMA", "El analizador capturará TODO lo que pase entre tu cliente y el servidor.", Color3.fromRGB(255, 255, 200))
+-- Inicializar logging
+pcall(function() writefile(LOG_FILENAME, "=== RACE SPIN ANALYZER V2.0 - LOG INICIADO ===\n") end)
+
+AddLog("SISTEMA", "🎰 V2.0 CARGADO. Ruido de inventario filtrado.", Color3.fromRGB(150, 255, 150))
+AddLog("SISTEMA", "1) Presiona FASE 1 → 2) FASE 2 → 3) REINICIAR en el juego.", Color3.fromRGB(255, 255, 200))
