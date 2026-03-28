@@ -74,7 +74,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 MÁQUINA DE LIMPIEZA INVENTARIO V9.0"
+Title.Text = " 💎 MÁQUINA DE LIMPIEZA INVENTARIO V9.1"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -253,37 +253,35 @@ pcall(function()
 end)
 
 local function ObtenerCapacidad()
-    -- 1. Intento por Memoria Profunda (Knit Controller)
+    local cur, maxm = nil, nil
+    
+    -- 1. Límite Definitivo por Knit
     if InvController then
-        local okC, cur = pcall(function()
-            if type(InvController.CalculateTotal) == "function" then
-                return InvController:CalculateTotal()
-            end
-        end)
-        local okM, maxm = pcall(function()
+        pcall(function()
             if type(InvController.GetBagCapacity) == "function" then
-                return InvController:GetBagCapacity()
+                maxm = InvController:GetBagCapacity()
             end
         end)
-        
-        if okC and okM and type(cur) == "number" and type(maxm) == "number" then
-            return cur, maxm
-        end
     end
     
-    -- 2. Fallback: Escáner Óptico de Interfaz
-    local c, m = nil, nil
+    -- 2. Lectura Híbrida del texto en caché (Inventario cerrado o abierto)
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Visible then
-                if string.find(string.lower(obj.Text), "capacidad") then
+            if obj:IsA("TextLabel") then
+                local txt = string.lower(obj.Text)
+                if string.find(txt, "capacidad") then
                     local x, y = string.match(obj.Text, "(%d+)/(%d+)")
-                    if x and y then c, m = tonumber(x), tonumber(y) break end
+                    if x and y then 
+                        cur = tonumber(x)
+                        if not maxm then maxm = tonumber(y) end
+                        break 
+                    end
                 end
             end
         end
     end)
-    return c, m
+    
+    return cur, maxm
 end
 
 -- ==========================================
