@@ -89,15 +89,42 @@ CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 -- Consola de Logs (NUEVO)
+local TermHeader = Instance.new("Frame")
+TermHeader.Size = UDim2.new(1, -10, 0, 20)
+TermHeader.Position = UDim2.new(0, 5, 0, 40)
+TermHeader.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TermHeader.Parent = Panel
+
+local ClearLogBtn = Instance.new("TextButton")
+ClearLogBtn.Size = UDim2.new(0, 60, 1, 0)
+ClearLogBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ClearLogBtn.Text = "🗑️ LIMP"
+ClearLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearLogBtn.Font = Enum.Font.Code
+ClearLogBtn.TextSize = 10
+ClearLogBtn.Parent = TermHeader
+
+local CopyLogBtn = Instance.new("TextButton")
+CopyLogBtn.Size = UDim2.new(0, 80, 1, 0)
+CopyLogBtn.Position = UDim2.new(0, 65, 0, 0)
+CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+CopyLogBtn.Text = "📋 COPIAR"
+CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyLogBtn.Font = Enum.Font.Code
+CopyLogBtn.TextSize = 10
+CopyLogBtn.Parent = TermHeader
+
 local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 0, 120)
-TermScroll.Position = UDim2.new(0, 5, 0, 40)
+TermScroll.Size = UDim2.new(1, -10, 0, 100)
+TermScroll.Position = UDim2.new(0, 5, 0, 60)
 TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 TermScroll.ScrollBarThickness = 6
 TermScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 TermScroll.Parent = Panel
 Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
+
+local LogHistory = {}
 
 local function Log(texto, color)
     local msg = Instance.new("TextLabel")
@@ -113,7 +140,19 @@ local function Log(texto, color)
     local tsz = game:GetService("TextService"):GetTextSize(msg.Text, msg.TextSize, msg.Font, Vector2.new(TermScroll.AbsoluteSize.X-15, math.huge))
     msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
     TermScroll.CanvasPosition = Vector2.new(0, 999999)
+    table.insert(LogHistory, msg.Text)
 end
+
+ClearLogBtn.MouseButton1Click:Connect(function()
+    for _, v in ipairs(TermScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
+    LogHistory = {}
+end)
+
+CopyLogBtn.MouseButton1Click:Connect(function()
+    pcall(function() setclipboard(table.concat(LogHistory, "\n")) end)
+    CopyLogBtn.Text = "✅ COPIADO"
+    task.delay(1.5, function() CopyLogBtn.Text = "📋 COPIAR" end)
+end)
 
 -- Estado de los Remotos
 Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") .. 
@@ -213,42 +252,23 @@ SellBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         Log("==============================", Color3.fromRGB(100,100,100))
-        Log("🚀 INICIANDO VENTA HACK...", Color3.fromRGB(0, 255, 255))
+        Log("🚀 INYECTANDO VENTA LIMPIA...", Color3.fromRGB(0, 255, 255))
         Log("📦 Basket: " .. SmartDump(miBasket), Color3.fromRGB(200, 200, 200))
         
-        -- BYPASS: Fingir abrir el dialogo (Si existe el evento)
-        if RE_DialogueEvent then
-            Log("🔓 Bypass: Mandando DialogueEvent -> 'Opened'", Color3.fromRGB(255, 150, 0))
-            pcall(function() RE_DialogueEvent:FireServer("Opened") end)
-            task.wait(0.2)
-        else
-            Log("⚠️ RE_DialogueEvent no detectado, ignorando bypass...", Color3.fromRGB(150, 150, 0))
-        end
-        
-        -- Si hay ForceDialogue, podríamos mandarlo también
-        if RF_ForceDialogue and SeyNPC then
-            Log("🔓 Bypass 2: ForceDialogue -> 'SellConfirmMisc'", Color3.fromRGB(255, 150, 0))
-            pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-            task.wait(0.2)
-        end
-        
-        -- VENTA REAL
+        -- VENTA PURA (Sin los bypass falsos que reiniciaban el dialogo a 0)
         Log("📤 Ejecutando InvokeServer -> RunCommand('SellConfirm')", Color3.fromRGB(255, 0, 255))
-        local exito, resp1, resp2, resp3 = pcall(function()
+        
+        local exito, resp1, resp2 = pcall(function()
             return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
         end)
         
         if exito then
-            Log("📥 Respuesta de Venta: " .. SmartDump(resp1) .. " | " .. SmartDump(resp2), Color3.fromRGB(0, 255, 0))
+            Log("📥 Respuesta de Server: " .. SmartDump(resp1) .. " | " .. SmartDump(resp2), Color3.fromRGB(0, 255, 0))
+            Log("💬 Revisa tu pantalla: Sey debería ofrecerte una cantidad. Dale a ACUERDO para vender.", Color3.fromRGB(255, 255, 0))
         else
             Log("❌ Error Interno CRASH: " .. tostring(resp1), Color3.fromRGB(255, 0, 0))
         end
         
-        -- BYPASS Cierre
-        if RE_DialogueEvent then
-            Log("🔒 Bypass: Mandando DialogueEvent -> 'Closed'", Color3.fromRGB(255, 150, 0))
-            pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        end
-        Log("✅ Secuencia finalizada. Revisa tu inventario.", Color3.fromRGB(0, 255, 255))
+        Log("✅ Inyección finalizada. Revisa tu inventario si aceptaste.", Color3.fromRGB(0, 255, 255))
     end)
 end)
