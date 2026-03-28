@@ -222,6 +222,11 @@ end
 -- ==========================================
 local capacidadLabelCache = nil
 
+local InvController = nil
+pcall(function()
+    InvController = require(ReplicatedStorage.Controllers.UIController.Inventory)
+end)
+
 local function ObtenerCapacidad()
     local cur, maxm = nil, nil
     
@@ -264,7 +269,7 @@ local function EscanearCantidadesGlobales()
                 local txt = string.lower(obj.Text)
                 -- Buscar el texto en todos los minerales en UNE SOLO PASE
                 for _, item in ipairs(MINERALES_SEGUROS) do
-                    if txt == string.lower(item.es) then
+                    if txt == string.lower(item.es) or txt == string.lower(item.en) then
                         local padre = obj.Parent
                         if padre then
                             for _, child in pairs(padre:GetDescendants()) do
@@ -273,6 +278,11 @@ local function EscanearCantidadesGlobales()
                                     if mtch then
                                         local n = tonumber(mtch)
                                         if n > (diccionarioStock[item.es] or 0) then diccionarioStock[item.es] = n end
+                                    else
+                                        local n2 = tonumber(child.Text)
+                                        if n2 and n2 > (diccionarioStock[item.es] or 0) and n2 < 99999 then
+                                            diccionarioStock[item.es] = n2
+                                        end
                                     end
                                 end
                             end
