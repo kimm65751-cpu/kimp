@@ -27,7 +27,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 40)
-Title.Text = " 🔬 SUPER FORENSE: ANÁLISIS PROFUNDO DE VENTA"
+Title.Text = " 🔬 SUPER FORENSE: ANÁLISIS PROFUNDO DE VENTAAA"
 Title.TextColor3 = Color3.fromRGB(255, 200, 220)
 Title.TextSize = 12
 Title.Font = Enum.Font.Code
@@ -148,12 +148,21 @@ Log("🔴 HOOK ACTIVADO. VE Y VENDE MANUALMENTE 1 ITEM A SEY...", Color3.fromRGB
 
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
+    local method = tostring(getnamecallmethod())
     local name = tostring(self.Name)
     local args = {...}
-
+    
     if method == "InvokeServer" or method == "FireServer" then
-        if name == "RunCommand" or name == "ForceDialogue" or name == "DialogueEvent" or name == "Dialogue" then
+        -- Excluir spam
+        local lowName = string.lower(name)
+        local spam = string.find(lowName, "mouse") or 
+                     string.find(lowName, "movement") or 
+                     string.find(lowName, "updateexp") or
+                     string.find(lowName, "camera") or
+                     string.find(lowName, "look") or
+                     string.find(lowName, "step")
+                     
+        if not spam then
             
             task.spawn(function()
                 Log(" ", Color3.fromRGB(0,0,0))
