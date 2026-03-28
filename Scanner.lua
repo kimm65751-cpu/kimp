@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V5.1 (MOVEMENT UNLOCK Y QUALITY BOOST)
--- Calculador Anticheat Activo, Desbaneo de Controles Nativos y Ajuste Heurístico.
+-- 🗡️ FORGE OMNI-ANALYZER V5.3 (HEURÍSTICA DOBLE DE PRECISIÓN)
+-- Cronómetros Asimétricos basados en huellas dactilares humanas para el 100%.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V5.1 - OMEGA UNLOCKED"
+local SCRIPT_VERSION = "V5.3 - OMEGA PRECISION"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 0, 100)
-Title.Text = " 📡 FORGE V5.1 (CALIDAD OMEGA & UNLOCKED)"
-Title.TextColor3 = Color3.fromRGB(255, 255, 0)
+Title.BackgroundColor3 = Color3.fromRGB(150, 0, 200)
+Title.Text = " 📡 FORGE V5.3 (CHRONO-PERFECTION BOT)"
+Title.TextColor3 = Color3.fromRGB(200, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -111,7 +111,8 @@ local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
 local BotBypassingNetwork = false
-local DEFAULT_SAFE_DELAY = 5.95 -- Optimizado para no disparar ban de velocidad (4.0s) y rozar el 100% de calidad
+local HAMMER_DELAY = 7.00
+local WATER_DELAY = 6.25
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -252,17 +253,31 @@ end
 -- ==========================================
 local function PlayerCleanup()
     pcall(function()
-        local cam = workspace.CurrentCamera
-        cam.CameraType = Enum.CameraType.Custom
+        -- 1. Forzar reactivación de barra de vida, inventario y chat
+        game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+        
+        -- 2. Matar anclajes y setear velocidad normal
         local char = Players.LocalPlayer.Character
         if char then
-            cam.CameraSubject = char:FindFirstChild("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hrp then hrp.Anchored = false end
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.WalkSpeed = 16
+                hum.JumpPower = 50
+            end
         end
+        
+        -- 3. Inyectar en el módulo de controles base de Roblox
         local pm = require(Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
         pm:GetControls():Enable()
-        AddUILog("SISTEMA", "¡Cámara y movimiento liberados (PlayerModule Override)!", Color3.fromRGB(150,255,255))
+        
+        -- 4. Re-centrar y resetear la cámara por la fuerza
+        local cam = workspace.CurrentCamera
+        cam.CameraType = Enum.CameraType.Custom
+        if char then cam.CameraSubject = char:FindFirstChild("Humanoid") end
+        
+        AddUILog("SISTEMA", "¡HARD RESET COMPLETADO! Inventario, Cámara y Movimiento resucitados.", Color3.fromRGB(150,255,255))
     end)
 end
 
@@ -325,7 +340,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         
         AddUILog("BOT_V5", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(150,255,150))
         local req1, start1 = ExtractTimes(primerMeltReturn)
-        req1 = req1 or DEFAULT_SAFE_DELAY
+        req1 = req1 or 2.15
         start1 = start1 or workspace:GetServerTimeNow()
         
         local trueTime1 = WaitUntilServerTime(start1 + req1)
@@ -335,7 +350,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
         
         local req2, start2 = ExtractTimes(r2)
-        req2 = req2 or DEFAULT_SAFE_DELAY
+        req2 = req2 or 4.50
         start2 = start2 or workspace:GetServerTimeNow()
         local trueTime2 = WaitUntilServerTime(start2 + req2)
         AddUILog("BOT_V5", string.format("Fase 2 completada. Duración: %.2fs", req2), Color3.fromRGB(200,200,200))
@@ -344,7 +359,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
         
         local req3, start3 = ExtractTimes(r3)
-        req3 = req3 or DEFAULT_SAFE_DELAY
+        req3 = req3 or HAMMER_DELAY
         start3 = start3 or workspace:GetServerTimeNow()
         local trueTime3 = WaitUntilServerTime(start3 + req3)
         AddUILog("BOT_V5", string.format("Fase 3 completada. Duración: %.2fs", req3), Color3.fromRGB(200,200,200))
@@ -353,7 +368,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
         
         local req4, start4 = ExtractTimes(r4)
-        req4 = req4 or DEFAULT_SAFE_DELAY
+        req4 = req4 or WATER_DELAY
         start4 = start4 or workspace:GetServerTimeNow()
         WaitUntilServerTime(start4 + req4)
         AddUILog("BOT_V5", string.format("Fase 4 completada. Duración: %.2fs", req4), Color3.fromRGB(200,200,200))
@@ -449,5 +464,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V5.1 INICIADA. THE OMEGA BOT UNLOCKED ACTIVO.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "El script te devolverá la cámara con PlayerModule al finalizar. Tiempos Heurísticos ajustados a 5.95s para rozar el 100% de Calidad.", Color3.fromRGB(200, 255, 100))
+AddUILog("SISTEMA", "V5.3 INICIADA. CHRONO-BOT (ASIMÉTRICO ACTIVO).", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El script ha sido calibrado milimétricamente con huellas humanas para burlar los círculos invisibles.", Color3.fromRGB(200, 255, 100))
