@@ -139,7 +139,7 @@ LogControls.Parent = Panel
 local CopyLogBtn = Instance.new("TextButton")
 CopyLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
 CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyLogBtn.Text = "📋 COPIAR LOG"
+CopyLogBtn.Text = "📋 COPIAR LOGGgG"
 CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyLogBtn.Font = Enum.Font.Code
 CopyLogBtn.TextSize = 10
@@ -315,37 +315,49 @@ SellBtn.MouseButton1Click:Connect(function()
         -- 1. Cerrar a nivel Servidor
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
         
-        -- 2. Matar el diálogo en pantalla forzando clics en "Adiós" u ocultándolo
-        local adiosEncontrado = false
-        pcall(function()
-            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                if obj:IsA("TextButton") and obj.Visible then
-                    local txt = string.lower(obj.Text)
-                    if string.find(txt, "adi") or string.find(txt, "bye") or string.find(txt, "close") or string.find(txt, "2.") or string.find(txt, "2]") then
+        -- 2. Matar el diálogo en pantalla forzando clics o borrándolo de la memoria
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            -- A) Intentar clickear el botón "Adiós" u opción "2"
+            if obj:IsA("TextButton") and obj.Visible then
+                local txt = string.lower(obj.Text)
+                if string.find(txt, "adi") or string.find(txt, "2.") or string.find(txt, "2%]") then
+                    pcall(function() firesignal(obj.MouseButton1Click) end)
+                    pcall(function() 
                         for _, conn in pairs(getconnections(obj.MouseButton1Click)) do conn:Fire() end
-                        adiosEncontrado = true
-                    end
-                end
-                
-                -- Ocultar el UI a la bruta por si acaso
-                if obj.Name == "Dialogue" or obj.Name == "MerchantShop" then
-                    if obj:IsA("GuiObject") then obj.Visible = false end
+                    end)
                 end
             end
-        end)
+            
+            -- B) Plan de Contención: Apagar el UI Entero si tiene textos del NPC
+            if obj:IsA("TextLabel") and obj.Visible then
+                if string.find(obj.Text, "Generoso") or string.find(obj.Text, "acuerdo") then
+                    local parentGUI = obj
+                    while parentGUI and not parentGUI:IsA("ScreenGui") do
+                        parentGUI = parentGUI.Parent
+                    end
+                    if parentGUI then parentGUI.Enabled = false end
+                end
+            end
+        end
         
-        -- 3. Restaurar velocidad de movimiento y salto (anti-pegado)
+        -- 3. Restaurar Cámara, Velocidad de movimiento y Salto (Liberación Total)
         pcall(function()
+            local cam = workspace.CurrentCamera
+            if cam then
+                cam.CameraType = Enum.CameraType.Custom
+            end
+            
             if char then
                 local hum = char:FindFirstChild("Humanoid")
                 if hum then
                     hum.WalkSpeed = 16
                     hum.JumpPower = 50
-                    -- Si usan Atributos locales para bloquear
                     hum:SetAttribute("DialogueOpen", false)
                     hum:SetAttribute("Stunned", false)
+                    if cam then cam.CameraSubject = hum end
                 end
-                -- Restaurar controles de PlayerModule si Knit los apagó
+                
+                -- Restaurar controles de PlayerModule si el juego los desvinculó
                 local PlayerModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
                 local controls = PlayerModule:GetControls()
                 if controls then controls:Enable() end
