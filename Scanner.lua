@@ -43,7 +43,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Title.Text = " 🎯 RACE SNIPER V1.6 (GIROS GRATIS)"
+Title.Text = " 🎯 RACE SNIPER V1.55 (GIROS GRATIS)"
 Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -215,54 +215,24 @@ ArmBtn.MouseButton1Click:Connect(function()
                     pcall(function() selfName = self.Name end)
                     
                     if selfName == "Reroll" then
-                        -- PASO 1: Loguear que detectamos el Reroll
-                        task.spawn(function()
-                            AddLog("SNIPER", "🎲 ¡REROLL DETECTADO! Consultando al servidor...", Color3.fromRGB(255, 200, 0))
+                        -- NUNCA llamamos al servidor. Retornamos nil.
+                        -- El servidor NUNCA recibe la petición = NO gasta spin.
+                        -- Escribir al .txt antes de todo
+                        pcall(function()
+                            WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] 🎲 Reroll INTERCEPTADO. Servidor NO contactado. Spin NO gastado.")
                         end)
                         
-                        -- PASO 2: Llamar al servidor para obtener la raza
-                        local raza = OriginalNamecall(self, ...)
-                        local razaStr = tostring(raza)
-                        
-                        -- PASO 3: Loguear qué raza salió
                         task.spawn(function()
-                            AddLog("SNIPER", "📦 Servidor respondió: " .. razaStr, Color3.fromRGB(0, 255, 255))
+                            ResultLabel.Text = "🔒 Reroll BLOQUEADO. Spin NO gastado."
+                            ResultLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                            ResultLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 0)
+                            AddLog("SNIPER", "🔒 Reroll bloqueado. Servidor NO contactado.", Color3.fromRGB(255, 255, 0))
+                            AddLog("SNIPER", "Tu spin NO se gastó.", Color3.fromRGB(0, 255, 0))
+                            AddLog("SNIPER", "Desarma el Sniper y presiona Reiniciar cuando quieras girar de verdad.", Color3.fromRGB(255, 255, 200))
                         end)
                         
-                        -- PASO 4: ¿Es una raza que queremos?
-                        if RAZAS_DESEADAS[razaStr] then
-                            -- ✅ SÍ LA QUEREMOS → Dejar pasar normalmente
-                            task.spawn(function()
-                                ResultLabel.Text = "🏆🏆🏆 " .. razaStr .. " 🏆🏆🏆"
-                                ResultLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                                ResultLabel.BackgroundColor3 = Color3.fromRGB(0, 80, 0)
-                                AddLog("SNIPER", "🏆 ¡¡¡RAZA ACEPTADA: " .. razaStr .. "!!! Dejando pasar...", Color3.fromRGB(0, 255, 0))
-                                AddLog("SNIPER", "🏆 El juego seguirá normal y tu raza se guardará.", Color3.fromRGB(0, 255, 0))
-                            end)
-                            return raza
-                        else
-                            -- ❌ NO LA QUEREMOS → CONGELAR ROBLOX COMPLETO.
-                            -- Escribir al .txt ANTES de congelar (después no se puede)
-                            pcall(function()
-                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] ❌ Rechazada: " .. razaStr)
-                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] 🔒 CONGELANDO ROBLOX. Cierra con Task Manager/Alt+F4.")
-                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] Al volver a entrar, tu giro NO se habrá gastado.")
-                            end)
-                            
-                            task.spawn(function()
-                                ResultLabel.Text = "❌ " .. razaStr .. " → CONGELADO. Alt+F4 AHORA."
-                                ResultLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-                                ResultLabel.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
-                            end)
-                            
-                            -- Esperar un instante para que los logs se escriban
-                            task.wait(0.3)
-                            
-                            -- CONGELAMIENTO DURO: Sin yield. Roblox entero se congela.
-                            -- PlayerRemoving NUNCA se dispara. DataStore NUNCA guarda.
-                            -- El usuario cierra con Alt+F4 o Task Manager.
-                            while true do end
-                        end
+                        -- Retornar nil. El juego puede crashear, pero no se gasta spin.
+                        return nil
                     end
                 end
                 
