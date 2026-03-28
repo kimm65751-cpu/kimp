@@ -1,38 +1,125 @@
--- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.3 (THE ARCHITECT PATCH)
--- Solución al error de Capacidad de Hilos al leer la interfaz desde Namecall.
+-- 🗡️ OMNI-FARM V3.2 (PISO DINÁMICO)
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.3 - THE ARCHITECT PATCH"
+local SCRIPT_URL = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
-local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForgeAnalyzerUI" then v:Destroy() end end
+-- ==========================================
+-- REFERENCIA CRÍTICA DEL SERVIDOR (Knit ToolService)
+-- ==========================================
+local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
 
+-- ==========================================
+-- VARIABLES DE ESTADO
+-- ==========================================
+local NoclipActivo = false
+local ShieldActivo = false
+local KiteActivo = false
+local MineActivo = false
+local FarmTask = nil
+local MyShield = nil
+local FullbrightActivo = false
+local OriginalLighting = nil
+
+-- ANTI-STUCK MINING: Lista negra de minerales que no se pueden picar
+local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
+local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
+local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
+local GlobalMineIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global 5s
+local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
+
+-- SELECTOR DE OBJETIVOS: Qué tipos de mobs y minas farmear
+-- Clave = nombre base (lowercase, sin números), Valor = true/false
+local SelectedMobs = {} -- Se llena con el Scanner
+local SelectedOres = {} -- Se llena con el Scanner
+
+-- LÍMITE DE PISO DINÁMICO (Safe Floor)
+local SafeFloorY = -50 -- Límite base (Se actualiza con el botón)-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
+-- ==========================================
+local function GetMyLevel()
+    local lvl = 1
+    pcall(function()
+        -- Buscar en leaderstats
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            local lv = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("Nivel")
+            if lv then lvl = tonumber(lv.Value) or 1 end
+        end
+        -- Buscar como atributo directo del jugador
+        local attrLvl = LocalPlayer:GetAttribute("Level") or LocalPlayer:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or lvl end
+        -- Buscar en carpeta Data/Profile/Stats
+        for _, folderName in pairs({"Data", "Profile", "Stats"}) do
+            local f = LocalPlayer:FindFirstChild(folderName)
+            if f then
+                local lv = f:FindFirstChild("Level") or f:FindFirstChild("Lvl")
+                if lv and lv:IsA("ValueBase") then lvl = tonumber(lv.Value) or lvl end
+            end
+        end
+    end)
+    return lvl
+end
+
+-- ==========================================
+-- FUNCIÓN PARA OBTENER EL NIVEL DEL ZOMBIE
+-- ==========================================
+local function GetMobLevel(mob)
+    local lvl = 0
+    pcall(function()
+        -- 1. Buscar atributo "Level"
+        local attrLvl = mob:GetAttribute("Level") or mob:GetAttribute("Lvl")
+        if attrLvl then lvl = tonumber(attrLvl) or 0; return end
+        -- 2. Buscar NumberValue/IntValue hijo
+        for _, v in pairs(mob:GetChildren()) do
+            if (v:IsA("NumberValue") or v:IsA("IntValue")) and (v.Name == "Level" or v.Name == "Lvl") then
+                lvl = tonumber(v.Value) or 0; return
+            end
+        end
+        -- 3. Buscar en BillboardGui texto "[Lvl. X]"
+        for _, gui in pairs(mob:GetDescendants()) do
+            if gui:IsA("TextLabel") then
+                local text = gui.Text or ""
+                local match = string.match(text, "%[Lvl%.%s*(%d+)%]")
+                if match then lvl = tonumber(match) or 0; return end
+            end
+        end
+    end)
+    return lvl
+end
+
+-- ==========================================
+-- GUI PRINCIPAL (COMPACTA)
+-- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ForgeAnalyzerUI"
+ScreenGui.Name = "OmniFarmUI"
 ScreenGui.ResetOnSpawn = false
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "OmniFarmUI" then v:Destroy() end end
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 560, 0, 420)
-Panel.Position = UDim2.new(1, -580, 0.5, -210)
-Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
+Panel.Size = UDim2.new(0, 280, 0, 400)
+Panel.Position = UDim2.new(0.5, -140, 0.5, -155)
+Panel.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(150, 255, 255)
+Panel.BorderColor3 = Color3.fromRGB(0, 200, 100)
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.3 (ARCHITECT PATCH)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 200)
+Title.Size = UDim2.new(1, -80, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
+Title.Text = " 🗡️ OMNI-FARM V3.2"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -41,394 +128,925 @@ Title.Parent = Panel
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 40, 0, 30)
 CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = Panel
 
-local BypassFrame = Instance.new("Frame")
-BypassFrame.Size = UDim2.new(1, -8, 0, 40)
-BypassFrame.Position = UDim2.new(0, 4, 0, 35)
-BypassFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 30)
-BypassFrame.Parent = Panel
-Instance.new("UICorner", BypassFrame).CornerRadius = UDim.new(0, 4)
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 40, 0, 30)
+MinBtn.Position = UDim2.new(1, -80, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 16
+MinBtn.Parent = Panel
 
-local AutoBotBtn = Instance.new("TextButton")
-AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
-AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
-AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
-AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoBotBtn.Font = Enum.Font.Code
-AutoBotBtn.TextSize = 13
-AutoBotBtn.Parent = BypassFrame
+local ReloadBtn = Instance.new("TextButton")
+ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
+ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
+ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
+ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
+ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+ReloadBtn.Font = Enum.Font.Code
+ReloadBtn.TextSize = 11
+ReloadBtn.Parent = Panel
 
-local TimeControlFrame = Instance.new("Frame")
-TimeControlFrame.Size = UDim2.new(1, -8, 0, 30)
-TimeControlFrame.Position = UDim2.new(0, 4, 0, 80)
-TimeControlFrame.BackgroundColor3 = Color3.fromRGB(20, 30, 40)
-TimeControlFrame.Parent = Panel
+local OpenIcon = Instance.new("ImageButton")
+OpenIcon.Size = UDim2.new(0, 50, 0, 50)
+OpenIcon.Position = UDim2.new(0.5, -25, 0, 20)
+OpenIcon.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+OpenIcon.Image = "rbxassetid://10886105073"
+OpenIcon.Visible = false
+OpenIcon.Active = true
+OpenIcon.Draggable = true
+OpenIcon.Parent = ScreenGui
+Instance.new("UICorner", OpenIcon).CornerRadius = UDim.new(1, 0)
 
-local TimeLabel = Instance.new("TextLabel")
-TimeLabel.Size = UDim2.new(0, 150, 1, 0)
-TimeLabel.BackgroundTransparency = 1
-TimeLabel.Text = " Tiempo de Forja (s): "
-TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimeLabel.Font = Enum.Font.Code
-TimeLabel.TextSize = 13
-TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-TimeLabel.Parent = TimeControlFrame
+-- ==========================================
+-- BOTONES (SIN AIMBOT)
+-- ==========================================
+local NoclipBtn = Instance.new("TextButton")
+NoclipBtn.Size = UDim2.new(0.5, -6, 0, 35)
+NoclipBtn.Position = UDim2.new(0, 4, 0, 68)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+NoclipBtn.Text = "👻 NOCLIP: OFF"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipBtn.Font = Enum.Font.Code
+NoclipBtn.TextSize = 11
+NoclipBtn.Parent = Panel
 
-local TimeTextBox = Instance.new("TextBox")
-TimeTextBox.Size = UDim2.new(0, 100, 1, -4)
-TimeTextBox.Position = UDim2.new(0, 160, 0, 2)
-TimeTextBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-TimeTextBox.TextColor3 = Color3.fromRGB(0, 255, 255)
-TimeTextBox.Text = "7.55"
-TimeTextBox.Font = Enum.Font.Code
-TimeTextBox.TextSize = 14
-TimeTextBox.ClearTextOnFocus = false
-TimeTextBox.Parent = TimeControlFrame
-Instance.new("UICorner", TimeTextBox).CornerRadius = UDim.new(0, 4)
+local ShieldBtn = Instance.new("TextButton")
+ShieldBtn.Size = UDim2.new(0.5, -6, 0, 35)
+ShieldBtn.Position = UDim2.new(0.5, 2, 0, 68)
+ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+ShieldBtn.Text = "🛡️ MURO CRISTAL"
+ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ShieldBtn.Font = Enum.Font.Code
+ShieldBtn.TextSize = 11
+ShieldBtn.Parent = Panel
 
-local SubBtn = Instance.new("TextButton")
-SubBtn.Size = UDim2.new(0, 30, 1, -4)
-SubBtn.Position = UDim2.new(0, 270, 0, 2)
-SubBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-SubBtn.Text = "-"
-SubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SubBtn.Parent = TimeControlFrame
+local KiteBtn = Instance.new("TextButton")
+KiteBtn.Size = UDim2.new(0.5, -6, 0, 45)
+KiteBtn.Position = UDim2.new(0, 4, 0, 110)
+KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+KiteBtn.Text = "🗡️ FARM MOBS"
+KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+KiteBtn.Font = Enum.Font.Code
+KiteBtn.TextSize = 12
+KiteBtn.Parent = Panel
 
-local AddBtn = Instance.new("TextButton")
-AddBtn.Size = UDim2.new(0, 30, 1, -4)
-AddBtn.Position = UDim2.new(0, 305, 0, 2)
-AddBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-AddBtn.Text = "+"
-AddBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AddBtn.Parent = TimeControlFrame
+local MineBtn = Instance.new("TextButton")
+MineBtn.Size = UDim2.new(0.5, -6, 0, 45)
+MineBtn.Position = UDim2.new(0.5, 2, 0, 110)
+MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+MineBtn.Text = "⛏️ FARM MINAS"
+MineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MineBtn.Font = Enum.Font.Code
+MineBtn.TextSize = 12
+MineBtn.Parent = Panel
 
-local GlobalDynamicTime = 7.55
+local ScannerBtn = Instance.new("TextButton")
+ScannerBtn.Size = UDim2.new(0.5, -6, 0, 30)
+ScannerBtn.Position = UDim2.new(0, 4, 0, 160)
+ScannerBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
+ScannerBtn.Text = "🔍 SCANNER"
+ScannerBtn.TextColor3 = Color3.fromRGB(255, 220, 255)
+ScannerBtn.Font = Enum.Font.Code
+ScannerBtn.TextSize = 11
+ScannerBtn.Parent = Panel
 
-TimeTextBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local val = tonumber(TimeTextBox.Text)
-    if val then GlobalDynamicTime = val end
-end)
+local SetFloorBtn = Instance.new("TextButton")
+SetFloorBtn.Size = UDim2.new(0.5, -6, 0, 30)
+SetFloorBtn.Position = UDim2.new(0.5, 2, 0, 160)
+SetFloorBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
+SetFloorBtn.Text = "📍 FIJAR PISO"
+SetFloorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetFloorBtn.Font = Enum.Font.Code
+SetFloorBtn.TextSize = 11
+SetFloorBtn.Parent = Panel
 
-SubBtn.MouseButton1Click:Connect(function()
-    local val = tonumber(TimeTextBox.Text) or 7.55
-    TimeTextBox.Text = string.format("%.2f", val - 0.1)
-    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
-end)
-AddBtn.MouseButton1Click:Connect(function()
-    local val = tonumber(TimeTextBox.Text) or 7.55
-    TimeTextBox.Text = string.format("%.2f", val + 0.1)
-    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
-end)
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -8, 0, 150)
+StatusLabel.Position = UDim2.new(0, 4, 0, 195)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata mobs seleccionados.\n⛏️ FARM MINAS: Pica minas seleccionadas.\n🔍 SCANNER: Detecta y selecciona objetivos.\n\nUsa el SCANNER primero para elegir qué farmear."
+StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+StatusLabel.Parent = Panel
 
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -165)
-LogScroll.Position = UDim2.new(0, 4, 0, 120)
-LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
-LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 6
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.Parent = Panel
-local ListLayout = Instance.new("UIListLayout", LogScroll)
-ListLayout.Padding = UDim.new(0, 2)
+-- ==========================================
+-- BOTÓN FULLBRIGHT (VISIÓN NOCTURNA)
+-- ==========================================
+local FullbrightBtn = Instance.new("TextButton")
+FullbrightBtn.Size = UDim2.new(1, -8, 0, 28)
+FullbrightBtn.Position = UDim2.new(0, 4, 0, 350)
+FullbrightBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: OFF"
+FullbrightBtn.TextColor3 = Color3.fromRGB(255, 255, 200)
+FullbrightBtn.Font = Enum.Font.Code
+FullbrightBtn.TextSize = 11
+FullbrightBtn.Parent = Panel
 
-local ControlsFrame = Instance.new("Frame")
-ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
-ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
-ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-ControlsFrame.Parent = Panel
-
-local ClearBtn = Instance.new("TextButton")
-ClearBtn.Size = UDim2.new(0.5, -2, 1, 0)
-ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-ClearBtn.Text = "🗑️ LIMPIAR LOGS"
-ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClearBtn.Font = Enum.Font.Code
-ClearBtn.TextSize = 12
-ClearBtn.Parent = ControlsFrame
-
-local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(0.5, -2, 1, 0)
-CopyBtn.Position = UDim2.new(0.5, 2, 0, 0)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
-CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES"
-CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
-CopyBtn.Parent = ControlsFrame
-
-local MasterLogList = {}
-local ModosBypass = {BotActivo = false}
-local BotJugandoAhoraMismo = false
-local BotBypassingNetwork = false
-
-local DumpTableDeep
-DumpTableDeep = function(tbl, depth)
-    depth = depth or 0
-    if type(tbl) ~= "table" then return tostring(tbl) end
-    if depth > 5 then return "{MAX_DEPTH}" end
-    local str = "{"
-    for k, v in pairs(tbl) do
-        local vt = typeof(v)
-        if vt == "table" then str = str .. "["..tostring(k).."]=" .. DumpTableDeep(v, depth + 1) .. ", "
-        else str = str .. "["..tostring(k).."]=" .. tostring(v) .. ", " end
-    end
-    return str .. "}"
-end
-
-local function SaveLogToFile(message)
-    task.spawn(function()
-        pcall(function()
-            local filename = "ForgeAnalyzerLogs_V8.txt"
-            if appendfile then appendfile(filename, message .. "\n")
-            elseif writefile then
-                local current = ""
-                pcall(function() current = readfile(filename) end)
-                writefile(filename, current .. message .. "\n")
+FullbrightBtn.MouseButton1Click:Connect(function()
+    FullbrightActivo = not FullbrightActivo
+    if FullbrightActivo then
+        FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: ON ✅"
+        FullbrightBtn.BackgroundColor3 = Color3.fromRGB(200, 200, 50)
+        -- Guardar valores originales
+        OriginalLighting = {
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            FogEnd = Lighting.FogEnd,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            GlobalShadows = Lighting.GlobalShadows,
+        }
+        -- Aplicar fullbright
+        Lighting.Brightness = 3
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 1e9
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+        Lighting.GlobalShadows = false
+        -- Eliminar efectos de oscuridad (Atmosphere, ColorCorrection, etc.)
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("Atmosphere") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
+                v.Enabled = false
             end
-        end)
-    end)
-end
-
-local function AddUILog(logType, message, color)
-    local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
-    SaveLogToFile(fullString)
-    table.insert(MasterLogList, fullString)
-    if #MasterLogList > 500 then 
-        table.remove(MasterLogList, 1)
-        task.defer(function()
-            local f = LogScroll:FindFirstChildWhichIsA("TextLabel")
-            if f then pcall(function() f:Destroy() end) end
-        end)
-    end
-    task.defer(function()
-        pcall(function()
-            local txt = Instance.new("TextLabel")
-            txt.Size = UDim2.new(1, -4, 0, 0)
-            txt.BackgroundTransparency = 1
-            txt.Text = fullString
-            txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-            txt.Font = Enum.Font.Code
-            txt.TextSize = 11
-            txt.TextXAlignment = Enum.TextXAlignment.Left
-            txt.TextWrapped = true
-            txt.Parent = LogScroll
-            local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
-            txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
-            LogScroll.CanvasPosition = Vector2.new(0, 999999)
-        end)
-    end)
-end
-
-AutoBotBtn.MouseButton1Click:Connect(function()
-    ModosBypass.BotActivo = not ModosBypass.BotActivo
-    if ModosBypass.BotActivo then
-        AutoBotBtn.Text = "🛑 STOP: BOT HABILITADO (Presiona GO en Forja)"
-        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-        AddUILog("SISTEMA", "Bot ARMADO usando el tiempo de " .. TimeTextBox.Text .. "s.", Color3.fromRGB(100,255,100))
+        end
+        StatusLabel.Text = "🔦 Visión Nocturna ACTIVADA. Todo se ve claro."
     else
-        AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
-        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-        AddUILog("SISTEMA", "Bot APAGADO.", Color3.fromRGB(255,100,100))
-    end
-end)
-
-ClearBtn.MouseButton1Click:Connect(function()
-    for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
-    MasterLogList = {}
-end)
-CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V8.2) ===\n\n"
-    for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
-    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
-    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
-end)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
-local function CatchServerResponses()
-    local RS = game:GetService("ReplicatedStorage")
-    for _, v in pairs(RS:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            if string.find(string.lower(v:GetFullName()), "knit") or string.find(string.lower(v.Name), "forge") then
-                v.OnClientEvent:Connect(function(...)
-                    local args = {...}
-                    local dump = ""
-                    for i, val in ipairs(args) do dump = dump .. "Arg["..i.."]="..tostring(val).." " end
-                    if dump ~= "" then AddUILog("SERVER_SAYS", v.Name .. " >> " .. dump, Color3.fromRGB(0, 255, 0)) end
-                end)
+        FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: OFF"
+        FullbrightBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+        -- Restaurar valores originales
+        if OriginalLighting then
+            Lighting.Brightness = OriginalLighting.Brightness
+            Lighting.ClockTime = OriginalLighting.ClockTime
+            Lighting.FogEnd = OriginalLighting.FogEnd
+            Lighting.Ambient = OriginalLighting.Ambient
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+            Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        end
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("Atmosphere") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
+                v.Enabled = true
             end
         end
+        StatusLabel.Text = "🔦 Visión Nocturna APAGADA."
     end
-end
-CatchServerResponses()
+end)
 
-local function ExtractTimes(tbl)
-    local req, start = nil, nil
-    local seen = {}
-    local function search(t)
-        if type(t) ~= "table" or seen[t] then return end
-        seen[t] = true
-        for k, v in pairs(t) do
-            if type(k) == "string" and k == "RequiredTime" then req = v end
-            if type(k) == "string" and k == "StartTime" then start = v end
-            if type(v) == "table" then search(v) end
+-- ==========================================
+-- SCANNER PANEL (Panel Flotante de Selección)
+-- ==========================================
+local ScannerPanel = Instance.new("Frame")
+ScannerPanel.Size = UDim2.new(0, 320, 0, 420)
+ScannerPanel.Position = UDim2.new(0.5, 160, 0.5, -210)
+ScannerPanel.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+ScannerPanel.BorderSizePixel = 2
+ScannerPanel.BorderColor3 = Color3.fromRGB(150, 80, 255)
+ScannerPanel.Active = true
+ScannerPanel.Draggable = true
+ScannerPanel.Visible = false
+ScannerPanel.Parent = ScreenGui
+
+local ScanTitle = Instance.new("TextLabel")
+ScanTitle.Size = UDim2.new(1, -40, 0, 30)
+ScanTitle.BackgroundColor3 = Color3.fromRGB(80, 30, 120)
+ScanTitle.Text = " 🔍 SELECTOR DE OBJETIVOS"
+ScanTitle.TextColor3 = Color3.fromRGB(220, 180, 255)
+ScanTitle.TextSize = 13
+ScanTitle.Font = Enum.Font.Code
+ScanTitle.TextXAlignment = Enum.TextXAlignment.Left
+ScanTitle.Parent = ScannerPanel
+
+local ScanCloseBtn = Instance.new("TextButton")
+ScanCloseBtn.Size = UDim2.new(0, 40, 0, 30)
+ScanCloseBtn.Position = UDim2.new(1, -40, 0, 0)
+ScanCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ScanCloseBtn.Text = "X"
+ScanCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScanCloseBtn.Font = Enum.Font.Code
+ScanCloseBtn.TextSize = 16
+ScanCloseBtn.Parent = ScannerPanel
+ScanCloseBtn.MouseButton1Click:Connect(function() ScannerPanel.Visible = false end)
+
+local MobsHeader = Instance.new("TextLabel")
+MobsHeader.Size = UDim2.new(1, 0, 0, 22)
+MobsHeader.Position = UDim2.new(0, 0, 0, 32)
+MobsHeader.BackgroundColor3 = Color3.fromRGB(120, 50, 30)
+MobsHeader.Text = " 🧟 MOBS DETECTADOS (Click para ON/OFF)"
+MobsHeader.TextColor3 = Color3.fromRGB(255, 200, 180)
+MobsHeader.TextSize = 11
+MobsHeader.Font = Enum.Font.Code
+MobsHeader.TextXAlignment = Enum.TextXAlignment.Left
+MobsHeader.Parent = ScannerPanel
+
+local MobScroll = Instance.new("ScrollingFrame")
+MobScroll.Size = UDim2.new(1, -8, 0, 140)
+MobScroll.Position = UDim2.new(0, 4, 0, 56)
+MobScroll.BackgroundColor3 = Color3.fromRGB(20, 15, 15)
+MobScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+MobScroll.ScrollBarThickness = 5
+MobScroll.Parent = ScannerPanel
+Instance.new("UIListLayout", MobScroll).Padding = UDim.new(0, 2)
+
+local OresHeader = Instance.new("TextLabel")
+OresHeader.Size = UDim2.new(1, 0, 0, 22)
+OresHeader.Position = UDim2.new(0, 0, 0, 200)
+OresHeader.BackgroundColor3 = Color3.fromRGB(30, 80, 50)
+OresHeader.Text = " ⛏️ MINAS/PIEDRAS DETECTADAS (Click ON/OFF)"
+OresHeader.TextColor3 = Color3.fromRGB(180, 255, 200)
+OresHeader.TextSize = 11
+OresHeader.Font = Enum.Font.Code
+OresHeader.TextXAlignment = Enum.TextXAlignment.Left
+OresHeader.Parent = ScannerPanel
+
+local OreScroll = Instance.new("ScrollingFrame")
+OreScroll.Size = UDim2.new(1, -8, 0, 140)
+OreScroll.Position = UDim2.new(0, 4, 0, 224)
+OreScroll.BackgroundColor3 = Color3.fromRGB(15, 20, 15)
+OreScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+OreScroll.ScrollBarThickness = 5
+OreScroll.Parent = ScannerPanel
+Instance.new("UIListLayout", OreScroll).Padding = UDim.new(0, 2)
+
+local ScanStatusLabel = Instance.new("TextLabel")
+ScanStatusLabel.Size = UDim2.new(1, -8, 0, 45)
+ScanStatusLabel.Position = UDim2.new(0, 4, 0, 370)
+ScanStatusLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+ScanStatusLabel.Text = "Presiona el botón Scanner para detectar."
+ScanStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+ScanStatusLabel.TextSize = 10
+ScanStatusLabel.Font = Enum.Font.Code
+ScanStatusLabel.TextWrapped = true
+ScanStatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+ScanStatusLabel.Parent = ScannerPanel
+
+-- Función para extraer nombre base (sin números del final)
+local function GetBaseName(name)
+    return string.gsub(name, "%d+$", "")
+end
+
+-- Función para crear un botón toggle en un scroll
+local function CreateToggleRow(parent, displayName, selectionTable, key, defaultOn)
+    if selectionTable[key] ~= nil then return end -- Ya existe, no duplicar
+    selectionTable[key] = defaultOn
+    
+    local row = Instance.new("TextButton")
+    row.Size = UDim2.new(1, -4, 0, 24)
+    row.BackgroundColor3 = defaultOn and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(80, 30, 30)
+    row.Text = (defaultOn and "  ✅ " or "  ❌ ") .. displayName
+    row.TextColor3 = Color3.fromRGB(255, 255, 255)
+    row.TextXAlignment = Enum.TextXAlignment.Left
+    row.Font = Enum.Font.Code
+    row.TextSize = 11
+    row.Parent = parent
+    
+    row.MouseButton1Click:Connect(function()
+        selectionTable[key] = not selectionTable[key]
+        if selectionTable[key] then
+            row.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+            row.Text = "  ✅ " .. displayName
+        else
+            row.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+            row.Text = "  ❌ " .. displayName
         end
-    end
-    search(tbl)
-    return req, start
-end
-
-local function DestroyNativeMinigames()
-    for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
-            if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
-                v:Destroy()
-            end
-        end
-    end
-end
-
-local function SafeInvoke(forgeRF, phase, clientTimeParam)
-    local s, r = false, nil
-    local completed = false
-    BotBypassingNetwork = true
-    task.spawn(function()
-        local _s, _r = pcall(function() 
-            if clientTimeParam then return forgeRF:InvokeServer(phase, {ClientTime = clientTimeParam})
-            else return forgeRF:InvokeServer(phase, {}) end
-        end)
-        s, r = _s, _r
-        completed = true
-    end)
-    local timeout = os.clock()
-    while not completed and (os.clock() - timeout) < 5 do task.wait() end
-    BotBypassingNetwork = false
-    if not completed then AddUILog("TIMEOUT", "El servidor silenció (" .. phase .. ")", Color3.fromRGB(255,100,0)) end
-    return s, r
-end
-
-local function WaitUntilServerTime(targetTime)
-    local maxWait = targetTime + 2.0
-    while workspace:GetServerTimeNow() < targetTime do
-        if workspace:GetServerTimeNow() > maxWait then break end
-        task.wait()
-    end
-    return workspace:GetServerTimeNow()
-end
-
-local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
-    task.spawn(function()
-        xpcall(function()
-            BotJugandoAhoraMismo = true
-            DestroyNativeMinigames()
-            
-            -- LECTURA DE VARIABLE GLOBAL AUTORIZADA
-            local DYNAMIC_TIME = GlobalDynamicTime
-            if type(DYNAMIC_TIME) ~= "number" or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
-            
-            AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
-            local req1, start1 = ExtractTimes(primerMeltReturn)
-            req1 = req1 or 2.15
-            start1 = start1 or workspace:GetServerTimeNow()
-            local trueTime1 = WaitUntilServerTime(start1 + req1)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
-            local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
-            local req2, start2 = ExtractTimes(r2)
-            req2 = req2 or 4.50
-            start2 = start2 or workspace:GetServerTimeNow()
-            local trueTime2 = WaitUntilServerTime(start2 + req2)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
-            local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
-            local req3, start3 = ExtractTimes(r3)
-            req3 = req3 or DYNAMIC_TIME
-            start3 = start3 or workspace:GetServerTimeNow()
-            AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s...", Color3.fromRGB(200, 150, 0))
-            local trueTime3 = WaitUntilServerTime(start3 + req3)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(50,255,200))
-            local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
-            local req4, start4 = ExtractTimes(r4)
-            req4 = req4 or DYNAMIC_TIME
-            start4 = start4 or workspace:GetServerTimeNow()
-            AddUILog("BOT_V8", "⏳ Water Delay: " .. string.format("%.2f", req4) .. "s...", Color3.fromRGB(255, 50, 50))
-            WaitUntilServerTime(start4 + req4)
-            
-            AddUILog("BOT_V8", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
-            SafeInvoke(forgeRF, "Showcase", nil)
-            task.wait(3)
-            
-            AddUILog("BOT_V8", ">> Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
-            SafeInvoke(forgeRF, "EndForge", nil)
-            AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
-            
-            BotJugandoAhoraMismo = false
-        end, function(err)
-            BotJugandoAhoraMismo = false
-            AddUILog("FATAL_ERROR", "ERROR DEL SISTEMA: " .. tostring(err), Color3.fromRGB(255, 0, 0))
-        end)
     end)
 end
 
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
+-- Función de escaneo del mundo
+local function RunScanner()
+    -- Limpiar listas visuales
+    for _, v in pairs(MobScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    for _, v in pairs(OreScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     
-    if not checkcaller() and method == "InvokeServer" then
-        local fullName = self.GetFullName(self)
-        local nameLower = string.lower(fullName)
-        
-        if string.find(nameLower, "changesequence") then
-            local phaseName = tostring(args[1])
-            if BotBypassingNetwork then return OriginalNamecall(self, ...) end
-            
-            if phaseName ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
-                task.spawn(function() AddUILog("BLOCK", "Señal NATIVA Anulada [" .. phaseName .. "].", Color3.fromRGB(255, 50, 50)) end)
-                return nil 
-            end
-            
-            local RetTuple = {OriginalNamecall(self, ...)}
-            local returnVal = RetTuple[1]
-            task.spawn(function()
-                if phaseName == "Melt" then
-                    AddUILog("INTERCEPT", "Melt detectado. ¡El Omega Bot toma el control absoluto!", Color3.fromRGB(255,100,255))
-                    if ModosBypass.BotActivo and not BotJugandoAhoraMismo then ExecutePerfectSequence(self, returnVal) end
-                end
-            end)
-            return unpack(RetTuple)
-        end
-    end
+    local mobTypes = {} -- {baseName = {count, sampleHP, sampleLvl}}
+    local oreTypes = {} -- {baseName = {count, sampleHP}}
+    local char = LocalPlayer.Character
     
-    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        task.spawn(function()
-            pcall(function()
-                local nameLower = string.lower(self.GetFullName(self))
-                local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "character", "root", "position", "look"}
-                local skip = false
-                for _, w in pairs(BlacklistWords) do if string.find(nameLower, w) then skip = true break end end
-                
-                if not skip and not string.find(nameLower, "changesequence") then
-                    local argDump = ""
-                    for i, v in ipairs(args) do
-                        if typeof(v) == "table" then
-                            local s, r = pcall(function() return DumpTableDeep(v) end)
-                            argDump = argDump .. "Arg["..i.."]=" .. (s and r or "ERR") .. " "
-                        else pcall(function() argDump = argDump .. "Arg["..i.."]="..tostring(v).." " end) end
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("Model") and obj ~= char then
+                local hum = obj:FindFirstChildWhichIsA("Humanoid")
+                -- Es un MOB (NPC con Humanoid e IsNpc)
+                if hum and hum.Health > 0 and obj:GetAttribute("IsNpc") == true then
+                    local baseName = GetBaseName(obj.Name)
+                    if not mobTypes[baseName] then
+                        local mobLvl = GetMobLevel(obj)
+                        mobTypes[baseName] = {count = 1, hp = math.floor(hum.MaxHealth), lvl = mobLvl}
+                    else
+                        mobTypes[baseName].count = mobTypes[baseName].count + 1
                     end
-                    AddUILog("NET_OUT:"..method, self.Name .. " >> " .. argDump, Color3.fromRGB(100, 100, 100))
                 end
-            end)
+                -- Es una MINA/PIEDRA (Tiene Health como atributo)
+                local oreHP = obj:GetAttribute("Health")
+                if oreHP and oreHP > 0 and not hum then
+                    local baseName = GetBaseName(obj.Name)
+                    if not oreTypes[baseName] then
+                        oreTypes[baseName] = {count = 1, hp = math.floor(oreHP)}
+                    else
+                        oreTypes[baseName].count = oreTypes[baseName].count + 1
+                    end
+                end
+            end
         end)
     end
-    return OriginalNamecall(self, ...)
+    
+    -- Crear toggle rows para mobs
+    local mobCount = 0
+    for baseName, data in pairs(mobTypes) do
+        mobCount = mobCount + 1
+        local display = baseName .. " (x" .. data.count .. " | HP:" .. data.hp
+        if data.lvl > 0 then display = display .. " | Lvl:" .. data.lvl end
+        display = display .. ")"
+        -- Por defecto ON si no existía antes
+        local defaultVal = true
+        if SelectedMobs[baseName] ~= nil then defaultVal = SelectedMobs[baseName] end
+        SelectedMobs[baseName] = nil -- Reset para que CreateToggleRow lo cree
+        CreateToggleRow(MobScroll, display, SelectedMobs, baseName, defaultVal)
+    end
+    
+    -- Crear toggle rows para minas
+    local oreCount = 0
+    for baseName, data in pairs(oreTypes) do
+        oreCount = oreCount + 1
+        local display = baseName .. " (x" .. data.count .. " | HP:" .. data.hp .. ")"
+        local defaultVal = true
+        if SelectedOres[baseName] ~= nil then defaultVal = SelectedOres[baseName] end
+        SelectedOres[baseName] = nil
+        CreateToggleRow(OreScroll, display, SelectedOres, baseName, defaultVal)
+    end
+    
+    ScanStatusLabel.Text = "✅ Detectados: " .. mobCount .. " tipos de mobs, " .. oreCount .. " tipos de minas. Click para activar/desactivar."
+end
+
+ScannerBtn.MouseButton1Click:Connect(function()
+    ScannerPanel.Visible = not ScannerPanel.Visible
+    if ScannerPanel.Visible then
+        RunScanner()
+    end
 end)
 
-AddUILog("SISTEMA", "V8.3 ARCHITECT PATCH INICIADA. Monitor atrapa-errores activado y Limpio.", Color3.fromRGB(150, 255, 150))
+-- ==========================================
+
+
+-- ==========================================
+-- EVENTOS DE INTERFAZ
+-- ==========================================
+local Minimizado = false
+MinBtn.MouseButton1Click:Connect(function()
+    Minimizado = true
+    Panel.Visible = false
+    ScannerPanel.Visible = false
+    OpenIcon.Visible = true
+end)
+
+OpenIcon.MouseButton1Click:Connect(function()
+    Minimizado = false
+    Panel.Visible = true
+    OpenIcon.Visible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    ScreenGui:Destroy()
+end)
+
+ReloadBtn.MouseButton1Click:Connect(function()
+    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
+    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
+end)
+
+-- ==========================================
+-- ANTI-AFK (Evita el kick por inactividad de 20 min)
+-- ==========================================
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end)
+
+-- ==========================================
+-- MOTOR NOCLIP
+-- ==========================================
+RunService.Stepped:Connect(function()
+    if not NoclipActivo then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide = false end
+    end
+end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    NoclipActivo = not NoclipActivo
+    if NoclipActivo then
+        NoclipBtn.Text = "👻 NOCLIP: ON"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 180)
+    else
+        NoclipBtn.Text = "👻 NOCLIP: OFF"
+        NoclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        pcall(function()
+            local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if r then r.Anchored = false end
+        end)
+    end
+end)
+
+-- ==========================================
+-- MURO CRISTAL (FUNCIONAL DEL BACKUP)
+-- ==========================================
+ShieldBtn.MouseButton1Click:Connect(function()
+    ShieldActivo = not ShieldActivo
+    if ShieldActivo then
+        ShieldBtn.Text = "🛡️ CRISTAL: ON ✅"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
+        
+        MyShield = Instance.new("Part")
+        MyShield.Name = "MuroDefensivo"
+        MyShield.Size = Vector3.new(12, 12, 2)
+        MyShield.Transparency = 0.5
+        MyShield.Material = Enum.Material.ForceField
+        MyShield.BrickColor = BrickColor.new("Cyan")
+        MyShield.Anchored = true
+        MyShield.CanCollide = true
+        MyShield.Parent = Workspace
+        
+        task.spawn(function()
+            while ShieldActivo and MyShield do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if myRoot then
+                        for _, v in pairs(char:GetDescendants()) do
+                            if v:IsA("BasePart") then
+                                local cName = "NCC_" .. v.Name
+                                if not MyShield:FindFirstChild(cName) then
+                                    local nc = Instance.new("NoCollisionConstraint")
+                                    nc.Name = cName
+                                    nc.Part0 = v
+                                    nc.Part1 = MyShield
+                                    nc.Parent = MyShield
+                                end
+                            end
+                        end
+                        MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
+                    end
+                end)
+                task.wait()
+            end
+        end)
+        StatusLabel.Text = "🛡️ Muro Cristal activo. Los Zombis se atoran en él."
+    else
+        ShieldBtn.Text = "🛡️ MURO CRISTAL"
+        ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
+        if MyShield then MyShield:Destroy(); MyShield = nil end
+    end
+end)
+
+-- ==========================================
+-- FUNCIONES DE FARM (CON FILTRO DE NIVEL)
+-- ==========================================
+local function findNearest(condFn)
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest, closestDist = nil, math.huge
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if condFn(obj) then
+            local p = nil
+            pcall(function()
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                if hrp then p = hrp.Position end
+            end)
+            if p then
+                local d = (root.Position - p).Magnitude
+                if d < closestDist then closestDist = d; closest = obj end
+            end
+        end
+    end
+    return closest, closestDist
+end
+
+local function DetenerFarm()
+    if not KiteActivo and not MineActivo then
+        if FarmTask then task.cancel(FarmTask); FarmTask = nil end
+        pcall(function()
+            local char = LocalPlayer.Character
+            if not char then return end
+            local r = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChild("Humanoid")
+            if r then
+                r.Anchored = false
+                -- LIMPIAR BodyVelocity para que deje de volar
+                local bv = r:FindFirstChild("_NoclipBV")
+                if bv then bv:Destroy() end
+            end
+            -- Detener caminata
+            if hum then hum:Move(Vector3.zero) end
+        end)
+        StatusLabel.Text = "Estado: Inactivo"
+    end
+end
+
+SetFloorBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local r = char and char:FindFirstChild("HumanoidRootPart")
+        if r then
+            SafeFloorY = r.Position.Y
+            StatusLabel.Text = "📍 LÍMITE DE PISO FIJADO\nY = " .. tostring(math.floor(SafeFloorY)) .. " studs.\n\nEl bot NO bajará más de 15 studs debajo de este nivel al buscar minas."
+        end
+    end)
+end)
+
+local function IniciarFarm()
+    if FarmTask then return end
+    
+    FarmTask = task.spawn(function()
+        local loopTick = 0
+        local zTarget, oreTarget = nil, nil
+        local zDist, oDist = math.huge, math.huge
+
+        while KiteActivo or MineActivo do
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local currentHum = char:FindFirstChild("Humanoid")
+                local myRoot = char:FindFirstChild("HumanoidRootPart")
+                if not myRoot or not currentHum then return end
+
+                loopTick = loopTick + 1
+                local myLevel = GetMyLevel()
+
+                -- 1. ESCANEO DE ZOMBIES (CONSTANTE, PORQUE SE MUEVEN)
+                if KiteActivo or MineActivo then
+                    if loopTick % 10 == 0 or not zTarget or not zTarget.Parent or not zTarget:FindFirstChildWhichIsA("Humanoid") then
+                        zTarget, zDist = findNearest(function(o)
+                            if o:IsA("Model") and o ~= char then
+                                local h = o:FindFirstChildWhichIsA("Humanoid")
+                                if h and h.Health > 0 and o:GetAttribute("IsNpc") == true then
+                                    local baseName = GetBaseName(o.Name)
+                                    if next(SelectedMobs) ~= nil and SelectedMobs[baseName] == false then return false end
+                                    if KiteActivo and not MineActivo then
+                                        local mobLvl = GetMobLevel(o)
+                                        if mobLvl > 0 and mobLvl > myLevel then return false end
+                                    end
+                                    local root = o:FindFirstChild("HumanoidRootPart")
+                                    if root and root.Position.Y < (SafeFloorY - 15) then return false end
+                                    return true
+                                end
+                            end
+                            return false
+                        end)
+                    else
+                        -- Actualiza distancia del zombi actual
+                        local zp = zTarget:FindFirstChild("HumanoidRootPart") or zTarget:FindFirstChild("Torso")
+                        if zp then
+                            zDist = (myRoot.Position - zp.Position).Magnitude
+                        else
+                            zTarget = nil
+                        end
+                    end
+                end
+
+                -- 2. ESCANEO ESP DE MINAS (INTELIGENTE Y CON BLOQUEO HASTA EXTRACCIÓN)
+                if MineActivo then
+                    -- Limpieza de blacklist cada 30 ticks (aprox 1s)
+                    if loopTick % 30 == 0 then
+                        local now = tick()
+                        for bOre, bTime in pairs(OreBlacklist) do
+                            if now - bTime > BLACKLIST_EXPIRE then OreBlacklist[bOre] = nil end
+                        end
+                    end
+
+                    -- Chequea si la mina actualigue viva, no expiro, y completamos el target
+                    local oreIsAlive = false
+                    if oreTarget and oreTarget.Parent and not OreBlacklist[oreTarget] then
+                        local oHP = oreTarget:GetAttribute("Health")
+                        if oHP and oHP > 0 then
+                            local op = oreTarget:FindFirstChild("HumanoidRootPart") or oreTarget:FindFirstChild("Torso") or oreTarget:FindFirstChildWhichIsA("BasePart")
+                            if op then
+                                oDist = (myRoot.Position - op.Position).Magnitude
+                                oreIsAlive = true
+                            end
+                        end
+                    end
+                    
+                    if not oreIsAlive then
+                        oreTarget = nil
+                        oDist = math.huge
+                    end
+
+                    -- BÚSQUEDA ESP INTELIGENTE (Solo cuando no tenemos mina asignada)
+                    if not oreTarget then
+                        local bestScore = math.huge
+                        local bestObj = nil
+                        
+                        -- PRE-CACHÉ DE ZOMBIES (Para evitar LAG EXTREMO anidado)
+                        local liveZombiesPos = {}
+                        for _, mob in pairs(Workspace:GetDescendants()) do
+                            if mob:IsA("Model") and mob:GetAttribute("IsNpc") == true then
+                                local mh = mob:FindFirstChildWhichIsA("Humanoid")
+                                if mh and mh.Health > 0 then
+                                    local mRoot = mob:FindFirstChild("HumanoidRootPart")
+                                    if mRoot then
+                                        table.insert(liveZombiesPos, mRoot.Position)
+                                    end
+                                end
+                            end
+                        end
+                        
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if obj:IsA("Model") and obj ~= char and not OreBlacklist[obj] then
+                                local h = obj:GetAttribute("Health")
+                                if h and h > 0 then
+                                    local baseName = GetBaseName(obj.Name)
+                                    local selected = true
+                                    
+                                    -- Aplicar filtro del gui scanner si se configuro
+                                    if next(SelectedOres) ~= nil and SelectedOres[baseName] == false then
+                                        selected = false
+                                    end
+                                    
+                                    if selected then
+                                        local op = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+                                        if op then
+                                            -- ANTI-UNDERGROUND (Dinámico)
+                                            if op.Position.Y >= (SafeFloorY - 15) then
+                                                local distToOre = (myRoot.Position - op.Position).Magnitude
+                                                
+                                                -- INTELIGENCIA: Contar zombies usando caché (0 LAG)
+                                                local mobsCerca = 0
+                                                for _, zp in pairs(liveZombiesPos) do
+                                                    if (zp - op.Position).Magnitude < 35 then
+                                                        mobsCerca = mobsCerca + 1
+                                                    end
+                                                end
+                                                
+                                                -- SCORE ESP: Distancia base + (200 de penalidad por cada Mob cerca)
+                                                local penalidadMobs = mobsCerca * 200
+                                                local totalScore = distToOre + penalidadMobs
+                                                
+                                                if totalScore < bestScore then
+                                                    bestScore = totalScore
+                                                    bestObj = obj
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if bestObj then
+                            oreTarget = bestObj
+                            local op = bestObj:FindFirstChild("HumanoidRootPart") or bestObj:FindFirstChild("Torso") or bestObj:FindFirstChildWhichIsA("BasePart")
+                            oDist = (myRoot.Position - op.Position).Magnitude
+                        end
+                    end
+                end
+
+                local targetObj = nil
+                local dist = 0
+                local targetDist = 7
+                local mode = "Combat"
+                local toolId = "weapon"
+
+                -- PRIORIDAD 1: COMBATE (Caza pura, o Auto-Defensa SOLO si el mob está MUY cerca mientras mineas)
+                if zTarget and (KiteActivo or (MineActivo and zDist < 15)) then
+                    targetObj = zTarget
+                    dist = zDist
+                    targetDist = ShieldActivo and 4 or 7
+                    mode = "Combat"
+                    toolId = "weapon"
+                -- PRIORIDAD 2: MINADO
+                elseif oreTarget and MineActivo then
+                    targetObj = oreTarget
+                    dist = oDist
+                    targetDist = 4
+                    mode = "Mining"
+                    toolId = "pickaxe"
+
+                    -- ANTI-STUCK: Detectar si el mineral no baja de vida
+                    local oreHP = oreTarget:GetAttribute("Health") or 0
+                    if MiningTracker.ore ~= oreTarget then
+                        -- Nuevo objetivo, resetear tracker
+                        MiningTracker.ore = oreTarget
+                        MiningTracker.startHP = oreHP
+                        MiningTracker.startTime = tick()
+                    else
+                        if dist > targetDist + 1.5 then
+                            -- Aún viajando a la mina (en el aire). Pausar el reloj Anti-Stuck para que no caduque en el camino.
+                            MiningTracker.startTime = tick()
+                            MiningTracker.startHP = oreHP
+                        else
+                            -- Mismo objetivo y estamos pegando, checar si bajó de vida
+                            if tick() - MiningTracker.startTime > MINE_TIMEOUT then
+                                if oreHP >= MiningTracker.startHP then
+                                    -- NO BAJÓ. Blacklistear y forzar rescan
+                                    OreBlacklist[oreTarget] = tick()
+                                    StatusLabel.Text = "⚠️ " .. oreTarget.Name .. " NO se puede picar. Saltando..."
+                                    oreTarget = nil
+                                    MiningTracker.ore = nil
+                                    targetObj = nil
+                                else
+                                    -- Sí bajó, resetear timer con el nuevo HP
+                                    MiningTracker.startHP = oreHP
+                                    MiningTracker.startTime = tick()
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if targetObj then
+                    local targetPart = targetObj:FindFirstChild("HumanoidRootPart") or targetObj:FindFirstChild("Torso") or targetObj:FindFirstChildWhichIsA("BasePart")
+                    if not targetPart then return end
+                    
+                    dist = (myRoot.Position - targetPart.Position).Magnitude
+                    -- dist ya fue calculado arriba
+                    -- targetDist ya fue calculado arriba
+
+                    -- == 1. EQUIPO DE ARMA ==
+                    local isEquipped = false
+                    for _, t in pairs(char:GetChildren()) do
+                        if t:IsA("Tool") and string.find(string.lower(t.Name), toolId) then
+                            isEquipped = true; break
+                        end
+                    end
+
+                    if not isEquipped then
+                        local bpTools = LocalPlayer.Backpack:GetChildren()
+                        local equippedCorrectly = false
+                        for _, t in pairs(bpTools) do
+                            if string.find(string.lower(t.Name), toolId) then
+                                currentHum:EquipTool(t); equippedCorrectly = true; break
+                            end
+                        end
+                        if not equippedCorrectly and #bpTools > 0 then
+                            if toolId == "pickaxe" then
+                                currentHum:EquipTool(bpTools[1])
+                            elseif #bpTools >= 2 then
+                                currentHum:EquipTool(bpTools[2])
+                            else
+                                currentHum:EquipTool(bpTools[1])
+                            end
+                        end
+                    end
+
+                    -- == 2. MOVIMIENTO ==
+                    if dist > targetDist then
+                        if NoclipActivo then
+                            myRoot.Anchored = false
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if not bv then
+                                bv = Instance.new("BodyVelocity")
+                                bv.Name = "_NoclipBV"
+                                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                                bv.Parent = myRoot
+                            end
+                            
+                            local speed = (currentHum.WalkSpeed or 16) * 2.5
+                            local targetPos = targetPart.Position
+                            local curPos = myRoot.Position
+                            
+                            -- SKY PATHING (Evitar chocar montañas y activar Anti-Wallhack)
+                            local hDist = (Vector2.new(curPos.X, curPos.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
+                            local safeY = targetPos.Y + 60 -- 60 studs por encima del objetivo para volar a salvo
+                            
+                            local flightWaypoint
+                            if hDist > 20 then
+                                if curPos.Y < safeY then
+                                    -- Fase 1: Subir (Ascensor) para evitar chocar de frente con el terreno
+                                    flightWaypoint = Vector3.new(curPos.X, safeY + 15, curPos.Z)
+                                else
+                                    -- Fase 2: Volar directo en el aire (seguro, sin suelo)
+                                    flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
+                                end
+                            else
+                                -- Fase 3: Ya estamos encima del objetivo, bajamos en picada PERO frenamos 3.5 studs antes
+                                -- Esto evita que tus pies atraviesen el suelo real y el juego te mande al spawn.
+                                flightWaypoint = Vector3.new(targetPos.X, targetPos.Y + 3.5, targetPos.Z)
+                            end
+                            
+                            local dir = (flightWaypoint - curPos).Unit
+                            bv.Velocity = dir * speed
+                        else
+                            local bv = myRoot:FindFirstChild("_NoclipBV")
+                            if bv then bv:Destroy() end
+                            myRoot.Anchored = false
+                            currentHum:MoveTo(targetPart.Position)
+                        end
+                    else
+                        local bv = myRoot:FindFirstChild("_NoclipBV")
+                        if bv then bv.Velocity = Vector3.zero end
+                        myRoot.Anchored = false
+                        currentHum:MoveTo(myRoot.Position)
+                    end
+
+                    -- == 3. GOLPE ==
+                    if dist <= targetDist + 1.5 then
+                        -- SNAP de puntería SOLO al golpear (un frame, no dispara anti-cheat)
+                        local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
+                        myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
+                        
+                        local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
+                        ToolRF:InvokeServer(serverArg)
+                        
+                        -- ANTI-ATASCO GLOBAL: Registrar que estamos golpeando
+                        if mode == "Mining" then
+                            GlobalMineIdleTracker.lastHitTime = tick()
+                        end
+                        
+                        if mode == "Combat" then
+                            local mobLvl = GetMobLevel(targetObj)
+                            StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
+                            
+                            -- KITING: Después de golpear, retroceder un paso para esquivar
+                            local retreatDir = (myRoot.Position - targetPart.Position)
+                            local flatRetreat = Vector3.new(retreatDir.X, 0, retreatDir.Z)
+                            if flatRetreat.Magnitude > 0.1 then
+                                currentHum:Move(flatRetreat.Unit, false)
+                                task.wait(0.15)
+                                currentHum:Move(Vector3.zero, false)
+                            end
+                        else
+                            StatusLabel.Text = "⛏️ Picando: " .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
+                        end
+                    else
+                        StatusLabel.Text = (mode == "Mining" and "🏃 Acercándose a Mina: " or "🏃 Cazando a: ") .. targetObj.Name .. " (" .. tostring(math.floor(dist)) .. "m)"
+                    end
+                else
+                    StatusLabel.Text = "🗡️/⛏️ Buscando objetivo (Tu Lvl: " .. tostring(myLevel) .. ")..."
+                end
+            end)
+            task.wait()
+        end
+        DetenerFarm()
+    end)
+end
+
+-- ==========================================
+-- CONEXIÓN DEL BOTÓN DE FARM
+-- ==========================================
+KiteBtn.MouseButton1Click:Connect(function()
+    KiteActivo = not KiteActivo
+    if KiteActivo then
+        KiteBtn.Text = "🗡️ MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        IniciarFarm()
+    else
+        KiteBtn.Text = "🗡️ FARM MOBS"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+        DetenerFarm()
+    end
+end)
+
+MineBtn.MouseButton1Click:Connect(function()
+    MineActivo = not MineActivo
+    if MineActivo then
+        MineBtn.Text = "⛏️ MINAS: ON"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        GlobalMineIdleTracker.lastHitTime = tick()
+        IniciarFarm()
+    else
+        MineBtn.Text = "⛏️ FARM MINAS"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+        DetenerFarm()
+    end
+end)
+
+-- ==========================================
+-- ANTI-ATASCO GLOBAL: Si Farm Minas está ON y lleva 5s sin picar, se auto-reinicia
+-- ==========================================
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if MineActivo and (tick() - GlobalMineIdleTracker.lastHitTime) > 5 then
+            GlobalMineIdleTracker.lastHitTime = tick()
+            -- Auto-reinicio: apagar y prender farm minas
+            MineActivo = false
+            DetenerFarm()
+            task.wait(0.3)
+            MineActivo = true
+            MineBtn.Text = "⛏️ MINAS: ON"
+            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+            StatusLabel.Text = "🔄 Anti-Atasco: Reiniciando Farm Minas..."
+            IniciarFarm()
+        end
+    end
+end)
