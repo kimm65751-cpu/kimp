@@ -51,7 +51,7 @@ end)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
-Title.Text = " 💰 VENTA ANALYZER V1.0"
+Title.Text = " 💰 VENTA ANALYZEeeeR V1.0"
 Title.TextColor3 = Color3.fromRGB(200, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -244,69 +244,77 @@ end)
 -- ==========================================
 BtnNPC.MouseButton1Click:Connect(function()
     AddLog("NPC", "══════════════════════════════════", Color3.fromRGB(255, 150, 50))
-    AddLog("NPC", "🕵️ INICIANDO ESCANEO FORENSE DE SEY...", Color3.fromRGB(255, 200, 100))
+    AddLog("NPC", "🕵️ INICIANDO EXTRACCIÓN PROFUNDA DE TABLAS (TIENDA)...", Color3.fromRGB(255, 200, 100))
     
     local posiblesNPCs = {}
     
-    -- Escaneo 1: Buscar por Textos sobre la cabeza (BillboardGui)
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("TextLabel") or obj:IsA("TextButton") then
             local textLower = string.lower(obj.Text)
-            if string.find(textLower, "sey") or string.find(textLower, "codic") or string.find(textLower, "greedy") then
-                -- Si encontramos el texto, buscamos el Modelo padre
+            if string.find(textLower, "sey") or string.find(textLower, "codic") or string.find(textLower, "cey") then
                 local parent = obj
-                while parent and not parent:IsA("Model") do
-                    parent = parent.Parent
-                end
-                if parent then
-                    posiblesNPCs[parent] = "Texto GUI: " .. obj.Text
-                end
+                while parent and not parent:IsA("Model") do parent = parent.Parent end
+                if parent then posiblesNPCs[parent] = "Texto GUI: " .. obj.Text end
             end
         end
-        -- Escaneo 2: Buscar por nombre del modelo
         if obj:IsA("Model") then
             local nameLower = string.lower(obj.Name)
-            if string.find(nameLower, "sey") or string.find(nameLower, "merchant") or string.find(nameLower, "sell") then
+            if string.find(nameLower, "sey") or string.find(nameLower, "cey") or string.find(nameLower, "merchant") then
                 posiblesNPCs[obj] = "Nombre Modelo: " .. obj.Name
             end
         end
     end
     
-    -- Analizar resultados
-    local count = 0
+    local npcFound = false
     for npcModel, motivo in pairs(posiblesNPCs) do
-        count = count + 1
-        AddLog("NPC", "✅ ¡Posible Sey Encontrado! (" .. count .. ")", Color3.fromRGB(0, 255, 0))
-        AddLog("NPC", "   Nombre REAL del Objeto: " .. npcModel.Name, Color3.fromRGB(0, 255, 255))
-        AddLog("NPC", "   Motivo: " .. motivo, Color3.fromRGB(200, 200, 200))
+        npcFound = true
+        AddLog("NPC", "✅ ¡NPC Encontrado! Nombre Real: " .. npcModel.Name, Color3.fromRGB(0, 255, 255))
         
-        -- Coordenadas
-        local hrp = npcModel:FindFirstChild("HumanoidRootPart") or npcModel:FindFirstChildWhichIsA("BasePart")
-        if hrp then
-            local pos = hrp.Position
-            AddLog("NPC", "   📍 Coordenadas: " .. string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z), Color3.fromRGB(255, 255, 0))
+        -- 1. Extraer Valores Internos
+        for _, child in pairs(npcModel:GetChildren()) do
+            if child:IsA("StringValue") or child:IsA("NumberValue") or child:IsA("IntValue") then
+                AddLog("NPC_DATA", "Valor Interno: [" .. child.Name .. "] = " .. tostring(child.Value), Color3.fromRGB(150, 255, 200))
+            elseif child:IsA("ModuleScript") then
+                AddLog("NPC_MODULE", "¡ModuloScript dentro del NPC! Intentando Require() a: " .. child.Name, Color3.fromRGB(255, 100, 255))
+                pcall(function()
+                    local data = require(child)
+                    AddLog("NPC_MODULE", "Resultado del Require: " .. SmartDump(data, 0, {}), Color3.fromRGB(255, 150, 255))
+                end)
+            end
         end
         
-        -- Buscar Prompts y Scripts
-        local prompt = npcModel:FindFirstChildWhichIsA("ProximityPrompt", true)
-        if prompt then
-            AddLog("NPC", "   💬 Prompt: [" .. prompt.ActionText .. "] -> Padre: " .. prompt.Parent.Name, Color3.fromRGB(0, 255, 100))
-        else
-            AddLog("NPC", "   ⚠️ No usa ProximityPrompt. Es un NPC clickeable o usa Raycast.", Color3.fromRGB(255, 150, 150))
-        end
-        
-        -- Atributos Ocultos
         local attrs = npcModel:GetAttributes()
         for k, v in pairs(attrs) do
-            AddLog("NPC", "   ⚙️ Atributo interno: " .. k .. " = " .. tostring(v), Color3.fromRGB(150, 150, 255))
+            AddLog("NPC_ATTR", k .. " = " .. tostring(v), Color3.fromRGB(150, 150, 255))
         end
-        AddLog("NPC", "   ------------------------", Color3.fromRGB(50, 50, 50))
     end
     
-    if count == 0 then
-        AddLog("NPC", "❌ No se encontró ningún NPC físico con 'Sey'. Puede que esté oculto en una zona lejana o cargue dinámicamente.", Color3.fromRGB(255, 100, 100))
+    if not npcFound then AddLog("NPC", "❌ NPC no encontrado físicamente.", Color3.fromRGB(255, 100, 100)) end
+    
+    AddLog("NPC", "══════════════════════════════════", Color3.fromRGB(255, 150, 50))
+    AddLog("NPC", "🧠 HACKEANDO MÓDULOS DE TIENDA (KNIT)...", Color3.fromRGB(255, 255, 50))
+    
+    -- 2. Hackear y dumpear los Módulos de Tienda conocidos
+    local modulosClave = {
+        "MerchantShopUtil", "Events.Merchant", "MiscSell", "WeaponSell", "Items", "Catalog"
+    }
+    
+    local rs = game:GetService("ReplicatedStorage")
+    for _, mod in pairs(rs:GetDescendants()) do
+        if mod:IsA("ModuleScript") then
+            for _, clave in ipairs(modulosClave) do
+                if string.find(string.lower(mod.Name), string.lower(clave)) then
+                    AddLog("HACK_MOD", "📦 Require() Inyectado en: " .. mod:GetFullName(), Color3.fromRGB(255, 0, 100))
+                    pcall(function()
+                        local data = require(mod)
+                        AddLog("HACK_DUMP", SmartDump(data, 0, {}), Color3.fromRGB(255, 200, 250))
+                    end)
+                end
+            end
+        end
     end
-    AddLog("NPC", "🎯 Siguiente paso: Háblale y vende algo con el Interceptor Activado.", Color3.fromRGB(255, 255, 0))
+    
+    AddLog("NPC", "🎯 REVISIÓN COMPLETA. Revisa la lista extraída para ver los verdaderos nombres de la Shop.", Color3.fromRGB(255, 255, 0))
 end)
 
 -- ==========================================
