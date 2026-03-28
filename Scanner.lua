@@ -46,7 +46,7 @@ CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 1, -85)
+TermScroll.Size = UDim2.new(1, -10, 1, -135)
 TermScroll.Position = UDim2.new(0, 5, 0, 35)
 TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 TermScroll.ScrollBarThickness = 6
@@ -54,6 +54,22 @@ TermScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 TermScroll.Parent = Panel
 Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
+
+-- TextBox seleccionable para copiar manualmente (Ctrl+A, Ctrl+C)
+local ResultBox = Instance.new("TextBox")
+ResultBox.Size = UDim2.new(1, -10, 0, 45)
+ResultBox.Position = UDim2.new(0, 5, 1, -90)
+ResultBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ResultBox.TextColor3 = Color3.fromRGB(200, 255, 200)
+ResultBox.PlaceholderText = "Aquí aparecerán los resultados pddddara copiar (Ctrl+A, Ctrl+C)"
+ResultBox.Text = ""
+ResultBox.Font = Enum.Font.Code
+ResultBox.TextSize = 9
+ResultBox.TextXAlignment = Enum.TextXAlignment.Left
+ResultBox.ClearTextOnFocus = false
+ResultBox.MultiLine = true
+ResultBox.TextEditable = false
+ResultBox.Parent = Panel
 
 local LogHistory = {}
 local function Log(texto, color)
@@ -71,19 +87,26 @@ local function Log(texto, color)
     msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
     TermScroll.CanvasPosition = Vector2.new(0, 999999)
     table.insert(LogHistory, msg.Text)
-    print(texto) -- También lo lanza a la consola F9 por seguridad
+    print(texto)
 end
 
 local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTADOS"
+CopyBtn.Text = "📋 VOLCAR TEXTO AL CUADRO (luego Ctrl+A, Ctrl+C)"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
+CopyBtn.TextSize = 11
 CopyBtn.Parent = Panel
-CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(LogHistory, "\n")); CopyBtn.Text = "✅" end) task.delay(2, function() CopyBtn.Text = "📋 COPIAR" end) end)
+CopyBtn.MouseButton1Click:Connect(function()
+    local data = table.concat(LogHistory, "\n")
+    ResultBox.Text = data
+    CopyBtn.Text = "✅ TEXTO VOLCADO! Haz click en el cuadro gris, Ctrl+A, Ctrl+C"
+    CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    pcall(function() setclipboard(data) end)
+    task.delay(4, function() CopyBtn.Text = "📋 VOLCAR TEXTO AL CUADRO"; CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200) end)
+end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
 Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO", Color3.fromRGB(255, 255, 0))
