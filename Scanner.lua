@@ -1,8 +1,9 @@
 -- ==============================================================================
--- 🔬 SUPER FORENSE VENTAS V1.0 (ANÁLISIS PROFUNDO DE TIPOS Y DEPURACIÓN)
+-- 🔬 SUPER FORENSE VENTAS V2.0 (BASADO EN HOOK PROBADO DEL VENTA ANALYZER)
 -- ==============================================================================
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
@@ -15,8 +16,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 500, 0, 400)
-Panel.Position = UDim2.new(0.5, -250, 0.5, -200)
+Panel.Size = UDim2.new(0, 550, 0, 500)
+Panel.Position = UDim2.new(0.5, -275, 0.5, -250)
 Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Panel.BorderSizePixel = 2
 Panel.BorderColor3 = Color3.fromRGB(200, 50, 100)
@@ -27,7 +28,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 40)
-Title.Text = " 🔬 SUPER FORENSE: ANÁLISIS PROFUNDO DE VENTAAAAAA"
+Title.Text = " 🔬 SUPER FORENSE VENTAS V2.0"
 Title.TextColor3 = Color3.fromRGB(255, 200, 220)
 Title.TextSize = 12
 Title.Font = Enum.Font.Code
@@ -44,228 +45,280 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-local TermHeader = Instance.new("Frame")
-TermHeader.Size = UDim2.new(1, 0, 0, 25)
-TermHeader.Position = UDim2.new(0, 0, 0, 30)
-TermHeader.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-TermHeader.Parent = Panel
+-- BOTONES
+local BtnScan = Instance.new("TextButton")
+BtnScan.Size = UDim2.new(0.5, -4, 0, 35)
+BtnScan.Position = UDim2.new(0, 4, 0, 35)
+BtnScan.BackgroundColor3 = Color3.fromRGB(150, 80, 20)
+BtnScan.Text = "🔍 RAYOS X AL NPC"
+BtnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnScan.Font = Enum.Font.Code
+BtnScan.TextSize = 11
+BtnScan.Parent = Panel
+
+local BtnHook = Instance.new("TextButton")
+BtnHook.Size = UDim2.new(0.5, -4, 0, 35)
+BtnHook.Position = UDim2.new(0.5, 2, 0, 35)
+BtnHook.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+BtnHook.Text = "📡 ACTIVAR INTERCEPTOR"
+BtnHook.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnHook.Font = Enum.Font.Code
+BtnHook.TextSize = 11
+BtnHook.Parent = Panel
+
+-- LOG
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Size = UDim2.new(1, -8, 1, -110)
+LogScroll.Position = UDim2.new(0, 4, 0, 75)
+LogScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogScroll.ScrollBarThickness = 6
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogScroll.Parent = Panel
+Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 2)
+
+-- Controles inferiores
+local ControlsFrame = Instance.new("Frame")
+ControlsFrame.Size = UDim2.new(1, -8, 0, 30)
+ControlsFrame.Position = UDim2.new(0, 4, 1, -34)
+ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 15)
+ControlsFrame.Parent = Panel
+
+local ClearBtn = Instance.new("TextButton")
+ClearBtn.Size = UDim2.new(0.33, -2, 1, 0)
+ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ClearBtn.Text = "🗑️ LIMPIAR"
+ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearBtn.Font = Enum.Font.Code
+ClearBtn.TextSize = 11
+ClearBtn.Parent = ControlsFrame
 
 local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(0, 100, 1, 0)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 COPIAR LOG"
+CopyBtn.Size = UDim2.new(0.33, -2, 1, 0)
+CopyBtn.Position = UDim2.new(0.33, 2, 0, 0)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
+CopyBtn.Text = "📋 COPIAR"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 11
-CopyBtn.Parent = TermHeader
+CopyBtn.Parent = ControlsFrame
 
-local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 1, -65)
-TermScroll.Position = UDim2.new(0, 5, 0, 60)
-TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-TermScroll.ScrollBarThickness = 6
-TermScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-TermScroll.Parent = Panel
-Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
+local SaveTxtBtn = Instance.new("TextButton")
+SaveTxtBtn.Size = UDim2.new(0.34, -2, 1, 0)
+SaveTxtBtn.Position = UDim2.new(0.66, 2, 0, 0)
+SaveTxtBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+SaveTxtBtn.Text = "💾 GUARDAR .TXT"
+SaveTxtBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveTxtBtn.Font = Enum.Font.Code
+SaveTxtBtn.TextSize = 11
+SaveTxtBtn.Parent = ControlsFrame
 
-local LogHistory = {}
+-- ==========================================
+-- SISTEMA DE LOGS
+-- ==========================================
+local MasterLogList = {}
 
-local function Log(texto, color)
-    local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -4, 0, 0)
-    msg.BackgroundTransparency = 1
-    msg.Text = "[" .. os.date("%H:%M:%S") .. "] " .. texto
-    msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    msg.Font = Enum.Font.Code
-    msg.TextSize = 11
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextWrapped = true
-    msg.Parent = TermScroll
-    local tsz = game:GetService("TextService"):GetTextSize(msg.Text, msg.TextSize, msg.Font, Vector2.new(TermScroll.AbsoluteSize.X-15, math.huge))
-    msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
-    TermScroll.CanvasPosition = Vector2.new(0, 999999)
-    table.insert(LogHistory, msg.Text)
+local function AddLog(logType, message, color)
+    local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
+    table.insert(MasterLogList, fullString)
+    task.defer(function()
+        pcall(function()
+            local txt = Instance.new("TextLabel")
+            txt.Size = UDim2.new(1, -4, 0, 0)
+            txt.BackgroundTransparency = 1
+            txt.Text = fullString
+            txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+            txt.Font = Enum.Font.Code
+            txt.TextSize = 10
+            txt.TextXAlignment = Enum.TextXAlignment.Left
+            txt.TextWrapped = true
+            txt.Parent = LogScroll
+            local tsz = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X-15, math.huge))
+            txt.Size = UDim2.new(1, -4, 0, tsz.Y + 4)
+            LogScroll.CanvasPosition = Vector2.new(0, 999999)
+        end)
+    end)
 end
 
-CopyBtn.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard(table.concat(LogHistory, "\n")) end)
-    CopyBtn.Text = "✅ COPIADO"
-    task.delay(1.5, function() CopyBtn.Text = "📋 COPIAR LOG" end)
-end)
+ClearBtn.MouseButton1Click:Connect(function() LogScroll:ClearAllChildren(); Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 2); MasterLogList = {} end)
+CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(MasterLogList, "\n")); CopyBtn.Text = "✅" end) task.delay(2, function() CopyBtn.Text = "📋 COPIAR" end) end)
+SaveTxtBtn.MouseButton1Click:Connect(function() pcall(function() writefile("SuperForenseLog.txt", "=== SUPER FORENSE ===\n" .. table.concat(MasterLogList, "\n")); SaveTxtBtn.Text = "✅" end) task.delay(3, function() SaveTxtBtn.Text = "💾 GUARDAR .TXT" end) end)
 
 -- ==========================================
--- DUMPER TIPO ESTRICTO
+-- STRICT DUMP (CON TIPOS)
 -- ==========================================
-local cache = {}
 local function StrictDump(val, depth)
     depth = depth or 0
-    if depth > 5 then return "<-LIMITE->" end
-    
+    if depth > 5 then return "{...}" end
     local t = typeof(val)
     if t == "Instance" then
-        return "<Inst:" .. val.ClassName .. '>"' .. val:GetFullName() .. '"'
+        return "<Inst:" .. val.ClassName .. ">" .. val:GetFullName()
     elseif t == "table" then
-        if cache[val] then return "<Tabla Recursiva>" end
-        cache[val] = true
-        
-        local s = "{\n"
-        local indent = string.rep("  ", depth + 1)
+        local parts = {}
         for k, v in pairs(val) do
-            s = s .. indent .. "[" .. StrictDump(k, depth + 1) .. "] = " .. StrictDump(v, depth + 1) .. ",\n"
+            table.insert(parts, "[" .. StrictDump(k, depth+1) .. "]=" .. StrictDump(v, depth+1))
         end
-        cache[val] = nil
-        return s .. string.rep("  ", depth) .. "}"
+        return "{\n" .. string.rep("  ", depth+1) .. table.concat(parts, ",\n" .. string.rep("  ", depth+1)) .. "\n" .. string.rep("  ", depth) .. "}"
     elseif t == "string" then
-        return '"' .. val .. '"(string)'
-    elseif t == "number" or t == "boolean" then
-        return tostring(val) .. "(" .. t .. ")"
+        return '"' .. tostring(val) .. '"(str)'
+    elseif t == "number" then
+        return tostring(val) .. "(num)"
+    elseif t == "boolean" then
+        return tostring(val) .. "(bool)"
     else
         return tostring(val) .. "(" .. t .. ")"
     end
 end
 
 -- ==========================================
--- ESCANER DE ERRORES SILENCIOSOS (ScriptContext)
+-- ESCANER DE ERRORES SILENCIOSOS
 -- ==========================================
 game:GetService("ScriptContext").Error:Connect(function(message, trace, script)
-    -- Solo logeamos errores relacionados al jugador o inventario
     if string.find(string.lower(trace), "playergui") or string.find(string.lower(trace), "replicatedstorage") then
-        Log(" ", Color3.fromRGB(0,0,0))
-        Log("☠️ ¡CRASH INTERNO DEL JUEGO DETECTADO!", Color3.fromRGB(255, 0, 0))
-        Log("📝 Error: " .. tostring(message), Color3.fromRGB(255, 100, 100))
-        Log("📜 Script Culpable: " .. (script and script:GetFullName() or "Desconocido"), Color3.fromRGB(255, 150, 150))
-        Log("🔍 Traceback:", Color3.fromRGB(200, 50, 50))
-        for line in string.gmatch(trace, "[^\r\n]+") do
-            Log("  -> " .. line, Color3.fromRGB(200, 150, 150))
-        end
-        Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
+        AddLog("💀CRASH", message, Color3.fromRGB(255, 0, 0))
+        AddLog("💀CRASH", "Script: " .. (script and script:GetFullName() or "?"), Color3.fromRGB(255, 100, 100))
     end
 end)
 
--- ==========================================
--- ESCANER DE CHIVATOS DE DEVELOPERS (LogService)
--- ==========================================
 game:GetService("LogService").MessageOut:Connect(function(message, messageType)
     local lowMsg = string.lower(message)
-    if string.find(lowMsg, "error") or string.find(lowMsg, "fail") or string.find(lowMsg, "invalid") or string.find(lowMsg, "basket") or string.find(lowMsg, "sell") then
-        if messageType == Enum.MessageType.MessageWarning or messageType == Enum.MessageType.MessageError or messageType == Enum.MessageType.MessageOutput then
-            Log("📢 LOG DESARROLLADOR: " .. message, Color3.fromRGB(255, 100, 200))
-        end
+    if string.find(lowMsg, "sell") or string.find(lowMsg, "basket") or string.find(lowMsg, "invalid") or string.find(lowMsg, "merchant") then
+        AddLog("📢DEV", message, Color3.fromRGB(255, 100, 200))
     end
 end)
 
 -- ==========================================
--- ESCANEO DE MÓDULOS DE UI RECIÉN CREADOS (MERCHANT)
--- Y RAYOS X AL NPC SEY
+-- BOTON: RAYOS X AL NPC
 -- ==========================================
-Log("🔍 [FASE 1] ESCANEANDO CEREBRO DE INTERFAZ & NPC...", Color3.fromRGB(255, 200, 0))
-
-local merchantUI = LocalPlayer.PlayerGui:FindFirstChild("MerchantShop")
-if merchantUI then
-    Log("✅ UI MerchantShop detectada. Archivos claves encontrados:", Color3.fromRGB(0, 255, 100))
-    for _, obj in pairs(merchantUI:GetDescendants()) do
-        if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-            Log("   -> " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
-        end
-    end
-else
-    Log("⚠️ No se encontró la UI MerchantShop (quizás se carga cuando le hablas).", Color3.fromRGB(255, 255, 0))
-end
-
-Log("\n🔍 BUSCANDO A SEY EN WORKSPACE PARA RAYOS X...", Color3.fromRGB(255, 200, 0))
-local seyTotal = 0
-for _, obj in pairs(game.Workspace:GetDescendants()) do
-    if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
-        seyTotal = seyTotal + 1
-        Log("👤 NPC Encontrado: " .. obj:GetFullName(), Color3.fromRGB(0, 255, 255))
-        
-        -- Escanear los scripts físicos en su cuerpo
-        for _, child in pairs(obj:GetDescendants()) do
-            if child:IsA("ProximityPrompt") then
-                Log("   💬 Usa ProximityPrompt: " .. child.ObjectText, Color3.fromRGB(100, 255, 100))
-            elseif child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
-                Log("   📜 Script atado a él: " .. child:GetFullName(), Color3.fromRGB(200, 150, 255))
-            elseif child:IsA("ObjectValue") or child:IsA("StringValue") then
-                Log("   🔑 Variable secreta: " .. child.Name .. " = " .. tostring(child.Value), Color3.fromRGB(255, 150, 150))
+BtnScan.MouseButton1Click:Connect(function()
+    AddLog("SCAN", "══════════════════════════════════", Color3.fromRGB(255, 200, 0))
+    AddLog("SCAN", "🔍 ESCANEANDO NPC, UI, y MÓDULOS...", Color3.fromRGB(255, 200, 0))
+    
+    -- NPC
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+            AddLog("NPC", "👤 " .. obj:GetFullName(), Color3.fromRGB(0, 255, 255))
+            for _, child in pairs(obj:GetDescendants()) do
+                if child:IsA("ProximityPrompt") then
+                    AddLog("NPC", "   💬 Prompt: [" .. child.ActionText .. "] dist=" .. child.MaxActivationDistance, Color3.fromRGB(100, 255, 100))
+                elseif child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
+                    AddLog("NPC", "   📜 " .. child.ClassName .. ": " .. child:GetFullName(), Color3.fromRGB(200, 150, 255))
+                elseif child:IsA("ObjectValue") or child:IsA("StringValue") or child:IsA("IntValue") then
+                    AddLog("NPC", "   🔑 " .. child.ClassName .. " '" .. child.Name .. "' = " .. tostring(child.Value), Color3.fromRGB(255, 150, 150))
+                end
+            end
+            for k, v in pairs(obj:GetAttributes()) do
+                AddLog("NPC", "   ⚙️ " .. k .. " = " .. tostring(v), Color3.fromRGB(255, 255, 0))
             end
         end
-        
-        local attrs = obj:GetAttributes()
-        for k, v in pairs(attrs) do
-            Log("   ⚙️ Atributo: " .. k .. " = " .. tostring(v), Color3.fromRGB(255, 255, 0))
+    end
+    
+    -- UI MerchantShop
+    local mUI = LocalPlayer.PlayerGui:FindFirstChild("MerchantShop")
+    if mUI then
+        AddLog("UI", "✅ MerchantShop encontrada", Color3.fromRGB(0, 255, 100))
+        for _, obj in pairs(mUI:GetDescendants()) do
+            if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+                AddLog("UI", "   📜 " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
+            end
+        end
+    else
+        AddLog("UI", "⚠️ MerchantShop no visible aún", Color3.fromRGB(255, 255, 0))
+    end
+    
+    -- Knit Services
+    AddLog("KNIT", "🧠 Buscando Knit/Services/Controllers...", Color3.fromRGB(200, 200, 255))
+    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+            local n = string.lower(obj.Name)
+            if string.find(n, "sell") or string.find(n, "merchant") or string.find(n, "inventory") or string.find(n, "dialogue") then
+                AddLog("KNIT", "   📦 " .. obj:GetFullName(), Color3.fromRGB(150, 255, 200))
+            end
         end
     end
-end
-
-if seyTotal == 0 then Log("❌ SEY no visto en la zona actual o el mundo usa ChunkLoading.", Color3.fromRGB(255, 0, 0)) end
-Log("--------------------------------------------------\n", Color3.fromRGB(100, 100, 100))
+    AddLog("SCAN", "══════════════════════════════════", Color3.fromRGB(255, 200, 0))
+end)
 
 -- ==========================================
--- HOOK ULTRA AGRESIVO
+-- BOTON: INTERCEPTOR (COPIADO DEL VENTA ANALYZER QUE SI FUNCIONA)
 -- ==========================================
-Log("🔴 HOOK ACTIVADO. VE Y VENDE MANUALMENTE 1 ITEM A SEY...", Color3.fromRGB(255, 100, 100))
+local HookActivo = false
+local OriginalNamecall = nil
 
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = tostring(getnamecallmethod())
-    local args = {...}
+BtnHook.MouseButton1Click:Connect(function()
+    HookActivo = not HookActivo
     
-    if method == "InvokeServer" or method == "FireServer" or method == "invokeServer" or method == "fireServer" then
-        -- Protección a prueba de balas para no causar crashes
-        local nameStr = "UnknownRemote"
-        pcall(function() nameStr = tostring(self.Name) end)
+    if HookActivo then
+        BtnHook.Text = "🔴 INTERCEPTOR ARMADO"
+        BtnHook.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        AddLog("HOOK", "══════════════════════════════════", Color3.fromRGB(255, 50, 50))
+        AddLog("HOOK", "🔴 ESCUCHANDO TODO EL TRÁFICO...", Color3.fromRGB(255, 100, 100))
+        AddLog("HOOK", "👉 VE Y VENDE MANUALMENTE 1 ITEM AHORA.", Color3.fromRGB(255, 255, 0))
         
-        -- SOLO CAZAR LOS 4 REMOTOS QUE NECESITAMOS, SIN FILTROS DE SPAM QUE CAUSEN FALSOS POSITIVOS
-        if nameStr == "RunCommand" or nameStr == "ForceDialogue" or nameStr == "DialogueEvent" or nameStr == "Dialogue" then
-            task.spawn(function()
-                Log(" ", Color3.fromRGB(0,0,0))
-                Log("🚨 INTERCEPTADO: " .. method .. " -> '" .. nameStr .. "'", Color3.fromRGB(255, 0, 255))
+        if not OriginalNamecall then
+            -- ESTE ES EL HOOK EXACTO DEL VENTA ANALYZER QUE SI FUNCIONO
+            OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
                 
-                -- Dumpear Argumentos con TIPOS ESTRICTOS Y VALORES REALES
-                local dumpText = ""
-                for i, v in ipairs(args) do
-                    dumpText = dumpText .. "[Arg " .. i .. "]: " .. StrictDump(v) .. "\n"
-                end
-                if dumpText ~= "" then Log("📦 ARGUMENTOS CRUDOS:\n" .. dumpText, Color3.fromRGB(200, 200, 255)) end
+                if not HookActivo then return OriginalNamecall(self, ...) end
+                if checkcaller() then return OriginalNamecall(self, ...) end
                 
-                -- Dumpear Traceback (¿Quién y qué módulo mandó la señal exactamente?)
-                local trace = debug.traceback()
-                Log("🕵️ MÓDULO ORIGEN (Traceback):", Color3.fromRGB(255, 200, 50))
-                
-                local foundTrace = false
-                for line in string.gmatch(trace, "[^\r\n]+") do
-                    if string.find(line, "PlayerScripts") or string.find(line, "PlayerGui") or string.find(line, "ReplicatedStorage") or string.find(line, "Packages") then
-                        Log("  -> " .. line, Color3.fromRGB(255, 255, 150))
-                        foundTrace = true
+                if method == "InvokeServer" or method == "FireServer" then
+                    local name = tostring(self.Name)
+                    local args = {...}
+                    
+                    -- Anti-spam minimo
+                    local lowName = string.lower(name)
+                    local spam = string.find(lowName, "toolactivated") or 
+                                 string.find(lowName, "mouse") or 
+                                 string.find(lowName, "movement") or 
+                                 string.find(lowName, "updateexp") or
+                                 string.find(lowName, "camera")
+                                 
+                    if not spam then
+                        task.spawn(function()
+                            AddLog("📤OUT", method .. " -> " .. name, Color3.fromRGB(255, 50, 255))
+                            
+                            -- ARGUMENTOS CON TIPOS ESTRICTOS
+                            for i, v in ipairs(args) do
+                                AddLog("📦ARG", "[" .. i .. "] = " .. StrictDump(v), Color3.fromRGB(200, 100, 255))
+                            end
+                            
+                            -- TRACEBACK (qué módulo lo mandó)
+                            local trace = debug.traceback()
+                            for line in string.gmatch(trace, "[^\r\n]+") do
+                                if string.find(line, "PlayerScripts") or string.find(line, "PlayerGui") or string.find(line, "ReplicatedStorage") or string.find(line, "Packages") or string.find(line, "Knit") then
+                                    AddLog("🧬TRACE", line, Color3.fromRGB(255, 255, 150))
+                                end
+                            end
+                        end)
+                        
+                        -- Capturar respuesta si es InvokeServer
+                        if method == "InvokeServer" then
+                            local ret = {OriginalNamecall(self, ...)}
+                            task.spawn(function()
+                                for i, v in ipairs(ret) do
+                                    AddLog("📥RET", "[" .. i .. "] = " .. StrictDump(v), Color3.fromRGB(0, 255, 150))
+                                end
+                                if #ret == 0 then
+                                    AddLog("📥RET", "nil (el servidor no devolvió nada)", Color3.fromRGB(150, 255, 150))
+                                end
+                            end)
+                            return unpack(ret)
+                        end
                     end
                 end
                 
-                if not foundTrace then 
-                    Log("  -> Invocación directa del Motor Roblox (Core/C++).", Color3.fromRGB(150, 150, 150)) 
-                end
-                
-                Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
+                return OriginalNamecall(self, ...)
             end)
-            
-            -- Si es un Invoke, capturar obligatoriamente qué nos dijo el servidor
-            if method == "InvokeServer" or method == "invokeServer" then
-                local ret = {OriginalNamecall(self, ...)}
-                task.spawn(function()
-                    local retDump = ""
-                    for i, v in ipairs(ret) do
-                        retDump = retDump .. "[Ret " .. i .. "]: " .. StrictDump(v) .. "\n"
-                    end
-                    if retDump ~= "" then
-                        Log("📥 RESPUESTA DEL SERVER ('" .. nameStr .. "'):\n" .. retDump, Color3.fromRGB(0, 255, 0))
-                    else
-                        Log("📥 EL SERVER NO DEVOLVIÓ NADA ('" .. nameStr .. "') -> nil", Color3.fromRGB(150, 255, 150))
-                    end
-                end)
-                return unpack(ret)
-            end
         end
+    else
+        BtnHook.Text = "📡 ACTIVAR INTERCEPTOR"
+        BtnHook.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        AddLog("HOOK", "⚪ Interceptor apagado.", Color3.fromRGB(150, 150, 150))
     end
-    
-    return OriginalNamecall(self, ...)
 end)
+
+AddLog("SISTEMA", "🔬 SUPER FORENSE V2.0 CARGADO", Color3.fromRGB(150, 255, 150))
+AddLog("SISTEMA", "1. Escanea NPC con el botón naranja", Color3.fromRGB(255, 255, 200))
+AddLog("SISTEMA", "2. Activa Interceptor y vende 1 item manual", Color3.fromRGB(255, 255, 200))
