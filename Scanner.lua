@@ -27,7 +27,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 40)
-Title.Text = " 🔬 SUPER FORENSE: ANÁLISIS PROFUNDO DE VENTAAA"
+Title.Text = " 🔬 SUPER FORENSE: ANÁLISIS PROFUNDO DE VENTA"
 Title.TextColor3 = Color3.fromRGB(255, 200, 220)
 Title.TextSize = 12
 Title.Font = Enum.Font.Code
@@ -126,20 +126,80 @@ local function StrictDump(val, depth)
 end
 
 -- ==========================================
--- ESCANEO DE MÓDULOS DE UI (MERCHANT)
+-- ESCANER DE ERRORES SILENCIOSOS (ScriptContext)
 -- ==========================================
-Log("🔍 ESCANEANDO SCRIPTS EN MERCHANT SHOP...", Color3.fromRGB(255, 255, 0))
+game:GetService("ScriptContext").Error:Connect(function(message, trace, script)
+    -- Solo logeamos errores relacionados al jugador o inventario
+    if string.find(string.lower(trace), "playergui") or string.find(string.lower(trace), "replicatedstorage") then
+        Log(" ", Color3.fromRGB(0,0,0))
+        Log("☠️ ¡CRASH INTERNO DEL JUEGO DETECTADO!", Color3.fromRGB(255, 0, 0))
+        Log("📝 Error: " .. tostring(message), Color3.fromRGB(255, 100, 100))
+        Log("📜 Script Culpable: " .. (script and script:GetFullName() or "Desconocido"), Color3.fromRGB(255, 150, 150))
+        Log("🔍 Traceback:", Color3.fromRGB(200, 50, 50))
+        for line in string.gmatch(trace, "[^\r\n]+") do
+            Log("  -> " .. line, Color3.fromRGB(200, 150, 150))
+        end
+        Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
+    end
+end)
+
+-- ==========================================
+-- ESCANER DE CHIVATOS DE DEVELOPERS (LogService)
+-- ==========================================
+game:GetService("LogService").MessageOut:Connect(function(message, messageType)
+    local lowMsg = string.lower(message)
+    if string.find(lowMsg, "error") or string.find(lowMsg, "fail") or string.find(lowMsg, "invalid") or string.find(lowMsg, "basket") or string.find(lowMsg, "sell") then
+        if messageType == Enum.MessageType.MessageWarning or messageType == Enum.MessageType.MessageError or messageType == Enum.MessageType.MessageOutput then
+            Log("📢 LOG DESARROLLADOR: " .. message, Color3.fromRGB(255, 100, 200))
+        end
+    end
+end)
+
+-- ==========================================
+-- ESCANEO DE MÓDULOS DE UI RECIÉN CREADOS (MERCHANT)
+-- Y RAYOS X AL NPC SEY
+-- ==========================================
+Log("🔍 [FASE 1] ESCANEANDO CEREBRO DE INTERFAZ & NPC...", Color3.fromRGB(255, 200, 0))
+
 local merchantUI = LocalPlayer.PlayerGui:FindFirstChild("MerchantShop")
 if merchantUI then
+    Log("✅ UI MerchantShop detectada. Archivos claves encontrados:", Color3.fromRGB(0, 255, 100))
     for _, obj in pairs(merchantUI:GetDescendants()) do
         if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-            Log("📜 Encontrado Script de UI: " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
+            Log("   -> " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
         end
     end
 else
-    Log("⚠️ No se encontro PlayerGui.MerchantShop", Color3.fromRGB(255, 100, 100))
+    Log("⚠️ No se encontró la UI MerchantShop (quizás se carga cuando le hablas).", Color3.fromRGB(255, 255, 0))
 end
-Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
+
+Log("\n🔍 BUSCANDO A SEY EN WORKSPACE PARA RAYOS X...", Color3.fromRGB(255, 200, 0))
+local seyTotal = 0
+for _, obj in pairs(game.Workspace:GetDescendants()) do
+    if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+        seyTotal = seyTotal + 1
+        Log("👤 NPC Encontrado: " .. obj:GetFullName(), Color3.fromRGB(0, 255, 255))
+        
+        -- Escanear los scripts físicos en su cuerpo
+        for _, child in pairs(obj:GetDescendants()) do
+            if child:IsA("ProximityPrompt") then
+                Log("   💬 Usa ProximityPrompt: " .. child.ObjectText, Color3.fromRGB(100, 255, 100))
+            elseif child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
+                Log("   📜 Script atado a él: " .. child:GetFullName(), Color3.fromRGB(200, 150, 255))
+            elseif child:IsA("ObjectValue") or child:IsA("StringValue") then
+                Log("   🔑 Variable secreta: " .. child.Name .. " = " .. tostring(child.Value), Color3.fromRGB(255, 150, 150))
+            end
+        end
+        
+        local attrs = obj:GetAttributes()
+        for k, v in pairs(attrs) do
+            Log("   ⚙️ Atributo: " .. k .. " = " .. tostring(v), Color3.fromRGB(255, 255, 0))
+        end
+    end
+end
+
+if seyTotal == 0 then Log("❌ SEY no visto en la zona actual o el mundo usa ChunkLoading.", Color3.fromRGB(255, 0, 0)) end
+Log("--------------------------------------------------\n", Color3.fromRGB(100, 100, 100))
 
 -- ==========================================
 -- HOOK ULTRA AGRESIVO
@@ -149,44 +209,55 @@ Log("🔴 HOOK ACTIVADO. VE Y VENDE MANUALMENTE 1 ITEM A SEY...", Color3.fromRGB
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = tostring(getnamecallmethod())
-    local name = tostring(self.Name)
     local args = {...}
     
     if method == "InvokeServer" or method == "FireServer" then
-        -- Excluir spam
-        local lowName = string.lower(name)
+        -- Protección a prueba de balas para no causar crashes
+        local nameStr = "UnknownRemote"
+        pcall(function() nameStr = tostring(self.Name) end)
+        
+        local lowName = string.lower(nameStr)
         local spam = string.find(lowName, "mouse") or 
                      string.find(lowName, "movement") or 
                      string.find(lowName, "updateexp") or
                      string.find(lowName, "camera") or
                      string.find(lowName, "look") or
-                     string.find(lowName, "step")
+                     string.find(lowName, "step") or
+                     string.find(lowName, "character")
                      
         if not spam then
-            
             task.spawn(function()
                 Log(" ", Color3.fromRGB(0,0,0))
-                Log("🚨 INTERCEPTADO: " .. method .. " -> " .. name, Color3.fromRGB(255, 0, 255))
+                Log("🚨 INTERCEPTADO: " .. method .. " -> '" .. nameStr .. "'", Color3.fromRGB(255, 0, 255))
                 
-                -- Dumpear Argumentos con TIPOS ESTRICTOS
+                -- Dumpear Argumentos con TIPOS ESTRICTOS Y VALORES REALES
                 local dumpText = ""
                 for i, v in ipairs(args) do
                     dumpText = dumpText .. "[Arg " .. i .. "]: " .. StrictDump(v) .. "\n"
                 end
-                Log("📦 DATOS CRUDOS:\n" .. dumpText, Color3.fromRGB(200, 200, 255))
+                if dumpText ~= "" then Log("📦 ARGUMENTOS CRUDOS:\n" .. dumpText, Color3.fromRGB(200, 200, 255)) end
                 
-                -- Dumpear Traceback (¿Quién mandó la señal?)
+                -- Dumpear Traceback (¿Quién y qué módulo mandó la señal exactamente?)
                 local trace = debug.traceback()
-                Log("🕵️ ORIGEN (Traceback):", Color3.fromRGB(255, 200, 50))
+                Log("🕵️ MÓDULO ORIGEN (Traceback):", Color3.fromRGB(255, 200, 50))
+                
+                local foundTrace = false
                 for line in string.gmatch(trace, "[^\r\n]+") do
-                    if string.find(line, "LocalScript") or string.find(line, "ModuleScript") or string.find(line, "PlayerGui") or string.find(line, "Packages") then
+                    -- Imprime líneas de traceback que pertenezcan a scripts de los jugadores
+                    if string.find(line, "PlayerScripts") or string.find(line, "PlayerGui") or string.find(line, "ReplicatedStorage") or string.find(line, "Packages") then
                         Log("  -> " .. line, Color3.fromRGB(255, 255, 150))
+                        foundTrace = true
                     end
                 end
+                
+                if not foundTrace then 
+                    Log("  -> Invocación directa del Motor Roblox (Core/C++).", Color3.fromRGB(150, 150, 150)) 
+                end
+                
                 Log("--------------------------------------------------", Color3.fromRGB(100, 100, 100))
             end)
             
-            -- Si es un Invoke, capturar respuesta también de forma estricta
+            -- Si es un Invoke, capturar obligatoriamente qué nos dijo el servidor
             if method == "InvokeServer" then
                 local ret = {OriginalNamecall(self, ...)}
                 task.spawn(function()
@@ -195,7 +266,9 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                         retDump = retDump .. "[Ret " .. i .. "]: " .. StrictDump(v) .. "\n"
                     end
                     if retDump ~= "" then
-                        Log("📥 RESPUESTA SERVER (" .. name .. "):\n" .. retDump, Color3.fromRGB(0, 255, 0))
+                        Log("📥 RESPUESTA DEL SERVER ('" .. nameStr .. "'):\n" .. retDump, Color3.fromRGB(0, 255, 0))
+                    else
+                        Log("📥 EL SERVER NO DEVOLVIÓ NADA ('" .. nameStr .. "') -> nil", Color3.fromRGB(150, 255, 150))
                     end
                 end)
                 return unpack(ret)
