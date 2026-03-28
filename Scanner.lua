@@ -267,6 +267,4 @@ end)
 
 for _, m in ipairs(LogHistory) do
     Log(m)
-end, ms in ipairs(LogHistory) do
-    Log(ms)
 end
