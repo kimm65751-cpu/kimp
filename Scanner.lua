@@ -171,7 +171,7 @@ SellBtn.MouseButton1Click:Connect(function()
         local txt = textBox.Text
         if txt and txt ~= "" then
             local cantidad = tonumber(txt)
-            if cantidad y cantidad > 0 then
+            if cantidad and cantidad > 0 then
                 miBasket[nombreEN] = cantidad
                 hayAlgoQueVender = true
                 -- Limpiar caja después de vender
