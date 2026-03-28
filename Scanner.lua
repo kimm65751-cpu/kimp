@@ -43,7 +43,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Title.Text = " 🎯 RACE SNIPER V1.55 (GIROS GRATIS)"
+Title.Text = " 🎯 RACE SNIPER V1.5 (GIROS GRATIS)"
 Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -215,24 +215,44 @@ ArmBtn.MouseButton1Click:Connect(function()
                     pcall(function() selfName = self.Name end)
                     
                     if selfName == "Reroll" then
-                        -- NUNCA llamamos al servidor. Retornamos nil.
-                        -- El servidor NUNCA recibe la petición = NO gasta spin.
-                        -- Escribir al .txt antes de todo
+                        -- Llamar al servidor para ver qué raza nos da
+                        local raza = OriginalNamecall(self, ...)
+                        local razaStr = tostring(raza)
+                        
+                        -- Guardar resultado al .txt INMEDIATAMENTE
                         pcall(function()
-                            WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] 🎲 Reroll INTERCEPTADO. Servidor NO contactado. Spin NO gastado.")
+                            WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] Servidor dijo: " .. razaStr)
                         end)
                         
-                        task.spawn(function()
-                            ResultLabel.Text = "🔒 Reroll BLOQUEADO. Spin NO gastado."
-                            ResultLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-                            ResultLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 0)
-                            AddLog("SNIPER", "🔒 Reroll bloqueado. Servidor NO contactado.", Color3.fromRGB(255, 255, 0))
-                            AddLog("SNIPER", "Tu spin NO se gastó.", Color3.fromRGB(0, 255, 0))
-                            AddLog("SNIPER", "Desarma el Sniper y presiona Reiniciar cuando quieras girar de verdad.", Color3.fromRGB(255, 255, 200))
-                        end)
-                        
-                        -- Retornar nil. El juego puede crashear, pero no se gasta spin.
-                        return nil
+                        if RAZAS_DESEADAS[razaStr] then
+                            -- ✅ RAZA DESEADA → Dejar pasar
+                            pcall(function()
+                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] 🏆 ACEPTADA: " .. razaStr)
+                            end)
+                            task.spawn(function()
+                                ResultLabel.Text = "🏆🏆🏆 " .. razaStr .. " 🏆🏆🏆"
+                                ResultLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                                ResultLabel.BackgroundColor3 = Color3.fromRGB(0, 80, 0)
+                                AddLog("SNIPER", "🏆 RAZA ACEPTADA: " .. razaStr, Color3.fromRGB(0, 255, 0))
+                            end)
+                            return raza
+                        else
+                            -- ❌ RAZA NO DESEADA → TELEPORT INSTANTÁNEO
+                            pcall(function()
+                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] ❌ Rechazada: " .. razaStr .. " → TELEPORTANDO...")
+                            end)
+                            task.spawn(function()
+                                ResultLabel.Text = "❌ " .. razaStr .. " → TELEPORTANDO..."
+                                ResultLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+                            end)
+                            -- Teleport instantáneo al mismo juego (no da tiempo de guardar)
+                            pcall(function()
+                                game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+                            end)
+                            -- Si el teleport falla, congelar como respaldo
+                            task.wait(0.2)
+                            while true do end
+                        end
                     end
                 end
                 
