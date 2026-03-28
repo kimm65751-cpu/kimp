@@ -19,11 +19,11 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 560, 0, 480)
-Panel.Position = UDim2.new(1, -580, 0.5, -240)
-Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Panel.Size = UDim2.new(0, 560, 0, 420)
+Panel.Position = UDim2.new(1, -580, 0.5, -210)
+Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(0, 255, 150)
+Panel.BorderColor3 = Color3.fromRGB(150, 255, 255)
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
@@ -65,9 +65,6 @@ AutoBotBtn.Font = Enum.Font.Code
 AutoBotBtn.TextSize = 13
 AutoBotBtn.Parent = BypassFrame
 
--- ==========================================
--- EL CONTROLADOR DE TIEMPOS DINÁMICO
--- ==========================================
 local TimeControlFrame = Instance.new("Frame")
 TimeControlFrame.Size = UDim2.new(1, -8, 0, 30)
 TimeControlFrame.Position = UDim2.new(0, 4, 0, 80)
@@ -121,7 +118,17 @@ AddBtn.MouseButton1Click:Connect(function()
     TimeTextBox.Text = string.format("%.2f", val + 0.1)
 end)
 
--- Botones extraidos
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Size = UDim2.new(1, -8, 1, -165)
+LogScroll.Position = UDim2.new(0, 4, 0, 120)
+LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
+LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogScroll.ScrollBarThickness = 6
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogScroll.Parent = Panel
+local ListLayout = Instance.new("UIListLayout", LogScroll)
+ListLayout.Padding = UDim.new(0, 2)
+
 local ControlsFrame = Instance.new("Frame")
 ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
 ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
@@ -147,22 +154,24 @@ CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
 CopyBtn.Parent = ControlsFrame
 
--- Botón AutoBot Eliminado (solo queda el ControlFrame)
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -165)
-LogScroll.Position = UDim2.new(0, 4, 0, 120)
-LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
-LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 6
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.Parent = Panel
-local ListLayout = Instance.new("UIListLayout", LogScroll)
-ListLayout.Padding = UDim.new(0, 2)
-
 local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
 local BotBypassingNetwork = false
+
+local DumpTableDeep
+DumpTableDeep = function(tbl, depth)
+    depth = depth or 0
+    if type(tbl) ~= "table" then return tostring(tbl) end
+    if depth > 5 then return "{MAX_DEPTH}" end
+    local str = "{"
+    for k, v in pairs(tbl) do
+        local vt = typeof(v)
+        if vt == "table" then str = str .. "["..tostring(k).."]=" .. DumpTableDeep(v, depth + 1) .. ", "
+        else str = str .. "["..tostring(k).."]=" .. tostring(v) .. ", " end
+    end
+    return str .. "}"
+end
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -226,15 +235,14 @@ ClearBtn.MouseButton1Click:Connect(function()
     MasterLogList = {}
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V8.0) ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V8.2) ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Botón Limpiar Logs
-ClearBtn.MouseButton1Click:Connect(function()
+local function CatchServerResponses()
     local RS = game:GetService("ReplicatedStorage")
     for _, v in pairs(RS:GetDescendants()) do
         if v:IsA("RemoteEvent") then
@@ -313,6 +321,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             
             -- CAPTURAMOS EL TIEMPO DESDE LA CAJA DE TEXTO
             local DYNAMIC_TIME = tonumber(TimeTextBox.Text) or 7.55
+            if not DYNAMIC_TIME or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
             
             AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
             local req1, start1 = ExtractTimes(primerMeltReturn)
@@ -413,4 +422,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.2 PURE AUTOMATON INICIADA. Monitor atrapa-errores activado.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.2 PURE AUTOMATON INICIADA. Monitor atrapa-errores activado y Limpio.", Color3.fromRGB(150, 255, 150))
