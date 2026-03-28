@@ -160,10 +160,11 @@ if not getgenv().InmunidadV9Activa then
         if not checkcaller() then
             if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
             if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then return end
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then return end
         end
         return OriginalNewIndex(t, k, v)
     end)
-    Log("🛡️ ESCUDO METAMÉTODO ACTIVO. Inmune a parálisis de cámara/anclaje.", Color3.fromRGB(0, 255, 255))
+    Log("🛡️ ESCUDO METAMÉTODO ACTIVO. Inmune a parálisis.", Color3.fromRGB(0, 255, 255))
 end
 
 -- ==========================================
@@ -217,39 +218,9 @@ local function EjecutarVentaNinja(miBasket)
 end
 
 -- ==========================================
--- ESCÁNER ÓPTICO DE INVENTARIO
+-- ESCÁNER ÓPTICO DE INVENTARIO (⚡ OPTIMIZADO PARA NO BAJAR FPS)
 -- ==========================================
-local function EscanearCantidad(nombreES)
-    local mayorCant = 0
-    pcall(function()
-        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if (obj:IsA("TextLabel") and obj.Visible and string.lower(obj.Text) == string.lower(nombreES)) then
-                -- Escanea alrededor del nombre buscando el "x15"
-                local framePadre = obj.Parent
-                if framePadre then
-                    for _, child in pairs(framePadre:GetDescendants()) do
-                        if child:IsA("TextLabel") then
-                            local mtch = string.match(child.Text, "[xX](%d+)")
-                            if mtch then
-                                local num = tonumber(mtch)
-                                if num > mayorCant then mayorCant = num end
-                            else
-                                local n2 = tonumber(child.Text)
-                                if n2 and n2 > mayorCant and n2 < 99999 then mayorCant = n2 end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    return mayorCant
-end
-
-local InvController = nil
-pcall(function()
-    InvController = require(ReplicatedStorage.Controllers.UIController.Inventory)
-end)
+local capacidadLabelCache = nil
 
 local function ObtenerCapacidad()
     local cur, maxm = nil, nil
@@ -257,20 +228,25 @@ local function ObtenerCapacidad()
     if InvController then
         pcall(function() maxm = InvController:GetBagCapacity() end)
     end
-    if not maxm then maxm = 144 end -- Límite estructural de tu cuenta
+    if not maxm then maxm = 144 end
+    
+    -- Si ya logramos encontrar el texto en la memoria, lo leemos instantáneo (0 de lag)
+    if capacidadLabelCache and capacidadLabelCache.Parent then
+        local x, y = string.match(capacidadLabelCache.Text, "(%d+)/(%d+)")
+        if x and y then return tonumber(x), tonumber(y) end
+    end
     
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            -- Solo buscamos en UI visibles para EVITAR leer las 'Templates' invisibles (0/144)
             if obj:IsA("TextLabel") and obj.Visible then
-                local txt = obj.Text
-                local x, y = string.match(txt, "(%d+)/(%d+)")
+                local x, y = string.match(obj.Text, "(%d+)/(%d+)")
                 if x and y then
-                    local valX, valY = tonumber(x), tonumber(y)
-                    -- Si el segundo número es tu máxima capacidad conocida, este es el label correcto.
+                    local valY = tonumber(y)
                     if valY == maxm or valY == 144 then
-                        cur = valX
+                        cur = tonumber(x)
                         maxm = valY
+                        capacidadLabelCache = obj -- 🚀 CACHEAR EL OBJETO (SALVA FPS)
+                        break
                     end
                 end
             end
@@ -278,6 +254,35 @@ local function ObtenerCapacidad()
     end)
     
     return cur, maxm
+end
+
+local function EscanearCantidadesGlobales()
+    local diccionarioStock = {}
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Visible then
+                local txt = string.lower(obj.Text)
+                -- Buscar el texto en todos los minerales en UNE SOLO PASE
+                for _, item in ipairs(MINERALES_SEGUROS) do
+                    if txt == string.lower(item.es) then
+                        local padre = obj.Parent
+                        if padre then
+                            for _, child in pairs(padre:GetDescendants()) do
+                                if child:IsA("TextLabel") then
+                                    local mtch = string.match(child.Text, "[xX](%d+)")
+                                    if mtch then
+                                        local n = tonumber(mtch)
+                                        if n > (diccionarioStock[item.es] or 0) then diccionarioStock[item.es] = n end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return diccionarioStock
 end
 
 -- ==========================================
@@ -339,7 +344,8 @@ for _, item in ipairs(MINERALES_SEGUROS) do
     VenderTodoBtn.Parent = fila
     
     VenderTodoBtn.MouseButton1Click:Connect(function()
-        local miCant = EscanearCantidad(item.es)
+        local miStockCache = EscanearCantidadesGlobales()
+        local miCant = miStockCache[item.es] or 0
         if miCant > 0 then
             Log("🔍 Óptico detectó " .. miCant .. "x " .. item.es, Color3.fromRGB(0, 255, 0))
             EjecutarVentaNinja({[item.en] = miCant})
@@ -416,10 +422,11 @@ task.spawn(function()
             if current >= (maxm - 5) then
                 local autoBasket = {}
                 local count = 0
+                local stockGlobal = EscanearCantidadesGlobales()
                 
                 for _, item in ipairs(MINERALES_SEGUROS) do
                     if item.AutoCheck then
-                        local stock = EscanearCantidad(item.es)
+                        local stock = stockGlobal[item.es] or 0
                         if stock > 0 then
                             autoBasket[item.en] = stock
                             count = count + 1
