@@ -83,7 +83,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.1"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -266,109 +266,95 @@ SellBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
-        Log("🚀 EJECUTANDO SECUENCIA DE VENTA REMOTA...", Color3.fromRGB(0, 255, 255))
+        Log("🚀 INICIANDO VENTA FANTASMA...", Color3.fromRGB(0, 255, 255))
         
-        -- Armamos el dump del basket para el log
         local basketStr = "{"
         for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
         basketStr = basketStr .. "}"
         Log("📦 Basket: " .. basketStr, Color3.fromRGB(200, 200, 200))
         
-        -- ========== PASO 1: Abrir sesión de diálogo con NPC ==========
-        Log("🗣️ [1/7] InvokeServer -> Dialogue(Sey)", Color3.fromRGB(255, 150, 0))
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local oldCFrame = root and root.CFrame
+        
+        -- ========== PASO 1: ABRIR SESIÓN Y BYPASS DE DISTANCIA ==========
+        Log("🗣️ [1/4] Abriendo sesión a la fuerza", Color3.fromRGB(255, 150, 0))
         local ok1, err1 = pcall(function() RF_Dialogue:InvokeServer(SeyNPC) end)
-        if not ok1 then Log("❌ Error Paso 1: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) return end
-        task.wait(0.3)
         
-        -- ========== PASO 2: Confirmar apertura ==========
-        Log("🔓 [2/7] FireServer -> DialogueEvent('Opened')", Color3.fromRGB(255, 150, 0))
-        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        -- El servidor nos teletransportó. Nos devolvemos a la mina AL INSTANTE.
+        if root and oldCFrame then
+            task.wait(0.1)
+            root.CFrame = oldCFrame
+            Log("👻 Posición restaurada (Bypass de Teleport)", Color3.fromRGB(150, 255, 150))
+        end
+        
         task.wait(0.2)
-        
-        -- ========== PASO 3: CERRAR el primer diálogo (CLAVE!) ==========
-        Log("🔒 [3/7] FireServer -> DialogueEvent('Closed')", Color3.fromRGB(255, 100, 0))
-        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        task.wait(0.3)
-        
-        -- ========== PASO 4: Abrir menú de venta Misc ==========
-        Log("🛒 [4/7] InvokeServer -> ForceDialogue('SellConfirmMisc')", Color3.fromRGB(255, 150, 0))
-        local ok4, err4 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-        if not ok4 then Log("❌ Error Paso 4: " .. tostring(err4), Color3.fromRGB(255, 0, 0)) return end
-        task.wait(0.3)
-        
-        -- ========== PASO 5: Confirmar apertura del sub-menú ==========
-        Log("🔓 [5/7] FireServer -> DialogueEvent('Opened')", Color3.fromRGB(255, 150, 0))
         pcall(function() RE_DialogueEvent:FireServer("Opened") end)
-        task.wait(0.2)
         
-        -- ========== PASO 6: ¡¡¡LA VENTA REAL!!! ==========
-        Log("💰 [6/7] InvokeServer -> RunCommand('SellConfirm', Basket)", Color3.fromRGB(255, 0, 255))
+        -- ========== PASO 2: ACTIVAR MENÚ DE VENTA ==========
+        Log("🛒 [2/4] ForceDialogue a Sey", Color3.fromRGB(255, 150, 0))
+        pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        task.wait(0.2)
+        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        
+        -- ========== PASO 3: ROBO... DIGO, VENTA DIRECTA ==========
+        Log("💎 [3/4] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
         local ok6, resp = pcall(function()
             return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
         end)
         
         if ok6 then
-            Log("📥 Respuesta: " .. tostring(resp), Color3.fromRGB(0, 255, 0))
+            Log("✅ ¡Transacción procesada! Revisa el oro.", Color3.fromRGB(0, 255, 0))
         else
-            Log("❌ Error Paso 6: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+            Log("❌ Error Paso 3: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        -- ========== PASO 6.5: AUTO-CONFIRMAR "ACUERDO" ==========
-        task.wait(0.5) -- Esperar a que el diálogo aparezca en pantalla
+        -- ========== PASO 4: DESBLOQUEO TÁCTICO DEL JUGADOR ==========
+        Log("🔓 [4/4] Limpiando UI y liberando personaje...", Color3.fromRGB(255, 150, 0))
         
-        Log("🤖 [6.5] Buscando botón de ACUERDO...", Color3.fromRGB(0, 255, 255))
-        local acuerdoClicked = false
+        -- 1. Cerrar a nivel Servidor
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
         
-        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextButton") and obj.Visible then
-                local txtLow = string.lower(obj.Text)
-                if string.find(txtLow, "acuerdo") or string.find(txtLow, "agree") or string.find(txtLow, "accept") then
-                    Log("✅ ¡Botón encontrado! -> " .. obj.Text .. " (" .. obj:GetFullName() .. ")", Color3.fromRGB(0, 255, 0))
-                    pcall(function() 
-                        -- Disparar el evento de clic
-                        for _, conn in pairs(getconnections(obj.MouseButton1Click)) do
-                            conn:Fire()
-                        end
-                    end)
-                    acuerdoClicked = true
-                    break
-                end
-            end
-        end
-        
-        -- Plan B: Buscar por la opción "1" del diálogo
-        if not acuerdoClicked then
+        -- 2. Matar el diálogo en pantalla forzando clics en "Adiós" u ocultándolo
+        local adiosEncontrado = false
+        pcall(function()
             for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
                 if obj:IsA("TextButton") and obj.Visible then
-                    if string.find(obj.Text, "1.") or string.find(obj.Text, "1]") then
-                        Log("✅ Plan B: Clickeando opción 1 -> " .. obj.Text, Color3.fromRGB(0, 255, 0))
-                        pcall(function()
-                            for _, conn in pairs(getconnections(obj.MouseButton1Click)) do
-                                conn:Fire()
-                            end
-                        end)
-                        acuerdoClicked = true
-                        break
+                    local txt = string.lower(obj.Text)
+                    if string.find(txt, "adi") or string.find(txt, "bye") or string.find(txt, "close") or string.find(txt, "2.") or string.find(txt, "2]") then
+                        for _, conn in pairs(getconnections(obj.MouseButton1Click)) do conn:Fire() end
+                        adiosEncontrado = true
                     end
                 end
+                
+                -- Ocultar el UI a la bruta por si acaso
+                if obj.Name == "Dialogue" or obj.Name == "MerchantShop" then
+                    if obj:IsA("GuiObject") then obj.Visible = false end
+                end
             end
-        end
+        end)
         
-        if not acuerdoClicked then
-            Log("⚠️ No se encontró el botón de Acuerdo. Haz clic manual.", Color3.fromRGB(255, 255, 0))
-        end
+        -- 3. Restaurar velocidad de movimiento y salto (anti-pegado)
+        pcall(function()
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then
+                    hum.WalkSpeed = 16
+                    hum.JumpPower = 50
+                    -- Si usan Atributos locales para bloquear
+                    hum:SetAttribute("DialogueOpen", false)
+                    hum:SetAttribute("Stunned", false)
+                end
+                -- Restaurar controles de PlayerModule si Knit los apagó
+                local PlayerModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
+                local controls = PlayerModule:GetControls()
+                if controls then controls:Enable() end
+            end
+        end)
         
-        task.wait(0.5)
-        
-        -- ========== PASO 7: Cerrar todo (doble cierre para liberar al jugador) ==========
-        Log("🔒 [7/7] Cerrando diálogos para liberar movimiento...", Color3.fromRGB(255, 150, 0))
-        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        task.wait(0.3)
-        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        
-        Log("✅ ¡VENTA COMPLETADA! Revisa tu inventario y monedas.", Color3.fromRGB(0, 255, 255))
+        Log("✅ ¡LISTO! Limpio y sin pisar la tienda.", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end)
 
-Log("💎 Listo. Escoge minerales, pon cantidades, y dale a Vender.")
+Log("💎 ModGhost 6.0: Escoge ítems, pon la cant, y clica Vender.")
