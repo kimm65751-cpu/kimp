@@ -4,7 +4,7 @@
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local ReaplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
@@ -71,18 +71,28 @@ local function Log(texto, color)
     msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
     TermScroll.CanvasPosition = Vector2.new(0, 999999)
     table.insert(LogHistory, msg.Text)
+    print(texto) -- También lo lanza a la consola F9 por seguridad
 end
 
 local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 COPIAR NOMBRES ENCONTRADOS"
+CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTADOS54545"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
 CopyBtn.Parent = Panel
-CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(LogHistory, "\n")) end) end)
+CopyBtn.MouseButton1Click:Connect(function() 
+    local data = table.concat(LogHistory, "\n")
+    pcall(function() setclipboard(data) end)
+    local ok = pcall(function() writefile("Inventario_Descifrado.txt", data) end)
+    if ok then
+        CopyBtn.Text = "✅ GUARDADO COMO: Inventario_Descifrado.txt"
+    else
+        CopyBtn.Text = "✅ ¡TEXTO COPIADO!"
+    end
+end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
 Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO", Color3.fromRGB(255, 255, 0))
