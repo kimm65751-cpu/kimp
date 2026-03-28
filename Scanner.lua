@@ -8,21 +8,6 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
--- ESCUDO INMUNOLÓGICO Y RASTREADOR (__newindex)
--- ==========================================
-if not getgenv().InmunidadV8Activa then
-    getgenv().InmunidadV8Activa = true
-    local OriginalNewIndex
-    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
-        if not checkcaller() then
-            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
-            if t:IsA("Humanoid") and k == "WalkSpeed" and v < 16 then return end
-        end
-        return OriginalNewIndex(t, k, v)
-    end)
-end
-
--- ==========================================
 -- BUSCADOR DE REMOTOS
 -- ==========================================
 local RF_RunCommand, RF_ForceDialogue, RF_Dialogue = nil, nil, nil
@@ -47,7 +32,7 @@ for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
 end
 
 -- ==========================================
--- DICCIONARIO DE MINERALES (SOLO BASURA, CERO ARMAS)
+-- DICCIONARIO DE MINERALES (NOMBRES CORREGIDOS LUEGO DEL ESCÁNER)
 -- ==========================================
 local MINERALES = {
     {es="Excremento",       en="Excrement",       color=Color3.fromRGB(150, 100, 80),   auto=true},
@@ -86,8 +71,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 480, 0, 580)
-Panel.Position = UDim2.new(0, 50, 0.5, -290)
+Panel.Size = UDim2.new(0, 480, 0, 400)
+Panel.Position = UDim2.new(0, 50, 0.5, -200)
 Panel.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 Panel.BorderSizePixel = 2
 Panel.BorderColor3 = Color3.fromRGB(100, 150, 255)
@@ -98,7 +83,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V6"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -115,69 +100,9 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- CONSOLA DE LOGS
-local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 0, 160)
-TermScroll.Position = UDim2.new(0, 5, 0, 35)
-TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-TermScroll.ScrollBarThickness = 6
-TermScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-TermScroll.Parent = Panel
-Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
-
-local LogHistory = {}
 local function Log(texto, color)
-    local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -4, 0, 0)
-    msg.BackgroundTransparency = 1
-    msg.Text = "[" .. os.date("%H:%M:%S") .. "] " .. texto
-    msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    msg.Font = Enum.Font.Code
-    msg.TextSize = 10
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextWrapped = true
-    msg.Parent = TermScroll
-    local tsz = game:GetService("TextService"):GetTextSize(msg.Text, msg.TextSize, msg.Font, Vector2.new(TermScroll.AbsoluteSize.X-15, math.huge))
-    msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
-    TermScroll.CanvasPosition = Vector2.new(0, 999999)
-    table.insert(LogHistory, msg.Text)
+    print("[AutoVendedorPRO] " .. string.gsub(texto, "❌", "ERROR:"))
 end
-
--- Controles de Log
-local LogControls = Instance.new("Frame")
-LogControls.Size = UDim2.new(1, -10, 0, 20)
-LogControls.Position = UDim2.new(0, 5, 0, 198)
-LogControls.BackgroundTransparency = 1
-LogControls.Parent = Panel
-
-local CopyLogBtn = Instance.new("TextButton")
-CopyLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
-CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyLogBtn.Text = "📋 COPIAR LOG"
-CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyLogBtn.Font = Enum.Font.Code
-CopyLogBtn.TextSize = 10
-CopyLogBtn.Parent = LogControls
-CopyLogBtn.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard(table.concat(LogHistory, "\n")) end)
-    CopyLogBtn.Text = "✅ COPIADO"
-    task.delay(1.5, function() CopyLogBtn.Text = "📋 COPIAR LOG" end)
-end)
-
-local ClearLogBtn = Instance.new("TextButton")
-ClearLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
-ClearLogBtn.Position = UDim2.new(0.5, 2, 0, 0)
-ClearLogBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-ClearLogBtn.Text = "🗑️ LIMPIAR"
-ClearLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClearLogBtn.Font = Enum.Font.Code
-ClearLogBtn.TextSize = 10
-ClearLogBtn.Parent = LogControls
-ClearLogBtn.MouseButton1Click:Connect(function()
-    for _, v in ipairs(TermScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
-    LogHistory = {}
-end)
 
 -- Estado
 Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") .. 
@@ -189,11 +114,14 @@ Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") ..
 -- ==========================================
 -- UTILIDADES DE INVENTARIO
 -- ==========================================
+local InvController = nil
+pcall(function() InvController = require(ReplicatedStorage.Controllers.UIController.Inventory) end)
 
 local capacidadLabelCache = nil
 local function ObtenerCapacidad()
     local cur, maxm = nil, nil
-    local fallbackMax = 144
+    if InvController then pcall(function() maxm = InvController:GetBagCapacity() end) end
+    if not maxm then maxm = 144 end
     if capacidadLabelCache and capacidadLabelCache.Parent then
         local x, y = string.match(capacidadLabelCache.Text, "(%d+)/(%d+)")
         if x and y then return tonumber(x), tonumber(y) end
@@ -204,7 +132,7 @@ local function ObtenerCapacidad()
                 local x, y = string.match(obj.Text, "(%d+)/(%d+)")
                 if x and y then
                     local valY = tonumber(y)
-                    if valY == fallbackMax or valY == 144 then
+                    if valY == maxm or valY == 144 then
                         cur, maxm = tonumber(x), valY
                         capacidadLabelCache = obj
                         break
@@ -248,7 +176,7 @@ local function EscanearCantidadesGlobales()
 end
 
 -- ==========================================
--- LA FUNCIÓN MAESTRA DE RED (3 PASOS ORIGINALES QUE FUNCIONAN)
+-- LA FUNCIÓN MAESTRA INTOCABLE DE RED (V8)
 -- ==========================================
 local function EjecutarVentaNinja(miBasket)
     if not RF_RunCommand or not RF_ForceDialogue or not RE_DialogueEvent or not SeyNPC then 
@@ -263,25 +191,22 @@ local function EjecutarVentaNinja(miBasket)
         
         local basketStr = "{"
         for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
-        Log("📦 Despachando: " .. basketStr .. "}", Color3.fromRGB(255, 255, 0))
+        basketStr = basketStr .. "}"
+        Log("📦 Despachando: " .. basketStr, Color3.fromRGB(255, 255, 0))
 
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local oldCFrame = root and root.CFrame
         
-        -- ========== PASO 1: ENGAÑAR CON EL MENÚ MISC DIRECTAMENTE ==========
+        -- PASO 1 (Intacto V8)
         Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
         local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-        if not ok1 then Log("❌ ForceDialogue Falló: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) end
-        
         task.wait(0.2)
         pcall(function() RE_DialogueEvent:FireServer("Opened") end)
         
-        -- ========== PASO 2: VENTA PURA Y DURA ==========
+        -- PASO 2 (Intacto V8)
         Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
-        local ok2, resp = pcall(function()
-            return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
-        end)
+        local ok2, resp = pcall(function() return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal) end)
         
         if ok2 then
             Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
@@ -289,39 +214,24 @@ local function EjecutarVentaNinja(miBasket)
             Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        -- Retorno de Posición Instántaneo
-        if root and oldCFrame then
-            root.CFrame = oldCFrame
-            Log("👻 Posición restaurada al punto de origen", Color3.fromRGB(150, 255, 150))
-        end
-        
+        if root and oldCFrame then root.CFrame = oldCFrame end
         task.wait(0.5)
         
-        -- ========== PASO 3: LIMPIEZA SILENCIOSA Y AUTO-ADIÓS ==========
+        -- PASO 3 (Intacto V8)
         Log("🔓 [3/3] Auto-Clickeando el botón 'Adiós'...", Color3.fromRGB(255, 150, 0))
-        local adiosVisto = false
-        
         pcall(function()
             for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
                 if obj:IsA("TextButton") and obj.Visible then
                     local t = string.lower(obj.Text)
                     if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
-                        adiosVisto = true
-                        Log("✅ Botón Adiós encontrado: " .. obj.Text, Color3.fromRGB(0, 255, 0))
                         pcall(function() firesignal(obj.MouseButton1Click) end)
                         pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
                     end
                 end
             end
         end)
-        
-        if not adiosVisto then
-            Log("⚠️ Aviso: El botón 'Adiós' no se encontró o estaba oculto.", Color3.fromRGB(255, 255, 0))
-        end
-        
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        
-        Log("✅ ¡LISTO! Venta remota completada.", Color3.fromRGB(0, 255, 255))
+        Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end
@@ -330,8 +240,8 @@ end
 -- INTERFAZ
 -- ==========================================
 local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -10, 1, -290)
-Scroll.Position = UDim2.new(0, 5, 0, 223)
+Scroll.Size = UDim2.new(1, -10, 1, -95)
+Scroll.Position = UDim2.new(0, 5, 0, 35)
 Scroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
 Scroll.ScrollBarThickness = 6
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -383,17 +293,21 @@ for _, item in ipairs(MINERALES) do
     VenderTodoBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 150)
     VenderTodoBtn.Text = "Vender Todo"
     VenderTodoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    
     VenderTodoBtn.MouseButton1Click:Connect(function()
-        local miStockCache = EscanearCantidadesGlobales()
-        local miCant = miStockCache[item.en] or 0
-        if miCant > 0 then
-            Log("🔍 Detectado " .. miCant .. "x " .. item.es, Color3.fromRGB(0, 255, 0))
-            EjecutarVentaNinja({[item.en] = miCant})
-        else
-            Log("❌ Error: Tienes 0 " .. item.es .. " o no leo el Inventario.", Color3.fromRGB(255, 100, 100))
-        end
+        task.spawn(function()
+            local miStockCache = EscanearCantidadesGlobales()
+            local miCant = miStockCache[item.en] or 0
+            if miCant > 0 then
+                Log("🔍 Detectado " .. miCant .. "x " .. item.es, Color3.fromRGB(0, 255, 0))
+                EjecutarVentaNinja({[item.en] = miCant})
+            else
+                Log("❌ Error: Tienes 0 " .. item.es .. " o no leo el Inventario.", Color3.fromRGB(255, 100, 100))
+            end
+        end)
     end)
     
+    -- Botón de Muestra (No hace escaneo automático, solo visual para no romper nada viejo)
     local AutoBtn = Instance.new("TextButton", fila)
     AutoBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
     AutoBtn.Position = UDim2.new(0.80, 0, 0.1, 0)
@@ -410,9 +324,9 @@ end
 local SellBtn = Instance.new("TextButton")
 SellBtn.Size = UDim2.new(1, -10, 0, 50)
 SellBtn.Position = UDim2.new(0, 5, 1, -55)
-SellBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 50)
-SellBtn.Text = "🛠️ VENDER CAMPOS MANUALES"
-SellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SellBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 80)
+SellBtn.Text = "VENDER LO ESCRITO"
+SellBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 SellBtn.Font = Enum.Font.Code
 SellBtn.TextSize = 13
 SellBtn.Parent = Panel
@@ -434,4 +348,39 @@ SellBtn.MouseButton1Click:Connect(function()
     if cuenta > 0 then EjecutarVentaNinja(miBasket) else Log("⚠️ Escribe cantidades manuales antes.", Color3.fromRGB(255,255,0)) end
 end)
 
-Log("💎 Escoge ítems, pon la cant, y clica Vender.")
+-- BUCLE AUTOMÁTICO OPTIMIZADO (Anti-Patinaje)
+local UltimoEscaneo = 0
+task.spawn(function()
+    while true do
+        task.wait(5)
+        local cur, maxm = ObtenerCapacidad()
+        if cur and maxm then
+            CapacidadInfo.Text = "Espacio: " .. cur .. "/" .. maxm
+            if cur >= (maxm - 5) then
+                if os.time() - UltimoEscaneo > 10 then -- Limitar a cada 10 seg
+                    UltimoEscaneo = os.time()
+                    local autoBasket = {}
+                    local count = 0
+                    local stockGlobal = EscanearCantidadesGlobales()
+                    for _, item in ipairs(MINERALES) do
+                        if item.auto then
+                            local stock = stockGlobal[item.en] or 0
+                            if stock > 0 then
+                                autoBasket[item.en] = stock
+                                count = count + 1
+                            end
+                        end
+                    end
+                    if count > 0 then
+                        Log("☢️ INVENTARIO LLENO. Auto-Limpiando...", Color3.fromRGB(255, 100, 50))
+                        EjecutarVentaNinja(autoBasket)
+                    end
+                end
+            end
+        else
+            CapacidadInfo.Text = "Abre Inv. para Activar Auto"
+        end
+    end
+end)
+
+Log("💎 Integración de Escáner y Venta Automática Lista.")
