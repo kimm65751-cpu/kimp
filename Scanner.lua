@@ -298,53 +298,46 @@ InterceptBtn.MouseButton1Click:Connect(function()
                     pcall(function() selfName = self.Name; fullName = self:GetFullName() end)
                     local fullLower = string.lower(fullName)
                     
-                    -- FILTRO DURO: Ignorar el spam de Event (inventario) y ruido
+                    -- FILTRO DURO: ruido
                     local hardBlock = {"move", "mouse", "camera", "ping", "render", "step", "chat", "position", "look", "heartbeat"}
                     local isBlocked = false
                     for _, nw in pairs(hardBlock) do
                         if string.find(fullLower, nw) then isBlocked = true break end
                     end
-                    -- Filtrar el Event que manda el inventario cada 5 seg
                     if selfName == "Event" and method == "FireServer" then
                         local firstArg = args[1]
                         if type(firstArg) == "table" then isBlocked = true end
                     end
                     
                     if not isBlocked then
-                        -- Detectar si es de RAZA
                         local raceKW = {"race", "spin", "reroll", "slot", "raza"}
                         local isRace = false
                         for _, kw in pairs(raceKW) do
                             if string.find(fullLower, kw) then isRace = true break end
                         end
                         
-                        -- Dump args
-                        local argDump = ""
-                        for i, v in ipairs(args) do
-                            argDump = argDump .. " Arg[" .. i .. "]=" .. SmartDump(v)
+                        -- PASO CRÍTICO: Si es Reroll o SwitchSlot, NO TOCAR el flujo.
+                        -- Solo loguear en hilo aparte y dejar pasar LIMPIO.
+                        if isRace and method == "InvokeServer" then
+                            local argDump = ""
+                            for i, v in ipairs(args) do argDump = argDump .. " Arg[" .. i .. "]=" .. SmartDump(v) end
+                            if argDump == "" then argDump = " (sin args)" end
+                            task.spawn(function()
+                                AddLog("OUT:InvokeServer", "🎯 " .. selfName .. argDump, Color3.fromRGB(255, 50, 255))
+                                AddLog("FLOW", "⚡ Dejando pasar " .. selfName .. " SIN INTERFERIR al servidor...", Color3.fromRGB(255, 255, 0))
+                            end)
+                            -- RETORNO LIMPIO: No tocamos nada
+                            return GlobalOriginalNamecall(self, ...)
                         end
+                        
+                        -- Para otros InvokeServer NO de raza, capturar normalmente
+                        local argDump = ""
+                        for i, v in ipairs(args) do argDump = argDump .. " Arg[" .. i .. "]=" .. SmartDump(v) end
                         if argDump == "" then argDump = " (sin args)" end
                         
                         local color = isRace and Color3.fromRGB(255, 50, 255) or Color3.fromRGB(130, 130, 130)
                         local tag = isRace and "🎯 " or ""
-                        
-                        AddLog("OUT:" .. method, tag .. selfName .. argDump, color)
-                        
-                        -- InvokeServer: capturar RESPUESTA
-                        if method == "InvokeServer" then
-                            local retValues = {GlobalOriginalNamecall(self, ...)}
-                            
-                            local retDump = ""
-                            for i, rv in ipairs(retValues) do
-                                retDump = retDump .. " Ret[" .. i .. "]=" .. SmartDump(rv)
-                            end
-                            if retDump == "" then retDump = " (vacío/nil)" end
-                            
-                            local retColor = isRace and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(80, 150, 80)
-                            AddLog("IN:Return", tag .. selfName .. " RESP:" .. retDump, retColor)
-                            
-                            return unpack(retValues)
-                        end
+                        task.spawn(function() AddLog("OUT:" .. method, tag .. selfName .. argDump, color) end)
                     end
                 end
                 
@@ -387,8 +380,8 @@ task.spawn(function()
     end)
 end)
 
--- Inicializar logging
-pcall(function() writefile(LOG_FILENAME, "=== RACE SPIN ANALYZER V2.0 - LOG INICIADO ===\n") end)
+pcall(function() writefile(LOG_FILENAME, "=== RACE SPIN ANALYZER V1.1 - LOG INICIADO ===\n") end)
 
-AddLog("SISTEMA", "🎰 V2.0 CARGADO. Ruido de inventario filtrado.", Color3.fromRGB(150, 255, 150))
-AddLog("SISTEMA", "1) Presiona FASE 1 → 2) FASE 2 → 3) REINICIAR en el juego.", Color3.fromRGB(255, 255, 200))
+AddLog("SISTEMA", "🎰 V1.1 CARGADO. Reroll pasa LIMPIO, observación por GUI.", Color3.fromRGB(150, 255, 150))
+AddLog("SISTEMA", "1) FASE 1 → 2) FASE 2 → 3) REINICIAR en el juego.", Color3.fromRGB(255, 255, 200))
+AddLog("SISTEMA", "La raza se captura desde el cambio en pantalla (CurrentRace).", Color3.fromRGB(255, 255, 200))
