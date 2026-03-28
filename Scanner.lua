@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
@@ -24,11 +25,14 @@ local KiteActivo = false
 local MineActivo = false
 local FarmTask = nil
 local MyShield = nil
+local FullbrightActivo = false
+local OriginalLighting = nil
 
 -- ANTI-STUCK MINING: Lista negra de minerales que no se pueden picar
 local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
 local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
 local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
+local GlobalMineIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global 5s
 local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 
 -- SELECTOR DE OBJETIVOS: Qué tipos de mobs y minas farmear
@@ -238,6 +242,68 @@ StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
 StatusLabel.Parent = Panel
 
 -- ==========================================
+-- BOTÓN FULLBRIGHT (VISIÓN NOCTURNA)
+-- ==========================================
+local FullbrightBtn = Instance.new("TextButton")
+FullbrightBtn.Size = UDim2.new(1, -8, 0, 28)
+FullbrightBtn.Position = UDim2.new(0, 4, 0, 350)
+FullbrightBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: OFF"
+FullbrightBtn.TextColor3 = Color3.fromRGB(255, 255, 200)
+FullbrightBtn.Font = Enum.Font.Code
+FullbrightBtn.TextSize = 11
+FullbrightBtn.Parent = Panel
+
+FullbrightBtn.MouseButton1Click:Connect(function()
+    FullbrightActivo = not FullbrightActivo
+    if FullbrightActivo then
+        FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: ON ✅"
+        FullbrightBtn.BackgroundColor3 = Color3.fromRGB(200, 200, 50)
+        -- Guardar valores originales
+        OriginalLighting = {
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            FogEnd = Lighting.FogEnd,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            GlobalShadows = Lighting.GlobalShadows,
+        }
+        -- Aplicar fullbright
+        Lighting.Brightness = 3
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 1e9
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+        Lighting.GlobalShadows = false
+        -- Eliminar efectos de oscuridad (Atmosphere, ColorCorrection, etc.)
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("Atmosphere") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
+                v.Enabled = false
+            end
+        end
+        StatusLabel.Text = "🔦 Visión Nocturna ACTIVADA. Todo se ve claro."
+    else
+        FullbrightBtn.Text = "🔦 VISIÓN NOCTURNA: OFF"
+        FullbrightBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+        -- Restaurar valores originales
+        if OriginalLighting then
+            Lighting.Brightness = OriginalLighting.Brightness
+            Lighting.ClockTime = OriginalLighting.ClockTime
+            Lighting.FogEnd = OriginalLighting.FogEnd
+            Lighting.Ambient = OriginalLighting.Ambient
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+            Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        end
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("Atmosphere") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
+                v.Enabled = true
+            end
+        end
+        StatusLabel.Text = "🔦 Visión Nocturna APAGADA."
+    end
+end)
+
+-- ==========================================
 -- SCANNER PANEL (Panel Flotante de Selección)
 -- ==========================================
 local ScannerPanel = Instance.new("Frame")
@@ -437,16 +503,14 @@ end)
 -- ==========================================
 local Minimizado = false
 MinBtn.MouseButton1Click:Connect(function()
-    Minimizado = not Minimizado
-    if Minimizado then
-        Panel.Size = UDim2.new(0, 200, 0, 30)
-        OpenIcon.Visible = false
-    else
-        Panel.Size = UDim2.new(0, 280, 0, 400)
-    end
+    Minimizado = true
+    Panel.Visible = false
+    ScannerPanel.Visible = false
+    OpenIcon.Visible = true
 end)
 
 OpenIcon.MouseButton1Click:Connect(function()
+    Minimizado = false
     Panel.Visible = true
     OpenIcon.Visible = false
 end)
@@ -903,6 +967,11 @@ local function IniciarFarm()
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
                         ToolRF:InvokeServer(serverArg)
                         
+                        -- ANTI-ATASCO GLOBAL: Registrar que estamos golpeando
+                        if mode == "Mining" then
+                            GlobalMineIdleTracker.lastHitTime = tick()
+                        end
+                        
                         if mode == "Combat" then
                             local mobLvl = GetMobLevel(targetObj)
                             StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
@@ -952,10 +1021,32 @@ MineBtn.MouseButton1Click:Connect(function()
     if MineActivo then
         MineBtn.Text = "⛏️ MINAS: ON"
         MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        GlobalMineIdleTracker.lastHitTime = tick()
         IniciarFarm()
     else
         MineBtn.Text = "⛏️ FARM MINAS"
         MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
         DetenerFarm()
+    end
+end)
+
+-- ==========================================
+-- ANTI-ATASCO GLOBAL: Si Farm Minas está ON y lleva 5s sin picar, se auto-reinicia
+-- ==========================================
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if MineActivo and (tick() - GlobalMineIdleTracker.lastHitTime) > 5 then
+            GlobalMineIdleTracker.lastHitTime = tick()
+            -- Auto-reinicio: apagar y prender farm minas
+            MineActivo = false
+            DetenerFarm()
+            task.wait(0.3)
+            MineActivo = true
+            MineBtn.Text = "⛏️ MINAS: ON"
+            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+            StatusLabel.Text = "🔄 Anti-Atasco: Reiniciando Farm Minas..."
+            IniciarFarm()
+        end
     end
 end)
