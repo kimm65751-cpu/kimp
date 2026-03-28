@@ -211,21 +211,13 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = tostring(getnamecallmethod())
     local args = {...}
     
-    if method == "InvokeServer" or method == "FireServer" then
+    if method == "InvokeServer" or method == "FireServer" or method == "invokeServer" or method == "fireServer" then
         -- Protección a prueba de balas para no causar crashes
         local nameStr = "UnknownRemote"
         pcall(function() nameStr = tostring(self.Name) end)
         
-        local lowName = string.lower(nameStr)
-        local spam = string.find(lowName, "mouse") or 
-                     string.find(lowName, "movement") or 
-                     string.find(lowName, "updateexp") or
-                     string.find(lowName, "camera") or
-                     string.find(lowName, "look") or
-                     string.find(lowName, "step") or
-                     string.find(lowName, "character")
-                     
-        if not spam then
+        -- SOLO CAZAR LOS 4 REMOTOS QUE NECESITAMOS, SIN FILTROS DE SPAM QUE CAUSEN FALSOS POSITIVOS
+        if nameStr == "RunCommand" or nameStr == "ForceDialogue" or nameStr == "DialogueEvent" or nameStr == "Dialogue" then
             task.spawn(function()
                 Log(" ", Color3.fromRGB(0,0,0))
                 Log("🚨 INTERCEPTADO: " .. method .. " -> '" .. nameStr .. "'", Color3.fromRGB(255, 0, 255))
@@ -243,7 +235,6 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 
                 local foundTrace = false
                 for line in string.gmatch(trace, "[^\r\n]+") do
-                    -- Imprime líneas de traceback que pertenezcan a scripts de los jugadores
                     if string.find(line, "PlayerScripts") or string.find(line, "PlayerGui") or string.find(line, "ReplicatedStorage") or string.find(line, "Packages") then
                         Log("  -> " .. line, Color3.fromRGB(255, 255, 150))
                         foundTrace = true
@@ -258,7 +249,7 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             end)
             
             -- Si es un Invoke, capturar obligatoriamente qué nos dijo el servidor
-            if method == "InvokeServer" then
+            if method == "InvokeServer" or method == "invokeServer" then
                 local ret = {OriginalNamecall(self, ...)}
                 task.spawn(function()
                     local retDump = ""
