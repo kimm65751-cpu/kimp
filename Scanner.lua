@@ -81,23 +81,33 @@ ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 ControlsFrame.Parent = Panel
 
 local ClearBtn = Instance.new("TextButton")
-ClearBtn.Size = UDim2.new(0.5, -2, 1, 0)
+ClearBtn.Size = UDim2.new(0.33, -2, 1, 0)
 ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 ClearBtn.Text = "🗑️ LIMPIAR"
 ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ClearBtn.Font = Enum.Font.Code
-ClearBtn.TextSize = 12
+ClearBtn.TextSize = 11
 ClearBtn.Parent = ControlsFrame
 
 local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(0.5, -2, 1, 0)
-CopyBtn.Position = UDim2.new(0.5, 2, 0, 0)
+CopyBtn.Size = UDim2.new(0.33, -2, 1, 0)
+CopyBtn.Position = UDim2.new(0.33, 2, 0, 0)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
-CopyBtn.Text = "📋 COPIAR TODO"
+CopyBtn.Text = "📋 COPIAR"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
+CopyBtn.TextSize = 11
 CopyBtn.Parent = ControlsFrame
+
+local SaveTxtBtn = Instance.new("TextButton")
+SaveTxtBtn.Size = UDim2.new(0.34, -2, 1, 0)
+SaveTxtBtn.Position = UDim2.new(0.66, 2, 0, 0)
+SaveTxtBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+SaveTxtBtn.Text = "💾 GUARDAR .TXT"
+SaveTxtBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveTxtBtn.Font = Enum.Font.Code
+SaveTxtBtn.TextSize = 11
+SaveTxtBtn.Parent = ControlsFrame
 
 -- Log Scroll
 local LogScroll = Instance.new("ScrollingFrame")
@@ -137,15 +147,17 @@ DumpTableDeep = function(tbl, depth)
     return str .. string.rep("  ", depth) .. "}"
 end
 
+local LOG_FILENAME = "RaceSpinAnalyzer_ForenseCompleto_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
+
 local function SaveLogToFile(message)
     task.spawn(function()
         pcall(function()
-            local filename = "RaceSpinAnalyzer_Logs.txt"
-            if appendfile then appendfile(filename, message .. "\n")
+            if appendfile then 
+                appendfile(LOG_FILENAME, message .. "\n")
             elseif writefile then
                 local current = ""
-                pcall(function() current = readfile(filename) end)
-                writefile(filename, current .. message .. "\n")
+                pcall(function() current = readfile(LOG_FILENAME) end)
+                writefile(LOG_FILENAME, current .. message .. "\n")
             end
         end)
     end)
@@ -182,8 +194,26 @@ end)
 CopyBtn.MouseButton1Click:Connect(function()
     local result = "=== RACE SPIN ANALYZER - REPORTE FORENSE ===\n\n"
     for _, line in ipairs(MasterLogList) do result = result .. line .. "\n" end
-    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
-    task.delay(2, function() CopyBtn.Text = "📋 COPIAR TODO" end)
+    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ COPIADO" else CopyBtn.Text = "❌ ERROR" end
+    task.delay(2, function() CopyBtn.Text = "📋 COPIAR" end)
+end)
+
+SaveTxtBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local result = "=== RACE SPIN ANALYZER - REPORTE FORENSE COMPLETO ===\n"
+        result = result .. "Fecha: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
+        result = result .. "Total Lineas: " .. tostring(#MasterLogList) .. "\n"
+        result = result .. "============================================\n\n"
+        for _, line in ipairs(MasterLogList) do result = result .. line .. "\n" end
+        if writefile then
+            writefile(LOG_FILENAME, result)
+            SaveTxtBtn.Text = "✅ GUARDADO!"
+            AddLog("ARCHIVO", "💾 Guardado exitoso: workspace/" .. LOG_FILENAME .. " (" .. tostring(#result) .. " bytes)", Color3.fromRGB(100, 255, 100))
+        else
+            SaveTxtBtn.Text = "❌ SIN ACCESO"
+        end
+    end)
+    task.delay(3, function() SaveTxtBtn.Text = "💾 GUARDAR .TXT" end)
 end)
 
 -- ==========================================
