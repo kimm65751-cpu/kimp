@@ -4,7 +4,7 @@
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReaplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
@@ -85,56 +85,80 @@ CopyBtn.Parent = Panel
 CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(LogHistory, "\n")) end) end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
-Log("🎯 MÉTODO DIRECTO ACTIVADO", Color3.fromRGB(255, 255, 0))
-Log("Instrucción: Ve al NPC del juego y Vende MANUALMENTE (1 cantidad de cada ítem) que no te funcione.", Color3.fromRGB(200, 255, 200))
-Log("El script capturará en este instante CÓMO SE LLAMAN INTERNAMENTE. ¡Mira abajo los resultados!", Color3.fromRGB(200, 255, 200))
+Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO", Color3.fromRGB(255, 255, 0))
+Log("Presiona el Botón de abajo para Escanear estáticamente toda tu mochila y cazar su ID interior.", Color3.fromRGB(200, 255, 200))
 Log("==========================================", Color3.fromRGB(150, 150, 150))
 
--- ==========================================
--- EL HOOK INTERCEPTOR
--- ==========================================
-local ncall
-ncall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
+local function AnalizarTodoElInventario()
+    Log("🔍 Escaneando todas tus casillas de Inventario...", Color3.fromRGB(200, 200, 50))
+    local encontrados = {}
+    local totalItems = 0
     
-    if not checkcaller() and method == "InvokeServer" and self.Name == "RunCommand" then
-        if args[1] == "SellConfirm" and type(args[2]) == "table" and type(args[2].Basket) == "table" then
-            task.spawn(function()
-                Log("------------------------------------------")
-                Log("👀 SE HA DETECTADO UNA VENTA DESDE TU INTERFAZ ORIGINAL:", Color3.fromRGB(0, 255, 255))
-                for nombreInterno, cantidad in pairs(args[2].Basket) do
-                    Log("➡ Nombre Real del Servidor: '" .. tostring(nombreInterno) .. "'", Color3.fromRGB(255, 100, 255))
-                    Log("➡ Cantidad Enviada: " .. tostring(cantidad), Color3.fromRGB(200, 200, 200))
-                end
-            end)
-        end
-    end
-    
-    return ncall(self, ...)
-end)
-
--- ==========================================
--- ESCÁNER DE BASES DE DATOS (MÓDULOS DE ITEMS)
--- ==========================================
-task.spawn(function()
-    Log("🔍 Escaneando módulos de ítems por si la base de datos es pública...", Color3.fromRGB(200, 200, 50))
-    local ModulosSospechosos = {"Items", "ItemDrop", "ItemDatabase", "ItemsData", "Info"}
-    local encontrados = 0
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("ModuleScript") then
-            for _, kw in pairs(ModulosSospechosos) do
-                if string.find(string.lower(obj.Name), string.lower(kw)) then
-                    local ok, data = pcall(function() return require(obj) end)
-                    if ok and type(data) == "table" then
-                        Log("📂 Posible base de datos de Ítems encontrada: " .. obj.Name, Color3.fromRGB(100, 255, 100))
-                        encontrados = encontrados + 1
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Visible then
+                local txt = obj.Text
+                -- Ignorar textos demasiado cortos, números puros, o signos
+                if string.len(txt) > 2 and not tonumber(txt) and not string.match(txt, "^[xX]%d+") and not string.find(string.lower(txt), "capacidad") then
+                    local padre = obj.Parent
+                    if padre and (padre:IsA("Frame") or padre:IsA("ImageLabel")) then
+                        if not encontrados[txt] then
+                            encontrados[txt] = true
+                            totalItems = totalItems + 1
+                            
+                            Log("------------------------------------", Color3.fromRGB(100, 100, 100))
+                            Log("📦 ÍTEM (Español UI): " .. txt, Color3.fromRGB(0, 255, 255))
+                            Log("   ➡ ID EN MEMORIA DEL CUADRO: " .. padre.Name, Color3.fromRGB(255, 150, 100))
+                            
+                            -- Escáner de Atributos del Cuadro
+                            local attrs = padre:GetAttributes()
+                            local numAttrs = 0
+                            for k, v in pairs(attrs) do
+                                Log("   🏷️ Atributo: [" .. k .. "] = " .. tostring(v), Color3.fromRGB(200, 255, 100))
+                                numAttrs = numAttrs + 1
+                            end
+                            
+                            -- Escáner de StringValues y variables dentro del slot
+                            for _, child in pairs(padre:GetChildren()) do
+                                if child:IsA("StringValue") then
+                                    Log("   🪧 ScriptVariable: [" .. child.Name .. "] = " .. child.Value, Color3.fromRGB(200, 150, 255))
+                                end
+                                if child:IsA("TextLabel") and string.match(child.Text, "[xX](%d+)") then
+                                    Log("   📊 Cantidad Vistazo: " .. child.Text, Color3.fromRGB(150, 150, 150))
+                                end
+                            end
+                            
+                            if numAttrs == 0 and string.find(string.lower(padre.Name), "frame") then
+                                local abuelo = padre.Parent
+                                if abuelo then
+                                    Log("   (Buscando en contenedor Abuelo: " .. abuelo.Name .. ")", Color3.fromRGB(100, 100, 100))
+                                    local gAttrs = abuelo:GetAttributes()
+                                    for gk, gv in pairs(gAttrs) do
+                                        Log("      🏷️ Attr Abuelo: [" .. gk .. "] = " .. tostring(gv), Color3.fromRGB(200, 255, 100))
+                                    end
+                                end
+                            end
+                        end
                     end
                 end
             end
         end
-    end
-    if encontrados == 0 then
-        Log("⚠️ La base de datos es secreta, usa la técnica de ir a vender 1 al NPC tal como te pedí arriba.", Color3.fromRGB(255, 255, 0))
-    end
+    end)
+    
+    Log("------------------------------------", Color3.fromRGB(100, 100, 100))
+    Log("✅ CONCLUIDO. Se encontraron " .. totalItems .. " posibles ítems.", Color3.fromRGB(0, 255, 0))
+    Log(">> Revisa el 'ID EN MEMORIA DEL CUADRO' o los Atributos para ver el nombre oficial.", Color3.fromRGB(200, 200, 200))
+end
+
+local ScanBtn = Instance.new("TextButton")
+ScanBtn.Size = UDim2.new(1, -10, 0, 40)
+ScanBtn.Position = UDim2.new(0, 5, 1, -90)
+ScanBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+ScanBtn.Text = "🔎 INICIAR ANÁLISIS DEL INVENTARIO"
+ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScanBtn.Font = Enum.Font.Code
+ScanBtn.TextSize = 12
+ScanBtn.Parent = Panel
+ScanBtn.MouseButton1Click:Connect(function()
+    AnalizarTodoElInventario()
 end)
