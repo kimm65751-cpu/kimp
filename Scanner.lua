@@ -98,7 +98,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V45.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -251,10 +251,11 @@ local function EscanearCantidadesGlobales()
 end
 
 -- ==========================================
--- LA FUNCIÓN MAESTRA INTOCABLE DE RED (V8)
+-- LA FUNCIÓN MAESTRA DE RED (SECUENCIA COMPLETA 7 PASOS)
+-- Copiada EXACTA del Interceptor de Ventas real
 -- ==========================================
 local function EjecutarVentaNinja(miBasket)
-    if not RF_RunCommand or not RF_ForceDialogue or not RE_DialogueEvent or not SeyNPC then 
+    if not RF_RunCommand or not RF_ForceDialogue or not RF_Dialogue or not RE_DialogueEvent or not SeyNPC then 
         Log("❌ Faltan remotos o NPC.", Color3.fromRGB(255,0,0)) return 
     end
     
@@ -262,50 +263,58 @@ local function EjecutarVentaNinja(miBasket)
     
     task.spawn(function()
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
-        Log("🚀 INICIANDO VENTA NINJA (SIN INTERFAZ)...", Color3.fromRGB(0, 255, 255))
+        Log("🚀 SECUENCIA COMPLETA DE 7 PASOS...", Color3.fromRGB(0, 255, 255))
         
         local basketStr = "{"
         for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
         basketStr = basketStr .. "}"
-        Log("📦 Despachando: " .. basketStr, Color3.fromRGB(255, 255, 0))
+        Log("📦 Basket: " .. basketStr, Color3.fromRGB(255, 255, 0))
 
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local oldCFrame = root and root.CFrame
         
-        -- PASO 1 (Intacto V8)
-        Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
-        local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-        task.wait(0.2)
+        -- ===== PASO 1/7: Abrir Diálogo Inicial con NPC =====
+        Log("💬 [1/7] Dialogue -> Greedy Cey", Color3.fromRGB(255, 200, 100))
+        pcall(function() RF_Dialogue:InvokeServer(SeyNPC) end)
+        task.wait(0.3)
+        
+        -- ===== PASO 2/7: Confirmar Apertura =====
+        Log("📖 [2/7] DialogueEvent(Opened)", Color3.fromRGB(255, 200, 100))
         pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        task.wait(0.3)
         
-        -- PASO 2 (Intacto V8)
-        Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
-        local ok2, resp = pcall(function() return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal) end)
+        -- ===== PASO 3/7: Cerrar Diálogo Inicial =====
+        Log("📕 [3/7] DialogueEvent(Closed)", Color3.fromRGB(255, 200, 100))
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        task.wait(0.3)
         
-        if ok2 then
+        -- ===== PASO 4/7: Forzar Menú de Venta =====
+        Log("🛒 [4/7] ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
+        pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        task.wait(0.3)
+        
+        -- ===== PASO 5/7: Confirmar Apertura de Venta =====
+        Log("📖 [5/7] DialogueEvent(Opened)", Color3.fromRGB(255, 150, 0))
+        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        task.wait(0.2)
+        
+        -- ===== PASO 6/7: EJECUTAR LA VENTA =====
+        Log("💎 [6/7] RunCommand(SellConfirm)", Color3.fromRGB(255, 0, 255))
+        local ok, resp = pcall(function() return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal) end)
+        
+        if ok then
             Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
         else
-            Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+            Log("❌ Error: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        if root and oldCFrame then root.CFrame = oldCFrame end
-        task.wait(0.5)
-        
-        -- PASO 3 (Intacto V8)
-        Log("🔓 [3/3] Auto-Clickeando el botón 'Adiós'...", Color3.fromRGB(255, 150, 0))
-        pcall(function()
-            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                if obj:IsA("TextButton") and obj.Visible then
-                    local t = string.lower(obj.Text)
-                    if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
-                        pcall(function() firesignal(obj.MouseButton1Click) end)
-                        pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
-                    end
-                end
-            end
-        end)
+        -- ===== PASO 7/7: Cerrar Todo Limpiamente =====
+        Log("🔓 [7/7] DialogueEvent(Closed)", Color3.fromRGB(255, 150, 0))
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
+        
+        if root and oldCFrame then root.CFrame = oldCFrame end
+        
+        Log("✅ ¡LISTO! Secuencia 7/7 completada.", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end
