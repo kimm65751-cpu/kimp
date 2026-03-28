@@ -182,7 +182,7 @@ SellBtn.MouseButton1Click:Connect(function()
     
     if not hayAlgoQueVender then
         SellBtn.Text = "⚠️ No pusiste cantidades en ningún mineral!"
-        task.delay(2, function() SellBtn.Text = "💸 VENDER ITEMS SELECCIONADOS AL SERVIDOR" end)
+        task.delay(2, function() SellBtn.Text = "💸 VENDER ITEMS SELECCIONADOS AL SERVIDORR" end)
         return
     end
     
