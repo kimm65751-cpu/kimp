@@ -8,6 +8,21 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
+-- ESCUDO ANTI-CONGELAMIENTO (PARÁLISIS INVISIBLE)
+-- ==========================================
+if not getgenv().InmunidadV8Activa then
+    getgenv().InmunidadV8Activa = true
+    local OriginalNewIndex
+    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
+        if not checkcaller() then
+            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then return end
+        end
+        return OriginalNewIndex(t, k, v)
+    end)
+end
+
+-- ==========================================
 -- BUSCADOR DE REMOTOS
 -- ==========================================
 local RF_RunCommand, RF_ForceDialogue, RF_Dialogue = nil, nil, nil
@@ -104,7 +119,7 @@ end)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V14.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V511.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
