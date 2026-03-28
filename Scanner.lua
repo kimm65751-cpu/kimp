@@ -139,7 +139,7 @@ LogControls.Parent = Panel
 local CopyLogBtn = Instance.new("TextButton")
 CopyLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
 CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyLogBtn.Text = "📋 COPIAR LOGGgG"
+CopyLogBtn.Text = "📋 COPIARAAa LOG"
 CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyLogBtn.Font = Enum.Font.Code
 CopyLogBtn.TextSize = 10
@@ -266,7 +266,7 @@ SellBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
-        Log("🚀 INICIANDO VENTA FANTASMA...", Color3.fromRGB(0, 255, 255))
+        Log("🚀 INICIANDO VENTA NINJA (SIN INTERFAZ)...", Color3.fromRGB(0, 255, 255))
         
         local basketStr = "{"
         for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
@@ -275,98 +275,89 @@ SellBtn.MouseButton1Click:Connect(function()
         
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        local oldCFrame = root and root.CFrame
         
-        -- ========== PASO 1: ABRIR SESIÓN Y BYPASS DE DISTANCIA ==========
-        Log("🗣️ [1/4] Abriendo sesión a la fuerza", Color3.fromRGB(255, 150, 0))
-        local ok1, err1 = pcall(function() RF_Dialogue:InvokeServer(SeyNPC) end)
-        
-        -- El servidor nos teletransportó. Nos devolvemos a la mina AL INSTANTE.
-        if root and oldCFrame then
-            task.wait(0.1)
-            root.CFrame = oldCFrame
-            Log("👻 Posición restaurada (Bypass de Teleport)", Color3.fromRGB(150, 255, 150))
-        end
+        -- ========== PASO 1: ENGAÑAR CON EL MENÚ MISC DIRECTAMENTE ==========
+        -- ¡Omitimos Dialogue(SeyNPC) para ver si evitamos el Teleport y el Bloqueo!
+        Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
+        local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        if not ok1 then Log("❌ ForceDialogue Falló: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) end
         
         task.wait(0.2)
         pcall(function() RE_DialogueEvent:FireServer("Opened") end)
         
-        -- ========== PASO 2: ACTIVAR MENÚ DE VENTA ==========
-        Log("🛒 [2/4] ForceDialogue a Sey", Color3.fromRGB(255, 150, 0))
-        pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-        task.wait(0.2)
-        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
-        
-        -- ========== PASO 3: ROBO... DIGO, VENTA DIRECTA ==========
-        Log("💎 [3/4] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
-        local ok6, resp = pcall(function()
+        -- ========== PASO 2: VENTA PURA Y DURA ==========
+        Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
+        local ok2, resp = pcall(function()
             return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
         end)
         
-        if ok6 then
-            Log("✅ ¡Transacción procesada! Revisa el oro.", Color3.fromRGB(0, 255, 0))
+        if ok2 then
+            Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
         else
-            Log("❌ Error Paso 3: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+            Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        -- ========== PASO 4: DESBLOQUEO TÁCTICO DEL JUGADOR ==========
-        Log("🔓 [4/4] Limpiando UI y liberando personaje...", Color3.fromRGB(255, 150, 0))
+        -- ========== PASO 3: DESBLOQUEO BRUTAL DEL JUGADOR ==========
+        Log("🔓 [3/3] Rompiendo la parálisis...", Color3.fromRGB(255, 150, 0))
         
-        -- 1. Cerrar a nivel Servidor
+        -- 1. Cerrar Servidor múltiples veces para forzar el reset de su máquina de estado
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        task.wait(0.1)
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
         
-        -- 2. Matar el diálogo en pantalla forzando clics o borrándolo de la memoria
-        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            -- A) Intentar clickear el botón "Adiós" u opción "2"
-            if obj:IsA("TextButton") and obj.Visible then
-                local txt = string.lower(obj.Text)
-                if string.find(txt, "adi") or string.find(txt, "2.") or string.find(txt, "2%]") then
-                    pcall(function() firesignal(obj.MouseButton1Click) end)
-                    pcall(function() 
-                        for _, conn in pairs(getconnections(obj.MouseButton1Click)) do conn:Fire() end
-                    end)
-                end
-            end
-            
-            -- B) Plan de Contención: Apagar el UI Entero si tiene textos del NPC
-            if obj:IsA("TextLabel") and obj.Visible then
-                if string.find(obj.Text, "Generoso") or string.find(obj.Text, "acuerdo") then
-                    local parentGUI = obj
-                    while parentGUI and not parentGUI:IsA("ScreenGui") do
-                        parentGUI = parentGUI.Parent
-                    end
-                    if parentGUI then parentGUI.Enabled = false end
-                end
-            end
-        end
-        
-        -- 3. Restaurar Cámara, Velocidad de movimiento y Salto (Liberación Total)
+        -- 2. Limpieza gráfica masiva
         pcall(function()
-            local cam = workspace.CurrentCamera
-            if cam then
-                cam.CameraType = Enum.CameraType.Custom
-            end
-            
-            if char then
-                local hum = char:FindFirstChild("Humanoid")
-                if hum then
-                    hum.WalkSpeed = 16
-                    hum.JumpPower = 50
-                    hum:SetAttribute("DialogueOpen", false)
-                    hum:SetAttribute("Stunned", false)
-                    if cam then cam.CameraSubject = hum end
+            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Visible then
+                    local txt = string.lower(obj.Text)
+                    if string.find(txt, "adi") or string.find(txt, "2.") or string.find(txt, "2%]") then
+                        pcall(function() firesignal(obj.MouseButton1Click) end)
+                        for _, conn in pairs(getconnections(obj.MouseButton1Click)) do pcall(function() conn:Fire() end) end
+                    end
                 end
-                
-                -- Restaurar controles de PlayerModule si el juego los desvinculó
-                local PlayerModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
-                local controls = PlayerModule:GetControls()
-                if controls then controls:Enable() end
+                if obj:IsA("TextLabel") and obj.Visible then
+                    if string.find(obj.Text, "Generoso") or string.find(obj.Text, "acuerdo") then
+                        local p = obj
+                        while p and not p:IsA("ScreenGui") do p = p.Parent end
+                        if p then p.Enabled = false end
+                    end
+                end
             end
         end)
         
-        Log("✅ ¡LISTO! Limpio y sin pisar la tienda.", Color3.fromRGB(0, 255, 255))
+        -- 3. Inyección Rápida de Libertad (Ciclo de 1 segundo para pelear contra el LocalScript de Knit)
+        task.spawn(function()
+            for i = 1, 15 do
+                pcall(function()
+                    workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+                    
+                    if char then
+                        local rootPart = char:FindFirstChild("HumanoidRootPart")
+                        if rootPart then rootPart.Anchored = false end -- ¡Rompemos el ancla!
+                        
+                        local hum = char:FindFirstChild("Humanoid")
+                        if hum then
+                            hum.WalkSpeed = 16
+                            hum.JumpPower = 50
+                            hum.AutoRotate = true
+                            hum.PlatformStand = false
+                            workspace.CurrentCamera.CameraSubject = hum
+                            hum:SetAttribute("DialogueOpen", false)
+                            hum:SetAttribute("Stunned", false)
+                        end
+                        
+                        local PlayerModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
+                        local controls = PlayerModule:GetControls()
+                        if controls then controls:Enable() end
+                    end
+                end)
+                task.wait(0.1)
+            end
+            Log("✅ ¡LIBERTAD TOTAL! Eres inmune al bloqueo del NPC.", Color3.fromRGB(0, 255, 255))
+        end)
+        
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end)
 
-Log("💎 ModGhost 6.0: Escoge ítems, pon la cant, y clica Vender.")
+Log("💎 ModNINJA 7.0: Escoge ítems, pon la cant, y clica Vender.")
