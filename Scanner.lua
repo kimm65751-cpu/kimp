@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V7.0 (THE OMEGA RESOLUTION)
--- El Autómata Definitivo con liberación de EndForge y Tiempos de Clase Mundial (6.65s).
+-- 🗡️ FORGE OMNI-ANALYZER V7.1 (THE WELD-BREAKER)
+-- Demolición de ataduras físicas (Welds/Sit) y Tiempos de Clase Mundial (7.35s).
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V7.0 - OMEGA RESOLUTION"
+local SCRIPT_VERSION = "V7.1 - OMEGA WELD-BREAKER"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,8 +30,8 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 80)
-Title.Text = " 📡 FORGE V7.0 (OMEGA RESOLUTION)"
+Title.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+Title.Text = " 📡 FORGE V7.1 (WELD-BREAKER OMEGA)"
 Title.TextColor3 = Color3.fromRGB(200, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -106,9 +106,9 @@ local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
 local BotBypassingNetwork = false
 
--- Ajuste de calidad supremo basado en tus 61% a 5.95s. Ahora usamos 6.65s (tiempo físico perfecto de anillos).
-local HAMMER_DELAY = 6.65
-local WATER_DELAY = 6.65
+-- Ajuste de calidad supremo basado en la escalada (61% a 62%). Ahora probamos la cima asintótica: 7.35s
+local HAMMER_DELAY = 7.35
+local WATER_DELAY = 7.35
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -219,9 +219,19 @@ local function PlayerCleanup()
         local char = Players.LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.Anchored = false end
+            if hrp then 
+                hrp.Anchored = false 
+                for _, v in pairs(hrp:GetChildren()) do
+                    if v:IsA("Weld") or v:IsA("ManualWeld") or v:IsA("WeldConstraint") then v:Destroy() end
+                end
+            end
             local hum = char:FindFirstChild("Humanoid")
-            if hum then hum.WalkSpeed = 16 hum.JumpPower = 50 end
+            if hum then 
+                hum.WalkSpeed = 16 
+                hum.JumpPower = 50 
+                hum.Sit = false
+                hum.PlatformStand = false
+            end
         end
         local pm = require(Players.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"))
         pm:GetControls():Enable()
@@ -314,7 +324,9 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         AddUILog("BOT_V7", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
         SafeInvoke(forgeRF, "Showcase", nil)
         
-        task.wait(0.5)
+        AddUILog("BOT_V7", "🗝️ Esperando 3 segundos naturales para simular animación de arma...", Color3.fromRGB(200,100,50))
+        task.wait(3)
+        
         AddUILog("BOT_V7", ">> 🗝️ ROMPIENDO LA CADENA: Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
         SafeInvoke(forgeRF, "EndForge", nil)
         AddUILog("BOT_V7", "=== ESPADA CREADA Y RECIBIDA === (Ya eres libre)", Color3.fromRGB(0,255,0))
@@ -392,5 +404,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V7.0 OMEGA RESOLUTION INICIADA.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "Se implementó el comando sagrado EndForge para soltarte al 100% y tiempos optimizados a 6.65s (61%+). NO te mates antes de tiempo.", Color3.fromRGB(200, 255, 100))
+AddUILog("SISTEMA", "V7.1 WELD-BREAKER INICIADA.", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El Bot destruirá WELDS físicos que te dejan pegado al horno y aumenté los tiempos a 7.35s para raspar más Calidad.", Color3.fromRGB(200, 255, 100))
