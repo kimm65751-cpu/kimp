@@ -14,13 +14,9 @@ local LocalPlayer = Players.LocalPlayer
 -- RAZAS OBJETIVO (Edita esta tabla)
 -- ==========================================
 local RAZAS_DESEADAS = {
-    ["Archangel"] = true,
-    ["Demon"] = true,
-    ["Angel"] = true,
-    ["Felynx"] = true,
-    ["Golem"] = true,
-    ["Dragonborn"] = true,
-    -- Quita o agrega razas aquí
+    ["Archangel"] = true,   -- 0.1%
+    ["Demon"] = true,       -- 0.5%
+    ["Angel"] = true,       -- 0.5%
 }
 
 -- ==========================================
