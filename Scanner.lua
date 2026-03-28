@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.2 (THE PURE AUTOMATON)
--- Exclusivo para Forja Perfecta. Atrapa-Errores Interno y Control Dinámico de Tiempos.
+-- 🗡️ FORGE OMNI-ANALYZER V8.3 (THE ARCHITECT PATCH)
+-- Solución al error de Capacidad de Hilos al leer la interfaz desde Namecall.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.2 - THE PURE AUTOMATON"
+local SCRIPT_VERSION = "V8.3 - THE ARCHITECT PATCH"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(10, 60, 80)
-Title.Text = " 📡 FORGE V8.2 (PURE AUTOMATON)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
+Title.Text = " 📡 FORGE V8.3 (ARCHITECT PATCH)"
+Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -109,13 +109,22 @@ AddBtn.Text = "+"
 AddBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AddBtn.Parent = TimeControlFrame
 
+local GlobalDynamicTime = 7.55
+
+TimeTextBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local val = tonumber(TimeTextBox.Text)
+    if val then GlobalDynamicTime = val end
+end)
+
 SubBtn.MouseButton1Click:Connect(function()
     local val = tonumber(TimeTextBox.Text) or 7.55
     TimeTextBox.Text = string.format("%.2f", val - 0.1)
+    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
 end)
 AddBtn.MouseButton1Click:Connect(function()
     local val = tonumber(TimeTextBox.Text) or 7.55
     TimeTextBox.Text = string.format("%.2f", val + 0.1)
+    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
 end)
 
 local LogScroll = Instance.new("ScrollingFrame")
@@ -319,9 +328,9 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             BotJugandoAhoraMismo = true
             DestroyNativeMinigames()
             
-            -- CAPTURAMOS EL TIEMPO DESDE LA CAJA DE TEXTO
-            local DYNAMIC_TIME = tonumber(TimeTextBox.Text) or 7.55
-            if not DYNAMIC_TIME or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
+            -- LECTURA DE VARIABLE GLOBAL AUTORIZADA
+            local DYNAMIC_TIME = GlobalDynamicTime
+            if type(DYNAMIC_TIME) ~= "number" or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
             
             AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
             local req1, start1 = ExtractTimes(primerMeltReturn)
@@ -422,4 +431,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.2 PURE AUTOMATON INICIADA. Monitor atrapa-errores activado y Limpio.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.3 ARCHITECT PATCH INICIADA. Monitor atrapa-errores activado y Limpio.", Color3.fromRGB(150, 255, 150))
