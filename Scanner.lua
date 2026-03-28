@@ -369,4 +369,9 @@ SellBtn.MouseButton1Click:Connect(function()
             end
         end)
         
-Log("💎 ModNINJA 7.0: Escoge ítems, pon la cant, y clica Vender.")
+        Log("✅ ¡LISTO! Venta remota completada en Modo Dios.", Color3.fromRGB(0, 255, 255))
+        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
+    end)
+end)
+
+Log("💎 ModDIOS 8.0: Escoge ítems, pon la cant, y clica Vender.")
