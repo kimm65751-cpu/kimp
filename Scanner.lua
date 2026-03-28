@@ -78,20 +78,32 @@ local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTADOS54545"
+CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTAddddDOS"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
 CopyBtn.Parent = Panel
 CopyBtn.MouseButton1Click:Connect(function() 
-    local data = table.concat(LogHistory, "\n")
-    pcall(function() setclipboard(data) end)
-    local ok = pcall(function() writefile("Inventario_Descifrado.txt", data) end)
-    if ok then
-        CopyBtn.Text = "✅ GUARDADO COMO: Inventario_Descifrado.txt"
-    else
-        CopyBtn.Text = "✅ ¡TEXTO COPIADO!"
+    local data = ""
+    for _, linea in ipairs(LogHistory) do
+        data = data .. linea .. "\n"
     end
+    
+    -- Ejecutar TODAS las formas conocidas de copiar texto en Roblox
+    local copiado = false
+    pcall(function() if setclipboard then setclipboard(data); copiado = true end end)
+    pcall(function() if toclipboard and not copiado then toclipboard(data); copiado = true end end)
+    
+    -- Cambio de texto visual agresivo
+    if copiado then
+        CopyBtn.Text = "✅ ¡COPIADO AL PORTAPAPELES CON ÉXITO!"
+    else
+        CopyBtn.Text = "✅ ¡INTENTO DE COPIADO ENVIADO!"
+    end
+    
+    task.delay(2, function()
+        CopyBtn.Text = "📋 COPIAR NOMBRES ENCONTRADOS"
+    end)
 end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
