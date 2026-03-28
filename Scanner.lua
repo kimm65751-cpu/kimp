@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.0 (THE FORGE LAB)
--- Ajuste Dinámico de Tiempos y Escáner Aislado de Estatus Negativos del Servidor.
+-- 🗡️ FORGE OMNI-ANALYZER V8.2 (THE PURE AUTOMATON)
+-- Exclusivo para Forja Perfecta. Atrapa-Errores Interno y Control Dinámico de Tiempos.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.0 - THE FORGE LAB"
+local SCRIPT_VERSION = "V8.2 - THE PURE AUTOMATON"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,9 +30,9 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(20, 60, 40)
-Title.Text = " 📡 FORGE V8.0 (THE FORGE LAB)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 200)
+Title.BackgroundColor3 = Color3.fromRGB(10, 60, 80)
+Title.Text = " 📡 FORGE V8.2 (PURE AUTOMATON)"
+Title.TextColor3 = Color3.fromRGB(150, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -121,33 +121,7 @@ AddBtn.MouseButton1Click:Connect(function()
     TimeTextBox.Text = string.format("%.2f", val + 0.1)
 end)
 
--- ==========================================
--- BOTON ESCÁNER DE AFECTACIONES
--- ==========================================
-local ScanInventoryBtn = Instance.new("TextButton")
-ScanInventoryBtn.Size = UDim2.new(1, -8, 0, 30)
-ScanInventoryBtn.Position = UDim2.new(0, 4, 0, 115)
-ScanInventoryBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 150)
-ScanInventoryBtn.Text = "🔍 ANALIZAR MI EQUIPAMENTO (BUSCAR ESTATUS NEGATIVOS)"
-ScanInventoryBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ScanInventoryBtn.Font = Enum.Font.Code
-ScanInventoryBtn.TextSize = 12
-ScanInventoryBtn.Parent = Panel
-
--- ==========================================
--- ZONA DE LOGS Y CONTROLES NORMALES
--- ==========================================
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -195)
-LogScroll.Position = UDim2.new(0, 4, 0, 150)
-LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
-LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 6
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.Parent = Panel
-local ListLayout = Instance.new("UIListLayout", LogScroll)
-ListLayout.Padding = UDim.new(0, 2)
-
+-- Botones extraidos
 local ControlsFrame = Instance.new("Frame")
 ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
 ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
@@ -173,19 +147,17 @@ CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
 CopyBtn.Parent = ControlsFrame
 
-local DumpTableDeep
-DumpTableDeep = function(tbl, depth)
-    depth = depth or 0
-    if type(tbl) ~= "table" then return tostring(tbl) end
-    if depth > 5 then return "{MAX_DEPTH}" end
-    local str = "{"
-    for k, v in pairs(tbl) do
-        local vt = typeof(v)
-        if vt == "table" then str = str .. "["..tostring(k).."]=" .. DumpTableDeep(v, depth + 1) .. ", "
-        else str = str .. "["..tostring(k).."]=" .. tostring(v) .. ", " end
-    end
-    return str .. "}"
-end
+-- Botón AutoBot Eliminado (solo queda el ControlFrame)
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Size = UDim2.new(1, -8, 1, -165)
+LogScroll.Position = UDim2.new(0, 4, 0, 120)
+LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
+LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogScroll.ScrollBarThickness = 6
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogScroll.Parent = Panel
+local ListLayout = Instance.new("UIListLayout", LogScroll)
+ListLayout.Padding = UDim.new(0, 2)
 
 local MasterLogList = {}
 local ModosBypass = {BotActivo = false}
@@ -261,38 +233,8 @@ CopyBtn.MouseButton1Click:Connect(function()
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- ==========================================
--- LA EXTRACCIÓN MASIVA DE ESTATUS
--- ==========================================
-ScanInventoryBtn.MouseButton1Click:Connect(function()
-    AddUILog("SCANNER", "Iniciando escaneo Profundo de Estatus de Equipo...", Color3.fromRGB(200, 100, 255))
-    local RS = game:GetService("ReplicatedStorage")
-    local found = false
-    
-    for _, v in pairs(RS:GetDescendants()) do
-        if v:IsA("RemoteFunction") and (string.find(string.lower(v.Name), "equipment") or string.find(string.lower(v.Name), "inventory")) then
-            AddUILog("SCANNER", "¡Se encontró RemoteFunction de Equipo! (".. v.Name .. ")", Color3.fromRGB(0, 255, 255))
-            task.spawn(function()
-                local s, data = pcall(function() return v:InvokeServer() end)
-                if s then
-                    local rawText = DumpTableDeep(data)
-                    AddUILog("DATA_DUMP", "DATA CRUDA DEL SERVER: \n" .. rawText, Color3.fromRGB(255, 200, 100))
-                    
-                    if string.find(string.lower(rawText), "negative") or string.find(string.lower(rawText), "swiftness") then
-                        AddUILog("ALERTA_ESTATUS", "¡SE DETECTARON ESTATUS NEGATIVOS EN LA BÚSQUEDA!", Color3.fromRGB(255, 0, 0))
-                    end
-                else
-                    AddUILog("SCANNER", "Falló la lectura: " .. tostring(data), Color3.fromRGB(255, 0, 0))
-                end
-            end)
-            found = true
-        end
-    end
-    if not found then AddUILog("SCANNER", "No se encontró el manejador de Inventario general en ReplicatedStorage.", Color3.fromRGB(150, 150, 150)) end
-end)
-
-
-local function CatchServerResponses()
+-- Botón Limpiar Logs
+ClearBtn.MouseButton1Click:Connect(function()
     local RS = game:GetService("ReplicatedStorage")
     for _, v in pairs(RS:GetDescendants()) do
         if v:IsA("RemoteEvent") then
@@ -311,8 +253,10 @@ CatchServerResponses()
 
 local function ExtractTimes(tbl)
     local req, start = nil, nil
+    local seen = {}
     local function search(t)
-        if type(t) ~= "table" then return end
+        if type(t) ~= "table" or seen[t] then return end
+        seen[t] = true
         for k, v in pairs(t) do
             if type(k) == "string" and k == "RequiredTime" then req = v end
             if type(k) == "string" and k == "StartTime" then start = v end
@@ -363,50 +307,55 @@ end
 
 local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
     task.spawn(function()
-        BotJugandoAhoraMismo = true
-        DestroyNativeMinigames()
-        
-        -- CAPTURAMOS EL TIEMPO DESDE LA CAJA DE TEXTO
-        local DYNAMIC_TIME = tonumber(TimeTextBox.Text) or 7.55
-        
-        AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
-        local req1, start1 = ExtractTimes(primerMeltReturn)
-        req1 = req1 or 2.15
-        start1 = start1 or workspace:GetServerTimeNow()
-        local trueTime1 = WaitUntilServerTime(start1 + req1)
-        
-        AddUILog("BOT_V8", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
-        local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
-        local req2, start2 = ExtractTimes(r2)
-        req2 = req2 or 4.50
-        start2 = start2 or workspace:GetServerTimeNow()
-        local trueTime2 = WaitUntilServerTime(start2 + req2)
-        
-        AddUILog("BOT_V8", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
-        local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
-        local req3, start3 = ExtractTimes(r3)
-        req3 = req3 or DYNAMIC_TIME
-        start3 = start3 or workspace:GetServerTimeNow()
-        AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s...", Color3.fromRGB(200, 150, 0))
-        local trueTime3 = WaitUntilServerTime(start3 + req3)
-        
-        AddUILog("BOT_V8", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(50,255,200))
-        local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
-        local req4, start4 = ExtractTimes(r4)
-        req4 = req4 or DYNAMIC_TIME
-        start4 = start4 or workspace:GetServerTimeNow()
-        AddUILog("BOT_V8", "⏳ Water Delay: " .. string.format("%.2f", req4) .. "s...", Color3.fromRGB(255, 50, 50))
-        WaitUntilServerTime(start4 + req4)
-        
-        AddUILog("BOT_V8", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
-        SafeInvoke(forgeRF, "Showcase", nil)
-        task.wait(3)
-        
-        AddUILog("BOT_V8", ">> Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
-        SafeInvoke(forgeRF, "EndForge", nil)
-        AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
-        
-        BotJugandoAhoraMismo = false
+        xpcall(function()
+            BotJugandoAhoraMismo = true
+            DestroyNativeMinigames()
+            
+            -- CAPTURAMOS EL TIEMPO DESDE LA CAJA DE TEXTO
+            local DYNAMIC_TIME = tonumber(TimeTextBox.Text) or 7.55
+            
+            AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
+            local req1, start1 = ExtractTimes(primerMeltReturn)
+            req1 = req1 or 2.15
+            start1 = start1 or workspace:GetServerTimeNow()
+            local trueTime1 = WaitUntilServerTime(start1 + req1)
+            
+            AddUILog("BOT_V8", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
+            local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
+            local req2, start2 = ExtractTimes(r2)
+            req2 = req2 or 4.50
+            start2 = start2 or workspace:GetServerTimeNow()
+            local trueTime2 = WaitUntilServerTime(start2 + req2)
+            
+            AddUILog("BOT_V8", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
+            local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
+            local req3, start3 = ExtractTimes(r3)
+            req3 = req3 or DYNAMIC_TIME
+            start3 = start3 or workspace:GetServerTimeNow()
+            AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s...", Color3.fromRGB(200, 150, 0))
+            local trueTime3 = WaitUntilServerTime(start3 + req3)
+            
+            AddUILog("BOT_V8", ">> Ejecutando fase 4: Water (Círculos)...", Color3.fromRGB(50,255,200))
+            local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
+            local req4, start4 = ExtractTimes(r4)
+            req4 = req4 or DYNAMIC_TIME
+            start4 = start4 or workspace:GetServerTimeNow()
+            AddUILog("BOT_V8", "⏳ Water Delay: " .. string.format("%.2f", req4) .. "s...", Color3.fromRGB(255, 50, 50))
+            WaitUntilServerTime(start4 + req4)
+            
+            AddUILog("BOT_V8", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
+            SafeInvoke(forgeRF, "Showcase", nil)
+            task.wait(3)
+            
+            AddUILog("BOT_V8", ">> Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
+            SafeInvoke(forgeRF, "EndForge", nil)
+            AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
+            
+            BotJugandoAhoraMismo = false
+        end, function(err)
+            BotJugandoAhoraMismo = false
+            AddUILog("FATAL_ERROR", "ERROR DEL SISTEMA: " .. tostring(err), Color3.fromRGB(255, 0, 0))
+        end)
     end)
 end
 
@@ -464,4 +413,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.0 LAB INICIADA. Sistema de congelamiento ignorado.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.2 PURE AUTOMATON INICIADA. Monitor atrapa-errores activado.", Color3.fromRGB(150, 255, 150))
