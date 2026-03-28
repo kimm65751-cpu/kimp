@@ -1,9 +1,9 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V7.1 (THE WELD-BREAKER)
--- Demolición de ataduras físicas (Welds/Sit) y Tiempos de Clase Mundial (7.35s).
+-- 🗡️ FORGE OMNI-ANALYZER V7.2 (THE JAILBREAKER)
+-- Exterminador de Scripts muertos (Anti-Freeze) y Asalto al 8.05s para el 100%.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V7.1 - OMEGA WELD-BREAKER"
+local SCRIPT_VERSION = "V7.2 - OMEGA JAILBREAKER"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,8 +30,8 @@ Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
-Title.Text = " 📡 FORGE V7.1 (WELD-BREAKER OMEGA)"
+Title.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
+Title.Text = " 📡 FORGE V7.2 (JAILBREAKER OMEGA)"
 Title.TextColor3 = Color3.fromRGB(200, 255, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -106,9 +106,9 @@ local ModosBypass = {BotActivo = false}
 local BotJugandoAhoraMismo = false
 local BotBypassingNetwork = false
 
--- Ajuste de calidad supremo basado en la escalada (61% a 62%). Ahora probamos la cima asintótica: 7.35s
-local HAMMER_DELAY = 7.35
-local WATER_DELAY = 7.35
+-- Ajuste supremo de escala: 62% (6.65s) -> 68% (7.35s). Forzamos 8.05s persiguiendo el oro.
+local HAMMER_DELAY = 8.05
+local WATER_DELAY = 8.05
 
 local function SaveLogToFile(message)
     task.spawn(function()
@@ -243,7 +243,19 @@ local function PlayerCleanup()
         cam.CameraType = Enum.CameraType.Custom
         if char then cam.CameraSubject = char:FindFirstChild("Humanoid") end
         
-        AddUILog("SISTEMA", "¡HARD RESET COMPLETADO! Inventario, Cámara y Movimiento resucitados nativamente.", Color3.fromRGB(150,255,255))
+        -- EL EXTERMINADOR DE HILOS MUERTOS (THE JAILBREAKER)
+        for _, v in pairs(Players.LocalPlayer.PlayerScripts:GetDescendants()) do
+            if v:IsA("LocalScript") then
+                local nl = string.lower(v.Name)
+                if string.find(nl, "forge") or string.find(nl, "minigame") then
+                    v.Disabled = true
+                    task.wait(0.05)
+                    v.Disabled = false
+                end
+            end
+        end
+        
+        AddUILog("SISTEMA", "¡HARD RESET COMPLETADO! Hilos muertos reiniciados, cámara lista.", Color3.fromRGB(150,255,255))
     end)
 end
 
@@ -404,5 +416,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V7.1 WELD-BREAKER INICIADA.", Color3.fromRGB(150, 255, 150))
-AddUILog("AVISO", "El Bot destruirá WELDS físicos que te dejan pegado al horno y aumenté los tiempos a 7.35s para raspar más Calidad.", Color3.fromRGB(200, 255, 100))
+AddUILog("SISTEMA", "V7.2 JAILBREAKER INICIADA. Escala matemática 8.05s (+75%).", Color3.fromRGB(150, 255, 150))
+AddUILog("AVISO", "El Bot aplicará The Jailbreaker (Reinicio forzado) al script nativo de Forja para romper bloqueos.", Color3.fromRGB(200, 255, 100))
