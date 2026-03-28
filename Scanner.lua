@@ -78,48 +78,12 @@ local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 GUARDAR/COPIAR RESrrrrULTADOS"
+CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTADOS"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
 CopyBtn.Parent = Panel
-CopyBtn.MouseButton1Click:Connect(function() 
-    local data = ""
-    for _, linea in ipairs(LogHistory) do
-        data = data .. linea .. "\n"
-    end
-    
-    local copiado = false
-    
-    if setclipboard then 
-        local ok = pcall(function() setclipboard(data) end)
-        if ok then copiado = true end
-    end
-    
-    if not copiado and toclipboard then
-        local ok = pcall(function() toclipboard(data) end)
-        if ok then copiado = true end
-    end
-    
-    if copiado then
-        CopyBtn.Text = "✅ COPIADO!"
-        CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    else
-        CopyBtn.Text = "❌ CLIPBOARD MURIÓ"
-        CopyBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
-    end
-
-    task.delay(3, function()
-        pcall(function()
-            CopyBtn.Text = "📋 COPIAR NOMBRES ENCONTRADOS"
-            CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-        end)
-    end)
-    
-    pcall(function()
-        if writefile then writefile("Inventario_Descifrado.txt", data) end
-    end)
-end)
+CopyBtn.MouseButton1Click:Connect(function() pcall(function() setclipboard(table.concat(LogHistory, "\n")); CopyBtn.Text = "✅" end) task.delay(2, function() CopyBtn.Text = "📋 COPIAR" end) end)
 
 Log("==========================================", Color3.fromRGB(150, 150, 150))
 Log("🎯 ANALIZADOR ESTRUCTURAL DE INVENTARIO", Color3.fromRGB(255, 255, 0))
