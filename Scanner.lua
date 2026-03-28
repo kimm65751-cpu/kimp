@@ -8,19 +8,8 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
--- ESCUDO ANTI-CONGELAMIENTO (PARÁLISIS INVISIBLE)
+-- (Escudo eliminado para evitar bugs de Animación en Delta)
 -- ==========================================
-if not getgenv().InmunidadV8Activa then
-    getgenv().InmunidadV8Activa = true
-    local OriginalNewIndex
-    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
-        if not checkcaller() then
-            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
-            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then return end
-        end
-        return OriginalNewIndex(t, k, v)
-    end)
-end
 
 -- ==========================================
 -- BUSCADOR DE REMOTOS
@@ -119,7 +108,7 @@ end)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V511.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.2"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -266,6 +255,22 @@ local function EjecutarVentaNinja(miBasket)
             end
         end)
         pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        
+        -- DESCONGELACIÓN FORZADA (Sin usar metahooks que rompen Delta)
+        task.spawn(function()
+            for i = 1, 5 do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char then
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        local hum = char:FindFirstChild("Humanoid")
+                        if hrp then hrp.Anchored = false end
+                        if hum and hum.WalkSpeed < 16 then hum.WalkSpeed = 16 end
+                    end
+                end)
+                task.wait(0.5)
+            end
+        end)
         Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
