@@ -83,7 +83,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V6"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO222 V5.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -173,6 +173,33 @@ local function EscanearCantidadesGlobales()
         end
     end)
     return dir
+end
+
+-- ==========================================
+-- ESCUDO INMUNOLÓGICO Y RASTREADOR (__newindex)
+-- ==========================================
+if not getgenv().InmunidadV10Activa then
+    getgenv().InmunidadV10Activa = true
+    local OriginalNewIndex
+    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
+        if not checkcaller() then
+            -- Prevenir Anclaje Físico (Secuestro de movimiento)
+            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then
+                return -- ABORTAMOS EL CAMBIO
+            end
+            
+            -- Prevenir Secuestro de Cámara (ESTO CAUSABA EL BLOQUEO INMÓVIL AL PISO)
+            if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then
+                return -- ABORTAMOS EL CAMBIO
+            end
+            
+            -- Prevenir Reducción de Velocidad (Parálisis)
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then
+                return -- ABORTAMOS EL CAMBIO
+            end
+        end
+        return OriginalNewIndex(t, k, v)
+    end)
 end
 
 -- ==========================================
