@@ -218,38 +218,73 @@ BtnInv.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- 2. ESCANEAR NPC "SEY CODICIOSO"
+-- 2. ESCANEAR NPC SEY (BÚSQUEDA PROFUNDA)
 -- ==========================================
 BtnNPC.MouseButton1Click:Connect(function()
     AddLog("NPC", "══════════════════════════════════", Color3.fromRGB(255, 150, 50))
-    AddLog("NPC", "🕵️ BUSCANDO A 'SEY CODICIOSO' EN EL MAPA...", Color3.fromRGB(255, 200, 100))
+    AddLog("NPC", "🕵️ INICIANDO ESCANEO FORENSE DE SEY...", Color3.fromRGB(255, 200, 100))
     
-    local seyFound = nil
+    local posiblesNPCs = {}
+    
+    -- Escaneo 1: Buscar por Textos sobre la cabeza (BillboardGui)
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and string.find(string.lower(obj.Name), "sey") then
-            seyFound = obj
-            break
-        end
-    end
-    
-    if seyFound then
-        local hrp = seyFound:FindFirstChild("HumanoidRootPart") or seyFound:FindFirstChildWhichIsA("BasePart")
-        if hrp then
-            local pos = hrp.Position
-            AddLog("NPC", "✅ ¡Sey Codicioso Encontrado!", Color3.fromRGB(0, 255, 0))
-            AddLog("NPC", "📍 Coordenadas: " .. string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z), Color3.fromRGB(0, 255, 255))
-            
-            -- Buscar Prompts de Proximidad
-            local prompt = seyFound:FindFirstChildWhichIsA("ProximityPrompt", true)
-            if prompt then
-                AddLog("NPC", "💬 Prompt interactivo encontrado: " .. prompt.ActionText .. " (" .. prompt:GetFullName() .. ")", Color3.fromRGB(0, 255, 100))
-            else
-                AddLog("NPC", "⚠️ No tiene ProximityPrompt. Solo se interactúa por click o evento de distancia.", Color3.fromRGB(255, 255, 0))
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            local textLower = string.lower(obj.Text)
+            if string.find(textLower, "sey") or string.find(textLower, "codic") or string.find(textLower, "greedy") then
+                -- Si encontramos el texto, buscamos el Modelo padre
+                local parent = obj
+                while parent and not parent:IsA("Model") do
+                    parent = parent.Parent
+                end
+                if parent then
+                    posiblesNPCs[parent] = "Texto GUI: " .. obj.Text
+                end
             end
         end
-    else
-        AddLog("NPC", "❌ NPC 'Sey' no encontrado en el mapa visible.", Color3.fromRGB(255, 100, 100))
+        -- Escaneo 2: Buscar por nombre del modelo
+        if obj:IsA("Model") then
+            local nameLower = string.lower(obj.Name)
+            if string.find(nameLower, "sey") or string.find(nameLower, "merchant") or string.find(nameLower, "sell") then
+                posiblesNPCs[obj] = "Nombre Modelo: " .. obj.Name
+            end
+        end
     end
+    
+    -- Analizar resultados
+    local count = 0
+    for npcModel, motivo in pairs(posiblesNPCs) do
+        count = count + 1
+        AddLog("NPC", "✅ ¡Posible Sey Encontrado! (" .. count .. ")", Color3.fromRGB(0, 255, 0))
+        AddLog("NPC", "   Nombre REAL del Objeto: " .. npcModel.Name, Color3.fromRGB(0, 255, 255))
+        AddLog("NPC", "   Motivo: " .. motivo, Color3.fromRGB(200, 200, 200))
+        
+        -- Coordenadas
+        local hrp = npcModel:FindFirstChild("HumanoidRootPart") or npcModel:FindFirstChildWhichIsA("BasePart")
+        if hrp then
+            local pos = hrp.Position
+            AddLog("NPC", "   📍 Coordenadas: " .. string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z), Color3.fromRGB(255, 255, 0))
+        end
+        
+        -- Buscar Prompts y Scripts
+        local prompt = npcModel:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt then
+            AddLog("NPC", "   💬 Prompt: [" .. prompt.ActionText .. "] -> Padre: " .. prompt.Parent.Name, Color3.fromRGB(0, 255, 100))
+        else
+            AddLog("NPC", "   ⚠️ No usa ProximityPrompt. Es un NPC clickeable o usa Raycast.", Color3.fromRGB(255, 150, 150))
+        end
+        
+        -- Atributos Ocultos
+        local attrs = npcModel:GetAttributes()
+        for k, v in pairs(attrs) do
+            AddLog("NPC", "   ⚙️ Atributo interno: " .. k .. " = " .. tostring(v), Color3.fromRGB(150, 150, 255))
+        end
+        AddLog("NPC", "   ------------------------", Color3.fromRGB(50, 50, 50))
+    end
+    
+    if count == 0 then
+        AddLog("NPC", "❌ No se encontró ningún NPC físico con 'Sey'. Puede que esté oculto en una zona lejana o cargue dinámicamente.", Color3.fromRGB(255, 100, 100))
+    end
+    AddLog("NPC", "🎯 Siguiente paso: Háblale y vende algo con el Interceptor Activado.", Color3.fromRGB(255, 255, 0))
 end)
 
 -- ==========================================
