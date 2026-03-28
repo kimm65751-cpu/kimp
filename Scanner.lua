@@ -83,7 +83,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.5"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -325,16 +325,17 @@ SellBtn.MouseButton1Click:Connect(function()
         
         local basketStr = "{"
         for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
-        basketStr = basketStr .. "}"
-        Log("📦 Basket: " .. basketStr, Color3.fromRGB(200, 200, 200))
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local oldCFrame = root and root.CFrame
         
         -- ========== PASO 1: ENGAÑAR CON EL MENÚ MISC DIRECTAMENTE ==========
-        -- ¡Omitimos Dialogue(SeyNPC) para ver si evitamos el Teleport forzado!
         Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
         local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
         if not ok1 then Log("❌ ForceDialogue Falló: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) end
         
         task.wait(0.2)
+        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
         
         -- ========== PASO 2: VENTA PURA Y DURA ==========
         Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
@@ -348,30 +349,41 @@ SellBtn.MouseButton1Click:Connect(function()
             Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
         end
         
-        task.wait(0.3)
+        -- Retorno de Posición Instántaneo
+        if root and oldCFrame then
+            root.CFrame = oldCFrame
+            Log("👻 Posición restaurada al punto de origen", Color3.fromRGB(150, 255, 150))
+        end
         
-        -- ========== PASO 3: LIMPIEZA SILENCIOSA ==========
-        Log("🔓 [3/3] Cerrando chat del Servidor y Ocultando UI", Color3.fromRGB(255, 150, 0))
+        task.wait(0.5) -- Damos tiempo al juego de dibujar la UI de despedida
         
-        -- Le decimos al servidor que ya nos fuimos
-        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        -- ========== PASO 3: LIMPIEZA SILENCIOSA Y AUTO-ADIÓS ==========
+        Log("🔓 [3/3] Auto-Clickeando el botón 'Adiós'...", Color3.fromRGB(255, 150, 0))
+        local adiosVisto = false
         
-        -- Cerramos cualquier barra de texto que se haya abierto
         pcall(function()
             for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                if obj:IsA("TextLabel") and obj.Visible then
-                    if string.find(obj.Text, "Generoso") or string.find(obj.Text, "acuerdo") then
-                        local p = obj
-                        while p and not p:IsA("ScreenGui") do p = p.Parent end
-                        if p then p.Enabled = false end
+                if obj:IsA("TextButton") and obj.Visible then
+                    local t = string.lower(obj.Text)
+                    if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
+                        adiosVisto = true
+                        Log("✅ Botón Adiós encontrado: " .. obj.Text, Color3.fromRGB(0, 255, 0))
+                        pcall(function() firesignal(obj.MouseButton1Click) end)
+                        pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
                     end
                 end
             end
         end)
         
-        Log("✅ ¡LISTO! Venta remota completada en Modo Dios.", Color3.fromRGB(0, 255, 255))
+        if not adiosVisto then
+            Log("⚠️ Aviso: El botón 'Adiós' no se encontró o estaba oculto.", Color3.fromRGB(255, 255, 0))
+        end
+        
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        
+        Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
         Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
 end)
 
-Log("💎 ModDIOS 8.0: Escoge ítems, pon la cant, y clica Vender.")
+Log("💎 ModV8.1: Escoge ítems, pon la cant, y clica Vender.")
