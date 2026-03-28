@@ -314,14 +314,15 @@ BtnHook.MouseButton1Click:Connect(function()
                     local name = tostring(self.Name)
                     local args = {...}
                     
-                    -- Filtramos todo menos lo relacionado a ventas o dialogo
-                    local isRelevant = string.find(string.lower(name), "sell") or 
-                                     string.find(string.lower(name), "dialogue") or 
-                                     string.find(string.lower(name), "purchase") or
-                                     string.find(string.lower(name), "recycle") or
-                                     string.find(string.lower(name), "npc")
-                                     
-                    if isRelevant then
+                    -- Excluir remotos que generan spam de la consola (movimientos, golpes, exp, animaciones)
+                    local lowName = string.lower(name)
+                    local spam = string.find(lowName, "toolactivated") or 
+                                 string.find(lowName, "mouse") or 
+                                 string.find(lowName, "movement") or 
+                                 string.find(lowName, "updateexp") or
+                                 string.find(lowName, "camera")
+                                 
+                    if not spam then
                         task.spawn(function()
                             AddLog("HOOK_OUT", "📤 " .. method .. " -> " .. name, Color3.fromRGB(255, 50, 255))
                             
