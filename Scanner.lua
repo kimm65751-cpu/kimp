@@ -13,6 +13,7 @@ local LocalPlayer = Players.LocalPlayer
 local RF_RunCommand = nil
 local RE_DialogueEvent = nil
 local RF_ForceDialogue = nil
+local RF_Dialogue = nil
 local SeyNPC = nil
 
 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -26,6 +27,7 @@ for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
     if obj:IsA("RemoteFunction") then
         if obj.Name == "RunCommand" then RF_RunCommand = obj end
         if obj.Name == "ForceDialogue" then RF_ForceDialogue = obj end
+        if obj.Name == "Dialogue" then RF_Dialogue = obj end
     elseif obj:IsA("RemoteEvent") then
         if obj.Name == "DialogueEvent" then RE_DialogueEvent = obj end
     end
@@ -252,23 +254,48 @@ SellBtn.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         Log("==============================", Color3.fromRGB(100,100,100))
-        Log("🚀 INYECTANDO VENTA LIMPIA...", Color3.fromRGB(0, 255, 255))
+        Log("🚀 INICIANDO HANDSHAKE DE VENTA...", Color3.fromRGB(0, 255, 255))
         Log("📦 Basket: " .. SmartDump(miBasket), Color3.fromRGB(200, 200, 200))
         
-        -- VENTA PURA (Sin los bypass falsos que reiniciaban el dialogo a 0)
-        Log("📤 Ejecutando InvokeServer -> RunCommand('SellConfirm')", Color3.fromRGB(255, 0, 255))
+        -- PASO 1: Iniciar charla con Sey para registrar la sesión en el servidor
+        if RF_Dialogue and SeyNPC then
+            Log("🗣️ 1. Invocando Dialogue con SeyNPC", Color3.fromRGB(255, 150, 0))
+            pcall(function() RF_Dialogue:InvokeServer(SeyNPC) end)
+        else
+            Log("⚠️ RF_Dialogue no encontrado, podría fallar...", Color3.fromRGB(255, 0, 0))
+        end
         
+        -- PASO 2: Abrir canal de texto
+        if RE_DialogueEvent then
+            Log("🔓 2. DialogueEvent -> 'Opened'", Color3.fromRGB(255, 150, 0))
+            pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        end
+        
+        -- PASO 3: Transición a Modo Venta Misc
+        if RF_ForceDialogue and SeyNPC then
+            Log("🛒 3. ForceDialogue -> 'SellConfirmMisc'", Color3.fromRGB(255, 150, 0))
+            pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        end
+        
+        -- PASO 4: Confirmar apertura del sub-menú (lo que vimos en logs)
+        if RE_DialogueEvent then
+            Log("🔓 4. DialogueEvent -> 'Opened' (Sub-menú)", Color3.fromRGB(255, 150, 0))
+            pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        end
+        
+        -- PASO 5: LA ORDEN REAL DE VENTA CON NUESTRA TABLA
+        Log("💰 5. RunCommand('SellConfirm', Basket)", Color3.fromRGB(255, 0, 255))
         local exito, resp1, resp2 = pcall(function()
             return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
         end)
         
         if exito then
             Log("📥 Respuesta de Server: " .. SmartDump(resp1) .. " | " .. SmartDump(resp2), Color3.fromRGB(0, 255, 0))
-            Log("💬 Revisa tu pantalla: Sey debería ofrecerte una cantidad. Dale a ACUERDO para vender.", Color3.fromRGB(255, 255, 0))
+            Log("💬 MIRA EL JUEGO: Si te dice 'Te daré X oro', dale a 1.[Acuerdo.]", Color3.fromRGB(255, 255, 0))
         else
             Log("❌ Error Interno CRASH: " .. tostring(resp1), Color3.fromRGB(255, 0, 0))
         end
         
-        Log("✅ Inyección finalizada. Revisa tu inventario si aceptaste.", Color3.fromRGB(0, 255, 255))
+        Log("✅ Handshake enviado. Cruza los dedos.", Color3.fromRGB(0, 255, 255))
     end)
 end)
