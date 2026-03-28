@@ -70,20 +70,41 @@ ScreenGui.Name = "AutoVendorProUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
+local UIS = game:GetService("UserInputService")
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 480, 0, 580)
-Panel.Position = UDim2.new(0, 50, 0.5, -290)
+Panel.Size = UDim2.new(0, 480, 0, 400)
+Panel.Position = UDim2.new(0, 50, 0.5, -200)
 Panel.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 Panel.BorderSizePixel = 2
 Panel.BorderColor3 = Color3.fromRGB(100, 150, 255)
 Panel.Active = true
-Panel.Draggable = true
 Panel.Parent = ScreenGui
+
+local dragging, dragInput, dragStart, startPos
+Panel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Panel.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+Panel.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REMOTO V5.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V14.0"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -100,124 +121,9 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.Parent = Panel
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- CONSOLA DE LOGS
-local TermScroll = Instance.new("ScrollingFrame")
-TermScroll.Size = UDim2.new(1, -10, 0, 160)
-TermScroll.Position = UDim2.new(0, 5, 0, 35)
-TermScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-TermScroll.ScrollBarThickness = 6
-TermScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-TermScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-TermScroll.Parent = Panel
-Instance.new("UIListLayout", TermScroll).Padding = UDim.new(0, 2)
-
-local LogHistory = {}
 local function Log(texto, color)
-    local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -4, 0, 0)
-    msg.BackgroundTransparency = 1
-    msg.Text = "[" .. os.date("%H:%M:%S") .. "] " .. texto
-    msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    msg.Font = Enum.Font.Code
-    msg.TextSize = 10
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextWrapped = true
-    msg.Parent = TermScroll
-    local tsz = game:GetService("TextService"):GetTextSize(msg.Text, msg.TextSize, msg.Font, Vector2.new(TermScroll.AbsoluteSize.X-15, math.huge))
-    msg.Size = UDim2.new(1, -4, 0, tsz.Y + 2)
-    TermScroll.CanvasPosition = Vector2.new(0, 999999)
-    table.insert(LogHistory, msg.Text)
+    print("[AutoVendedorPRO] " .. string.gsub(texto, "❌", "ERROR:"))
 end
-
--- ==========================================
--- ESCUDO INMUNOLÓGICO Y RASTREADOR (__newindex)
--- ==========================================
-if not getgenv().InmunidadV8Activa then
-    getgenv().InmunidadV8Activa = true
-    local OriginalNewIndex
-    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
-        if not checkcaller() then
-            -- Prevenir Anclaje Físico (Secuestro de movimiento)
-            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then
-                task.spawn(function()
-                    Log("🛡️ BLOQUEADO: Intento de anclaje físico evadido.", Color3.fromRGB(50, 255, 50))
-                    local trace = debug.traceback()
-                    for line in string.gmatch(trace, "[^\r\n]+") do
-                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
-                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
-                        end
-                    end
-                end)
-                return -- ABORTAMOS EL CAMBIO
-            end
-            
-            -- Prevenir Secuestro de Cámara
-            if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then
-                task.spawn(function()
-                    Log("🛡️ BLOQUEADO: Intento de rotar tu cámara a " .. tostring(v), Color3.fromRGB(50, 255, 50))
-                    local trace = debug.traceback()
-                    for line in string.gmatch(trace, "[^\r\n]+") do
-                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
-                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
-                        end
-                    end
-                end)
-                return -- ABORTAMOS EL CAMBIO
-            end
-            
-            -- Prevenir Reducción de Velocidad (Parálisis)
-            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then
-                task.spawn(function()
-                    Log("🛡️ BLOQUEADO: Intento de paralizar tu velocidad.", Color3.fromRGB(50, 255, 50))
-                    local trace = debug.traceback()
-                    for line in string.gmatch(trace, "[^\r\n]+") do
-                        if string.find(line, "PlayerScripts") or string.find(line, "ReplicatedStorage") then
-                            Log("   -> Culpable: " .. line, Color3.fromRGB(255, 100, 100))
-                        end
-                    end
-                end)
-                return -- ABORTAMOS EL CAMBIO
-            end
-        end
-        return OriginalNewIndex(t, k, v)
-    end)
-    Log("🛡️ MOTOR DE INMUNIDAD Y RASTREO V8 ACTIVO.", Color3.fromRGB(0, 255, 255))
-end
-
--- Controles de Log
-local LogControls = Instance.new("Frame")
-LogControls.Size = UDim2.new(1, -10, 0, 20)
-LogControls.Position = UDim2.new(0, 5, 0, 198)
-LogControls.BackgroundTransparency = 1
-LogControls.Parent = Panel
-
-local CopyLogBtn = Instance.new("TextButton")
-CopyLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
-CopyLogBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyLogBtn.Text = "📋 COPIAR LOG"
-CopyLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyLogBtn.Font = Enum.Font.Code
-CopyLogBtn.TextSize = 10
-CopyLogBtn.Parent = LogControls
-CopyLogBtn.MouseButton1Click:Connect(function()
-    pcall(function() setclipboard(table.concat(LogHistory, "\n")) end)
-    CopyLogBtn.Text = "✅ COPIADO"
-    task.delay(1.5, function() CopyLogBtn.Text = "📋 COPIAR LOG" end)
-end)
-
-local ClearLogBtn = Instance.new("TextButton")
-ClearLogBtn.Size = UDim2.new(0.5, -2, 1, 0)
-ClearLogBtn.Position = UDim2.new(0.5, 2, 0, 0)
-ClearLogBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-ClearLogBtn.Text = "🗑️ LIMPIAR"
-ClearLogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClearLogBtn.Font = Enum.Font.Code
-ClearLogBtn.TextSize = 10
-ClearLogBtn.Parent = LogControls
-ClearLogBtn.MouseButton1Click:Connect(function()
-    for _, v in ipairs(TermScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
-    LogHistory = {}
-end)
 
 -- Estado
 Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") .. 
@@ -354,8 +260,8 @@ end
 -- INTERFAZ
 -- ==========================================
 local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -10, 1, -290)
-Scroll.Position = UDim2.new(0, 5, 0, 223)
+Scroll.Size = UDim2.new(1, -10, 1, -95)
+Scroll.Position = UDim2.new(0, 5, 0, 35)
 Scroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
 Scroll.ScrollBarThickness = 6
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
