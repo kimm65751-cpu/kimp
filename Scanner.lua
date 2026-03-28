@@ -28,7 +28,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-Title.Text = " 🕵️ EXTRACTOR DE NOMBRES REALES"
+Title.Text = " 🕵️ EXTRACTOR DE NOMBRES REALESdddd"
 Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -78,7 +78,7 @@ local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(1, -10, 0, 40)
 CopyBtn.Position = UDim2.new(0, 5, 1, -45)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTAddddDOS"
+CopyBtn.Text = "📋 GUARDAR/COPIAR RESULTADOS"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
 CopyBtn.TextSize = 12
@@ -89,20 +89,32 @@ CopyBtn.MouseButton1Click:Connect(function()
         data = data .. linea .. "\n"
     end
     
-    -- Ejecutar TODAS las formas conocidas de copiar texto en Roblox
-    local copiado = false
-    pcall(function() if setclipboard then setclipboard(data); copiado = true end end)
-    pcall(function() if toclipboard and not copiado then toclipboard(data); copiado = true end end)
+    pcall(function()
+        if setclipboard then
+            setclipboard(data)
+            CopyBtn.Text = "✅ COPIADO!"
+            CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+        elseif toclipboard then
+            toclipboard(data)
+            CopyBtn.Text = "✅ COPIADO!"
+            CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+        else
+            CopyBtn.Text = "❌ CLIPBOARD NO DISPONIBLE"
+            CopyBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+        end
+        task.delay(3, function()
+            pcall(function()
+                CopyBtn.Text = "📋 COPIAR NOMBRES ENCONTRADOS"
+                CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+            end)
+        end)
+    end)
     
-    -- Cambio de texto visual agresivo
-    if copiado then
-        CopyBtn.Text = "✅ ¡COPIADO AL PORTAPAPELES CON ÉXITO!"
-    else
-        CopyBtn.Text = "✅ ¡INTENTO DE COPIADO ENVIADO!"
-    end
-    
-    task.delay(2, function()
-        CopyBtn.Text = "📋 COPIAR NOMBRES ENCONTRADOS"
+    -- Respaldo de seguridad en archivo
+    pcall(function()
+        if writefile then
+            writefile("Inventario_Descifrado.txt", data)
+        end
     end)
 end)
 
