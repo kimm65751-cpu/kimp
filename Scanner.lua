@@ -43,7 +43,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-Title.Text = " 🎯 RACE SNIPER V1.5 (GIROS GRATIS)"
+Title.Text = " 🎯 RACE SNIPER V1.6 (GIROS GRATIS)"
 Title.TextColor3 = Color3.fromRGB(255, 200, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -241,23 +241,27 @@ ArmBtn.MouseButton1Click:Connect(function()
                             end)
                             return raza
                         else
-                            -- ❌ NO LA QUEREMOS → BLOQUEAR. El juego se colgará.
-                            -- El usuario sale y entra = giro no gastado.
-                            task.spawn(function()
-                                ResultLabel.Text = "❌ " .. razaStr .. " → BLOQUEADO. Sal del juego."
-                                ResultLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-                                ResultLabel.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
-                                AddLog("SNIPER", "❌ Raza rechazada: " .. razaStr, Color3.fromRGB(255, 80, 80))
-                                AddLog("SNIPER", "🔒 RESPUESTA BLOQUEADA. El juego se colgará.", Color3.fromRGB(255, 50, 50))
-                                AddLog("SNIPER", "👉 SAL DEL JUEGO (Alt+F4 o cierra Roblox).", Color3.fromRGB(255, 255, 0))
-                                AddLog("SNIPER", "👉 Al volver a entrar, tu giro NO se habrá gastado.", Color3.fromRGB(255, 255, 0))
-                                AddLog("SNIPER", "👉 Ejecuta el script de nuevo y repite.", Color3.fromRGB(255, 255, 0))
+                            -- ❌ NO LA QUEREMOS → CONGELAR ROBLOX COMPLETO.
+                            -- Escribir al .txt ANTES de congelar (después no se puede)
+                            pcall(function()
+                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] ❌ Rechazada: " .. razaStr)
+                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] 🔒 CONGELANDO ROBLOX. Cierra con Task Manager/Alt+F4.")
+                                WriteToFile("[" .. os.date("%H:%M:%S") .. "] [SNIPER] Al volver a entrar, tu giro NO se habrá gastado.")
                             end)
                             
-                            -- BLOQUEO: Nunca retornamos. El hilo del juego muere aquí.
-                            while true do
-                                task.wait(9999)
-                            end
+                            task.spawn(function()
+                                ResultLabel.Text = "❌ " .. razaStr .. " → CONGELADO. Alt+F4 AHORA."
+                                ResultLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+                                ResultLabel.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+                            end)
+                            
+                            -- Esperar un instante para que los logs se escriban
+                            task.wait(0.3)
+                            
+                            -- CONGELAMIENTO DURO: Sin yield. Roblox entero se congela.
+                            -- PlayerRemoving NUNCA se dispara. DataStore NUNCA guarda.
+                            -- El usuario cierra con Alt+F4 o Task Manager.
+                            while true do end
                         end
                     end
                 end
