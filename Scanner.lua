@@ -37,7 +37,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 🕵️ FORGE V8.13 (AUTO-DIAGNOSTIC)"
+Title.Text = " 🕵️ FORGE V8.143 (AUTO-DIAGNOSTIC)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -365,10 +365,13 @@ end
 
 local function DestroyNativeMinigames()
     for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
-            if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
-                v:Destroy()
-            end
+        local nameLower = string.lower(v.Name)
+        if nameLower == "forge" then
+            -- CRÍTICO: NO destruir 'Forge' o el TutorialController crashea el 'RuntimeController'
+            pcall(function() v.Enabled = false end)
+        elseif string.find(nameLower, "minigame") then
+            -- DESTRUIR explícitamente los minijuegos nativos para matar su script local.
+            v:Destroy()
         end
     end
 end
