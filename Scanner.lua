@@ -149,7 +149,7 @@ local ReloadBtn = Instance.new("TextButton")
 ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
 ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
 ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
-ReloadBtn.Text = "🔄 RECARGAR SCRIEPT"
+ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
 ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
 ReloadBtn.Font = Enum.Font.Code
 ReloadBtn.TextSize = 11
@@ -1188,6 +1188,25 @@ local function EscanearMinerales()
     end)
     return dir
 end
+-- Escudo __newindex (EXACTO del código viejo que funcionaba)
+if not getgenv().InmunidadV8Activa then
+    getgenv().InmunidadV8Activa = true
+    local OriginalNewIndex
+    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
+        if not checkcaller() then
+            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then
+                return
+            end
+            if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then
+                return
+            end
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then
+                return
+            end
+        end
+        return OriginalNewIndex(t, k, v)
+    end)
+end
 
 -- Función: Ejecutar venta (secuencia exacta de 3 pasos del código funcional)
 local function VenderAutomaticamente(miBasket)
@@ -1221,6 +1240,21 @@ local function VenderAutomaticamente(miBasket)
         end
     end)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Closed") end)
+    
+    -- DESBLOQUEO FORZADO: El ForceDialogue congela al jugador, hay que restaurar todo
+    task.wait(0.3)
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildWhichIsA("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
+            if hrp then hrp.Anchored = false end
+        end
+        -- Restaurar cámara a modo normal
+        local cam = Workspace.CurrentCamera
+        if cam then cam.CameraType = Enum.CameraType.Custom end
+    end)
 end
 
 -- Bucle: Monitorear inventario y vender si está lleno
