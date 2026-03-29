@@ -118,7 +118,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V3.4"
+Title.Text = " 🗡️ OMNI-FARM V3.2"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -1074,26 +1074,25 @@ end
 
 -- Items a vender automáticamente
 local ITEMS_AUTO_VENDER = {
-    ["Small Essence"] = true,
+    ["Tiny Essence"] = true,    -- Servidor usa "Tiny Essence" en vez de Small
     ["Medium Essence"] = true,
     ["Cobalt"] = true,
-    ["Boneita"] = true,
+    ["Boneite"] = true,         -- Servidor usa "Boneite" en vez de Boneita
     ["Titanium"] = true,
     ["Amethyst"] = true,
+    ["Lapis Lazuli"] = true,    -- Agregado a tu petición
 }
 
 local ITEMS_SCAN_NAMES = {
-    {es="esencia pequeña",  en="Small Essence"},
+    {es="esencia pequeña",  en="Tiny Essence"},
     {es="esencia mediana",  en="Medium Essence"},
     {es="cobalto",          en="Cobalt"},
-    {es="boneita",          en="Boneita"},
+    {es="boneita",          en="Boneite"},
     {es="titánio",          en="Titanium"},
     {es="titanium",         en="Titanium"},
     {es="ametista",         en="Amethyst"},
     {es="amethyst",         en="Amethyst"},
-    {es="small essence",    en="Small Essence"},
-    {es="medium essence",   en="Medium Essence"},
-    {es="cobalt",           en="Cobalt"},
+    {es="lapis lazuli",     en="Lapis Lazuli"},
 }
 
 local AutoVenderActivo = false
