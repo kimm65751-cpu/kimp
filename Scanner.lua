@@ -365,13 +365,16 @@ local RemotosMisiones = {
 }
 
 local function EsRemotoDeMision(nombre)
-    local nameLower = string.lower(nombre)
-    for _, k in pairs(RemotosMisiones) do
-        if string.find(nameLower, string.lower(k)) then
-            return true
+    local success, res = pcall(function()
+        local nameLower = string.lower(tostring(nombre))
+        for _, k in pairs(RemotosMisiones) do
+            if string.find(nameLower, string.lower(k)) then
+                return true
+            end
         end
-    end
-    return false
+        return false
+    end)
+    return success and res
 end
 
 local OriginalNamecall
@@ -380,21 +383,28 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
     
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        if EsRemotoDeMision(self.Name) then
-            LogGUI("\n========== [ REPORTE DE RED: CLIENTE -> SERVER ] ==========", Color3.fromRGB(255, 100, 100))
-            LogGUI("📡 Tipo de Llamada : " .. method, Color3.fromRGB(200, 200, 200))
-            LogGUI("🔗 Nombre Remoto   : " .. self.Name, Color3.fromRGB(150, 255, 150))
-            LogGUI("📂 Ruta del Remoto : " .. self:GetFullName(), Color3.fromRGB(200, 200, 200))
-            LogGUI("📦 Datos Enviados (Argumentos):", Color3.fromRGB(255, 255, 150))
-            
-            for i, v in ipairs(args) do
-                if type(v) == "table" then
-                    LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
-                else
-                    LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
+        local successName, rName = pcall(function() return self.Name end)
+        local successPath, rPath = pcall(function() return self:GetFullName() end)
+        
+        if successName and EsRemotoDeMision(rName) then
+            -- Usar task.spawn para sacar toda la carga pesada (como Inyectar GUIs y Logs) fuera
+            -- del hilo principal de C, evitando que se trabe el juego al interactuar.
+            task.spawn(function()
+                LogGUI("\n========== [ REPORTE DE RED: CLIENTE -> SERVER ] ==========", Color3.fromRGB(255, 100, 100))
+                LogGUI("📡 Tipo de Llamada : " .. method, Color3.fromRGB(200, 200, 200))
+                LogGUI("🔗 Nombre Remoto   : " .. rName, Color3.fromRGB(150, 255, 150))
+                LogGUI("📂 Ruta del Remoto : " .. (successPath and rPath or "Desconocida"), Color3.fromRGB(200, 200, 200))
+                LogGUI("📦 Datos Enviados (Argumentos):", Color3.fromRGB(255, 255, 150))
+                
+                for i, v in ipairs(args) do
+                    if type(v) == "table" then
+                        LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
+                    else
+                        LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
+                    end
                 end
-            end
-            LogGUI("=========================================================================\n", Color3.fromRGB(255, 100, 100))
+                LogGUI("=========================================================================\n", Color3.fromRGB(255, 100, 100))
+            end)
         end
     end
     
