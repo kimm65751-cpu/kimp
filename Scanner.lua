@@ -35,7 +35,7 @@ StatusBar.Position = UDim2.new(0.5, -200, 0, 4)
 StatusBar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 StatusBar.BorderColor3 = Color3.fromRGB(50, 200, 100)
 StatusBar.BorderSizePixel = 2
-StatusBar.Text = " ⚔️ FORGE AUTO v3.0"
+StatusBar.Text = " ⚔️ FORGE AUTO v3.1"
 StatusBar.TextColor3 = Color3.fromRGB(150, 255, 150)
 StatusBar.TextSize = 11
 StatusBar.Font = Enum.Font.Code
@@ -50,7 +50,14 @@ end
 local mouseIsDown = false
 local lastMX, lastMY = 0, 0
 
+-- GuiInset: la diferencia entre AbsolutePosition y VIM coordinates
+local GuiInset = Vector2.new(0, 0)
+pcall(function()
+    GuiInset = game:GetService("GuiService"):GetGuiInset()
+end)
+
 local function VIMPress(x, y)
+    -- Corregir por GuiInset (AbsolutePosition incluye inset, VIM puede que no)
     lastMX, lastMY = x, y
     mouseIsDown = true
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
@@ -102,12 +109,6 @@ end
 -- ================================================================
 local meltActive = false
 local meltThread = nil
-
--- Obtener GuiInset para corregir coordenadas VIM
-local GuiInset = Vector2.new(0, 0)
-pcall(function()
-    GuiInset = game:GetService("GuiService"):GetGuiInset()
-end)
 
 local function PlayMelt()
     if meltActive then return end
