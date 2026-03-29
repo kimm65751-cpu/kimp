@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.10 (TRUE ARCHITECT RESTORED)
+-- 🗡️ FORGE OMNI-ANALYZER V8.11 (TRUE ARCHITECT UNBREAKABLE)
 -- ==============================================================================
 -- Usando TU CÓDIGO BÁSICO (V8.3) EXACTO AL 100%, letra por letra.
 -- LAS ÚNICAS 2 DIFERENCIAS:
@@ -8,7 +8,7 @@
 -- CERO modificaciones en la forma que oculta o bloquea. Restauración pura.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.10 - TRUE ARCHITECT RESTORED"
+local SCRIPT_VERSION = "V8.11 - TRUE ARCHITECT UNBREAKABLE"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,7 +36,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.10 (TRUE ARCHITECT)"
+Title.Text = " 📡 FORGE V8.11 (UNBREAKABLE ARCHITECT)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -64,7 +64,7 @@ local AutoBotBtn = Instance.new("TextButton")
 AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
 AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
 AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGASSS BOT"
+AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
 AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoBotBtn.Font = Enum.Font.Code
 AutoBotBtn.TextSize = 13
@@ -249,7 +249,7 @@ ClearBtn.MouseButton1Click:Connect(function()
     MasterLogList = {}
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V8.10) ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V8.11) ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
@@ -300,13 +300,38 @@ local function DestroyNativeMinigames()
 end
 
 local function ForceUnfreezeCharacter()
+    AddUILog("BOT_V8", ">> INICIANDO DESCONGELAMIENTO BRUTO...", Color3.fromRGB(0, 255, 100))
     pcall(function()
+        -- 1. Restaurar Velocidad y Físicas Físicamente
         local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local hum = char:FindFirstChild("Humanoid")
         if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then hrp.Anchored = false end
+        
+        -- 2. Restaurar Cámara Literalmente
+        local cam = workspace.CurrentCamera
+        cam.CameraType = Enum.CameraType.Custom
+        cam.CameraSubject = hum or cam.CameraSubject
     end)
+    
+    pcall(function()
+        -- 3. Habilitar Controles Nativos (PlayerModule)
+        local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+        if PlayerModule then
+            local controls = PlayerModule:GetControls()
+            if controls then controls:Enable() end
+        end
+    end)
+    
+    pcall(function()
+        -- 4. Forzar el Controlador Nativo a su fase 'Close'
+        local fc = require(game:GetService("ReplicatedStorage"):WaitForChild("Controllers"):WaitForChild("ForgeController"))
+        if fc and fc.ChangeSequence then
+            fc:ChangeSequence("Close")
+        end
+    end)
+    AddUILog("BOT_V8", "✅ DESCONGELAMIENTO APLICADO.", Color3.fromRGB(0, 255, 100))
 end
 
 local function SafeInvoke(forgeRF, phase, clientTimeParam)
@@ -483,4 +508,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.10 TRUE ARCHITECT. Restauración de tu V8.3 completa.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.11 UNBREAKABLE ARCHITECT. Descongelamiento nivel Dios inyectado.", Color3.fromRGB(150, 255, 150))
