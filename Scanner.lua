@@ -1,19 +1,13 @@
 -- ==============================================================================
--- 🕵️ ANALIZADOR FORENSE DE MISIONES Y NPCs (QUEST TRACKER V1.0)
+-- 🗺️ EXPLORADOR DE ÁRBOLES DE DIÁLOGO V1.0
 -- ==============================================================================
--- Este script realiza dos tareas principales:
--- 1. Escanea todo el mapa para identificar qué NPCs dan misiones, sus coordenadas
---    y qué sistemas de interacción tienen (ProximityPrompts).
--- 2. Rastrea e intercepta los Remotes (Knit / DialogueEvents) para descubrir:
---    - Qué datos pide el NPC para dar la misión.
---    - Qué opciones de diálogo existen.
---    - Cómo se acepta y se completa una misión a nivel de red (Server-Client).
+-- Lee TODA la estructura interna de ReplicatedStorage.Dialogues
+-- Clasifica misiones por tipo: "Hablar con NPC", "Matar Mobs", "Recolectar", etc.
+-- También captura qué RemoteEvents se disparan al elegir opciones de diálogo.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 local HttpService = game:GetService("HttpService")
-
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
@@ -21,28 +15,28 @@ local LocalPlayer = Players.LocalPlayer
 -- ==========================================
 local CoreGui = game:GetService("CoreGui")
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "QuestAnalyzerUI" then v:Destroy() end end
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "DialogExplorerUI" then v:Destroy() end end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "QuestAnalyzerUI"
+ScreenGui.Name = "DialogExplorerUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 350)
-MainFrame.Position = UDim2.new(1, -460, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
+MainFrame.Size = UDim2.new(0, 500, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(200, 150, 50)
+MainFrame.BorderColor3 = Color3.fromRGB(100, 200, 255)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -170, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
-Title.Text = " 🕵️ QUEST FORENSICS V1.0"
-Title.TextColor3 = Color3.fromRGB(255, 200, 100)
+Title.BackgroundColor3 = Color3.fromRGB(20, 30, 50)
+Title.Text = " 🗺️ EXPLORADOR DE DIÁLOGOS V1.0"
+Title.TextColor3 = Color3.fromRGB(100, 200, 255)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -78,15 +72,31 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = MainFrame
 
+local OutputScroll = Instance.new("ScrollingFrame")
+OutputScroll.Size = UDim2.new(1, -10, 1, -40)
+OutputScroll.Position = UDim2.new(0, 5, 0, 35)
+OutputScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+OutputScroll.ScrollBarThickness = 6
+OutputScroll.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = OutputScroll
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 1)
+
+UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 15)
+end)
 
 local isMinimized = false
 MinBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
-        MainFrame.Size = UDim2.new(0, 450, 0, 30)
+        MainFrame.Size = UDim2.new(0, 500, 0, 30)
         OutputScroll.Visible = false
     else
-        MainFrame.Size = UDim2.new(0, 450, 0, 350)
+        MainFrame.Size = UDim2.new(0, 500, 0, 400)
         OutputScroll.Visible = true
     end
 end)
@@ -95,7 +105,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-local FullLogText = "=== REPORTE DE MISIONES (QUEST FORENSICS) ===\n\n"
+local FullLogText = "=== EXPLORADOR DE ÁRBOLES DE DIÁLOGO ===\n\n"
 CopyBtn.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard(FullLogText)
@@ -104,334 +114,228 @@ CopyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-local OutputScroll = Instance.new("ScrollingFrame")
-OutputScroll.Size = UDim2.new(1, -10, 1, -40)
-OutputScroll.Position = UDim2.new(0, 5, 0, 35)
-OutputScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-OutputScroll.ScrollBarThickness = 5
-OutputScroll.Parent = MainFrame
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = OutputScroll
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 2)
-
-UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 15)
-end)
-
-local logCount = 0
-
 local function LogGUI(text, color)
-    print(text)
     FullLogText = FullLogText .. text .. "\n"
-    
     local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -10, 0, 20)
+    msg.Size = UDim2.new(1, -10, 0, 18)
     msg.BackgroundTransparency = 1
     msg.Text = text
     msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    msg.TextSize = 12
-    msg.Font = Enum.Font.Code
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextWrapped = true
-    msg.Parent = OutputScroll
-    
-    -- Ajustar altura dinámica
-    msg.Size = UDim2.new(1, -10, 0, msg.TextBounds.Y + 8)
-    OutputScroll.CanvasPosition = Vector2.new(0, 99999) -- Auto-scroll hacia abajo
-    
-    logCount = logCount + 1
-    if logCount > 200 then
-        for _, child in ipairs(OutputScroll:GetChildren()) do
-            if child:IsA("TextLabel") or child:IsA("Frame") then child:Destroy(); logCount = logCount - 1; break end
-        end
-    end
-end
-
-local function PcallJSON(tbl)
-    local success, res = pcall(function() return HttpService:JSONEncode(tbl) end)
-    if success then return res end
-    local str = "{"
-    for i, v in pairs(tbl) do
-        str = str .. tostring(i) .. ": " .. tostring(v) .. ", "
-    end
-    return str .. "}"
-end
-
-local isFlyingTo = false
-local noclipConnection = nil
-
-local function IrHaciaNPC(targetPos)
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    if root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
-    
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "_NoclipAnalyzer"
-    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    bv.Parent = root
-    
-    isFlyingTo = true
-    
-    -- Hacer que el personaje atraviese todas las paredes (NOCLIP FISICO Y REAL)
-    if noclipConnection then noclipConnection:Disconnect() end
-    noclipConnection = game:GetService("RunService").Stepped:Connect(function()
-        if not isFlyingTo then
-            if noclipConnection then noclipConnection:Disconnect() end
-            -- Restaurar físicas al terminar de volar
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Landed)
-            end
-            return
-        end
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = false
-            end
-        end
-    end)
-    
-    task.spawn(function()
-        while isFlyingTo and bv.Parent and root.Parent do
-            local dist = (root.Position - targetPos).Magnitude
-            if dist < 5 then
-                bv:Destroy()
-                isFlyingTo = false
-                break
-            end
-            
-            local hDist = (Vector2.new(root.Position.X, root.Position.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
-            local flyPos = targetPos
-            if hDist > 15 then
-                flyPos = Vector3.new(targetPos.X, math.max(targetPos.Y + 20, root.Position.Y), targetPos.Z)
-            end
-            
-            local dir = (flyPos - root.Position).Unit
-            bv.Velocity = dir * 65 -- Vuelo noclip seguro y rápido
-            task.wait(0.05)
-        end
-    end)
-end
-
-local function LogNPCWithButton(npcName, coords, targetPos, detailText)
-    FullLogText = FullLogText .. "🤖 NPC DETECTADO: " .. npcName .. "\n📍 Coordenadas: " .. coords .. "\n" .. detailText .. "\n--------------------\n"
-    
-    local msgFrame = Instance.new("Frame")
-    msgFrame.Size = UDim2.new(1, -10, 0, 75)
-    msgFrame.BackgroundTransparency = 1
-    msgFrame.Parent = OutputScroll
-    
-    local msg = Instance.new("TextLabel")
-    msg.Size = UDim2.new(1, -60, 1, 0)
-    msg.BackgroundTransparency = 1
-    msg.Text = "🤖 NPC: " .. npcName .. "\n📍 Dir: " .. coords .. "\n" .. detailText
-    msg.TextColor3 = Color3.fromRGB(150, 255, 255)
     msg.TextSize = 11
     msg.Font = Enum.Font.Code
     msg.TextXAlignment = Enum.TextXAlignment.Left
     msg.TextWrapped = true
-    msg.Parent = msgFrame
-    msg.Size = UDim2.new(1, -60, 0, msg.TextBounds.Y + 8)
-    msgFrame.Size = UDim2.new(1, -10, 0, msg.Size.Y.Offset)
-    
-    if targetPos then
-        local goBtn = Instance.new("TextButton")
-        goBtn.Size = UDim2.new(0, 45, 0, 25)
-        goBtn.Position = UDim2.new(1, -45, 0.5, -12)
-        goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
-        goBtn.Text = "✈️ IR"
-        goBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        goBtn.TextSize = 11
-        goBtn.Font = Enum.Font.Code
-        goBtn.Parent = msgFrame
-        
-        goBtn.MouseButton1Click:Connect(function()
-            if isFlyingTo then
-                isFlyingTo = false
-                if noclipConnection then noclipConnection:Disconnect() end
-                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if root and root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
-                goBtn.Text = "✈️ IR"
-                goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+    msg.Parent = OutputScroll
+    msg.Size = UDim2.new(1, -10, 0, msg.TextBounds.Y + 4)
+    OutputScroll.CanvasPosition = Vector2.new(0, 99999)
+end
+
+-- ==========================================
+-- FASE 1: EXPLORAR ReplicatedStorage.Dialogues
+-- ==========================================
+LogGUI("============================================================", Color3.fromRGB(100, 200, 255))
+LogGUI("  🔍 EXPLORANDO ReplicatedStorage.Dialogues", Color3.fromRGB(100, 200, 255))
+LogGUI("============================================================\n", Color3.fromRGB(100, 200, 255))
+
+local DialoguesFolder = ReplicatedStorage:FindFirstChild("Dialogues")
+if not DialoguesFolder then
+    LogGUI("❌ ERROR: No se encontró ReplicatedStorage.Dialogues", Color3.fromRGB(255, 50, 50))
+    return
+end
+
+local misionesDetectadas = {
+    hablarNPC = {},
+    matarMobs = {},
+    recolectar = {},
+    otras = {}
+}
+
+local function SafeRequire(moduleScript)
+    local success, result = pcall(function()
+        return require(moduleScript)
+    end)
+    if success then return result end
+    return nil
+end
+
+local function AnalizarValor(valor, indent)
+    indent = indent or ""
+    if type(valor) == "table" then
+        for k, v in pairs(valor) do
+            if type(v) == "table" then
+                LogGUI(indent .. "📂 " .. tostring(k) .. ":", Color3.fromRGB(200, 200, 150))
+                AnalizarValor(v, indent .. "   ")
             else
-                LogGUI("[✈️] Volando TRASPASANDO PAREDES hacia " .. npcName .. "...", Color3.fromRGB(100, 255, 255))
-                goBtn.Text = "🛑 STOP"
-                goBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-                IrHaciaNPC(targetPos)
-                task.spawn(function()
-                    repeat task.wait(0.5) until not isFlyingTo
-                    if goBtn.Parent then 
-                        goBtn.Text = "✈️ IR"
-                        goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
-                    end
-                end)
+                LogGUI(indent .. "🔑 " .. tostring(k) .. " = " .. tostring(v), Color3.fromRGB(180, 180, 180))
             end
-        end)
+        end
+    else
+        LogGUI(indent .. "📄 " .. tostring(valor), Color3.fromRGB(180, 180, 180))
     end
-    
-    logCount = logCount + 1
 end
 
-LogGUI("============================================================\n  🚀 INICIANDO ESCÁNER DE MISIONES Y NPCs\n============================================================", Color3.fromRGB(100, 255, 100))
+local function ClasificarMision(npcName, texto)
+    local t = string.lower(tostring(texto))
+    if string.find(t, "talk to") or string.find(t, "speak") or string.find(t, "habla") or string.find(t, "visit") or string.find(t, "go to") or string.find(t, "find") then
+        return "hablarNPC"
+    elseif string.find(t, "kill") or string.find(t, "defeat") or string.find(t, "slay") or string.find(t, "destroy") or string.find(t, "hunt") then
+        return "matarMobs"
+    elseif string.find(t, "collect") or string.find(t, "gather") or string.find(t, "mine") or string.find(t, "bring") then
+        return "recolectar"
+    end
+    return "otras"
+end
+
+local function BuscarTextosMision(tbl, npcName, depth)
+    depth = depth or 0
+    if depth > 10 then return end
+    
+    if type(tbl) ~= "table" then return end
+    
+    for k, v in pairs(tbl) do
+        local key = string.lower(tostring(k))
+        
+        -- Buscar campos que parezcan texto de misión
+        if type(v) == "string" then
+            local vLower = string.lower(v)
+            if string.find(vLower, "kill") or string.find(vLower, "defeat") or string.find(vLower, "talk to") 
+                or string.find(vLower, "speak") or string.find(vLower, "collect") or string.find(vLower, "gather")
+                or string.find(vLower, "mine") or string.find(vLower, "find") or string.find(vLower, "bring")
+                or string.find(vLower, "slay") or string.find(vLower, "hunt") or string.find(vLower, "go to")
+                or string.find(vLower, "visit") or string.find(vLower, "quest") or string.find(vLower, "mission")
+                or string.find(vLower, "accept") or string.find(vLower, "reward") then
+                
+                local tipo = ClasificarMision(npcName, v)
+                LogGUI("   🎯 [" .. string.upper(tipo) .. "] " .. tostring(k) .. ": " .. v, Color3.fromRGB(255, 255, 100))
+                
+                table.insert(misionesDetectadas[tipo], {
+                    npc = npcName,
+                    campo = tostring(k),
+                    texto = v
+                })
+            end
+        elseif type(v) == "table" then
+            BuscarTextosMision(v, npcName, depth + 1)
+        end
+    end
+end
+
+-- Explorar cada NPC en la carpeta Dialogues
+local npcCount = 0
+for _, npcFolder in pairs(DialoguesFolder:GetChildren()) do
+    npcCount = npcCount + 1
+    LogGUI("╔══════════════════════════════════════════╗", Color3.fromRGB(100, 255, 100))
+    LogGUI("║ 🤖 NPC: " .. npcFolder.Name, Color3.fromRGB(100, 255, 100))
+    LogGUI("╚══════════════════════════════════════════╝", Color3.fromRGB(100, 255, 100))
+    LogGUI("📂 Ruta: " .. npcFolder:GetFullName(), Color3.fromRGB(150, 150, 150))
+    LogGUI("📊 Hijos: " .. #npcFolder:GetChildren(), Color3.fromRGB(150, 150, 150))
+    
+    -- Listar todos los hijos con su tipo
+    for _, child in pairs(npcFolder:GetChildren()) do
+        local childType = child.ClassName
+        LogGUI("   📄 [" .. childType .. "] " .. child.Name, Color3.fromRGB(200, 200, 200))
+        
+        -- Si es un ModuleScript, intentar require para leer su contenido
+        if child:IsA("ModuleScript") then
+            LogGUI("   ⚡ Intentando leer ModuleScript...", Color3.fromRGB(255, 200, 50))
+            local data = SafeRequire(child)
+            if data then
+                LogGUI("   ✅ ModuleScript leído exitosamente!", Color3.fromRGB(100, 255, 100))
+                AnalizarValor(data, "      ")
+                BuscarTextosMision(data, npcFolder.Name)
+            else
+                LogGUI("   ❌ No se pudo leer el ModuleScript", Color3.fromRGB(255, 100, 100))
+            end
+        end
+        
+        -- Si es una carpeta o modelo, explorar hijos
+        if child:IsA("Folder") or child:IsA("Configuration") then
+            for _, subChild in pairs(child:GetChildren()) do
+                LogGUI("      📄 [" .. subChild.ClassName .. "] " .. subChild.Name, Color3.fromRGB(180, 180, 180))
+                
+                if subChild:IsA("ModuleScript") then
+                    local data = SafeRequire(subChild)
+                    if data then
+                        LogGUI("      ✅ SubModuleScript leído!", Color3.fromRGB(100, 255, 100))
+                        AnalizarValor(data, "         ")
+                        BuscarTextosMision(data, npcFolder.Name)
+                    end
+                end
+                
+                -- Leer valores simples (StringValue, IntValue, etc.)
+                if subChild:IsA("ValueBase") then
+                    LogGUI("      🔑 " .. subChild.Name .. " = " .. tostring(subChild.Value), Color3.fromRGB(255, 200, 100))
+                end
+            end
+        end
+        
+        -- Leer valores simples directos
+        if child:IsA("ValueBase") then
+            LogGUI("   🔑 " .. child.Name .. " = " .. tostring(child.Value), Color3.fromRGB(255, 200, 100))
+        end
+    end
+    LogGUI("", Color3.fromRGB(150, 150, 150))
+end
 
 -- ==========================================
--- FASE 1: ESCANEO ESTÁTICO DE NPCs EN EL MAPA
+-- FASE 2: EXPLORAR DialogueEvents (Remotes)
 -- ==========================================
-LogGUI("[*] Buscando NPCs interactuables en todo el mapa...", Color3.fromRGB(255, 200, 50))
+LogGUI("\n============================================================", Color3.fromRGB(255, 200, 100))
+LogGUI("  📡 EXPLORANDO ReplicatedStorage.DialogueEvents", Color3.fromRGB(255, 200, 100))
+LogGUI("============================================================\n", Color3.fromRGB(255, 200, 100))
 
-local NPCsEncontrados = {}
+local DialogueEvents = ReplicatedStorage:FindFirstChild("DialogueEvents")
+if DialogueEvents then
+    for _, remote in pairs(DialogueEvents:GetChildren()) do
+        LogGUI("📡 [" .. remote.ClassName .. "] " .. remote.Name .. " → " .. remote:GetFullName(), Color3.fromRGB(200, 200, 200))
+    end
+else
+    LogGUI("❌ No se encontró DialogueEvents", Color3.fromRGB(255, 50, 50))
+end
 
-local function EscanearModelo(modelo)
-    -- Buscar ProximityPrompts que indiquen diálogo o interacción
-    for _, prompt in pairs(modelo:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") then
-            local actionText = string.lower(prompt.ActionText)
-            local objectText = string.lower(prompt.ObjectText)
+-- ==========================================
+-- FASE 3: EXPLORAR Knit Quest Services
+-- ==========================================
+LogGUI("\n============================================================", Color3.fromRGB(255, 150, 50))
+LogGUI("  🔧 BUSCANDO SERVICIOS DE QUEST (Knit)", Color3.fromRGB(255, 150, 50))
+LogGUI("============================================================\n", Color3.fromRGB(255, 150, 50))
+
+local function BuscarQuests(parent, depth)
+    depth = depth or 0
+    if depth > 6 then return end
+    for _, child in pairs(parent:GetChildren()) do
+        local nameLower = string.lower(child.Name)
+        if string.find(nameLower, "quest") or string.find(nameLower, "mission") or string.find(nameLower, "dialogue") then
+            LogGUI(string.rep("  ", depth) .. "🔧 [" .. child.ClassName .. "] " .. child:GetFullName(), Color3.fromRGB(255, 200, 100))
             
-            -- Si parece un NPC con el que se puede hablar
-            if string.find(actionText, "talk") or string.find(actionText, "interact") or string.find(actionText, "quest") or string.find(objectText, "npc") then
-                
-                local npcBase = prompt:FindFirstAncestorWhichIsA("Model") or prompt.Parent
-                local npcName = npcBase and npcBase.Name or "Desconocido"
-                
-                local coords = "Sin Coordenadas"
-                local targetPos = nil
-                local rootPart = npcBase:FindFirstChild("HumanoidRootPart") or npcBase:FindFirstChild("Torso") or (prompt.Parent:IsA("BasePart") and prompt.Parent)
-                if rootPart then
-                    targetPos = rootPart.Position
-                    coords = string.format("X: %.1f, Y: %.1f, Z: %.1f", targetPos.X, targetPos.Y, targetPos.Z)
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") or child:IsA("BindableEvent") then
+                LogGUI(string.rep("  ", depth) .. "   ⚡ ¡REMOTE DE MISIÓN ENCONTRADO!", Color3.fromRGB(255, 100, 100))
+            end
+            
+            if child:IsA("ModuleScript") then
+                local data = SafeRequire(child)
+                if data and type(data) == "table" then
+                    LogGUI(string.rep("  ", depth) .. "   📦 ModuleScript con datos:", Color3.fromRGB(100, 255, 100))
+                    AnalizarValor(data, string.rep("  ", depth) .. "      ")
                 end
-                
-                -- Analizar si tiene algún indicador visual de misión ( BillboardGui con exclamación, interrogación, etc. )
-                local misionLista = "Desconocido"
-                for _, gui in pairs(npcBase:GetDescendants()) do
-                    if gui:IsA("TextLabel") or gui:IsA("ImageLabel") then
-                        if gui:IsA("TextLabel") and (string.find(gui.Text, "!") or string.find(gui.Text, "?")) then
-                            misionLista = "¡Misión Disponible / O indicador visual detectado!"
-                        end
-                    end
-                end
-
-                if not NPCsEncontrados[npcName] then
-                    NPCsEncontrados[npcName] = true
-                    local detailText = "📝 Acción: [" .. prompt.ActionText .. "] " .. prompt.ObjectText .. "\n❓ Misión: " .. misionLista
-                    
-                    local localScripts = {}
-                    for _, v in pairs(npcBase:GetDescendants()) do
-                        if v:IsA("LocalScript") or v:IsA("ModuleScript") then
-                            table.insert(localScripts, v.Name)
-                        end
-                    end
-                    if #localScripts > 0 then
-                        detailText = detailText .. "\n📜 Scripts: " .. table.concat(localScripts, ", ")
-                    end
-                    
-                    LogNPCWithButton(npcName, coords, targetPos, detailText)
-                end
-                
-                -- ================== ESPIA FÍSICO DE INTERACT ==================
-                prompt.PromptButtonHoldBegan:Connect(function(player)
-                    if player == LocalPlayer then
-                        LogGUI("👆 [FÍSICO]: Manteniendo interactuar en " .. prompt.ObjectText, Color3.fromRGB(255, 255, 100))
-                    end
-                end)
-                prompt.Triggered:Connect(function(player)
-                    if player == LocalPlayer then
-                        LogGUI("✅ [FÍSICO]: ¡Click/E completado! Interacción aceptada por ProximityPrompt en " .. prompt.ObjectText, Color3.fromRGB(100, 255, 100))
-                    end
-                end)
-                -- =============================================================
             end
         end
-    end
-    
-    -- Si usa ClickDetectors (fuera del loop de prompts)
-    for _, click in pairs(modelo:GetDescendants()) do
-        if click:IsA("ClickDetector") then
-            click.MouseClick:Connect(function(player)
-                if player == LocalPlayer then
-                    LogGUI("🖱️ [CLICK]: Clic físico validado en " .. (click.Parent and click.Parent.Name or "Objeto"), Color3.fromRGB(100, 255, 100))
-                end
-            end)
-        end
+        BuscarQuests(child, depth + 1)
     end
 end
 
-for _, obj in pairs(Workspace:GetDescendants()) do
-    if obj:IsA("Model") and (obj:FindFirstChild("Humanoid") or obj:FindFirstChild("ProximityPrompt", true) or obj:FindFirstChild("ClickDetector", true)) then
-        EscanearModelo(obj)
-    end
-end
-LogGUI("--------------------------------------------------\n", Color3.fromRGB(150, 150, 150))
+BuscarQuests(ReplicatedStorage)
 
 -- ==========================================
--- FASE 2: ESCUCHA PASIVA DE RED (SIN HOOKS - NO ROMPE INTERACCIONES)
+-- RESUMEN FINAL
 -- ==========================================
-LogGUI("[*] Inyectando Escucha PASIVA (sin hooks)...", Color3.fromRGB(255, 200, 50))
-LogGUI("[*] ¡Ve y habla con un NPC ahora para capturar la misión!\n", Color3.fromRGB(255, 100, 100))
+LogGUI("\n============================================================", Color3.fromRGB(100, 255, 100))
+LogGUI("  📊 RESUMEN DE MISIONES DETECTADAS", Color3.fromRGB(100, 255, 100))
+LogGUI("============================================================", Color3.fromRGB(100, 255, 100))
+LogGUI("🤖 NPCs con Diálogos: " .. npcCount, Color3.fromRGB(200, 200, 200))
+LogGUI("🗣️ Misiones de Hablar con NPC: " .. #misionesDetectadas.hablarNPC, Color3.fromRGB(100, 200, 255))
+LogGUI("⚔️ Misiones de Matar Mobs: " .. #misionesDetectadas.matarMobs, Color3.fromRGB(255, 100, 100))
+LogGUI("⛏️ Misiones de Recolectar: " .. #misionesDetectadas.recolectar, Color3.fromRGB(255, 200, 50))
+LogGUI("❓ Otras Misiones: " .. #misionesDetectadas.otras, Color3.fromRGB(200, 200, 200))
 
--- ⚠️ CERO hookmetamethod. CERO hookfunction. Solo escuchamos OnClientEvent.
--- Esto NUNCA interfiere con la tecla E ni con ProximityPrompts.
-
-local filtroMisiones = {"dialogue", "quest", "mission", "accept", "complete", "claim", "progress", "achievement"}
-
-local function EsRemotoRelevante(nombre)
-    local n = string.lower(nombre)
-    for _, k in pairs(filtroMisiones) do
-        if string.find(n, k) then return true end
-    end
-    return false
-end
-
-local conexionesEscucha = {}
-local remotosEscuchados = 0
-
-for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") and EsRemotoRelevante(obj.Name) then
-        local c = obj.OnClientEvent:Connect(function(...)
-            local args = {...}
-            task.spawn(function()
-                LogGUI("\n========== [ SERVER -> CLIENTE ] ==========", Color3.fromRGB(100, 150, 255))
-                LogGUI("📡 RemoteEvent : " .. obj.Name, Color3.fromRGB(150, 255, 150))
-                LogGUI("📂 Ruta        : " .. obj:GetFullName(), Color3.fromRGB(200, 200, 200))
-                LogGUI("📦 Datos Recibidos:", Color3.fromRGB(255, 255, 150))
-                for i, v in ipairs(args) do
-                    if type(v) == "table" then
-                        LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
-                    elseif typeof(v) == "Instance" then
-                        LogGUI("   ["..i.."] (Instance) = " .. v:GetFullName(), Color3.fromRGB(220, 220, 220))
-                    else
-                        LogGUI("   ["..i.."] ("..typeof(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
-                    end
-                end
-                LogGUI("===========================================\n", Color3.fromRGB(100, 150, 255))
-            end)
-        end)
-        table.insert(conexionesEscucha, c)
-        remotosEscuchados = remotosEscuchados + 1
-    end
-end
-LogGUI("[✔] Escuchando " .. remotosEscuchados .. " RemoteEvents (pasivo, sin hooks).", Color3.fromRGB(100, 255, 100))
-
--- ==========================================
--- FASE 3: ESPÍA DIAGNÓSTICO (ERRORES Y BLOQUEOS INTERNOS)
--- ==========================================
-LogGUI("[*] Inyectando Espía de Errores...", Color3.fromRGB(255, 200, 50))
-
-local LogService = game:GetService("LogService")
-LogService.MessageOut:Connect(function(msg, msgType)
-    if msgType == Enum.MessageType.MessageError then
-        LogGUI("🚨 [ERROR]: " .. tostring(msg), Color3.fromRGB(255, 50, 50))
-    end
-end)
-
-local ScriptContext = game:GetService("ScriptContext")
-ScriptContext.Error:Connect(function(msg, trace, scriptObj)
-    local scriptName = scriptObj and scriptObj.Name or "Desconocido"
-    LogGUI("🚨 [CRASH: " .. scriptName .. "]: " .. tostring(msg), Color3.fromRGB(255, 0, 0))
-end)
-
-LogGUI("[✔] Todo listo. CERO hooks activos. La interacción con NPCs está LIMPIA.", Color3.fromRGB(100, 255, 100))
-LogGUI("[!] Presiona 'E' en el NPC. Todo dato que el servidor te mande aparecerá aquí.", Color3.fromRGB(255, 200, 50))
+LogGUI("\n[✔] Exploración completada. Presiona COPIAR para enviar los datos.", Color3.fromRGB(100, 255, 100))
