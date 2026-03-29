@@ -37,7 +37,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.18 (NATIVE SYNC3eee)"
+Title.Text = " 📡 FORGE V8.18 (NATIVE SYNC)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -261,18 +261,22 @@ local function EsperarLanzamientoDeJuego(faseName)
     end
     
     if activeGui then
-        -- Lo interceptamos y lo neutralizamos visual y físicamente sin romper la UI base
+        -- LO OCULTAMOS, PERO JAMÁS LO DESTRUIMOS.
+        -- Como dijiste en el audio "no los destruyas, ocúltalos".
+        -- Si destruimos el gui, el juego nativo piensa que se completó y corrompe nuestra inyección.
         pcall(function()
             if activeGui:IsA("ScreenGui") then 
                 activeGui.Enabled = false 
             elseif activeGui:IsA("GuiObject") then 
-                activeGui.Visible = false 
-                activeGui:Destroy()
+                activeGui.Visible = false
+                activeGui.Position = UDim2.new(99, 0, 99, 0)
             else 
-                activeGui:Destroy() 
+                -- Si es un modelo o frame suelto
+                pcall(function() activeGui.Visible = false end)
+                pcall(function() activeGui.Transparency = 1 end)
             end
         end)
-        AddUILog("UI_KILL", "Juego [" .. faseName .. "] detectado y suprimido al instante.", Color3.fromRGB(250,150,50))
+        AddUILog("UI_KILL", "Juego [" .. faseName .. "] detectado y OCULTADO de pantalla.", Color3.fromRGB(250,150,50))
     end
 end
 
