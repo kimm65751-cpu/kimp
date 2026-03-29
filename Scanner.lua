@@ -1,18 +1,19 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.11 (TRUE ARCHITECT UNBREAKABLE)
+-- 🕵️ OMEGA BOT V8.13 (AUTO-FORGE + FORENSIC DIAGNOSTIC)
 -- ==============================================================================
--- Usando TU CÓDIGO BÁSICO (V8.3) EXACTO AL 100%, letra por letra.
--- LAS ÚNICAS 2 DIFERENCIAS:
--- 1. Inyecta 25 Perfects (seguros, en pcall) durante el sleep del martillo.
--- 2. Al final, en vez del EndForge viejo, llama al Remote EndForge real.
--- CERO modificaciones en la forma que oculta o bloquea. Restauración pura.
+-- Este script HACE AMBAS COSAS: 
+-- 1. Juega la forja mágicamente en 20 segundos y saca Perfects.
+-- 2. Al mismo tiempo, INYECTA HOOKS DE DIAGNÓSTICO PROFUNDO (__newindex, getConnections, Modules)
+--    para atrapar EXACTAMENTE qué línea de código nativo nos deja congelados al final.
+-- Guarda TODO el reporte en "nuevometodo.txt".
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.11 - TRUE ARCHITECT UNBREAKABLE"
+local SCRIPT_VERSION = "V8.13 - AUTO-DIAGNOSTIC ARCHITECT"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
+local LogService = game:GetService("LogService")
 local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
@@ -24,8 +25,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 560, 0, 420)
-Panel.Position = UDim2.new(1, -580, 0.5, -210)
+Panel.Size = UDim2.new(0, 600, 0, 480)
+Panel.Position = UDim2.new(1, -620, 0.5, -240)
 Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
 Panel.BorderSizePixel = 2
 Panel.BorderColor3 = Color3.fromRGB(150, 255, 255)
@@ -36,7 +37,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.11 (UNBREAKABLE ARCHITECT)"
+Title.Text = " 🕵️ FORGE V8.13 (AUTO-DIAGNOSTIC)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -64,7 +65,7 @@ local AutoBotBtn = Instance.new("TextButton")
 AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
 AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
 AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
+AutoBotBtn.Text = "🤖 START: AUTO-FORGE + ANALIZER"
 AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoBotBtn.Font = Enum.Font.Code
 AutoBotBtn.TextSize = 13
@@ -190,7 +191,7 @@ end
 local function SaveLogToFile(message)
     task.spawn(function()
         pcall(function()
-            local filename = "ForgeAnalyzerLogs_V8.txt"
+            local filename = "nuevometodo.txt"
             if appendfile then appendfile(filename, message .. "\n")
             elseif writefile then
                 local current = ""
@@ -205,27 +206,29 @@ local function AddUILog(logType, message, color)
     local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
     SaveLogToFile(fullString)
     table.insert(MasterLogList, fullString)
-    if #MasterLogList > 500 then 
-        table.remove(MasterLogList, 1)
-        task.defer(function()
-            local f = LogScroll:FindFirstChildWhichIsA("TextLabel")
-            if f then pcall(function() f:Destroy() end) end
-        end)
-    end
+    if #MasterLogList > 500 then table.remove(MasterLogList, 1) end
+    
     task.defer(function()
         pcall(function()
+            for _, child in ipairs(LogScroll:GetChildren()) do
+                if child:IsA("TextLabel") and child.LayoutOrder > 500 then child:Destroy() end
+            end
+            
+            local clr = color or Color3.fromRGB(200, 200, 200)
             local txt = Instance.new("TextLabel")
             txt.Size = UDim2.new(1, -4, 0, 0)
             txt.BackgroundTransparency = 1
-            txt.Text = fullString
-            txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+            txt.RichText = true
+            txt.Text = "<b>["..os.date("%H:%M:%S").."] ["..logType.."]</b>\n<font color='rgb("..math.floor(clr.R*255)..","..math.floor(clr.G*255)..","..math.floor(clr.B*255)..")'>"..message.."</font>"
+            txt.TextColor3 = Color3.fromRGB(255, 255, 255)
             txt.Font = Enum.Font.Code
             txt.TextSize = 11
             txt.TextXAlignment = Enum.TextXAlignment.Left
+            txt.TextYAlignment = Enum.TextYAlignment.Top
             txt.TextWrapped = true
             txt.Parent = LogScroll
             local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
-            txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
+            txt.Size = UDim2.new(1, -4, 0, ts.Y + 14)
             LogScroll.CanvasPosition = Vector2.new(0, 999999)
         end)
     end)
@@ -238,7 +241,7 @@ AutoBotBtn.MouseButton1Click:Connect(function()
         AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
         AddUILog("SISTEMA", "Bot ARMADO usando el tiempo de " .. TimeTextBox.Text .. "s.", Color3.fromRGB(100,255,100))
     else
-        AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
+        AutoBotBtn.Text = "🤖 START: AUTO-FORGE + ANALIZER"
         AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
         AddUILog("SISTEMA", "Bot APAGADO.", Color3.fromRGB(255,100,100))
     end
@@ -247,14 +250,81 @@ end)
 ClearBtn.MouseButton1Click:Connect(function()
     for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
     MasterLogList = {}
+    pcall(function() if writefile then writefile("nuevometodo.txt", "") end end)
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL SIN FILTROS (V8.11) ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V8.13) ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- ==============================================================================
+-- 🕵️ DIAGNÓSTICO PROFUNDO: THE NEWINDEX SPY
+-- ==============================================================================
+local OriginalNewIndex
+OriginalNewIndex = hookmetamethod(game, "__newindex", function(self, key, val)
+    if not checkcaller() and typeof(self) == "Instance" then
+        if self:IsA("Humanoid") and key == "WalkSpeed" then
+            local trace = debug.traceback()
+            task.spawn(function()
+                AddUILog("FÍSICA", "WalkSpeed modificado nativamente a: " .. tostring(val) .. "\nTraza:\n" .. trace, Color3.fromRGB(255, 100, 255))
+            end)
+        end
+        if self:IsA("BasePart") and self.Name == "HumanoidRootPart" and key == "Anchored" then
+            local trace = debug.traceback()
+            task.spawn(function()
+                AddUILog("FÍSICA", "Anchored modificado nativamente a: " .. tostring(val) .. "\nTraza:\n" .. trace, Color3.fromRGB(255, 100, 255))
+            end)
+        end
+        if self:IsA("Camera") and key == "CameraType" then
+            local trace = debug.traceback()
+            task.spawn(function()
+                AddUILog("CÁMARA", "CameraType modificado nativamente a: " .. tostring(val) .. "\nTraza:\n" .. trace, Color3.fromRGB(255, 200, 100))
+            end)
+        end
+    end
+    return OriginalNewIndex(self, key, val)
+end)
+
+-- ==============================================================================
+-- 🕵️ DIAGNÓSTICO PROFUNDO: MODULE HOOKS & NATIVE ERRORS
+-- ==============================================================================
+task.spawn(function()
+    local success, err = pcall(function()
+        local controllers = ReplicatedStorage:WaitForChild("Controllers", 5)
+        if controllers then
+            local fcModule = controllers:WaitForChild("ForgeController", 5)
+            local fc = require(fcModule)
+            if typeof(fc) == "table" then
+                if fc.ChangeSequence then
+                    local oldCS = fc.ChangeSequence
+                    fc.ChangeSequence = function(self, fase, data, ...)
+                        task.spawn(function() AddUILog("MÓDULO NAT", "ChangeSequence("..tostring(fase)..") INVOCADO POR JUEGO LOCAL.", Color3.fromRGB(100,200,255)) end)
+                        return oldCS(self, fase, data, ...)
+                    end
+                end
+                if fc.EndForge then
+                    local oldEF = fc.EndForge
+                    fc.EndForge = function(self, ...)
+                        task.spawn(function() AddUILog("MÓDULO NAT", "EndForge() INVOCADO POR JUEGO LOCAL.", Color3.fromRGB(255,100,100)) end)
+                        return oldEF(self, ...)
+                    end
+                end
+            end
+        end
+    end)
+    if not success then AddUILog("DIAG_WARN", "No se pudo hookear módulo: " .. tostring(err), Color3.fromRGB(255,100,0)) end
+end)
+
+LogService.MessageOut:Connect(function(message, messageType)
+    if messageType == Enum.MessageType.MessageError or messageType == Enum.MessageType.MessageWarning then
+        if string.find(string.lower(message), "forge") or string.find(string.lower(message), "camera") or string.find(string.lower(message), "script") then
+            AddUILog("ERROR_NATIVO", "Tipo: "..tostring(messageType).."\nMensaje: " .. message, Color3.fromRGB(255, 50, 50))
+        end
+    end
+end)
 
 local function CatchServerResponses()
     local RS = game:GetService("ReplicatedStorage")
@@ -272,6 +342,10 @@ local function CatchServerResponses()
     end
 end
 CatchServerResponses()
+
+-- ==============================================================================
+-- 🚀 OMEGA BOT CORE ENGINE (AUTO-FORGE)
+-- ==============================================================================
 
 local function ExtractTimes(tbl)
     local req, start = nil, nil
@@ -297,41 +371,6 @@ local function DestroyNativeMinigames()
             end
         end
     end
-end
-
-local function ForceUnfreezeCharacter()
-    AddUILog("BOT_V8", ">> INICIANDO DESCONGELAMIENTO BRUTO...", Color3.fromRGB(0, 255, 100))
-    pcall(function()
-        -- 1. Restaurar Velocidad y Físicas Físicamente
-        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.Anchored = false end
-        
-        -- 2. Restaurar Cámara Literalmente
-        local cam = workspace.CurrentCamera
-        cam.CameraType = Enum.CameraType.Custom
-        cam.CameraSubject = hum or cam.CameraSubject
-    end)
-    
-    pcall(function()
-        -- 3. Habilitar Controles Nativos (PlayerModule)
-        local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
-        if PlayerModule then
-            local controls = PlayerModule:GetControls()
-            if controls then controls:Enable() end
-        end
-    end)
-    
-    pcall(function()
-        -- 4. Forzar el Controlador Nativo a su fase 'Close'
-        local fc = require(game:GetService("ReplicatedStorage"):WaitForChild("Controllers"):WaitForChild("ForgeController"))
-        if fc and fc.ChangeSequence then
-            fc:ChangeSequence("Close")
-        end
-    end)
-    AddUILog("BOT_V8", "✅ DESCONGELAMIENTO APLICADO.", Color3.fromRGB(0, 255, 100))
 end
 
 local function SafeInvoke(forgeRF, phase, clientTimeParam)
@@ -368,7 +407,6 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             BotJugandoAhoraMismo = true
             DestroyNativeMinigames()
             
-            -- LECTURA DE VARIABLE GLOBAL AUTORIZADA
             local DYNAMIC_TIME = GlobalDynamicTime
             if type(DYNAMIC_TIME) ~= "number" or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
             
@@ -392,9 +430,7 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             start3 = start3 or workspace:GetServerTimeNow()
             AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s (Bucle Perfect Activo)...", Color3.fromRGB(200, 150, 0))
             
-            -- ==============================================
-            -- [NUEVO FIX PERFECTOS AÑADIDO A V8.3]
-            -- ==============================================
+            -- INYECCIÓN PERFECTA
             task.spawn(function()
                 local hammerRF = nil
                 pcall(function() hammerRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction end)
@@ -408,7 +444,6 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
                     end
                 end
             end)
-            -- ==============================================
 
             local trueTime3 = WaitUntilServerTime(start3 + req3)
             
@@ -420,15 +455,13 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             AddUILog("BOT_V8", "⏳ Water Delay: " .. string.format("%.2f", req4) .. "s...", Color3.fromRGB(255, 50, 50))
             WaitUntilServerTime(start4 + req4)
             
-            AddUILog("BOT_V8", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
+            AddUILog("BOT_V8", ">> ¡Reclamando arma! Iniciando SALIDA...", Color3.fromRGB(255,255,50))
             SafeInvoke(forgeRF, "Showcase", nil)
-            task.wait(3)
+            task.wait(2.5)
             
-            AddUILog("BOT_V8", ">> Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
+            SafeInvoke(forgeRF, "OreSelect", nil)
+            task.wait(0.5)
             
-            -- ==============================================
-            -- [NUEVO FIX DESCONGELAMIENTO AÑADIDO A V8.3]
-            -- ==============================================
             local end_success = false
             pcall(function()
                 local knit = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
@@ -441,15 +474,15 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
                 end
             end)
             if not end_success then SafeInvoke(forgeRF, "EndForge", nil) end
-            -- ==============================================
-
+            task.wait(0.5)
+            SafeInvoke(forgeRF, "Close", nil)
+            task.wait(0.5)
+            
             AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
-            ForceUnfreezeCharacter()
             BotJugandoAhoraMismo = false
         end, function(err)
             BotJugandoAhoraMismo = false
             AddUILog("FATAL_ERROR", "ERROR DEL SISTEMA: " .. tostring(err), Color3.fromRGB(255, 0, 0))
-            ForceUnfreezeCharacter()
         end)
     end)
 end
@@ -488,7 +521,7 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         task.spawn(function()
             pcall(function()
                 local nameLower = string.lower(self.GetFullName(self))
-                local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "character", "root", "position", "look"}
+                local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "chatb", "character", "root", "position", "look"}
                 local skip = false
                 for _, w in pairs(BlacklistWords) do if string.find(nameLower, w) then skip = true break end end
                 
@@ -508,4 +541,5 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.11 UNBREAKABLE ARCHITECT. Descongelamiento nivel Dios inyectado.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.13 AUTO-FORGE + FORENSIC DIAGNOSTIC INICIADO.", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "Todo se guardará en nuevometodo.txt", Color3.fromRGB(150, 255, 150))
