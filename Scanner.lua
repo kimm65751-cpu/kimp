@@ -1,13 +1,12 @@
 -- ==============================================================================
--- 🔬 FORGE OBSERVADOR SEGURO V1.1
+-- 🔬 FORGE OBSERVADOR V1.2 — SIN HOOK (no rompe NPC)
 -- ==============================================================================
--- FIX: No captura returns de InvokeServer (causa congelamiento).
--- Solo observa argumentos + escucha RemoteEvents del server.
+-- CERO hookmetamethod. Solo escucha RemoteEvents + monitorea UI.
+-- NO interfiere con NADA del juego.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
@@ -31,7 +30,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -75, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(40, 20, 0)
-Title.Text = " 🔬 FORGE OBSERVADOR SEGURO V1.1"
+Title.Text = " 🔬 FORGE OBSERVADOR V1.2 (SIN HOOK)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 0)
 Title.TextSize = 11
 Title.Font = Enum.Font.Code
@@ -80,7 +79,7 @@ MinBtn.MouseButton1Click:Connect(function()
     OutputScroll.Visible = not isMin
 end)
 
-local FullLog = "=== FORGE OBSERVADOR SEGURO V1.1 ===\n\n"
+local FullLog = "=== FORGE OBSERVADOR V1.2 (SIN HOOK) ===\n\n"
 local sc = 0
 local startTime = tick()
 local msgCount = 0
@@ -101,7 +100,7 @@ local function L(text, color)
         sc = 0
     end
     msgCount = msgCount + 1
-    if msgCount > 400 then return end -- Limitar UI para no congelar
+    if msgCount > 500 then return end
     task.defer(function()
         pcall(function()
             local msg = Instance.new("TextLabel")
@@ -128,8 +127,19 @@ local function Dump(v)
         local c = 0
         for k, val in pairs(v) do
             c = c + 1
-            if c > 10 then s = s .. "..."; break end
-            s = s .. tostring(k) .. "=" .. tostring(val) .. ", "
+            if c > 12 then s = s .. "..."; break end
+            if type(val) == "table" then
+                local inner = "{"
+                local ic = 0
+                for ik, iv in pairs(val) do
+                    ic = ic + 1
+                    if ic > 5 then inner = inner .. "..."; break end
+                    inner = inner .. tostring(ik) .. "=" .. tostring(iv) .. ", "
+                end
+                s = s .. tostring(k) .. "=" .. inner .. "}, "
+            else
+                s = s .. tostring(k) .. "=" .. tostring(val) .. ", "
+            end
         end
         return s .. "}"
     end
@@ -137,93 +147,60 @@ local function Dump(v)
 end
 
 -- ==========================================
--- 1. HOOK NAMECALL — SEGURO: NO captura returns
+-- 1. ESCUCHAR TODOS LOS REMOTES RELEVANTES
 -- ==========================================
-L("═══ INSTALANDO OBSERVADORES ═══", Color3.fromRGB(255, 150, 0))
+L("═══ CONECTANDO ESCUCHAS PASIVAS ═══", Color3.fromRGB(255, 150, 0))
 
-local forgeBuffer = {} -- Buffer para no duplicar logs
-
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    
-    -- Solo observar llamadas forge, CERO procesamiento extra
-    if not checkcaller() and method == "InvokeServer" then
-        local ok, fullName = pcall(function() return self:GetFullName() end)
-        if ok and (string.find(string.lower(fullName), "changesequence") or string.find(string.lower(fullName), "forge")) then
-            local args = {...}
-            -- Meter al buffer, procesar fuera del hook
-            local key = tostring(args[1] or "?")
-            table.insert(forgeBuffer, {phase = key, time = tick(), args = args})
-        end
-    end
-    
-    -- NUNCA tocar el return, siempre pasar directo
-    return OriginalNamecall(self, ...)
-end)
-
--- Procesar buffer fuera del hook (seguro, sin congelar)
-task.spawn(function()
-    while ScreenGui.Parent do
-        if #forgeBuffer > 0 then
-            local item = table.remove(forgeBuffer, 1)
-            L("🔥 CLIENTE→SERVER: " .. item.phase, Color3.fromRGB(255, 100, 50))
-            for i, v in ipairs(item.args) do
-                if type(v) == "table" then
-                    for k, val in pairs(v) do
-                        L("   " .. tostring(k) .. " = " .. tostring(val), Color3.fromRGB(255, 200, 100))
-                    end
-                else
-                    L("   arg[" .. i .. "] = " .. Dump(v), Color3.fromRGB(255, 200, 100))
-                end
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-L("  ✅ Hook namecall (seguro, sin capturar returns)", Color3.fromRGB(100, 255, 100))
-
--- ==========================================
--- 2. ESCUCHAR REMOTES (server→client)
--- ==========================================
+local remotesConectados = 0
 for _, v in pairs(ReplicatedStorage:GetDescendants()) do
     if v:IsA("RemoteEvent") then
         local nl = string.lower(v.Name .. v:GetFullName())
-        if string.find(nl, "forge") or string.find(nl, "sequence") or string.find(nl, "progress") or string.find(nl, "equip") or string.find(nl, "craft") or string.find(nl, "reward") then
+        -- Escuchar TODOS los que sean forge, craft, progress, equip, sequence, knit services
+        if string.find(nl, "forge") or string.find(nl, "sequence") or string.find(nl, "progress")
+            or string.find(nl, "equip") or string.find(nl, "craft") or string.find(nl, "reward")
+            or string.find(nl, "inventory") or string.find(nl, "item") or string.find(nl, "weapon") then
             v.OnClientEvent:Connect(function(...)
                 local args = {...}
                 task.defer(function()
                     L("📡 SERVER→CLIENTE: " .. v.Name, Color3.fromRGB(0, 255, 100))
                     for i, val in ipairs(args) do
-                        if type(val) == "table" then
-                            for k, va in pairs(val) do
-                                L("   " .. tostring(k) .. " = " .. tostring(va), Color3.fromRGB(150, 255, 150))
-                            end
-                        else
-                            L("   arg[" .. i .. "] = " .. Dump(val), Color3.fromRGB(150, 255, 150))
-                        end
+                        L("   [" .. i .. "] " .. Dump(val), Color3.fromRGB(150, 255, 150))
                     end
                 end)
             end)
-            L("  ✅ Escuchando: " .. v.Name, Color3.fromRGB(100, 255, 100))
+            remotesConectados = remotesConectados + 1
         end
     end
 end
+L("  ✅ " .. remotesConectados .. " RemoteEvents escuchados", Color3.fromRGB(100, 255, 100))
 
 -- ==========================================
--- 3. MONITOR DE PlayerGui (UIs de forja)
+-- 2. MONITOR DE UI DE FORJA
 -- ==========================================
 local trackedGUIs = {}
+local trackedElements = {}
+
 task.spawn(function()
     while ScreenGui.Parent do
         pcall(function()
             for _, gui in pairs(LocalPlayer.PlayerGui:GetChildren()) do
                 if gui:IsA("ScreenGui") and gui.Name ~= "ForgeObsUI" then
                     local nl = string.lower(gui.Name)
-                    if string.find(nl, "forge") or string.find(nl, "minigame") then
+                    if string.find(nl, "forge") or string.find(nl, "minigame") or string.find(nl, "craft") then
                         if not trackedGUIs[gui] then
                             trackedGUIs[gui] = true
-                            L("🖥️ UI FORJA: " .. gui.Name .. " Enabled=" .. tostring(gui.Enabled), Color3.fromRGB(255, 255, 0))
+                            L("🖥️ UI APARECIÓ: [" .. gui.Name .. "]", Color3.fromRGB(255, 255, 0))
+                            
+                            -- Listar contenido actual
+                            for _, child in pairs(gui:GetDescendants()) do
+                                if child:IsA("TextLabel") and child.Text ~= "" and not trackedElements[child] then
+                                    trackedElements[child] = child.Text
+                                    L("   📝 \"" .. child.Text .. "\" [" .. child.Name .. "]", Color3.fromRGB(255, 255, 150))
+                                elseif child:IsA("TextButton") and child.Text ~= "" and not trackedElements[child] then
+                                    trackedElements[child] = child.Text
+                                    L("   🔘 \"" .. child.Text .. "\" [" .. child.Name .. "]", Color3.fromRGB(255, 200, 100))
+                                end
+                            end
                             
                             -- Observar nuevos elementos
                             gui.DescendantAdded:Connect(function(desc)
@@ -232,25 +209,42 @@ task.spawn(function()
                                         if desc:IsA("TextLabel") and desc.Text ~= "" then
                                             L("🖥️+ \"" .. desc.Text .. "\" [" .. desc.Name .. "]", Color3.fromRGB(255, 255, 50))
                                         elseif desc:IsA("TextButton") and desc.Text ~= "" then
-                                            L("🔘+ \"" .. desc.Text .. "\" [" .. desc.Name .. "]", Color3.fromRGB(255, 200, 50))
+                                            L("🔘+ BOTÓN \"" .. desc.Text .. "\" [" .. desc.Name .. "]", Color3.fromRGB(255, 200, 50))
                                         end
                                     end)
                                 end)
+                            end)
+                            
+                            gui.DescendantRemoving:Connect(function(desc)
+                                task.defer(function()
+                                    pcall(function()
+                                        if desc:IsA("TextLabel") or desc:IsA("TextButton") or desc:IsA("Frame") then
+                                            L("🖥️- QUITADO: [" .. desc.Name .. "]", Color3.fromRGB(255, 150, 50))
+                                        end
+                                    end)
+                                end)
+                            end)
+                            
+                            -- Detectar cuando la UI se destruye
+                            gui.Destroying:Connect(function()
+                                L("💀 UI DESTRUIDA: [" .. gui.Name .. "]", Color3.fromRGB(255, 50, 50))
                             end)
                         end
                     end
                 end
             end
         end)
-        task.wait(2) -- Cada 2 segundos, no 0.5
+        task.wait(2)
     end
 end)
+L("  ✅ Monitor de PlayerGui activo", Color3.fromRGB(100, 255, 100))
 
 -- ==========================================
--- 4. DETECTOR DE CONGELAMIENTO (cada 3 seg)
+-- 3. MONITOR DEL PERSONAJE + WALKSPEED
 -- ==========================================
 task.spawn(function()
     local lastPos = nil
+    local lastWalkSpeed = nil
     local stuckCount = 0
     while ScreenGui.Parent do
         pcall(function()
@@ -259,32 +253,59 @@ task.spawn(function()
                 local root = char:FindFirstChild("HumanoidRootPart")
                 local hum = char:FindFirstChild("Humanoid")
                 if root and hum then
+                    -- Detectar cambio de WalkSpeed
+                    if lastWalkSpeed ~= hum.WalkSpeed then
+                        L("🚶 WalkSpeed cambió: " .. tostring(lastWalkSpeed) .. " → " .. tostring(hum.WalkSpeed), Color3.fromRGB(200, 200, 255))
+                        lastWalkSpeed = hum.WalkSpeed
+                    end
+                    
+                    -- Detectar pegado
                     local pos = root.Position
                     if lastPos and (pos - lastPos).Magnitude < 0.05 and hum.WalkSpeed == 0 then
                         stuckCount = stuckCount + 1
                         if stuckCount == 2 then
-                            L("⚠️ PEGADO! WalkSpeed=" .. hum.WalkSpeed .. " Anchored=" .. tostring(root.Anchored) .. " State=" .. hum:GetState().Name, Color3.fromRGB(255, 50, 50))
-                            -- BodyMovers
+                            L("⚠️ PEGADO! Anchored=" .. tostring(root.Anchored) .. " State=" .. hum:GetState().Name, Color3.fromRGB(255, 50, 50))
                             for _, c in pairs(root:GetChildren()) do
-                                if c:IsA("BodyMover") or c:IsA("Constraint") or c:IsA("AlignPosition") then
-                                    L("   🔗 " .. c.ClassName .. ": " .. c.Name, Color3.fromRGB(255, 100, 100))
+                                if c:IsA("BodyMover") or c:IsA("Constraint") or c:IsA("AlignPosition") or c:IsA("AlignOrientation") then
+                                    L("   🔗 " .. c.ClassName .. ": " .. c.Name .. " (Enabled=" .. tostring(c.Enabled or "?") .. ")", Color3.fromRGB(255, 100, 100))
                                 end
                             end
                         end
                     else
-                        if stuckCount >= 2 then L("✅ LIBERADO", Color3.fromRGB(100, 255, 100)) end
+                        if stuckCount >= 2 then L("✅ LIBERADO! WalkSpeed=" .. hum.WalkSpeed, Color3.fromRGB(100, 255, 100)) end
                         stuckCount = 0
                     end
                     lastPos = pos
                 end
             end
         end)
-        task.wait(3)
+        task.wait(2)
     end
+end)
+L("  ✅ Monitor de personaje activo", Color3.fromRGB(100, 255, 100))
+
+-- ==========================================
+-- 4. MONITOREAR Workspace PARA MODELOS DE FORJA
+-- ==========================================
+task.spawn(function()
+    task.wait(3)
+    pcall(function()
+        -- Buscar el modelo de la forja en workspace
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                local parent = obj:FindFirstAncestorWhichIsA("Model")
+                if parent and string.find(string.lower(parent.Name), "forge") then
+                    L("🔨 FORJA encontrada: " .. parent:GetFullName(), Color3.fromRGB(255, 200, 100))
+                    L("   ProximityPrompt: " .. obj.Name .. " ActionText=" .. tostring(obj.ActionText), Color3.fromRGB(200, 200, 150))
+                end
+            end
+        end
+    end)
 end)
 
 L("\n═══════════════════════════════════════════", Color3.fromRGB(255, 150, 0))
-L("  🔬 LISTO. Ve a la forja y haz un arma NORMAL.", Color3.fromRGB(255, 150, 0))
-L("  No toco nada. Se guarda en forge_observador.txt", Color3.fromRGB(200, 200, 200))
+L("  🔬 LISTO. Ve a la forja, habla y haz un arma NORMAL.", Color3.fromRGB(255, 150, 0))
+L("  SIN HOOK = no interfiere con NPCs.", Color3.fromRGB(100, 255, 100))
+L("  forge_observador.txt se guarda automático.", Color3.fromRGB(200, 200, 200))
 L("═══════════════════════════════════════════\n", Color3.fromRGB(255, 150, 0))
 pcall(function() writefile("forge_observador.txt", FullLog) end)
