@@ -20,11 +20,9 @@ local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.To
 -- VARIABLES DE ESTADO
 -- ==========================================
 local NoclipActivo = false
-local ShieldActivo = false
 local KiteActivo = false
 local MineActivo = false
 local FarmTask = nil
-local MyShield = nil
 local FullbrightActivo = false
 local OriginalLighting = nil
 
@@ -35,13 +33,15 @@ local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
 local GlobalMineIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global 5s
 local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 
--- SELECTOR DE OBJETIVOS: Qué tipos de mobs y minas farmear
--- Clave = nombre base (lowercase, sin números), Valor = true/false
-local SelectedMobs = {} -- Se llena con el Scanner
-local SelectedOres = {} -- Se llena con el Scanner
+-- SELECTOR DE OBJETIVOS (Persistentes tras muerte)
+local SelectedMobs = getgenv().OF_SelectedMobs or {} 
+getgenv().OF_SelectedMobs = SelectedMobs
+local SelectedOres = getgenv().OF_SelectedOres or {} 
+getgenv().OF_SelectedOres = SelectedOres
 
--- LÍMITE DE PISO DINÁMICO (Safe Floor)
-local SafeFloorY = -50 -- Límite base (Se actualiza con el botón)-- ==========================================
+-- LÍMITE DE PISO DINÁMICO (Persistente)
+local SafeFloorY = getgenv().OF_SafeFloorY or -50 
+getgenv().OF_SafeFloorY = SafeFloorY-- ==========================================
 -- FUNCIÓN PARA OBTENER EL NIVEL DEL JUGADOR
 -- ==========================================
 local function GetMyLevel()
@@ -179,19 +179,9 @@ NoclipBtn.Font = Enum.Font.Code
 NoclipBtn.TextSize = 11
 NoclipBtn.Parent = Panel
 
-local ShieldBtn = Instance.new("TextButton")
-ShieldBtn.Size = UDim2.new(0.5, -6, 0, 35)
-ShieldBtn.Position = UDim2.new(0.5, 2, 0, 68)
-ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
-ShieldBtn.Text = "🛡️ MURO CRISTAL"
-ShieldBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ShieldBtn.Font = Enum.Font.Code
-ShieldBtn.TextSize = 11
-ShieldBtn.Parent = Panel
-
 local KiteBtn = Instance.new("TextButton")
-KiteBtn.Size = UDim2.new(0.5, -6, 0, 45)
-KiteBtn.Position = UDim2.new(0, 4, 0, 110)
+KiteBtn.Size = UDim2.new(0.5, -6, 0, 35)
+KiteBtn.Position = UDim2.new(0.5, 2, 0, 68)
 KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
 KiteBtn.Text = "🗡️ FARM MOBS"
 KiteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -201,7 +191,7 @@ KiteBtn.Parent = Panel
 
 local MineBtn = Instance.new("TextButton")
 MineBtn.Size = UDim2.new(0.5, -6, 0, 45)
-MineBtn.Position = UDim2.new(0.5, 2, 0, 110)
+MineBtn.Position = UDim2.new(0, 4, 0, 110)
 MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
 MineBtn.Text = "⛏️ FARM MINAS"
 MineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -210,8 +200,8 @@ MineBtn.TextSize = 12
 MineBtn.Parent = Panel
 
 local ScannerBtn = Instance.new("TextButton")
-ScannerBtn.Size = UDim2.new(0.5, -6, 0, 30)
-ScannerBtn.Position = UDim2.new(0, 4, 0, 160)
+ScannerBtn.Size = UDim2.new(0.5, -6, 0, 45)
+ScannerBtn.Position = UDim2.new(0.5, 2, 0, 110)
 ScannerBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
 ScannerBtn.Text = "🔍 SCANNER"
 ScannerBtn.TextColor3 = Color3.fromRGB(255, 220, 255)
@@ -220,10 +210,10 @@ ScannerBtn.TextSize = 11
 ScannerBtn.Parent = Panel
 
 local SetFloorBtn = Instance.new("TextButton")
-SetFloorBtn.Size = UDim2.new(0.5, -6, 0, 30)
-SetFloorBtn.Position = UDim2.new(0.5, 2, 0, 160)
+SetFloorBtn.Size = UDim2.new(1, -8, 0, 30)
+SetFloorBtn.Position = UDim2.new(0, 4, 0, 160)
 SetFloorBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
-SetFloorBtn.Text = "📍 FIJAR PISO"
+SetFloorBtn.Text = "📍 FIJAR PISO (Anti-Caída)"
 SetFloorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SetFloorBtn.Font = Enum.Font.Code
 SetFloorBtn.TextSize = 11
@@ -233,7 +223,7 @@ local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -8, 0, 150)
 StatusLabel.Position = UDim2.new(0, 4, 0, 195)
 StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-StatusLabel.Text = "Estado: Inactivo.\n\n🛡️ MURO CRISTAL: Atasca zombis.\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata mobs seleccionados.\n⛏️ FARM MINAS: Pica minas seleccionadas.\n🔍 SCANNER: Detecta y selecciona objetivos.\n\nUsa el SCANNER primero para elegir qué farmear."
+StatusLabel.Text = "Estado: Inactivo.\n\n👻 NOCLIP: Atraviesas paredes.\n🗡️ FARM MOBS: Mata mobs seleccionados.\n⛏️ FARM MINAS: Pica minas seleccionadas.\n🔍 SCANNER: Detecta y selecciona objetivos.\n\nUsa el SCANNER primero para elegir qué farmear."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 StatusLabel.Font = Enum.Font.Code
 StatusLabel.TextSize = 11
@@ -516,14 +506,12 @@ OpenIcon.MouseButton1Click:Connect(function()
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
-    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    KiteActivo = false; MineActivo = false; NoclipActivo = false
     ScreenGui:Destroy()
 end)
 
 ReloadBtn.MouseButton1Click:Connect(function()
-    KiteActivo = false; MineActivo = false; ShieldActivo = false; NoclipActivo = false
-    if MyShield then pcall(function() MyShield:Destroy() end) MyShield = nil end
+    KiteActivo = false; MineActivo = false; NoclipActivo = false
     pcall(function() ScreenGui:Destroy(); loadstring(game:HttpGet(SCRIPT_URL .. "?r=" .. math.random(11,99)))() end)
 end)
 
@@ -565,56 +553,7 @@ NoclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==========================================
--- MURO CRISTAL (FUNCIONAL DEL BACKUP)
--- ==========================================
-ShieldBtn.MouseButton1Click:Connect(function()
-    ShieldActivo = not ShieldActivo
-    if ShieldActivo then
-        ShieldBtn.Text = "🛡️ CRISTAL: ON ✅"
-        ShieldBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 180)
-        
-        MyShield = Instance.new("Part")
-        MyShield.Name = "MuroDefensivo"
-        MyShield.Size = Vector3.new(12, 12, 2)
-        MyShield.Transparency = 0.5
-        MyShield.Material = Enum.Material.ForceField
-        MyShield.BrickColor = BrickColor.new("Cyan")
-        MyShield.Anchored = true
-        MyShield.CanCollide = true
-        MyShield.Parent = Workspace
-        
-        task.spawn(function()
-            while ShieldActivo and MyShield do
-                pcall(function()
-                    local char = LocalPlayer.Character
-                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                    if myRoot then
-                        for _, v in pairs(char:GetDescendants()) do
-                            if v:IsA("BasePart") then
-                                local cName = "NCC_" .. v.Name
-                                if not MyShield:FindFirstChild(cName) then
-                                    local nc = Instance.new("NoCollisionConstraint")
-                                    nc.Name = cName
-                                    nc.Part0 = v
-                                    nc.Part1 = MyShield
-                                    nc.Parent = MyShield
-                                end
-                            end
-                        end
-                        MyShield.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3.5)
-                    end
-                end)
-                task.wait()
-            end
-        end)
-        StatusLabel.Text = "🛡️ Muro Cristal activo. Los Zombis se atoran en él."
-    else
-        ShieldBtn.Text = "🛡️ MURO CRISTAL"
-        ShieldBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 160)
-        if MyShield then MyShield:Destroy(); MyShield = nil end
-    end
-end)
+-- (Muro cristal eliminado a petición del usuario)
 
 -- ==========================================
 -- FUNCIONES DE FARM (CON FILTRO DE NIVEL)
@@ -830,7 +769,7 @@ local function IniciarFarm()
                 if zTarget and (KiteActivo or (MineActivo and zDist < 15)) then
                     targetObj = zTarget
                     dist = zDist
-                    targetDist = ShieldActivo and 4 or 7
+                    targetDist = 7
                     mode = "Combat"
                     toolId = "weapon"
                 -- PRIORIDAD 2: MINADO
@@ -967,10 +906,8 @@ local function IniciarFarm()
                         local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
                         ToolRF:InvokeServer(serverArg)
                         
-                        -- ANTI-ATASCO GLOBAL: Registrar que estamos golpeando
-                        if mode == "Mining" then
-                            GlobalMineIdleTracker.lastHitTime = tick()
-                        end
+                        -- ANTI-ATASCO GLOBAL: Registrar que estamos golpeando (válido para Mina y Mobs)
+                        GlobalMineIdleTracker.lastHitTime = tick()
                         
                         if mode == "Combat" then
                             local mobLvl = GetMobLevel(targetObj)
@@ -1031,22 +968,98 @@ MineBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- ANTI-ATASCO GLOBAL: Si Farm Minas está ON y lleva 5s sin picar, se auto-reinicia
+-- ANTI-ATASCO GLOBAL: SWAP DE RESCATE (MINA <-> MOBS)
 -- ==========================================
+local LastMoveTracker = {Pos = nil, MoveTime = tick(), HitTime = tick()}
+
 task.spawn(function()
     while true do
         task.wait(1)
-        if MineActivo and (tick() - GlobalMineIdleTracker.lastHitTime) > 5 then
-            GlobalMineIdleTracker.lastHitTime = tick()
-            -- Auto-reinicio: apagar y prender farm minas
-            MineActivo = false
-            DetenerFarm()
-            task.wait(0.3)
-            MineActivo = true
-            MineBtn.Text = "⛏️ MINAS: ON"
-            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
-            StatusLabel.Text = "🔄 Anti-Atasco: Reiniciando Farm Minas..."
-            IniciarFarm()
+        if KiteActivo or MineActivo then
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local curPos = root.Position
+                
+                -- Sincronizar hit tracker con el farm global (funciona para picar y matar)
+                if GlobalMineIdleTracker.lastHitTime > LastMoveTracker.HitTime then
+                    LastMoveTracker.HitTime = GlobalMineIdleTracker.lastHitTime
+                end
+
+                if LastMoveTracker.Pos and (curPos - LastMoveTracker.Pos).Magnitude < 1 then
+                    -- No se ha movido. Verificamos cuánto tiempo lleva inactivo física y ofensivamente.
+                    local idleHitTime = tick() - LastMoveTracker.HitTime
+                    local idleMoveTime = tick() - LastMoveTracker.MoveTime
+                    
+                    -- Lleva 8s sin moverse Y sin golpear a nadie
+                    if idleMoveTime >= 8 and idleHitTime >= 8 then
+                        LastMoveTracker.MoveTime = tick()
+                        LastMoveTracker.HitTime = tick()
+                        GlobalMineIdleTracker.lastHitTime = tick()
+                        
+                        if MineActivo then
+                            StatusLabel.Text = "🚨 ATASCO DETECTADO EN MINA! Desatorando con Mobs (3s)..."
+                            MineActivo = false
+                            MineBtn.Text = "⛏️ FARM MINAS"
+                            MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+                            DetenerFarm()
+                            task.wait(0.2)
+                            
+                            KiteActivo = true
+                            KiteBtn.Text = "🗡️ MOBS: ON"
+                            KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+                            IniciarFarm()
+                            task.wait(3.5) -- Corre hacia mobs para salir de la pared
+                            
+                            KiteActivo = false
+                            KiteBtn.Text = "🗡️ FARM MOBS"
+                            KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+                            DetenerFarm()
+                            task.wait(0.2)
+                            
+                            MineActivo = true
+                            MineBtn.Text = "⛏️ MINAS: ON"
+                            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+                            IniciarFarm()
+                            LastMoveTracker.Pos = nil
+                            
+                        elseif KiteActivo then
+                            StatusLabel.Text = "🚨 ATASCO DETECTADO EN MOBS! Desatorando con Minas (3s)..."
+                            KiteActivo = false
+                            KiteBtn.Text = "🗡️ FARM MOBS"
+                            KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+                            DetenerFarm()
+                            task.wait(0.2)
+                            
+                            MineActivo = true
+                            MineBtn.Text = "⛏️ MINAS: ON"
+                            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+                            IniciarFarm()
+                            task.wait(3.5) -- Corre hacia minas para salir de la colisión fantasma
+                            
+                            MineActivo = false
+                            MineBtn.Text = "⛏️ FARM MINAS"
+                            MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+                            DetenerFarm()
+                            task.wait(0.2)
+                            
+                            KiteActivo = true
+                            KiteBtn.Text = "🗡️ MOBS: ON"
+                            KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+                            IniciarFarm()
+                            LastMoveTracker.Pos = nil
+                        end
+                    end
+                else
+                    -- Grabamos posición y reset tiempo si sí se movió de verdad
+                    LastMoveTracker.Pos = curPos
+                    LastMoveTracker.MoveTime = tick()
+                end
+            else
+                LastMoveTracker.Pos = nil
+            end
+        else
+            LastMoveTracker.Pos = nil
         end
     end
 end)
@@ -1210,7 +1223,55 @@ if not getgenv().InmunidadV11Activa then
     end)
 end
 
--- Función: Ejecutar venta (secuencia exacta de 3 pasos del código funcional)
+-- Función: Vuelo Anti-Kicks (Viaja físicamente hacia una posición)
+local function FlyToPos(targetPos)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local currentHum = char and char:FindFirstChild("Humanoid")
+    if not root or not currentHum then return end
+    
+    root.Anchored = false
+    local bv = root:FindFirstChild("_NoclipBV")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "_NoclipBV"
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Parent = root
+    end
+    
+    local speed = (currentHum.WalkSpeed or 16) * 2.5
+    
+    while char and root and currentHum and currentHum.Health > 0 do
+        local curPos = root.Position
+        local hDist = (Vector2.new(curPos.X, curPos.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
+        local vDist = math.abs(curPos.Y - targetPos.Y)
+        
+        -- Terminar si está lo suficientemente cerca
+        if hDist < 5 and vDist < 5 then
+            break
+        end
+        
+        local safeY = targetPos.Y + 60
+        local flightWaypoint
+        
+        if hDist > 20 then
+            if curPos.Y < safeY then
+                flightWaypoint = Vector3.new(curPos.X, safeY + 15, curPos.Z)
+            else
+                flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
+            end
+        else
+            flightWaypoint = Vector3.new(targetPos.X, targetPos.Y + 3.5, targetPos.Z)
+        end
+        
+        local dir = (flightWaypoint - curPos).Unit
+        bv.Velocity = dir * speed
+        task.wait(0.05)
+    end
+    if bv then bv.Velocity = Vector3.zero end
+end
+
+-- Función: Ejecutar venta (volando físicamente para evitar teleport flags)
 local function VenderAutomaticamente(miBasket)
     if not RF_RunCommand_Sell or not RF_ForceDialogue_Sell or not RE_DialogueEvent_Sell then return end
     
@@ -1222,20 +1283,39 @@ local function VenderAutomaticamente(miBasket)
     end
     if not npcActual then return end
 
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
     local paqueteFinal = { Basket = miBasket }
+    local oldPos = root.Position
+    local npcRoot = npcActual:FindFirstChild("HumanoidRootPart") or npcActual:FindFirstChild("Torso") or npcActual:FindFirstChildWhichIsA("BasePart")
     
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local oldCFrame = root and root.CFrame
+    -- Pausar Farmeo momentáneamente
+    local oldKite = KiteActivo
+    local oldMine = MineActivo
+    if KiteActivo then KiteBtn.Text = "🗡️ FARM MOBS"; KiteActivo = false; KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40) end
+    if MineActivo then MineBtn.Text = "⛏️ FARM MINAS"; MineActivo = false; MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40) end
+    DetenerFarm()
+    task.wait(0.2)
     
-    -- PASO 1
+    local oldNoclip = NoclipActivo
+    NoclipActivo = true -- Forzamos Noclip para que vuele atravesando muros
+    
+    if npcRoot then
+        StatusLabel.Text = "✈️ Volando hacia el NPC Cey para vender..."
+        FlyToPos(npcRoot.Position)
+        task.wait(0.5)
+    end
+    
+    StatusLabel.Text = "💰 Negociando con el NPC..."
+    -- PASO 1 (Mismo handshake exitoso que la versión antigua)
     pcall(function() RF_ForceDialogue_Sell:InvokeServer(npcActual, "SellConfirmMisc") end)
     task.wait(0.2)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Opened") end)
     
     -- PASO 2
     pcall(function() RF_RunCommand_Sell:InvokeServer("SellConfirm", paqueteFinal) end)
-    
-    if root and oldCFrame then root.CFrame = oldCFrame end
     task.wait(0.5)
     
     -- PASO 3
@@ -1251,6 +1331,33 @@ local function VenderAutomaticamente(miBasket)
         end
     end)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Closed") end)
+    
+    -- REGRESAR A POSICIÓN ORIGINAL
+    StatusLabel.Text = "✈️ Venta lista. Regresando a tu zona de farmeo..."
+    FlyToPos(oldPos)
+    task.wait(0.2)
+    
+    NoclipActivo = oldNoclip
+    if not oldNoclip then
+        pcall(function()
+            local bv = root:FindFirstChild("_NoclipBV")
+            if bv then bv:Destroy() end
+        end)
+    end
+    
+    -- Reanudar Farmeo
+    if oldKite then
+        KiteBtn.Text = "🗡️ MOBS: ON"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        KiteActivo = true
+        IniciarFarm()
+    end
+    if oldMine then
+        MineBtn.Text = "⛏️ MINAS: ON"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        MineActivo = true
+        IniciarFarm()
+    end
 end
 
 -- Bucle: Monitorear inventario y vender si está lleno
