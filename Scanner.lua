@@ -16,14 +16,87 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
-print("\n============================================================")
-print("  🚀 INICIANDO ESCÁNER DE MISIONES Y NPCs (QUEST FORENSICS)")
-print("============================================================\n")
+-- ==========================================
+-- GUI EN PANTALLA
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "QuestAnalyzerUI" then v:Destroy() end end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "QuestAnalyzerUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = parentUI
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 450, 0, 350)
+MainFrame.Position = UDim2.new(1, -460, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(200, 150, 50)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
+Title.Text = " 🕵️ QUEST FORENSICS V1.0"
+Title.TextColor3 = Color3.fromRGB(255, 200, 100)
+Title.TextSize = 14
+Title.Font = Enum.Font.Code
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+local OutputScroll = Instance.new("ScrollingFrame")
+OutputScroll.Size = UDim2.new(1, -10, 1, -40)
+OutputScroll.Position = UDim2.new(0, 5, 0, 35)
+OutputScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+OutputScroll.ScrollBarThickness = 5
+OutputScroll.Parent = MainFrame
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = OutputScroll
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 2)
+
+local logCount = 0
+local function LogGUI(text, color)
+    print(text)
+    local msg = Instance.new("TextLabel")
+    msg.Size = UDim2.new(1, -10, 0, 20)
+    msg.BackgroundTransparency = 1
+    msg.Text = text
+    msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    msg.TextSize = 12
+    msg.Font = Enum.Font.Code
+    msg.TextXAlignment = Enum.TextXAlignment.Left
+    msg.TextWrapped = true
+    msg.Parent = OutputScroll
+    
+    -- Ajustar altura dinámica
+    msg.Size = UDim2.new(1, -10, 0, msg.TextBounds.Y + 8)
+    local totalHeight = 0
+    for _, child in ipairs(OutputScroll:GetChildren()) do
+        if child:IsA("TextLabel") then totalHeight = totalHeight + child.Size.Y.Offset + 2 end
+    end
+    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+    OutputScroll.CanvasPosition = Vector2.new(0, totalHeight)
+    
+    logCount = logCount + 1
+    if logCount > 200 then
+        for _, child in ipairs(OutputScroll:GetChildren()) do
+            if child:IsA("TextLabel") then child:Destroy(); logCount = logCount - 1; break end
+        end
+    end
+end
+
+LogGUI("============================================================\n  🚀 INICIANDO ESCÁNER DE MISIONES Y NPCs\n============================================================", Color3.fromRGB(100, 255, 100))
 
 -- ==========================================
 -- FASE 1: ESCANEO ESTÁTICO DE NPCs EN EL MAPA
 -- ==========================================
-print("[*] Buscando NPCs interactuables en todo el mapa...")
+LogGUI("[*] Buscando NPCs interactuables en todo el mapa...", Color3.fromRGB(255, 200, 50))
 
 local NPCsEncontrados = {}
 
@@ -59,11 +132,11 @@ local function EscanearModelo(modelo)
 
                 if not NPCsEncontrados[npcName] then
                     NPCsEncontrados[npcName] = true
-                    print("--------------------------------------------------")
-                    print("🤖 NPC DETECTADO: " .. npcName)
-                    print("📍 Coordenadas: " .. coords)
-                    print("📝 Acción de Prompt: [" .. prompt.ActionText .. "] " .. prompt.ObjectText)
-                    print("❓ Estado de Misión: " .. misionLista)
+                    LogGUI("--------------------------------------------------", Color3.fromRGB(150, 150, 150))
+                    LogGUI("🤖 NPC DETECTADO: " .. npcName, Color3.fromRGB(100, 255, 255))
+                    LogGUI("📍 Coordenadas: " .. coords, Color3.fromRGB(200, 200, 200))
+                    LogGUI("📝 Acción de Prompt: [" .. prompt.ActionText .. "] " .. prompt.ObjectText, Color3.fromRGB(200, 200, 200))
+                    LogGUI("❓ Estado de Misión: " .. misionLista, Color3.fromRGB(255, 150, 150))
                     
                     -- Buscar scripts locales (para saber si hay lógica de cliente atada al NPC)
                     local localScripts = {}
@@ -73,7 +146,7 @@ local function EscanearModelo(modelo)
                         end
                     end
                     if #localScripts > 0 then
-                        print("📜 Scripts/Módulos encontrados en el NPC: " .. table.concat(localScripts, ", "))
+                        LogGUI("📜 Scripts en NPC: " .. table.concat(localScripts, ", "), Color3.fromRGB(150, 150, 255))
                     end
                 end
             end
@@ -86,13 +159,13 @@ for _, obj in pairs(Workspace:GetDescendants()) do
         EscanearModelo(obj)
     end
 end
-print("--------------------------------------------------\n")
+LogGUI("--------------------------------------------------\n", Color3.fromRGB(150, 150, 150))
 
 -- ==========================================
 -- FASE 2: SNIFFER DE RED (REMOTE INTERCEPTION)
 -- ==========================================
-print("[*] Inyectando Sniffer de Red para Diálogos y Misiones...")
-print("[*] ¡Ve y habla con un NPC ahora para capturar la misión!\n")
+LogGUI("[*] Inyectando Sniffer de Red para Diálogos y Misiones...", Color3.fromRGB(255, 200, 50))
+LogGUI("[*] ¡Ve y habla con un NPC ahora para capturar la misión!\n", Color3.fromRGB(255, 100, 100))
 
 local RemotosMisiones = {
     "DialogueRemote",
@@ -124,20 +197,20 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
         if EsRemotoDeMision(self.Name) then
-            print("\n================= [ REPORTE DE RED: CLIENTE -> SERVIDOR ] =================")
-            print("📡 Tipo de Llamada : " .. method)
-            print("🔗 Nombre Remoto   : " .. self.Name)
-            print("📂 Ruta del Remoto : " .. self:GetFullName())
-            print("📦 Datos Enviados (Argumentos):")
+            LogGUI("\n========== [ REPORTE DE RED: CLIENTE -> SERVER ] ==========", Color3.fromRGB(255, 100, 100))
+            LogGUI("📡 Tipo de Llamada : " .. method, Color3.fromRGB(200, 200, 200))
+            LogGUI("🔗 Nombre Remoto   : " .. self.Name, Color3.fromRGB(150, 255, 150))
+            LogGUI("📂 Ruta del Remoto : " .. self:GetFullName(), Color3.fromRGB(200, 200, 200))
+            LogGUI("📦 Datos Enviados (Argumentos):", Color3.fromRGB(255, 255, 150))
             
             for i, v in ipairs(args) do
                 if type(v) == "table" then
-                    print("   ["..i.."] (Tabla JSON) = " .. HttpService:JSONEncode(v))
+                    LogGUI("   ["..i.."] (JSON) = " .. HttpService:JSONEncode(v), Color3.fromRGB(220, 220, 220))
                 else
-                    print("   ["..i.."] ("..type(v)..") = " .. tostring(v))
+                    LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
                 end
             end
-            print("=========================================================================\n")
+            LogGUI("=========================================================================\n", Color3.fromRGB(255, 100, 100))
         end
     end
     
@@ -150,23 +223,23 @@ for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
     if obj:IsA("RemoteEvent") and EsRemotoDeMision(obj.Name) then
         local c = obj.OnClientEvent:Connect(function(...)
             local args = {...}
-            print("\n================= [ REPORTE DE RED: SERVIDOR -> CLIENTE ] =================")
-            print("📡 Evento Recibido : OnClientEvent")
-            print("🔗 Nombre Remoto   : " .. obj.Name)
+            LogGUI("\n========== [ REPORTE DE RED: SERVER -> CLIENTE ] ==========", Color3.fromRGB(100, 150, 255))
+            LogGUI("📡 Evento Recibido : OnClientEvent", Color3.fromRGB(200, 200, 200))
+            LogGUI("🔗 Nombre Remoto   : " .. obj.Name, Color3.fromRGB(150, 255, 150))
             
-            print("📦 Datos Recibidos (Posibles misiones, requisitos, opciones de diálogo):")
+            LogGUI("📦 Datos Recibidos (Posibles misiones/diálogos):", Color3.fromRGB(255, 255, 150))
             for i, v in ipairs(args) do
                 if type(v) == "table" then
-                    print("   ["..i.."] (Tabla JSON) = " .. HttpService:JSONEncode(v))
+                    LogGUI("   ["..i.."] (JSON) = " .. HttpService:JSONEncode(v), Color3.fromRGB(220, 220, 220))
                 else
-                    print("   ["..i.."] ("..type(v)..") = " .. tostring(v))
+                    LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
                 end
             end
-            print("=========================================================================\n")
+            LogGUI("=========================================================================\n", Color3.fromRGB(100, 150, 255))
         end)
         table.insert(conexionesOnClientEvent, c)
     end
 end
 
-print("[✔] Sniffer inyectado correctamente. Todo el tráfico de misiones y NPCs será impreso en la consola (F9).")
-print("[!] Ve e interactúa con los NPCs, acepta misiones y complétalas para registrar todo el proceso.")
+LogGUI("[✔] Sniffer y HUD inyectados correctamente.", Color3.fromRGB(100, 255, 100))
+LogGUI("[!] Ve e interactúa con los NPCs, el proceso aparecerá aquí.", Color3.fromRGB(255, 200, 50))
