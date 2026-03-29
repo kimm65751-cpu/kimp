@@ -118,7 +118,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V3.2"
+Title.Text = " 🗡️ OMNI-FARM V3.4"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -1165,7 +1165,7 @@ local function EscanearMinerales()
     local dir = {}
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Visible then
+            if obj:IsA("TextLabel") then
                 local txt = string.lower(obj.Text)
                 for _, item in ipairs(ITEMS_SCAN_NAMES) do
                     if txt == item.es or txt == string.lower(item.en) then
@@ -1177,6 +1177,9 @@ local function EscanearMinerales()
                                     if mx then
                                         local n = tonumber(mx)
                                         if n > (dir[item.en] or 0) then dir[item.en] = n end
+                                    else
+                                        local n2 = tonumber(child.Text)
+                                        if n2 and n2 > (dir[item.en] or 0) and n2 < 99999 then dir[item.en] = n2 end
                                     end
                                 end
                             end
@@ -1189,8 +1192,8 @@ local function EscanearMinerales()
     return dir
 end
 -- Escudo __newindex (EXACTO del código viejo que funcionaba)
-if not getgenv().InmunidadV8Activa then
-    getgenv().InmunidadV8Activa = true
+if not getgenv().InmunidadV11Activa then
+    getgenv().InmunidadV11Activa = true
     local OriginalNewIndex
     OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
         if not checkcaller() then
@@ -1210,14 +1213,23 @@ end
 
 -- Función: Ejecutar venta (secuencia exacta de 3 pasos del código funcional)
 local function VenderAutomaticamente(miBasket)
-    if not RF_RunCommand_Sell or not RF_ForceDialogue_Sell or not RE_DialogueEvent_Sell or not SeyNPC_Sell then return end
+    if not RF_RunCommand_Sell or not RF_ForceDialogue_Sell or not RE_DialogueEvent_Sell then return end
+    
+    local npcActual = nil
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+            npcActual = obj; break
+        end
+    end
+    if not npcActual then return end
+
     local paqueteFinal = { Basket = miBasket }
     
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local oldCFrame = root and root.CFrame
     
     -- PASO 1
-    pcall(function() RF_ForceDialogue_Sell:InvokeServer(SeyNPC_Sell, "SellConfirmMisc") end)
+    pcall(function() RF_ForceDialogue_Sell:InvokeServer(npcActual, "SellConfirmMisc") end)
     task.wait(0.2)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Opened") end)
     
@@ -1240,21 +1252,6 @@ local function VenderAutomaticamente(miBasket)
         end
     end)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Closed") end)
-    
-    -- DESBLOQUEO FORZADO: El ForceDialogue congela al jugador, hay que restaurar todo
-    task.wait(0.3)
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildWhichIsA("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
-            if hrp then hrp.Anchored = false end
-        end
-        -- Restaurar cámara a modo normal
-        local cam = Workspace.CurrentCamera
-        if cam then cam.CameraType = Enum.CameraType.Custom end
-    end)
 end
 
 -- Bucle: Monitorear inventario y vender si está lleno
