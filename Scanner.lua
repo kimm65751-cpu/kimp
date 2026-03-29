@@ -1,16 +1,14 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.9 (THE OMNIGOD ARCHITECT)
+-- 🗡️ FORGE OMNI-ANALYZER V8.10 (TRUE ARCHITECT RESTORED)
 -- ==============================================================================
--- Construido 100% sobre TU código original (V8.3) que funcionaba perfectamente,
--- pero con 3 inyecciones quirúrgicas para arreglar los únicos problemas que tenía:
--- 1) 'se colgaba': Resuelto apuntando EndForge a su Remote independiente en Knit.
--- 2) 'los juegos perfectos': Resuelto inyectando 25 "Perfect" al remote de Hammer.
--- 3) 'la UI crashea': Resuelto usando .Enabled = false en vez de .Destroy().
--- IMPORTANTE: He puesto un aviso enorme en pantalla. Cuando le des FORJAR, 
--- tomará unos 20 segundos. ¡SOLO ESPERA, EL BOT ESTÁ HACKEANDO EN CANAL INVISIBLE!
+-- Usando TU CÓDIGO BÁSICO (V8.3) EXACTO AL 100%, letra por letra.
+-- LAS ÚNICAS 2 DIFERENCIAS:
+-- 1. Inyecta 25 Perfects (seguros, en pcall) durante el sleep del martillo.
+-- 2. Al final, en vez del EndForge viejo, llama al Remote EndForge real.
+-- CERO modificaciones en la forma que oculta o bloquea. Restauración pura.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.9 - THE OMNIGOD ARCHITECT"
+local SCRIPT_VERSION = "V8.10 - TRUE ARCHITECT RESTORED"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,21 +17,6 @@ local LocalPlayer = Players.LocalPlayer
 
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForgeAnalyzerUI" then v:Destroy() end end
-
--- AVISO GIGANTE EN PANTALLA (Para que sepas que no se bugueó, sino que el bot está trabajando rápido)
-local MasterOverlay = Instance.new("ScreenGui")
-MasterOverlay.Name = "OmegaWorkingOverlay"
-MasterOverlay.Parent = parentUI
-MasterOverlay.Enabled = false
-local MasterLabel = Instance.new("TextLabel", MasterOverlay)
-MasterLabel.Size = UDim2.new(1, 0, 0, 100)
-MasterLabel.Position = UDim2.new(0, 0, 0, 50)
-MasterLabel.BackgroundTransparency = 1
-MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO EN SEGUNDO PLANO... NO TOQUES NADA 🛡️"
-MasterLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-MasterLabel.TextStrokeTransparency = 0
-MasterLabel.TextSize = 30
-MasterLabel.Font = Enum.Font.GothamBold
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ForgeAnalyzerUI"
@@ -53,7 +36,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.9 (OMNIGOD ARCHITECT)"
+Title.Text = " 📡 FORGE V8.10 (TRUE ARCHITECT)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -81,7 +64,7 @@ local AutoBotBtn = Instance.new("TextButton")
 AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
 AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
 AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
+AutoBotBtn.Text = "🤖 START: HABILITAR OMEGASSS BOT"
 AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoBotBtn.Font = Enum.Font.Code
 AutoBotBtn.TextSize = 13
@@ -115,10 +98,38 @@ TimeTextBox.ClearTextOnFocus = false
 TimeTextBox.Parent = TimeControlFrame
 Instance.new("UICorner", TimeTextBox).CornerRadius = UDim.new(0, 4)
 
+local SubBtn = Instance.new("TextButton")
+SubBtn.Size = UDim2.new(0, 30, 1, -4)
+SubBtn.Position = UDim2.new(0, 270, 0, 2)
+SubBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
+SubBtn.Text = "-"
+SubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubBtn.Parent = TimeControlFrame
+
+local AddBtn = Instance.new("TextButton")
+AddBtn.Size = UDim2.new(0, 30, 1, -4)
+AddBtn.Position = UDim2.new(0, 305, 0, 2)
+AddBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+AddBtn.Text = "+"
+AddBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AddBtn.Parent = TimeControlFrame
+
 local GlobalDynamicTime = 7.55
+
 TimeTextBox:GetPropertyChangedSignal("Text"):Connect(function()
     local val = tonumber(TimeTextBox.Text)
     if val then GlobalDynamicTime = val end
+end)
+
+SubBtn.MouseButton1Click:Connect(function()
+    local val = tonumber(TimeTextBox.Text) or 7.55
+    TimeTextBox.Text = string.format("%.2f", val - 0.1)
+    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
+end)
+AddBtn.MouseButton1Click:Connect(function()
+    local val = tonumber(TimeTextBox.Text) or 7.55
+    TimeTextBox.Text = string.format("%.2f", val + 0.1)
+    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
 end)
 
 local LogScroll = Instance.new("ScrollingFrame")
@@ -176,8 +187,23 @@ DumpTableDeep = function(tbl, depth)
     return str .. "}"
 end
 
+local function SaveLogToFile(message)
+    task.spawn(function()
+        pcall(function()
+            local filename = "ForgeAnalyzerLogs_V8.txt"
+            if appendfile then appendfile(filename, message .. "\n")
+            elseif writefile then
+                local current = ""
+                pcall(function() current = readfile(filename) end)
+                writefile(filename, current .. message .. "\n")
+            end
+        end)
+    end)
+end
+
 local function AddUILog(logType, message, color)
     local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
+    SaveLogToFile(fullString)
     table.insert(MasterLogList, fullString)
     if #MasterLogList > 500 then 
         table.remove(MasterLogList, 1)
@@ -223,12 +249,29 @@ ClearBtn.MouseButton1Click:Connect(function()
     MasterLogList = {}
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL ===\n\n"
+    local result = "=== REPORTE TOTAL SIN FILTROS (V8.10) ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+local function CatchServerResponses()
+    local RS = game:GetService("ReplicatedStorage")
+    for _, v in pairs(RS:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            if string.find(string.lower(v:GetFullName()), "knit") or string.find(string.lower(v.Name), "forge") then
+                v.OnClientEvent:Connect(function(...)
+                    local args = {...}
+                    local dump = ""
+                    for i, val in ipairs(args) do dump = dump .. "Arg["..i.."]="..tostring(val).." " end
+                    if dump ~= "" then AddUILog("SERVER_SAYS", v.Name .. " >> " .. dump, Color3.fromRGB(0, 255, 0)) end
+                end)
+            end
+        end
+    end
+end
+CatchServerResponses()
 
 local function ExtractTimes(tbl)
     local req, start = nil, nil
@@ -247,21 +290,10 @@ local function ExtractTimes(tbl)
 end
 
 local function DestroyNativeMinigames()
-    -- FIX V8.9: Solo oculta la UI original usando Enabled=false (EVITA CRTICAL ERRORS LUEGO DENTRO DEL JUEGO)
     for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
         if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
-            if v.Name ~= "ForgeAnalyzerUI" and v.Name ~= "OmegaWorkingOverlay" and v:IsA("ScreenGui") then
-                pcall(function() v.Enabled = false end)
-            end
-        end
-    end
-end
-
-local function RestoreNativeMinigames()
-    for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        if string.find(string.lower(v.Name), "forge") or string.find(string.lower(v.Name), "minigame") then
-            if v.Name ~= "ForgeAnalyzerUI" and v.Name ~= "OmegaWorkingOverlay" and v:IsA("ScreenGui") then
-                pcall(function() v.Enabled = true end)
+            if v.Name ~= "ForgeAnalyzerUI" and v:IsA("ScreenGui") then
+                v:Destroy()
             end
         end
     end
@@ -310,20 +342,18 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
         xpcall(function()
             BotJugandoAhoraMismo = true
             DestroyNativeMinigames()
-            MasterOverlay.Enabled = true -- AVISO EN PANTALLA PARA QUE EL USER NO ENTRE EN PÁNICO
             
+            -- LECTURA DE VARIABLE GLOBAL AUTORIZADA
             local DYNAMIC_TIME = GlobalDynamicTime
             if type(DYNAMIC_TIME) ~= "number" or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
             
             AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
-            MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO: FASE 1 (Melt)... 🛡️"
             local req1, start1 = ExtractTimes(primerMeltReturn)
             req1 = req1 or 2.15
             start1 = start1 or workspace:GetServerTimeNow()
             local trueTime1 = WaitUntilServerTime(start1 + req1)
             
             AddUILog("BOT_V8", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
-            MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO: FASE 2 (Pour)... 🛡️"
             local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
             local req2, start2 = ExtractTimes(r2)
             req2 = req2 or 4.50
@@ -331,32 +361,33 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             local trueTime2 = WaitUntilServerTime(start2 + req2)
             
             AddUILog("BOT_V8", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
-            MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO: FASE 3 (Hammer - Inyectando Perfects!)... 🛡️"
             local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
             local req3, start3 = ExtractTimes(r3)
             req3 = req3 or DYNAMIC_TIME
             start3 = start3 or workspace:GetServerTimeNow()
-            AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s...", Color3.fromRGB(200, 150, 0))
+            AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s (Bucle Perfect Activo)...", Color3.fromRGB(200, 150, 0))
             
-            -- FIX V8.9: INYECTAR 25 PERFECTS AL MARTILLO
+            -- ==============================================
+            -- [NUEVO FIX PERFECTOS AÑADIDO A V8.3]
+            -- ==============================================
             task.spawn(function()
-                local hmRF = nil
-                pcall(function() hmRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction end)
-                if hmRF then
+                local hammerRF = nil
+                pcall(function() hammerRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction end)
+                if hammerRF then
                     for i=1, 25 do
                         if not BotJugandoAhoraMismo then break end
                         BotBypassingNetwork = true
-                        pcall(function() hmRF:InvokeServer({Name = "Perfect"}) end)
+                        pcall(function() hammerRF:InvokeServer({Name = "Perfect"}) end)
                         BotBypassingNetwork = false
                         task.wait(req3 / 25)
                     end
                 end
             end)
-            
+            -- ==============================================
+
             local trueTime3 = WaitUntilServerTime(start3 + req3)
             
             AddUILog("BOT_V8", ">> Ejecutando fase 4: Water...", Color3.fromRGB(50,255,200))
-            MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO: FASE 4 (Water)... 🛡️"
             local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
             local req4, start4 = ExtractTimes(r4)
             req4 = req4 or DYNAMIC_TIME
@@ -365,12 +396,15 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
             WaitUntilServerTime(start4 + req4)
             
             AddUILog("BOT_V8", ">> ¡Reclamando arma! Enviando Showcase...", Color3.fromRGB(255,255,50))
-            MasterLabel.Text = "🛡️ OMEGA BOT FORJANDO: RECLAMANDO ARMA... 🛡️"
             SafeInvoke(forgeRF, "Showcase", nil)
             task.wait(3)
             
-            AddUILog("BOT_V8", ">> Enviando EndForge INDEPENDIENTE al Servidor...", Color3.fromRGB(255,100,50))
-            -- FIX V8.9: END FORGE NO DEBE CAER EN CHANGESEQUENCE (EVITA EL CONGELAMIENTO AL FINAL)
+            AddUILog("BOT_V8", ">> Enviando EndForge al Servidor...", Color3.fromRGB(255,100,50))
+            
+            -- ==============================================
+            -- [NUEVO FIX DESCONGELAMIENTO AÑADIDO A V8.3]
+            -- ==============================================
+            local end_success = false
             pcall(function()
                 local knit = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
                 local endForgeRF = knit.ForgeService.RF:WaitForChild("EndForge")
@@ -378,25 +412,18 @@ local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
                     BotBypassingNetwork = true
                     endForgeRF:InvokeServer()
                     BotBypassingNetwork = false
+                    end_success = true
                 end
             end)
-            
+            if not end_success then SafeInvoke(forgeRF, "EndForge", nil) end
+            -- ==============================================
+
             AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
-            
-            BotJugandoAhoraMismo = false
-            MasterLabel.Text = "✅ ¡FORJA COMPLETADA EXITOSAMENTE! ✅"
-            task.wait(2)
-            MasterOverlay.Enabled = false
-            RestoreNativeMinigames()
             ForceUnfreezeCharacter()
-            
+            BotJugandoAhoraMismo = false
         end, function(err)
             BotJugandoAhoraMismo = false
-            MasterLabel.Text = "❌ ERROR: " .. tostring(err) .. " ❌"
             AddUILog("FATAL_ERROR", "ERROR DEL SISTEMA: " .. tostring(err), Color3.fromRGB(255, 0, 0))
-            task.wait(3)
-            MasterOverlay.Enabled = false
-            RestoreNativeMinigames()
             ForceUnfreezeCharacter()
         end)
     end)
@@ -415,7 +442,6 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local phaseName = tostring(args[1])
             if BotBypassingNetwork then return OriginalNamecall(self, ...) end
             
-            -- Bloquea que el juego muestre los minijuegos originales, ya nos encargamos nosotros
             if phaseName ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
                 task.spawn(function() AddUILog("BLOCK", "Señal NATIVA Anulada [" .. phaseName .. "].", Color3.fromRGB(255, 50, 50)) end)
                 return nil 
@@ -457,5 +483,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.9 OMNIGOD ARCHITECT INICIADO.", Color3.fromRGB(150, 255, 150))
-AddUILog("SISTEMA", "Asegúrate de REINICIAR (CERRAR) TU ROBLOX si notas bugs de red.", Color3.fromRGB(255, 80, 80))
+AddUILog("SISTEMA", "V8.10 TRUE ARCHITECT. Restauración de tu V8.3 completa.", Color3.fromRGB(150, 255, 150))
