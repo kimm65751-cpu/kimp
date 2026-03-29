@@ -297,6 +297,6 @@ task.spawn(function()
     end
 end)
 
-Log("[SISTEMA] V8.6 - NO-NAMECALL OMEGA INICIADO.", Color3.fromRGB(0, 255, 100))
+Log("[SISTEMA] V8.6 - NO-NAMECALL OMAAAAEGA INICIADO.", Color3.fromRGB(0, 255, 100))
 Log("[SISTEMA] hookmetamethod ELIMINADO. Tu botón FORJAR ahora funciona.", Color3.fromRGB(255, 255, 0))
 Log("1️⃣ Pon los minerales.\n2️⃣ Activa 'HOOK: ON'.\n3️⃣ Dale click a ¡FORJAR!.", Color3.fromRGB(200, 200, 200))
