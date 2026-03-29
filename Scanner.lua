@@ -1,12 +1,15 @@
 -- ==============================================================================
--- 🎯 SNIFFER DE OPCIONES DE DIÁLOGO V1.0
+-- 🧪 TESTER DE AUTO-QUEST V1.0
 -- ==============================================================================
--- Objetivo: Descubrir qué Remote usa el CLIENTE para enviar la opción elegida
--- al SERVIDOR cuando seleccionas "Lets Start", "Yes", etc. en un diálogo.
--- 100% PASIVO. CERO hooks. NO rompe interacciones.
+-- Prueba invocar los RemoteFunctions de diálogo para aceptar misiones
+-- sin necesidad de presionar E ni elegir opciones manualmente.
+-- Guarda TODOS los resultados en autoquest_test.txt
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
@@ -14,28 +17,28 @@ local LocalPlayer = Players.LocalPlayer
 -- ==========================================
 local CoreGui = game:GetService("CoreGui")
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "DialogSnifferUI" then v:Destroy() end end
+for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "AutoQuestTestUI" then v:Destroy() end end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DialogSnifferUI"
+ScreenGui.Name = "AutoQuestTestUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentUI
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+MainFrame.Size = UDim2.new(0, 520, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 20, 10)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(255, 100, 100)
+MainFrame.BorderColor3 = Color3.fromRGB(100, 255, 100)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -180, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(30, 15, 15)
-Title.Text = " 🎯 SNIFFER DIÁLOGOeee"
-Title.TextColor3 = Color3.fromRGB(255, 100, 100)
+Title.BackgroundColor3 = Color3.fromRGB(15, 30, 15)
+Title.Text = " 🧪 AUTO-QUEST TESTER V1.0"
+Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -72,8 +75,8 @@ CloseBtn.TextSize = 16
 CloseBtn.Parent = MainFrame
 
 local OutputScroll = Instance.new("ScrollingFrame")
-OutputScroll.Size = UDim2.new(1, -10, 1, -40)
-OutputScroll.Position = UDim2.new(0, 5, 0, 35)
+OutputScroll.Size = UDim2.new(1, -10, 1, -65)
+OutputScroll.Position = UDim2.new(0, 5, 0, 60)
 OutputScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
 OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 OutputScroll.ScrollBarThickness = 6
@@ -91,26 +94,26 @@ end)
 local isMinimized = false
 MinBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    MainFrame.Size = isMinimized and UDim2.new(0, 500, 0, 30) or UDim2.new(0, 500, 0, 350)
+    MainFrame.Size = isMinimized and UDim2.new(0, 520, 0, 30) or UDim2.new(0, 520, 0, 400)
     OutputScroll.Visible = not isMinimized
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+local FullLog = "=== AUTO-QUEST TESTER ===\n\n"
+local saveCount = 0
+
 SaveBtn.MouseButton1Click:Connect(function()
-    writefile("sniffer_dialogos.txt", FullLog)
+    writefile("autoquest_test.txt", FullLog)
     if setclipboard then setclipboard(FullLog) end
     SaveBtn.Text = "¡GUARDADO!"
     task.delay(2, function() SaveBtn.Text = "💾 GUARDAR" end)
 end)
 
-local FullLog = "=== SNIFFER DE OPCIONES DE DIÁLOGO ===\n\n"
-local HttpService = game:GetService("HttpService")
-local saveCount = 0
-
 local function LogGUI(text, color)
     FullLog = FullLog .. text .. "\n"
     saveCount = saveCount + 1
-    if saveCount >= 10 then
-        pcall(function() writefile("sniffer_dialogos.txt", FullLog) end)
+    if saveCount >= 15 then
+        pcall(function() writefile("autoquest_test.txt", FullLog) end)
         saveCount = 0
     end
     local msg = Instance.new("TextLabel")
@@ -126,284 +129,215 @@ local function LogGUI(text, color)
     msg.Size = UDim2.new(1, -10, 0, msg.TextBounds.Y + 4)
 end
 
-local function SafeJSON(v)
+local function SafeStr(v)
+    if typeof(v) == "Instance" then return "[Instance] " .. v:GetFullName() end
     if type(v) == "table" then
-        local ok, res = pcall(function() return HttpService:JSONEncode(v) end)
-        if ok then return res end
+        local ok, r = pcall(function() return HttpService:JSONEncode(v) end)
+        if ok then return r end
         local s = "{"
         for k, val in pairs(v) do s = s .. tostring(k) .. "=" .. tostring(val) .. ", " end
         return s .. "}"
-    elseif typeof(v) == "Instance" then
-        return "[Instance] " .. v:GetFullName()
-    else
-        return "(" .. typeof(v) .. ") " .. tostring(v)
     end
+    return "(" .. typeof(v) .. ") " .. tostring(v)
 end
 
 -- ==========================================
--- SISTEMA NOCLIP + VUELO
+-- OBTENER REFERENCIAS A LOS REMOTES
 -- ==========================================
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local isFlyingTo = false
-local noclipConn = nil
+LogGUI("============================================================", Color3.fromRGB(100, 255, 100))
+LogGUI("  🔧 Obteniendo referencias a RemoteFunctions", Color3.fromRGB(100, 255, 100))
+LogGUI("============================================================\n", Color3.fromRGB(100, 255, 100))
 
-local function BuscarNPC(nombre)
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and string.lower(obj.Name) == string.lower(nombre) then
-            local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
-            if root then return root.Position end
+local KnitServices = ReplicatedStorage:FindFirstChild("Shared")
+    and ReplicatedStorage.Shared:FindFirstChild("Packages")
+    and ReplicatedStorage.Shared.Packages:FindFirstChild("Knit")
+    and ReplicatedStorage.Shared.Packages.Knit:FindFirstChild("Services")
+
+local ProximityDialogue, ForceDialogue, DialogueEvent, RunCommand, ClientTrackQuest, ProgressUIQuest
+
+if KnitServices then
+    local proxSvc = KnitServices:FindFirstChild("ProximityService")
+    if proxSvc and proxSvc:FindFirstChild("RF") then
+        ProximityDialogue = proxSvc.RF:FindFirstChild("Dialogue")
+        ForceDialogue = proxSvc.RF:FindFirstChild("ForceDialogue")
+    end
+
+    local dialogSvc = KnitServices:FindFirstChild("DialogueService")
+    if dialogSvc then
+        if dialogSvc:FindFirstChild("RE") then
+            DialogueEvent = dialogSvc.RE:FindFirstChild("DialogueEvent")
+        end
+        if dialogSvc:FindFirstChild("RF") then
+            RunCommand = dialogSvc.RF:FindFirstChild("RunCommand")
         end
     end
-    -- Buscar por ProximityPrompt con ObjectText
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            local parent = obj:FindFirstAncestorWhichIsA("Model")
-            if parent and string.find(string.lower(parent.Name), string.lower(nombre)) then
-                local root = parent:FindFirstChild("HumanoidRootPart") or parent:FindFirstChild("Torso") or parent:FindFirstChildWhichIsA("BasePart")
-                if root then return root.Position end
-            end
-        end
+
+    local questSvc = KnitServices:FindFirstChild("QuestService")
+    if questSvc and questSvc:FindFirstChild("RF") then
+        ClientTrackQuest = questSvc.RF:FindFirstChild("ClientTrackQuest")
+        ProgressUIQuest = questSvc.RF:FindFirstChild("ProgressUIQuest")
     end
-    return nil
 end
 
-local function IrHaciaNPC(targetPos, npcName)
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then LogGUI("❌ Sin personaje", Color3.fromRGB(255, 50, 50)); return end
-    if root:FindFirstChild("_NoclipSniffer") then root._NoclipSniffer:Destroy() end
+LogGUI("ProximityService.Dialogue: " .. (ProximityDialogue and "✅" or "❌"), ProximityDialogue and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
+LogGUI("ProximityService.ForceDialogue: " .. (ForceDialogue and "✅" or "❌"), ForceDialogue and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
+LogGUI("DialogueService.DialogueEvent: " .. (DialogueEvent and "✅" or "❌"), DialogueEvent and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
+LogGUI("DialogueService.RunCommand: " .. (RunCommand and "✅" or "❌"), RunCommand and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
+LogGUI("QuestService.ClientTrackQuest: " .. (ClientTrackQuest and "✅" or "❌"), ClientTrackQuest and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
+LogGUI("QuestService.ProgressUIQuest: " .. (ProgressUIQuest and "✅" or "❌"), ProgressUIQuest and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 50, 50))
 
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "_NoclipSniffer"
-    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    bv.Parent = root
-    isFlyingTo = true
-
-    if noclipConn then noclipConn:Disconnect() end
-    noclipConn = RunService.Stepped:Connect(function()
-        if not isFlyingTo then
-            if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
-            return
-        end
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
+-- Escuchar DialogueEvent (server -> client)
+if DialogueEvent then
+    DialogueEvent.OnClientEvent:Connect(function(...)
+        local args = {...}
+        LogGUI("\n🔵 [DialogueService.DialogueEvent] SERVER → CLIENTE", Color3.fromRGB(100, 200, 255))
+        for i, v in ipairs(args) do
+            LogGUI("   [" .. i .. "] " .. SafeStr(v), Color3.fromRGB(200, 200, 200))
         end
     end)
+end
 
-    LogGUI("✈️ Volando NOCLIP hacia " .. npcName .. "...", Color3.fromRGB(100, 255, 255))
-
-    task.spawn(function()
-        while isFlyingTo and bv.Parent and root.Parent do
-            local dist = (root.Position - targetPos).Magnitude
-            if dist < 5 then
-                bv:Destroy()
-                isFlyingTo = false
-                -- Esperar a que Stepped se desconecte
-                task.wait(0.2)
-                -- Tocar suelo: el juego se encarga de restaurar CanCollide
-                if char:FindFirstChild("Humanoid") then
-                    char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-                end
-                LogGUI("✅ Llegaste a " .. npcName .. ". Presiona E.", Color3.fromRGB(100, 255, 100))
-                break
-            end
-            local dir = (targetPos - root.Position).Unit
-            bv.Velocity = dir * 65
-            task.wait(0.05)
+-- Escuchar DialogueRemote
+local DialogueRemote = ReplicatedStorage:FindFirstChild("DialogueEvents") and ReplicatedStorage.DialogueEvents:FindFirstChild("DialogueRemote")
+if DialogueRemote then
+    DialogueRemote.OnClientEvent:Connect(function(...)
+        local args = {...}
+        LogGUI("\n🔴 [DialogueRemote] SERVER → CLIENTE", Color3.fromRGB(255, 100, 100))
+        for i, v in ipairs(args) do
+            LogGUI("   [" .. i .. "] " .. SafeStr(v), Color3.fromRGB(200, 200, 200))
         end
     end)
 end
 
 -- ==========================================
--- BOTONES DE NPCs DE QUEST
+-- BOTONES DE TEST POR NPC
 -- ==========================================
-local NPCsQuest = {
-    {name = "Farmer",         pos = Vector3.new(-119.1, 21.4, -35.2),  tag = "⛏️ Mining"},
-    {name = "Barakkulf",      pos = Vector3.new(26.0, 23.4, -37.9),    tag = "⚔️ Barakkulf"},
-    {name = "Sensei Moro 2",  pos = Vector3.new(10.2, 23.8, -55.0),    tag = "📜 Moro2"},
-    {name = "Goblin King",    pos = Vector3.new(79.1, 20.3, -335.7),   tag = "👑 GoblinK"},
-    {name = "Masked Stranger",pos = Vector3.new(91.8, 74.9, -23.0),    tag = "🎭 Masked"},
-    {name = "Captain Rowan",  pos = Vector3.new(14.9, 75.1, -70.3),    tag = "⚓ Rowan"},
+LogGUI("\n============================================================", Color3.fromRGB(255, 255, 100))
+LogGUI("  🧪 BOTONES DE PRUEBA - Toca uno para testear", Color3.fromRGB(255, 255, 100))
+LogGUI("============================================================\n", Color3.fromRGB(255, 255, 100))
+
+local testNPCs = {
+    {name = "Mining",   dialogue = "Dialogues.Mining.MiningMain",             npcWorld = "Farmer",        tag = "⛏️MINING"},
+    {name = "Zombie",   dialogue = "Dialogues.Zombie.ZombieMain",             npcWorld = "Zombie Quest",  tag = "🧟ZOMBIE"},
+    {name = "Daily1",   dialogue = "Dialogues.Daily1.Daily1Main",             npcWorld = "Daily1",        tag = "📅DAILY"},
+    {name = "SenseiM2", dialogue = "Dialogues.SenseiMoro2.SenseiMoroIsland2", npcWorld = "Sensei Moro 2", tag = "📜SENSEI"},
 }
 
 local btnBar = Instance.new("Frame")
-btnBar.Size = UDim2.new(1, -10, 0, 28)
+btnBar.Size = UDim2.new(1, -10, 0, 30)
+btnBar.Position = UDim2.new(0, 5, 0, 32)
 btnBar.BackgroundTransparency = 1
-btnBar.Parent = OutputScroll
+btnBar.Parent = MainFrame
 
-local btnCount = 0
-for _, npc in ipairs(NPCsQuest) do
+for i, npc in ipairs(testNPCs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 75, 0, 24)
-    btn.Position = UDim2.new(0, btnCount * 78, 0, 2)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 80, 160)
+    btn.Size = UDim2.new(0, 120, 0, 26)
+    btn.Position = UDim2.new(0, (i-1) * 124, 0, 2)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
     btn.Text = npc.tag
     btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.TextSize = 9
+    btn.TextSize = 10
     btn.Font = Enum.Font.Code
     btn.Parent = btnBar
-    btnCount = btnCount + 1
 
     btn.MouseButton1Click:Connect(function()
-        if isFlyingTo then
-            isFlyingTo = false
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root and root:FindFirstChild("_NoclipSniffer") then root._NoclipSniffer:Destroy() end
-            btn.BackgroundColor3 = Color3.fromRGB(40, 80, 160)
+        btn.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
+        btn.Text = "PROBANDO..."
+        
+        -- Obtener la instancia del diálogo
+        local dialoguePath = npc.dialogue
+        local dialogueInst = ReplicatedStorage
+        for _, part in pairs(string.split(dialoguePath, ".")) do
+            dialogueInst = dialogueInst and dialogueInst:FindFirstChild(part)
+        end
+        
+        LogGUI("\n🧪 ========================================", Color3.fromRGB(255, 255, 100))
+        LogGUI("🧪 TESTEANDO: " .. npc.name, Color3.fromRGB(255, 255, 100))
+        LogGUI("🧪 Diálogo: " .. (dialogueInst and dialogueInst:GetFullName() or "NO ENCONTRADO"), Color3.fromRGB(200, 200, 200))
+        LogGUI("🧪 ========================================\n", Color3.fromRGB(255, 255, 100))
+
+        if not dialogueInst then
+            LogGUI("❌ No se encontró la instancia de diálogo", Color3.fromRGB(255, 50, 50))
+            btn.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
+            btn.Text = npc.tag
             return
         end
-        -- Buscar posición actualizada del NPC en el mundo
-        local pos = BuscarNPC(npc.name) or npc.pos
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        IrHaciaNPC(pos, npc.name)
-        task.spawn(function()
-            repeat task.wait(0.5) until not isFlyingTo
-            if btn.Parent then btn.BackgroundColor3 = Color3.fromRGB(40, 80, 160) end
-        end)
+
+        -- ==========================================
+        -- TEST 1: ForceDialogue
+        -- ==========================================
+        if ForceDialogue then
+            LogGUI("[TEST 1] ForceDialogue(dialogueInst)", Color3.fromRGB(255, 200, 50))
+            local ok, res = pcall(function()
+                return ForceDialogue:InvokeServer(dialogueInst)
+            end)
+            LogGUI("  Resultado: " .. (ok and "✅ " .. SafeStr(res) or "❌ " .. tostring(res)), ok and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+            task.wait(1)
+        end
+
+        -- ==========================================
+        -- TEST 2: ProximityDialogue
+        -- ==========================================
+        if ProximityDialogue then
+            LogGUI("[TEST 2] ProximityDialogue(dialogueInst)", Color3.fromRGB(255, 200, 50))
+            local ok, res = pcall(function()
+                return ProximityDialogue:InvokeServer(dialogueInst)
+            end)
+            LogGUI("  Resultado: " .. (ok and "✅ " .. SafeStr(res) or "❌ " .. tostring(res)), ok and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+            task.wait(1)
+        end
+
+        -- ==========================================
+        -- TEST 3: RunCommand con nodo "Yes" / "Lets Start"
+        -- ==========================================
+        if RunCommand then
+            local testNodes = {"Yes", "Lets Start", "Let's start", "I'm in"}
+            for _, nodeName in pairs(testNodes) do
+                local nodo = dialogueInst:FindFirstChild(nodeName)
+                if nodo then
+                    LogGUI("[TEST 3] RunCommand(\"" .. nodeName .. "\"): " .. nodo:GetFullName(), Color3.fromRGB(255, 200, 50))
+                    local ok, res = pcall(function()
+                        return RunCommand:InvokeServer(nodo)
+                    end)
+                    LogGUI("  Resultado: " .. (ok and "✅ " .. SafeStr(res) or "❌ " .. tostring(res)), ok and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+                    task.wait(0.5)
+                end
+            end
+
+            -- Test con Give Quest
+            local giveQuest = dialogueInst:FindFirstChild("Give Quest")
+            if giveQuest then
+                LogGUI("[TEST 3b] RunCommand(Give Quest): " .. giveQuest:GetFullName(), Color3.fromRGB(255, 200, 50))
+                local ok, res = pcall(function()
+                    return RunCommand:InvokeServer(giveQuest)
+                end)
+                LogGUI("  Resultado: " .. (ok and "✅ " .. SafeStr(res) or "❌ " .. tostring(res)), ok and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+            end
+        end
+
+        -- ==========================================
+        -- TEST 4: ClientTrackQuest
+        -- ==========================================
+        if ClientTrackQuest then
+            LogGUI("[TEST 4] ClientTrackQuest(\"" .. npc.name .. "\")", Color3.fromRGB(255, 200, 50))
+            local ok, res = pcall(function()
+                return ClientTrackQuest:InvokeServer(npc.name)
+            end)
+            LogGUI("  Resultado: " .. (ok and "✅ " .. SafeStr(res) or "❌ " .. tostring(res)), ok and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+        end
+
+        LogGUI("\n🧪 TESTS COMPLETADOS para " .. npc.name, Color3.fromRGB(100, 255, 100))
+        
+        -- Auto-guardar
+        pcall(function() writefile("autoquest_test.txt", FullLog) end)
+        
+        btn.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
+        btn.Text = npc.tag
     end)
 end
 
-LogGUI("⬆️ Toca un botón para VOLAR con NOCLIP al NPC de quest.", Color3.fromRGB(100, 255, 255))
+LogGUI("⬆️ Toca un botón para probar aceptar esa misión automáticamente.", Color3.fromRGB(100, 255, 255))
+LogGUI("[!] Los resultados de cada test aparecerán aquí.\n", Color3.fromRGB(255, 255, 50))
 
--- ==========================================
--- FASE 1: LISTAR TODOS LOS REMOTES EN DialogueEvents
--- ==========================================
-LogGUI("============================================================", Color3.fromRGB(255, 100, 100))
-LogGUI("  🔍 FASE 1: Mapeando DialogueEvents", Color3.fromRGB(255, 100, 100))
-LogGUI("============================================================\n", Color3.fromRGB(255, 100, 100))
-
-local DialogueEvents = ReplicatedStorage:FindFirstChild("DialogueEvents")
-local totalRemotes = 0
-
-if DialogueEvents then
-    for _, child in pairs(DialogueEvents:GetDescendants()) do
-        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") or child:IsA("BindableEvent") or child:IsA("BindableFunction") then
-            totalRemotes = totalRemotes + 1
-            local icon = child:IsA("RemoteEvent") and "📡" or child:IsA("RemoteFunction") and "🔗" or "⚡"
-            LogGUI(icon .. " [" .. child.ClassName .. "] " .. child:GetFullName(), Color3.fromRGB(255, 200, 100))
-        end
-    end
-    LogGUI("\n[✔] Total Remotes en DialogueEvents: " .. totalRemotes, Color3.fromRGB(100, 255, 100))
-else
-    LogGUI("❌ DialogueEvents no encontrado!", Color3.fromRGB(255, 50, 50))
-end
-
--- ==========================================
--- FASE 2: BUSCAR TODOS LOS REMOTES DE DIÁLOGO EN TODO EL JUEGO
--- ==========================================
-LogGUI("\n============================================================", Color3.fromRGB(255, 200, 50))
-LogGUI("  🔍 FASE 2: Buscando remotes de diálogo en TODO ReplicatedStorage", Color3.fromRGB(255, 200, 50))
-LogGUI("============================================================\n", Color3.fromRGB(255, 200, 50))
-
-local keywords = {"dialogue", "dialog", "quest", "npc", "conversation", "choice", "option", "respond", "answer", "select"}
-local remotesEncontrados = {}
-
-for _, child in pairs(ReplicatedStorage:GetDescendants()) do
-    if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-        local nameLower = string.lower(child.Name)
-        local pathLower = string.lower(child:GetFullName())
-        for _, kw in pairs(keywords) do
-            if string.find(nameLower, kw) or string.find(pathLower, kw) then
-                local icon = child:IsA("RemoteEvent") and "📡" or "🔗"
-                LogGUI(icon .. " " .. child:GetFullName(), Color3.fromRGB(200, 200, 200))
-                table.insert(remotesEncontrados, child)
-                break
-            end
-        end
-    end
-end
-LogGUI("[✔] Total relevantes: " .. #remotesEncontrados, Color3.fromRGB(100, 255, 100))
-
--- ==========================================
--- FASE 3: CONECTAR ESCUCHA PASIVA A TODOS
--- ==========================================
-LogGUI("\n============================================================", Color3.fromRGB(100, 200, 255))
-LogGUI("  🎧 FASE 3: Escuchando TODOS los remotes de diálogo", Color3.fromRGB(100, 200, 255))
-LogGUI("============================================================", Color3.fromRGB(100, 200, 255))
-LogGUI("[!] AHORA ve al NPC, presiona E, y ELIGE UNA OPCIÓN.", Color3.fromRGB(255, 255, 50))
-LogGUI("[!] Cada dato que el servidor mande aparecerá aquí.\n", Color3.fromRGB(255, 255, 50))
-
-local conexiones = {}
-
--- Escuchar TODOS los RemoteEvents que encontramos
-for _, remote in pairs(remotesEncontrados) do
-    if remote:IsA("RemoteEvent") then
-        local c = remote.OnClientEvent:Connect(function(...)
-            local args = {...}
-            task.spawn(function()
-                LogGUI("\n🔴 ========== SERVER → CLIENTE ==========", Color3.fromRGB(255, 100, 100))
-                LogGUI("📡 Remote: " .. remote.Name, Color3.fromRGB(255, 200, 100))
-                LogGUI("📂 Ruta:   " .. remote:GetFullName(), Color3.fromRGB(200, 200, 200))
-                LogGUI("📦 Args (" .. #args .. "):", Color3.fromRGB(255, 255, 150))
-                for i, v in ipairs(args) do
-                    LogGUI("   [" .. i .. "] " .. SafeJSON(v), Color3.fromRGB(220, 220, 220))
-                end
-                LogGUI("🔴 =========================================\n", Color3.fromRGB(255, 100, 100))
-            end)
-        end)
-        table.insert(conexiones, c)
-    end
-end
-
--- También escuchar DialogueEvents directamente si tiene hijos adicionales
-if DialogueEvents then
-    for _, child in pairs(DialogueEvents:GetDescendants()) do
-        if child:IsA("RemoteEvent") then
-            local yaConectado = false
-            for _, r in pairs(remotesEncontrados) do
-                if r == child then yaConectado = true; break end
-            end
-            if not yaConectado then
-                local c = child.OnClientEvent:Connect(function(...)
-                    local args = {...}
-                    task.spawn(function()
-                        LogGUI("\n🟡 ========== SERVER → CLIENTE (EXTRA) ==========", Color3.fromRGB(255, 200, 50))
-                        LogGUI("📡 Remote: " .. child.Name, Color3.fromRGB(255, 200, 100))
-                        LogGUI("📂 Ruta:   " .. child:GetFullName(), Color3.fromRGB(200, 200, 200))
-                        LogGUI("📦 Args (" .. #args .. "):", Color3.fromRGB(255, 255, 150))
-                        for i, v in ipairs(args) do
-                            LogGUI("   [" .. i .. "] " .. SafeJSON(v), Color3.fromRGB(220, 220, 220))
-                        end
-                        LogGUI("🟡 ================================================\n", Color3.fromRGB(255, 200, 50))
-                    end)
-                end)
-                table.insert(conexiones, c)
-            end
-        end
-    end
-end
-
--- ==========================================
--- FASE 4: MONITOREAR PlayerGui PARA DETECTAR UI DE DIÁLOGO
--- ==========================================
-LogGUI("\n[*] Monitoreando PlayerGui para detectar UI de diálogo...", Color3.fromRGB(255, 200, 50))
-
--- Buscar el DialogueUI y sus botones
-task.spawn(function()
-    while ScreenGui.Parent do
-        local dialogueUI = LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("DialogueUI")
-        if dialogueUI then
-            LogGUI("\n✅ [DETECTADO] DialogueUI está ABIERTO en pantalla!", Color3.fromRGB(100, 255, 100))
-            
-            -- Explorar su contenido
-            for _, child in pairs(dialogueUI:GetDescendants()) do
-                if child:IsA("TextButton") and child.Visible then
-                    LogGUI("   🔘 Botón visible: \"" .. child.Text .. "\" [" .. child:GetFullName() .. "]", Color3.fromRGB(255, 255, 100))
-                end
-            end
-            
-            -- Esperar a que se cierre para no spamear
-            repeat task.wait(0.5) until not dialogueUI.Parent or not ScreenGui.Parent
-            if ScreenGui.Parent then
-                LogGUI("❌ [CERRADO] DialogueUI se cerró.", Color3.fromRGB(255, 150, 150))
-            end
-        end
-        task.wait(1)
-    end
-end)
-
--- Guardar al final
-pcall(function() writefile("sniffer_dialogos.txt", FullLog) end)
-LogGUI("\n[✔] Sniffer activo. Escuchando " .. #conexiones .. " remotes.", Color3.fromRGB(100, 255, 100))
-LogGUI("[!] Ve al NPC → Presiona E → Elige opciones → Todo se grabará aquí.", Color3.fromRGB(255, 255, 50))
+-- Auto-guardar al final
+pcall(function() writefile("autoquest_test.txt", FullLog) end)
