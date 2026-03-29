@@ -41,7 +41,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -170, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
-Title.Text = " 🕵️ QUEST FORENSICS V1.2"
+Title.Text = " 🕵️ QUEST FORENSICS V1.0"
 Title.TextColor3 = Color3.fromRGB(255, 200, 100)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
@@ -187,6 +187,10 @@ local function IrHaciaNPC(targetPos)
     noclipConnection = game:GetService("RunService").Stepped:Connect(function()
         if not isFlyingTo then
             if noclipConnection then noclipConnection:Disconnect() end
+            -- Restaurar físicas al terminar de volar
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+            end
             return
         end
         for _, v in pairs(char:GetDescendants()) do
@@ -333,108 +337,98 @@ local function EscanearModelo(modelo)
                     
                     LogNPCWithButton(npcName, coords, targetPos, detailText)
                 end
+                
+                -- ================== ESPIA FÍSICO DE INTERACT ==================
+                prompt.PromptButtonHoldBegan:Connect(function(player)
+                    if player == LocalPlayer then
+                        LogGUI("👆 [FÍSICO]: Manteniendo interactuar en " .. prompt.ObjectText, Color3.fromRGB(255, 255, 100))
+                    end
+                end)
+                prompt.Triggered:Connect(function(player)
+                    if player == LocalPlayer then
+                        LogGUI("✅ [FÍSICO]: ¡Click/E completado! Interacción aceptada por ProximityPrompt en " .. prompt.ObjectText, Color3.fromRGB(100, 255, 100))
+                    end
+                end)
+                -- =============================================================
+            end
+        end
+        
+        -- Si usa ClickDetectors
+        for _, click in pairs(modelo:GetDescendants()) do
+            if click:IsA("ClickDetector") then
+                click.MouseClick:Connect(function(player)
+                    if player == LocalPlayer then
+                        LogGUI("🖱️ [CLICK]: Clic físico validado en " .. (click.Parent and click.Parent.Name or "Objeto"), Color3.fromRGB(100, 255, 100))
+                    end
+                end)
             end
         end
     end
 end
 
 for _, obj in pairs(Workspace:GetDescendants()) do
-    if obj:IsA("Model") and (obj:FindFirstChild("Humanoid") or obj:FindFirstChild("ProximityPrompt", true)) then
+    if obj:IsA("Model") and (obj:FindFirstChild("Humanoid") or obj:FindFirstChild("ProximityPrompt", true) or obj:FindFirstChild("ClickDetector", true)) then
         EscanearModelo(obj)
     end
 end
 LogGUI("--------------------------------------------------\n", Color3.fromRGB(150, 150, 150))
 
 -- ==========================================
--- FASE 2: SNIFFER DE RED (REMOTE INTERCEPTION)
+-- FASE 2: ESCUCHA PASIVA DE RED (SIN HOOKS - NO ROMPE INTERACCIONES)
 -- ==========================================
-LogGUI("[*] Inyectando Sniffer de Red para Diálogos y Misiones...", Color3.fromRGB(255, 200, 50))
+LogGUI("[*] Inyectando Escucha PASIVA (sin hooks)...", Color3.fromRGB(255, 200, 50))
 LogGUI("[*] ¡Ve y habla con un NPC ahora para capturar la misión!\n", Color3.fromRGB(255, 100, 100))
 
-local RemotosMisiones = {
-    "DialogueRemote",
-    "DialogueEvent",
-    "Dialogue",
-    "ProgressDataChanged",
-    "EquipAchievement",
-    "Quest",
-    "Mission",
-    "Accept",
-    "Complete",
-    "Claim"
-}
+-- ⚠️ CERO hookmetamethod. CERO hookfunction. Solo escuchamos OnClientEvent.
+-- Esto NUNCA interfiere con la tecla E ni con ProximityPrompts.
 
-local function EsRemotoDeMision(nombre)
-    local success, res = pcall(function()
-        local nameLower = string.lower(tostring(nombre))
-        for _, k in pairs(RemotosMisiones) do
-            if string.find(nameLower, string.lower(k)) then
-                return true
-            end
-        end
-        return false
-    end)
-    return success and res
-end
+local conexionesEscucha = {}
+local remotosEscuchados = 0
 
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    
-    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        local args = {...}
-        local successName, rName = pcall(function() return self.Name end)
-        local successPath, rPath = pcall(function() return self:GetFullName() end)
-        
-        if successName and EsRemotoDeMision(rName) then
+for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("RemoteEvent") then
+        local c = obj.OnClientEvent:Connect(function(...)
+            local args = {...}
             task.spawn(function()
-                LogGUI("\n========== [ REPORTE DE RED: CLIENTE -> SERVER ] ==========", Color3.fromRGB(255, 100, 100))
-                LogGUI("📡 Tipo de Llamada : " .. method, Color3.fromRGB(200, 200, 200))
-                LogGUI("🔗 Nombre Remoto   : " .. rName, Color3.fromRGB(150, 255, 150))
-                LogGUI("📂 Ruta del Remoto : " .. (successPath and rPath or "Desconocida"), Color3.fromRGB(200, 200, 200))
-                LogGUI("📦 Datos Enviados (Argumentos):", Color3.fromRGB(255, 255, 150))
-                
+                LogGUI("\n========== [ SERVER -> CLIENTE ] ==========", Color3.fromRGB(100, 150, 255))
+                LogGUI("📡 RemoteEvent : " .. obj.Name, Color3.fromRGB(150, 255, 150))
+                LogGUI("📂 Ruta        : " .. obj:GetFullName(), Color3.fromRGB(200, 200, 200))
+                LogGUI("📦 Datos Recibidos:", Color3.fromRGB(255, 255, 150))
                 for i, v in ipairs(args) do
                     if type(v) == "table" then
                         LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
+                    elseif typeof(v) == "Instance" then
+                        LogGUI("   ["..i.."] (Instance) = " .. v:GetFullName(), Color3.fromRGB(220, 220, 220))
                     else
-                        LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
+                        LogGUI("   ["..i.."] ("..typeof(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
                     end
                 end
-                LogGUI("=========================================================================\n", Color3.fromRGB(255, 100, 100))
+                LogGUI("===========================================\n", Color3.fromRGB(100, 150, 255))
             end)
-        end
-        -- DELTA FIX: Si atrapas varargs (...) en una tabla, debes devolverlos empacados, 
-        -- sino los RemoteFunctions como el de Diálogo se quedan colgados esperando respuesta.
-        return OriginalNamecall(self, unpack(args))
-    end
-    
-    return OriginalNamecall(self, ...)
-end)
-
--- Intentar capturar eventos del SERVIDOR al CLIENTE
-local conexionesOnClientEvent = {}
-for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") and EsRemotoDeMision(obj.Name) then
-        local c = obj.OnClientEvent:Connect(function(...)
-            local args = {...}
-            LogGUI("\n========== [ REPORTE DE RED: SERVER -> CLIENTE ] ==========", Color3.fromRGB(100, 150, 255))
-            LogGUI("📡 Evento Recibido : OnClientEvent", Color3.fromRGB(200, 200, 200))
-            LogGUI("🔗 Nombre Remoto   : " .. obj.Name, Color3.fromRGB(150, 255, 150))
-            
-            LogGUI("📦 Datos Recibidos (Posibles misiones/diálogos):", Color3.fromRGB(255, 255, 150))
-            for i, v in ipairs(args) do
-                if type(v) == "table" then
-                    LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
-                else
-                    LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
-                end
-            end
-            LogGUI("=========================================================================\n", Color3.fromRGB(100, 150, 255))
         end)
-        table.insert(conexionesOnClientEvent, c)
+        table.insert(conexionesEscucha, c)
+        remotosEscuchados = remotosEscuchados + 1
     end
 end
+LogGUI("[✔] Escuchando " .. remotosEscuchados .. " RemoteEvents (pasivo, sin hooks).", Color3.fromRGB(100, 255, 100))
 
-LogGUI("[✔] Sniffer y HUD inyectados correctamente.", Color3.fromRGB(100, 255, 100))
-LogGUI("[!] Ve e interactúa con los NPCs, el proceso aparecerá aquí.", Color3.fromRGB(255, 200, 50))
+-- ==========================================
+-- FASE 3: ESPÍA DIAGNÓSTICO (ERRORES Y BLOQUEOS INTERNOS)
+-- ==========================================
+LogGUI("[*] Inyectando Espía de Errores...", Color3.fromRGB(255, 200, 50))
+
+local LogService = game:GetService("LogService")
+LogService.MessageOut:Connect(function(msg, msgType)
+    if msgType == Enum.MessageType.MessageError then
+        LogGUI("🚨 [ERROR]: " .. tostring(msg), Color3.fromRGB(255, 50, 50))
+    end
+end)
+
+local ScriptContext = game:GetService("ScriptContext")
+ScriptContext.Error:Connect(function(msg, trace, scriptObj)
+    local scriptName = scriptObj and scriptObj.Name or "Desconocido"
+    LogGUI("🚨 [CRASH: " .. scriptName .. "]: " .. tostring(msg), Color3.fromRGB(255, 0, 0))
+end)
+
+LogGUI("[✔] Todo listo. CERO hooks activos. La interacción con NPCs está LIMPIA.", Color3.fromRGB(100, 255, 100))
+LogGUI("[!] Presiona 'E' en el NPC. Todo dato que el servidor te mande aparecerá aquí.", Color3.fromRGB(255, 200, 50))
