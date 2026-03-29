@@ -32,14 +32,24 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -110, 0, 30)
+Title.Size = UDim2.new(1, -180, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 15, 15)
-Title.Text = " 🎯 SNIFFER OPCIONES DIÁLOGO"
+Title.Text = " 🎯 SNIFFER DIÁLOGO"
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
+
+local SaveBtn = Instance.new("TextButton")
+SaveBtn.Size = UDim2.new(0, 100, 0, 30)
+SaveBtn.Position = UDim2.new(1, -180, 0, 0)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+SaveBtn.Text = "💾 GUARDAR"
+SaveBtn.TextColor3 = Color3.new(1,1,1)
+SaveBtn.Font = Enum.Font.Code
+SaveBtn.TextSize = 11
+SaveBtn.Parent = MainFrame
 
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 35, 0, 30)
@@ -85,6 +95,12 @@ MinBtn.MouseButton1Click:Connect(function()
     OutputScroll.Visible = not isMinimized
 end)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+SaveBtn.MouseButton1Click:Connect(function()
+    writefile("sniffer_dialogos.txt", FullLog)
+    if setclipboard then setclipboard(FullLog) end
+    SaveBtn.Text = "¡GUARDADO!"
+    task.delay(2, function() SaveBtn.Text = "💾 GUARDAR" end)
+end)
 
 local FullLog = "=== SNIFFER DE OPCIONES DE DIÁLOGO ===\n\n"
 local HttpService = game:GetService("HttpService")
@@ -168,8 +184,12 @@ local function IrHaciaNPC(targetPos, npcName)
     noclipConn = RunService.Stepped:Connect(function()
         if not isFlyingTo then
             if noclipConn then noclipConn:Disconnect() end
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+            -- RESTAURAR colisiones para que funcione la E
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = true end
+            end
+            if char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
             return
         end
