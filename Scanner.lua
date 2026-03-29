@@ -78,13 +78,6 @@ CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 16
 CloseBtn.Parent = MainFrame
 
-local OutputScroll = Instance.new("ScrollingFrame")
-OutputScroll.Size = UDim2.new(1, -10, 1, -40)
-OutputScroll.Position = UDim2.new(0, 5, 0, 35)
-OutputScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-OutputScroll.ScrollBarThickness = 5
-OutputScroll.Parent = MainFrame
 
 local isMinimized = false
 MinBtn.MouseButton1Click:Connect(function()
@@ -352,16 +345,16 @@ local function EscanearModelo(modelo)
                 -- =============================================================
             end
         end
-        
-        -- Si usa ClickDetectors
-        for _, click in pairs(modelo:GetDescendants()) do
-            if click:IsA("ClickDetector") then
-                click.MouseClick:Connect(function(player)
-                    if player == LocalPlayer then
-                        LogGUI("🖱️ [CLICK]: Clic físico validado en " .. (click.Parent and click.Parent.Name or "Objeto"), Color3.fromRGB(100, 255, 100))
-                    end
-                end)
-            end
+    end
+    
+    -- Si usa ClickDetectors (fuera del loop de prompts)
+    for _, click in pairs(modelo:GetDescendants()) do
+        if click:IsA("ClickDetector") then
+            click.MouseClick:Connect(function(player)
+                if player == LocalPlayer then
+                    LogGUI("🖱️ [CLICK]: Clic físico validado en " .. (click.Parent and click.Parent.Name or "Objeto"), Color3.fromRGB(100, 255, 100))
+                end
+            end)
         end
     end
 end
