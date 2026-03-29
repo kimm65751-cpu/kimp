@@ -2,7 +2,7 @@
 -- 🗺️ EXPLORADOR DE ÁRBOLES DE DIÁLOGO V1.1 (SEGURO)
 -- ==============================================================================
 -- Lee la estructura de ReplicatedStorage.Dialogues SIN require() peligrosos.
--- Solo lee la jerarquía de instancias y sus propiedades visibles.
+-- Solao lee la jerarquía de instancias y sus propiedades visibles.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -105,10 +105,11 @@ end)
 
 local FullLogText = "=== EXPLORADOR DE ÁRBOLES DE DIÁLOGO ===\n\n"
 CopyBtn.MouseButton1Click:Connect(function()
-    if setclipboard then
-        setclipboard(FullLogText)
-        CopyBtn.Text = "¡COPIADO!"
-        task.delay(2, function() CopyBtn.Text = "📥 COPIAR" end)
+    if writefile then
+        writefile("datos.txt", FullLogText)
+        CopyBtn.Text = "¡GUARDADO!"
+        LogGUI("[✔] Archivo datos.txt guardado en workspace de Delta.", Color3.fromRGB(100, 255, 100))
+        task.delay(2, function() CopyBtn.Text = "💾 GUARDAR" end)
     end
 end)
 
@@ -250,7 +251,7 @@ else
 end
 
 -- ==========================================
--- FASE 3: BUSCAR RemoteEvents/Functions CON NOMBRE DE QUEST (solo 2 niveles)
+-- FASE 3: BUSCAR RemoteEvents/Functions CON NOMBRE DE QUEST
 -- ==========================================
 LogGUI("\n============================================================", Color3.fromRGB(255, 150, 50))
 LogGUI("  🔧 REMOTES DE QUEST/MISSION EN ReplicatedStorage", Color3.fromRGB(255, 150, 50))
@@ -278,4 +279,13 @@ LogGUI("\n============================================================", Color3.
 LogGUI("  📊 RESUMEN", Color3.fromRGB(100, 255, 100))
 LogGUI("============================================================", Color3.fromRGB(100, 255, 100))
 LogGUI("🤖 NPCs con Diálogos encontrados: " .. npcCount, Color3.fromRGB(200, 200, 200))
-LogGUI("\n[✔] Exploración SEGURA completada. Presiona COPIAR.", Color3.fromRGB(100, 255, 100))
+
+-- AUTO-GUARDAR al terminar
+if writefile then
+    writefile("datos.txt", FullLogText)
+    LogGUI("\n[✔] ARCHIVO GUARDADO AUTOMÁTICAMENTE: datos.txt (workspace de Delta)", Color3.fromRGB(100, 255, 100))
+else
+    LogGUI("\n[⚠] writefile no disponible, usa el botón GUARDAR.", Color3.fromRGB(255, 200, 50))
+end
+
+LogGUI("[✔] Exploración completada.", Color3.fromRGB(100, 255, 100))
