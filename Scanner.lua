@@ -35,28 +35,38 @@ end
 -- DICCIONARIO DE MINERALES (SOLO BASURA, CERO ARMAS)
 -- ==========================================
 local MINERALES = {
-    {es="Excremento",       en="Excrement",       color=Color3.fromRGB(150, 100, 80),   auto=true},
-    {es="Cartonita",        en="Cartonite",       color=Color3.fromRGB(200, 200, 200),  auto=true},
-    {es="Boneita",          en="Boneite",         color=Color3.fromRGB(200, 200, 200),  auto=true},
-    {es="Aite",             en="Aite",            color=Color3.fromRGB(200, 200, 200),  auto=true},
-    {es="Cuarzo",           en="Quartz",          color=Color3.fromRGB(200, 200, 200),  auto=true},
-    {es="Cuprita",          en="Cuprite",         color=Color3.fromRGB(200, 200, 200),  auto=false},
-    {es="Cobalto",          en="Cobalt",          color=Color3.fromRGB(150, 150, 255),  auto=false},
-    {es="Topaz",            en="Topaz",           color=Color3.fromRGB(100, 255, 100),  auto=false},
-    {es="Bananita",         en="Bananite",        color=Color3.fromRGB(255, 255, 50),   auto=false},
-    {es="Esmeralda",        en="Emerald",         color=Color3.fromRGB(50, 255, 100),   auto=false},
-    {es="Zafiro",           en="Sapphire",        color=Color3.fromRGB(100, 150, 255),  auto=false},
-    {es="Lapis Lazuli",     en="Lapis Lazuli",    color=Color3.fromRGB(50, 100, 255),   auto=false},
-    {es="Titánio",          en="Titanium",        color=Color3.fromRGB(180, 200, 255),  auto=false},
-    {es="Diamante",         en="Diamond",         color=Color3.fromRGB(150, 200, 255),  auto=false},
-    {es="Mina ocular",      en="Eye Mine",        color=Color3.fromRGB(255, 150, 50),   auto=false},
-    {es="Fichillium",       en="Fichillium",      color=Color3.fromRGB(255, 255, 100),  auto=false},
-    {es="Ametista",         en="Amethyst",        color=Color3.fromRGB(200, 100, 255),  auto=false},
-    {es="Esencia pequeña",  en="Tiny Essence",    color=Color3.fromRGB(220, 220, 220),  auto=true},
-    {es="Esencia mediana",  en="Medium Essence",  color=Color3.fromRGB(150, 255, 150),  auto=false},
-    {es="Esencia grande",   en="Large Essence",   color=Color3.fromRGB(100, 200, 255),  auto=false},
-    {es="Esencia superior", en="Superior Essence", color=Color3.fromRGB(255, 150, 255), auto=false},
-    {es="Chispa de fuego",  en="Fire Spark",      color=Color3.fromRGB(255, 100, 50),   auto=false},
+    {es="Excremento",       en="Excrement",       color=Color3.fromRGB(150, 100, 80)},
+    {es="Cartonita",        en="Cartonite",        color=Color3.fromRGB(200, 200, 200)},
+    {es="Boneita",          en="Boneita",          color=Color3.fromRGB(200, 200, 200)},
+    {es="Aite",             en="Aite",             color=Color3.fromRGB(200, 200, 200)},
+    {es="Cuarzo",           en="Quartz",           color=Color3.fromRGB(200, 200, 200)},
+    {es="Cuprita",          en="Cuprite",          color=Color3.fromRGB(200, 200, 200)},
+    {es="Cobalto",          en="Cobalt",           color=Color3.fromRGB(150, 150, 255)},
+    {es="Topaz",            en="Topaz",            color=Color3.fromRGB(100, 255, 100)},
+    {es="Bananita",         en="Bananite",         color=Color3.fromRGB(255, 255, 50)},
+    {es="Esmeralda",        en="Emerald",          color=Color3.fromRGB(50, 255, 100)},
+    {es="Zafiro",           en="Sapphire",         color=Color3.fromRGB(100, 150, 255)},
+    {es="Lapis Lazuli",     en="Lapis Lazuli",     color=Color3.fromRGB(50, 100, 255)},
+    {es="Titánio",          en="Titanium",         color=Color3.fromRGB(180, 200, 255)},
+    {es="Diamante",         en="Diamond",          color=Color3.fromRGB(150, 200, 255)},
+    {es="Mina ocular",      en="Eye Mine",         color=Color3.fromRGB(255, 150, 50)},
+    {es="Fichillium",       en="Fichillium",       color=Color3.fromRGB(255, 255, 100)},
+    {es="Ametista",         en="Amethyst",         color=Color3.fromRGB(200, 100, 255)},
+    {es="Esencia pequeña",  en="Small Essence",    color=Color3.fromRGB(220, 220, 220)},
+    {es="Esencia mediana",  en="Medium Essence",   color=Color3.fromRGB(150, 255, 150)},
+    {es="Esencia grande",   en="Large Essence",    color=Color3.fromRGB(100, 200, 255)},
+    {es="Esencia superior", en="Superior Essence",  color=Color3.fromRGB(255, 150, 255)},
+    {es="Chispa de fuego",  en="Fire Spark",       color=Color3.fromRGB(255, 100, 50)},
+}
+
+-- Items que se venden automáticamente cuando el inventario está lleno
+local AUTO_VENDER = {
+    ["Small Essence"] = true,
+    ["Medium Essence"] = true,
+    ["Cobalt"] = true,
+    ["Boneita"] = true,
+    ["Titanium"] = true,
+    ["Amethyst"] = true,
 }
 
 -- ==========================================
@@ -83,7 +93,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 40, 80)
-Title.Text = " 💎 AUTO-VENDEDOR REM333OTO V5.0"
+Title.Text = " 💎 AUTO-VENDEDOR REMOTO V35.5"
 Title.TextColor3 = Color3.fromRGB(200, 220, 255)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -227,39 +237,210 @@ Log((RF_RunCommand and "✅ RunCommand " or "❌ RunCommand ") ..
     (SeyNPC and "✅ NPC" or "❌ NPC"))
 
 -- ==========================================
--- UTILIDADES DE INVENTARIO
+-- LISTA DE ITEMS SCROLL
 -- ==========================================
-local InvController = nil
-pcall(function() InvController = require(ReplicatedStorage.Controllers.UIController.Inventory) end)
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -10, 1, -290)
+Scroll.Position = UDim2.new(0, 5, 0, 223)
+Scroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
+Scroll.ScrollBarThickness = 6
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.Parent = Panel
+Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 3)
 
-local capacidadLabelCache = nil
-local function ObtenerCapacidad()
-    local cur, maxm = nil, nil
-    if InvController then pcall(function() maxm = InvController:GetBagCapacity() end) end
-    if not maxm then maxm = 144 end
-    if capacidadLabelCache and capacidadLabelCache.Parent then
-        local x, y = string.match(capacidadLabelCache.Text, "(%d+)/(%d+)")
-        if x and y then return tonumber(x), tonumber(y) end
+local TablaDeCantidades = {}
+
+for _, item in ipairs(MINERALES) do
+    local fila = Instance.new("Frame")
+    fila.Size = UDim2.new(1, -10, 0, 28)
+    fila.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+    fila.Parent = Scroll
+    
+    local NameL = Instance.new("TextLabel")
+    NameL.Size = UDim2.new(0.6, 0, 1, 0)
+    NameL.Position = UDim2.new(0, 10, 0, 0)
+    NameL.BackgroundTransparency = 1
+    NameL.Text = item.es
+    NameL.TextColor3 = item.color
+    NameL.Font = Enum.Font.Code
+    NameL.TextSize = 13
+    NameL.TextXAlignment = Enum.TextXAlignment.Left
+    NameL.Parent = fila
+    
+    local BoxCont = Instance.new("Frame")
+    BoxCont.Size = UDim2.new(0.35, 0, 0, 20)
+    BoxCont.Position = UDim2.new(0.65, -5, 0.5, -10)
+    BoxCont.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    BoxCont.BorderSizePixel = 1
+    BoxCont.BorderColor3 = item.color
+    BoxCont.Parent = fila
+    
+    local TB = Instance.new("TextBox")
+    TB.Size = UDim2.new(1, 0, 1, 0)
+    TB.BackgroundTransparency = 1
+    TB.Text = ""
+    TB.PlaceholderText = "Cant."
+    TB.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TB.Font = Enum.Font.Code
+    TB.TextSize = 12
+    TB.Parent = BoxCont
+    
+    TablaDeCantidades[item.en] = TB
+end
+
+-- ==========================================
+-- BOTON VENDER (SECUENCIA EXACTA DEL FORENSE)
+-- ==========================================
+local SellBtn = Instance.new("TextButton")
+SellBtn.Size = UDim2.new(1, -10, 0, 50)
+SellBtn.Position = UDim2.new(0, 5, 1, -55)
+SellBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 50)
+SellBtn.Text = "💸 VENDER ITEMS SELECCIONADOS"
+SellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SellBtn.Font = Enum.Font.Code
+SellBtn.TextSize = 13
+SellBtn.Parent = Panel
+Instance.new("UICorner", SellBtn).CornerRadius = UDim.new(0, 6)
+
+SellBtn.MouseButton1Click:Connect(function()
+    -- Validar dependencias
+    if not RF_RunCommand then Log("❌ RunCommand no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RF_Dialogue then Log("❌ Dialogue no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RF_ForceDialogue then Log("❌ ForceDialogue no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not RE_DialogueEvent then Log("❌ DialogueEvent no encontrado.", Color3.fromRGB(255,0,0)) return end
+    if not SeyNPC then Log("❌ NPC Sey no encontrado.", Color3.fromRGB(255,0,0)) return end
+    
+    -- Construir tabla Basket
+    local miBasket = {}
+    local cuenta = 0
+    for nombreEN, textBox in pairs(TablaDeCantidades) do
+        if textBox.Text ~= "" then
+            local cant = tonumber(textBox.Text)
+            if cant and cant > 0 then
+                miBasket[nombreEN] = cant
+                cuenta = cuenta + 1
+                textBox.Text = ""
+            end
+        end
     end
-    pcall(function()
-        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Visible then
-                local x, y = string.match(obj.Text, "(%d+)/(%d+)")
-                if x and y then
-                    local valY = tonumber(y)
-                    if valY == maxm or valY == 144 then
-                        cur, maxm = tonumber(x), valY
-                        capacidadLabelCache = obj
-                        break
+    
+    if cuenta == 0 then Log("⚠️ Escribe cantidades primero.", Color3.fromRGB(255,255,0)) return end
+    
+    local paqueteFinal = { Basket = miBasket }
+    
+    task.spawn(function()
+        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
+        Log("🚀 INICIANDO VENTA NINJA (SIN INTERFAZ)...", Color3.fromRGB(0, 255, 255))
+        
+        local basketStr = "{"
+        for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local oldCFrame = root and root.CFrame
+        
+        -- ========== PASO 1: ENGAÑAR CON EL MENÚ MISC DIRECTAMENTE ==========
+        Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
+        local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        if not ok1 then Log("❌ ForceDialogue Falló: " .. tostring(err1), Color3.fromRGB(255, 0, 0)) end
+        
+        task.wait(0.2)
+        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        
+        -- ========== PASO 2: VENTA PURA Y DURA ==========
+        Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
+        local ok2, resp = pcall(function()
+            return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal)
+        end)
+        
+        if ok2 then
+            Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
+        else
+            Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+        end
+        
+        -- Retorno de Posición Instántaneo
+        if root and oldCFrame then
+            root.CFrame = oldCFrame
+            Log("👻 Posición restaurada al punto de origen", Color3.fromRGB(150, 255, 150))
+        end
+        
+        task.wait(0.5) -- Damos tiempo al juego de dibujar la UI de despedida
+        
+        -- ========== PASO 3: LIMPIEZA SILENCIOSA Y AUTO-ADIÓS ==========
+        Log("🔓 [3/3] Auto-Clickeando el botón 'Adiós'...", Color3.fromRGB(255, 150, 0))
+        local adiosVisto = false
+        
+        pcall(function()
+            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Visible then
+                    local t = string.lower(obj.Text)
+                    if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
+                        adiosVisto = true
+                        Log("✅ Botón Adiós encontrado: " .. obj.Text, Color3.fromRGB(0, 255, 0))
+                        pcall(function() firesignal(obj.MouseButton1Click) end)
+                        pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
                     end
                 end
             end
+        end)
+        
+        if not adiosVisto then
+            Log("⚠️ Aviso: El botón 'Adiós' no se encontró o estaba oculto.", Color3.fromRGB(255, 255, 0))
         end
+        
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        
+        Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
+        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
     end)
-    return cur, maxm
+end)
+
+Log("💎 ModV8.1: Escoge ítems, pon la cant, y clica Vender.")
+
+-- ==============================================================================
+-- 🔄 AUTO-VENTA CUANDO INVENTARIO LLENO (AGREGADO ENCIMA DEL CÓDIGO FUNCIONAL)
+-- ==============================================================================
+
+local function EjecutarAutoVenta(miBasket)
+    if not RF_RunCommand or not RF_ForceDialogue or not RE_DialogueEvent or not SeyNPC then return end
+    local paqueteFinal = { Basket = miBasket }
+    task.spawn(function()
+        Log("☢️ AUTO-VENTA ACTIVADA...", Color3.fromRGB(255, 100, 50))
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local oldCFrame = root and root.CFrame
+        
+        pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
+        task.wait(0.2)
+        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
+        
+        local ok, resp = pcall(function() return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal) end)
+        if ok then
+            Log("✅ Auto-venta procesada.", Color3.fromRGB(0, 255, 0))
+        else
+            Log("❌ Auto-venta error: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
+        end
+        
+        if root and oldCFrame then root.CFrame = oldCFrame end
+        task.wait(0.5)
+        
+        pcall(function()
+            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Visible then
+                    local t = string.lower(obj.Text)
+                    if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
+                        pcall(function() firesignal(obj.MouseButton1Click) end)
+                        pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
+                    end
+                end
+            end
+        end)
+        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
+        Log("✅ Auto-venta completada.", Color3.fromRGB(0, 255, 255))
+    end)
 end
 
-local function EscanearCantidadesGlobales()
+local function EscanearStock()
     local dir = {}
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
@@ -275,9 +456,6 @@ local function EscanearCantidadesGlobales()
                                     if mx then
                                         local n = tonumber(mx)
                                         if n > (dir[item.en] or 0) then dir[item.en] = n end
-                                    else
-                                        local n2 = tonumber(child.Text)
-                                        if n2 and n2 > (dir[item.en] or 0) and n2 < 99999 then dir[item.en] = n2 end
                                     end
                                 end
                             end
@@ -290,203 +468,46 @@ local function EscanearCantidadesGlobales()
     return dir
 end
 
--- ==========================================
--- LA FUNCIÓN MAESTRA INTOCABLE DE RED (V8)
--- ==========================================
-local function EjecutarVentaNinja(miBasket)
-    if not RF_RunCommand or not RF_ForceDialogue or not RE_DialogueEvent or not SeyNPC then 
-        Log("❌ Faltan remotos o NPC.", Color3.fromRGB(255,0,0)) return 
-    end
-    
-    local paqueteFinal = { Basket = miBasket }
-    
-    task.spawn(function()
-        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
-        Log("🚀 INICIANDO VENTA NINJA (SIN INTERFAZ)...", Color3.fromRGB(0, 255, 255))
-        
-        local basketStr = "{"
-        for k, v in pairs(miBasket) do basketStr = basketStr .. k .. "=" .. v .. ", " end
-        basketStr = basketStr .. "}"
-        Log("📦 Despachando: " .. basketStr, Color3.fromRGB(255, 255, 0))
-
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local oldCFrame = root and root.CFrame
-        
-        -- PASO 1 (Intacto V8)
-        Log("🛒 [1/3] Invocando ForceDialogue(SellConfirmMisc)", Color3.fromRGB(255, 150, 0))
-        local ok1, err1 = pcall(function() RF_ForceDialogue:InvokeServer(SeyNPC, "SellConfirmMisc") end)
-        task.wait(0.2)
-        pcall(function() RE_DialogueEvent:FireServer("Opened") end)
-        
-        -- PASO 2 (Intacto V8)
-        Log("💎 [2/3] Inyectando RunCommand...", Color3.fromRGB(255, 0, 255))
-        local ok2, resp = pcall(function() return RF_RunCommand:InvokeServer("SellConfirm", paqueteFinal) end)
-        
-        if ok2 then
-            Log("✅ ¡Transacción Procesada! (Revisa tu Oro)", Color3.fromRGB(0, 255, 0))
-        else
-            Log("❌ Error Paso 2: " .. tostring(resp), Color3.fromRGB(255, 0, 0))
-        end
-        
-        if root and oldCFrame then root.CFrame = oldCFrame end
-        task.wait(0.5)
-        
-        -- PASO 3 (Intacto V8)
-        Log("🔓 [3/3] Auto-Clickeando el botón 'Adiós'...", Color3.fromRGB(255, 150, 0))
-        pcall(function()
-            for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
-                if obj:IsA("TextButton") and obj.Visible then
-                    local t = string.lower(obj.Text)
-                    if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
-                        pcall(function() firesignal(obj.MouseButton1Click) end)
-                        pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
+local function ObtenerCapacidadInventario()
+    local cur, maxm = nil, nil
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Visible then
+                local x, y = string.match(obj.Text, "(%d+)/(%d+)")
+                if x and y then
+                    local valY = tonumber(y)
+                    if valY == 144 or valY > 50 then
+                        cur, maxm = tonumber(x), valY
+                        return
                     end
                 end
             end
-        end)
-        pcall(function() RE_DialogueEvent:FireServer("Closed") end)
-        Log("✅ ¡LISTO! Venta remota completada en Modo Dios 8.1", Color3.fromRGB(0, 255, 255))
-        Log("══════════════════════════════════", Color3.fromRGB(100,100,100))
-    end)
-end
-
--- ==========================================
--- INTERFAZ
--- ==========================================
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -10, 1, -290)
-Scroll.Position = UDim2.new(0, 5, 0, 223)
-Scroll.BackgroundColor3 = Color3.fromRGB(10, 15, 20)
-Scroll.ScrollBarThickness = 6
-Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Scroll.Parent = Panel
-Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 3)
-
-local CapacidadInfo = Instance.new("TextLabel")
-CapacidadInfo.Size = UDim2.new(0, 150, 0, 30)
-CapacidadInfo.Position = UDim2.new(1, -200, 0, 0)
-CapacidadInfo.BackgroundTransparency = 1
-CapacidadInfo.Text = "Espacio: ?/?"
-CapacidadInfo.TextColor3 = Color3.fromRGB(255, 255, 0)
-CapacidadInfo.TextSize = 12
-CapacidadInfo.Font = Enum.Font.Code
-CapacidadInfo.Parent = Panel
-
-local TablaDeCantidades = {}
-
-for _, item in ipairs(MINERALES) do
-    local fila = Instance.new("Frame")
-    fila.Size = UDim2.new(1, -10, 0, 30)
-    fila.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
-    fila.Parent = Scroll
-    
-    local NameL = Instance.new("TextLabel")
-    NameL.Size = UDim2.new(0.35, 0, 1, 0)
-    NameL.BackgroundTransparency = 1
-    NameL.Text = " " .. item.es
-    NameL.TextColor3 = item.color
-    NameL.Font = Enum.Font.Code
-    NameL.TextSize = 12
-    NameL.TextXAlignment = Enum.TextXAlignment.Left
-    NameL.Parent = fila
-    
-    local TBDir = Instance.new("TextBox")
-    TBDir.Size = UDim2.new(0.18, 0, 0.8, 0)
-    TBDir.Position = UDim2.new(0.36, 0, 0.1, 0)
-    TBDir.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    TBDir.Text = ""
-    TBDir.PlaceholderText = "Cant."
-    TBDir.TextColor3 = Color3.fromRGB(255,255,255)
-    TBDir.Parent = fila
-    TablaDeCantidades[item.en] = TBDir
-    
-    local VenderTodoBtn = Instance.new("TextButton", fila)
-    VenderTodoBtn.Size = UDim2.new(0.22, 0, 0.8, 0)
-    VenderTodoBtn.Position = UDim2.new(0.56, 0, 0.1, 0)
-    VenderTodoBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 150)
-    VenderTodoBtn.Text = "Vender Todo"
-    VenderTodoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    VenderTodoBtn.MouseButton1Click:Connect(function()
-        local miStockCache = EscanearCantidadesGlobales()
-        local miCant = miStockCache[item.en] or 0
-        if miCant > 0 then
-            Log("🔍 Detectado " .. miCant .. "x " .. item.es, Color3.fromRGB(0, 255, 0))
-            EjecutarVentaNinja({[item.en] = miCant})
-        else
-            Log("❌ Error: Tienes 0 " .. item.es .. " o no leo el Inventario.", Color3.fromRGB(255, 100, 100))
         end
     end)
-    
-    local AutoBtn = Instance.new("TextButton", fila)
-    AutoBtn.Size = UDim2.new(0.18, 0, 0.8, 0)
-    AutoBtn.Position = UDim2.new(0.80, 0, 0.1, 0)
-    AutoBtn.BackgroundColor3 = item.auto and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 50, 50)
-    AutoBtn.Text = item.auto and "AUTO ✅" or "AUTO ❌"
-    AutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AutoBtn.MouseButton1Click:Connect(function()
-        item.auto = not item.auto
-        AutoBtn.BackgroundColor3 = item.auto and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(100, 50, 50)
-        AutoBtn.Text = item.auto and "AUTO ✅" or "AUTO ❌"
-    end)
+    return cur, maxm
 end
 
-local SellBtn = Instance.new("TextButton")
-SellBtn.Size = UDim2.new(1, -10, 0, 50)
-SellBtn.Position = UDim2.new(0, 5, 1, -55)
-SellBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 80)
-SellBtn.Text = "VENDER LO ESCRITO"
-SellBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-SellBtn.Font = Enum.Font.Code
-SellBtn.TextSize = 13
-SellBtn.Parent = Panel
-Instance.new("UICorner", SellBtn).CornerRadius = UDim.new(0, 6)
-
-SellBtn.MouseButton1Click:Connect(function()
-    local miBasket = {}
-    local cuenta = 0
-    for nombreEN, textBox in pairs(TablaDeCantidades) do
-        if textBox.Text ~= "" then
-            local cant = tonumber(textBox.Text)
-            if cant and cant > 0 then
-                miBasket[nombreEN] = cant
-                cuenta = cuenta + 1
-                textBox.Text = ""
-            end
-        end
-    end
-    if cuenta > 0 then EjecutarVentaNinja(miBasket) else Log("⚠️ Escribe cantidades manuales antes.", Color3.fromRGB(255,255,0)) end
-end)
-
--- BUCLE AUTOMÁTICO DE ESCANEO DE INVENTARIO
+-- Bucle de monitoreo
 task.spawn(function()
     while true do
-        task.wait(4)
-        local cur, maxm = ObtenerCapacidad()
-        if cur and maxm then
-            CapacidadInfo.Text = "Espacio: " .. cur .. "/" .. maxm
-            if cur >= (maxm - 5) then
+        task.wait(5)
+        pcall(function()
+            local cur, maxm = ObtenerCapacidadInventario()
+            if cur and maxm and cur >= (maxm - 5) then
+                local stock = EscanearStock()
                 local autoBasket = {}
                 local count = 0
-                local stockGlobal = EscanearCantidadesGlobales()
-                for _, item in ipairs(MINERALES) do
-                    if item.auto then
-                        local stock = stockGlobal[item.en] or 0
-                        if stock > 0 then
-                            autoBasket[item.en] = stock
-                            count = count + 1
-                        end
+                for itemEN, _ in pairs(AUTO_VENDER) do
+                    local cant = stock[itemEN] or 0
+                    if cant > 0 then
+                        autoBasket[itemEN] = cant
+                        count = count + 1
                     end
                 end
                 if count > 0 then
-                    Log("☢️ INVENTARIO LLENO. Auto-Limpiando...", Color3.fromRGB(255, 100, 50))
-                    EjecutarVentaNinja(autoBasket)
+                    EjecutarAutoVenta(autoBasket)
                 end
             end
-        else
-            CapacidadInfo.Text = "Abre Inventario (Detectar)"
-        end
+        end)
     end
 end)
-
-Log("💎 Integración de Escáner y Venta Segura Completa.")
