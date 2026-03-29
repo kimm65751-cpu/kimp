@@ -108,9 +108,117 @@ local function LogGUI(text, color)
     logCount = logCount + 1
     if logCount > 200 then
         for _, child in ipairs(OutputScroll:GetChildren()) do
-            if child:IsA("TextLabel") then child:Destroy(); logCount = logCount - 1; break end
+            if child:IsA("TextLabel") or child:IsA("Frame") then child:Destroy(); logCount = logCount - 1; break end
         end
     end
+end
+
+local function PcallJSON(tbl)
+    local success, res = pcall(function() return HttpService:JSONEncode(tbl) end)
+    if success then return res end
+    local str = "{"
+    for i, v in pairs(tbl) do
+        str = str .. tostring(i) .. ": " .. tostring(v) .. ", "
+    end
+    return str .. "}"
+end
+
+local isFlyingTo = false
+local function IrHaciaNPC(targetPos)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    if root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "_NoclipAnalyzer"
+    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    bv.Parent = root
+    
+    isFlyingTo = true
+    task.spawn(function()
+        while isFlyingTo and bv.Parent and root.Parent do
+            local dist = (root.Position - targetPos).Magnitude
+            if dist < 5 then
+                bv:Destroy()
+                isFlyingTo = false
+                break
+            end
+            
+            local hDist = (Vector2.new(root.Position.X, root.Position.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
+            local flyPos = targetPos
+            if hDist > 15 then
+                flyPos = Vector3.new(targetPos.X, math.max(targetPos.Y + 20, root.Position.Y), targetPos.Z)
+            end
+            
+            local dir = (flyPos - root.Position).Unit
+            bv.Velocity = dir * 65 -- Vuelo noclip seguro y rápido
+            task.wait(0.05)
+        end
+    end)
+end
+
+local function LogNPCWithButton(npcName, coords, targetPos, detailText)
+    FullLogText = FullLogText .. "🤖 NPC DETECTADO: " .. npcName .. "\n📍 Coordenadas: " .. coords .. "\n" .. detailText .. "\n--------------------\n"
+    
+    local msgFrame = Instance.new("Frame")
+    msgFrame.Size = UDim2.new(1, -10, 0, 75)
+    msgFrame.BackgroundTransparency = 1
+    msgFrame.Parent = OutputScroll
+    
+    local msg = Instance.new("TextLabel")
+    msg.Size = UDim2.new(1, -60, 1, 0)
+    msg.BackgroundTransparency = 1
+    msg.Text = "🤖 NPC: " .. npcName .. "\n📍 Dir: " .. coords .. "\n" .. detailText
+    msg.TextColor3 = Color3.fromRGB(150, 255, 255)
+    msg.TextSize = 11
+    msg.Font = Enum.Font.Code
+    msg.TextXAlignment = Enum.TextXAlignment.Left
+    msg.TextWrapped = true
+    msg.Parent = msgFrame
+    msg.Size = UDim2.new(1, -60, 0, msg.TextBounds.Y + 8)
+    msgFrame.Size = UDim2.new(1, -10, 0, msg.Size.Y.Offset)
+    
+    if targetPos then
+        local goBtn = Instance.new("TextButton")
+        goBtn.Size = UDim2.new(0, 45, 0, 25)
+        goBtn.Position = UDim2.new(1, -45, 0.5, -12)
+        goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+        goBtn.Text = "✈️ IR"
+        goBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        goBtn.TextSize = 11
+        goBtn.Font = Enum.Font.Code
+        goBtn.Parent = msgFrame
+        
+        goBtn.MouseButton1Click:Connect(function()
+            if isFlyingTo then
+                isFlyingTo = false
+                local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root and root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
+                goBtn.Text = "✈️ IR"
+                goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+            else
+                LogGUI("[✈️] Volando hacia " .. npcName .. "...", Color3.fromRGB(100, 255, 255))
+                goBtn.Text = "🛑 STOP"
+                goBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                IrHaciaNPC(targetPos)
+                task.spawn(function()
+                    repeat task.wait(0.5) until not isFlyingTo
+                    if goBtn.Parent then 
+                        goBtn.Text = "✈️ IR"
+                        goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+                    end
+                end)
+            end
+        end)
+    end
+    
+    local totalHeight = 0
+    for _, child in ipairs(OutputScroll:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") then totalHeight = totalHeight + child.Size.Y.Offset + 2 end
+    end
+    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+    OutputScroll.CanvasPosition = Vector2.new(0, totalHeight)
+    logCount = logCount + 1
 end
 
 LogGUI("============================================================\n  🚀 INICIANDO ESCÁNER DE MISIONES Y NPCs\n============================================================", Color3.fromRGB(100, 255, 100))
@@ -135,11 +243,12 @@ local function EscanearModelo(modelo)
                 local npcBase = prompt:FindFirstAncestorWhichIsA("Model") or prompt.Parent
                 local npcName = npcBase and npcBase.Name or "Desconocido"
                 
-                -- Obtener coordenadas
                 local coords = "Sin Coordenadas"
+                local targetPos = nil
                 local rootPart = npcBase:FindFirstChild("HumanoidRootPart") or npcBase:FindFirstChild("Torso") or (prompt.Parent:IsA("BasePart") and prompt.Parent)
                 if rootPart then
-                    coords = string.format("X: %.1f, Y: %.1f, Z: %.1f", rootPart.Position.X, rootPart.Position.Y, rootPart.Position.Z)
+                    targetPos = rootPart.Position
+                    coords = string.format("X: %.1f, Y: %.1f, Z: %.1f", targetPos.X, targetPos.Y, targetPos.Z)
                 end
                 
                 -- Analizar si tiene algún indicador visual de misión ( BillboardGui con exclamación, interrogación, etc. )
@@ -154,13 +263,8 @@ local function EscanearModelo(modelo)
 
                 if not NPCsEncontrados[npcName] then
                     NPCsEncontrados[npcName] = true
-                    LogGUI("--------------------------------------------------", Color3.fromRGB(150, 150, 150))
-                    LogGUI("🤖 NPC DETECTADO: " .. npcName, Color3.fromRGB(100, 255, 255))
-                    LogGUI("📍 Coordenadas: " .. coords, Color3.fromRGB(200, 200, 200))
-                    LogGUI("📝 Acción de Prompt: [" .. prompt.ActionText .. "] " .. prompt.ObjectText, Color3.fromRGB(200, 200, 200))
-                    LogGUI("❓ Estado de Misión: " .. misionLista, Color3.fromRGB(255, 150, 150))
+                    local detailText = "📝 Acción: [" .. prompt.ActionText .. "] " .. prompt.ObjectText .. "\n❓ Misión: " .. misionLista
                     
-                    -- Buscar scripts locales (para saber si hay lógica de cliente atada al NPC)
                     local localScripts = {}
                     for _, v in pairs(npcBase:GetDescendants()) do
                         if v:IsA("LocalScript") or v:IsA("ModuleScript") then
@@ -168,8 +272,10 @@ local function EscanearModelo(modelo)
                         end
                     end
                     if #localScripts > 0 then
-                        LogGUI("📜 Scripts en NPC: " .. table.concat(localScripts, ", "), Color3.fromRGB(150, 150, 255))
+                        detailText = detailText .. "\n📜 Scripts: " .. table.concat(localScripts, ", ")
                     end
+                    
+                    LogNPCWithButton(npcName, coords, targetPos, detailText)
                 end
             end
         end
@@ -227,7 +333,7 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             
             for i, v in ipairs(args) do
                 if type(v) == "table" then
-                    LogGUI("   ["..i.."] (JSON) = " .. HttpService:JSONEncode(v), Color3.fromRGB(220, 220, 220))
+                    LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
                 else
                     LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
                 end
@@ -252,7 +358,7 @@ for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
             LogGUI("📦 Datos Recibidos (Posibles misiones/diálogos):", Color3.fromRGB(255, 255, 150))
             for i, v in ipairs(args) do
                 if type(v) == "table" then
-                    LogGUI("   ["..i.."] (JSON) = " .. HttpService:JSONEncode(v), Color3.fromRGB(220, 220, 220))
+                    LogGUI("   ["..i.."] (JSON) = " .. PcallJSON(v), Color3.fromRGB(220, 220, 220))
                 else
                     LogGUI("   ["..i.."] ("..type(v)..") = " .. tostring(v), Color3.fromRGB(220, 220, 220))
                 end
