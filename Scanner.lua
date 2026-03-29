@@ -65,7 +65,7 @@ local AutoBotBtn = Instance.new("TextButton")
 AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
 AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
 AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT (PACIENTEAA)"
+AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT (PACIENTE)"
 AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AutoBotBtn.Font = Enum.Font.Code
 AutoBotBtn.TextSize = 13
@@ -234,20 +234,46 @@ local function SafeInvoke(forgeRF, phase)
     return s, r
 end
 
--- "Simplemente oculta los minijuegos, no los destruyas"
-local function OcultarJuegoActivo(fase)
-    local searchString = string.lower(fase)
-    pcall(function()
-        for _, guiObj in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-            local guiName = string.lower(guiObj.Name)
-            if guiObj:IsA("ScreenGui") and string.find(guiName, "minigame") then
-                if string.find(guiName, searchString) then
-                    guiObj.Enabled = false
-                    AddUILog("UI", "Minijuego [" .. fase .. "] oculto (Contador preservado).", Color3.fromRGB(200,200,50))
-                end
+-- Detector de Lanzamiento Milimétrico: No adivina los tiempos.
+-- Escanea constantemente hasta que el juego genera la UI del minijuego (después de "GO").
+local function EsperarLanzamientoDeJuego(faseName)
+    local targetName = string.lower(faseName)
+    local activeGui = nil
+    
+    -- Esperamos infaliblemente a que el juego nativo decida instanciar/mostrar el minijuego
+    while ModosBypass.BotActivo do
+        for _, v in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            local vName = string.lower(v.Name)
+            if string.find(vName, targetName) and string.find(vName, "minigame") then
+               if v:IsA("ScreenGui") then
+                   if v.Enabled then activeGui = v break end
+               elseif v:IsA("GuiObject") then
+                   if v.Visible then activeGui = v break end
+               else
+                   -- Si es un Frame o Folder instanciado invisiblemente, si existe lo atacamos.
+                   activeGui = v
+                   break
+               end
             end
         end
-    end)
+        if activeGui then break end
+        task.wait(0.05)
+    end
+    
+    if activeGui then
+        -- Lo interceptamos y lo neutralizamos visual y físicamente sin romper la UI base
+        pcall(function()
+            if activeGui:IsA("ScreenGui") then 
+                activeGui.Enabled = false 
+            elseif activeGui:IsA("GuiObject") then 
+                activeGui.Visible = false 
+                activeGui:Destroy()
+            else 
+                activeGui:Destroy() 
+            end
+        end)
+        AddUILog("UI_KILL", "Juego [" .. faseName .. "] detectado y suprimido al instante.", Color3.fromRGB(250,150,50))
+    end
 end
 
 local function RunPassiveForgeAssist(forgeRF, initialMeltData)
@@ -256,9 +282,8 @@ local function RunPassiveForgeAssist(forgeRF, initialMeltData)
         local ForgeController = Knit.GetController("ForgeController")
         
         -- ========== FASE MELT ==========
-        AddUILog("BOT", ">> FASE 1: MELT. Esperando contador...", Color3.fromRGB(0,255,255))
-        task.wait(GlobalWaitPattern) 
-        OcultarJuegoActivo("Melt")
+        AddUILog("BOT", ">> FASE 1: MELT. Esperando a que termine el contador...", Color3.fromRGB(0,255,255))
+        EsperarLanzamientoDeJuego("Melt")
         
         local s1, pourData = SafeInvoke(forgeRF, "Pour")
         if s1 and pourData then
@@ -266,9 +291,8 @@ local function RunPassiveForgeAssist(forgeRF, initialMeltData)
             pcall(function() ForgeController:ChangeSequence("Pour", pourData) end)
             
             -- ========== FASE POUR ==========
-            AddUILog("BOT", ">> FASE 2: POUR. Esperando contador...", Color3.fromRGB(0,255,255))
-            task.wait(GlobalWaitPattern) 
-            OcultarJuegoActivo("Pour")
+            AddUILog("BOT", ">> FASE 2: POUR. Esperando a que termine el contador...", Color3.fromRGB(0,255,255))
+            EsperarLanzamientoDeJuego("Pour")
             
             local s2, hammerData = SafeInvoke(forgeRF, "Hammer")
             if s2 and hammerData then
@@ -276,9 +300,8 @@ local function RunPassiveForgeAssist(forgeRF, initialMeltData)
                 pcall(function() ForgeController:ChangeSequence("Hammer", hammerData) end)
                 
                 -- ========== FASE HAMMER (PERFECTS) ==========
-                AddUILog("BOT", ">> FASE 3: HAMMER. Esperando contador...", Color3.fromRGB(0,255,255))
-                task.wait(GlobalWaitPattern)
-                OcultarJuegoActivo("Hammer")
+                AddUILog("BOT", ">> FASE 3: HAMMER. Esperando a que termine el contador...", Color3.fromRGB(0,255,255))
+                EsperarLanzamientoDeJuego("Hammer")
                 
                 local hammerRF = nil
                 pcall(function() hammerRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction end)
@@ -289,7 +312,7 @@ local function RunPassiveForgeAssist(forgeRF, initialMeltData)
                         task.wait(0.05)
                     end
                 else
-                    task.wait(2.0)
+                    task.wait(1.5)
                 end
                 
                 -- ========== FASE WATER ==========
@@ -298,8 +321,7 @@ local function RunPassiveForgeAssist(forgeRF, initialMeltData)
                     AddUILog("BOT", "Avanzando NATIVAMENTE a WATER...", Color3.fromRGB(0,255,100))
                     pcall(function() ForgeController:ChangeSequence("Water", waterData) end)
                     
-                    AddUILog("LIBRE", "✅ BOT SUELTA EL CONTROL. ¡Termínalo naturalmente!", Color3.fromRGB(255,255,0))
-                    AddUILog("LIBRE", "Sumerge el Water, el Showcase y Close serán NATIVOS.", Color3.fromRGB(200,200,200))
+                    AddUILog("LIBRE", "✅ BOT SUELTA EL CONTROL. ¡Sumérgelo naturalmente!", Color3.fromRGB(255,255,0))
                 end
             end
         end
