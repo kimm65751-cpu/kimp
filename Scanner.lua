@@ -118,7 +118,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -80, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 40)
-Title.Text = " 🗡️ OMNI-FARM V3.2"
+Title.Text = " 🗡️ OMNI-FARM V3.12"
 Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -1223,7 +1223,7 @@ if not getgenv().InmunidadV11Activa then
     end)
 end
 
--- Función: Vuelo Anti-Kicks (Viaja físicamente hacia una posición)
+-- Función: Vuelo Anti-Kicks (Viaja físicamente hacia una posición con Timeout)
 local function FlyToPos(targetPos)
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -1239,19 +1239,20 @@ local function FlyToPos(targetPos)
         bv.Parent = root
     end
     
-    local speed = (currentHum.WalkSpeed or 16) * 2.5
+    local speed = (currentHum.WalkSpeed or 16) * 3
+    local timeout = tick() + 15 -- 15 segundos máximo o aborta
     
-    while char and root and currentHum and currentHum.Health > 0 do
+    while char and root and currentHum and currentHum.Health > 0 and tick() < timeout do
         local curPos = root.Position
         local hDist = (Vector2.new(curPos.X, curPos.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
         local vDist = math.abs(curPos.Y - targetPos.Y)
         
-        -- Terminar si está lo suficientemente cerca
-        if hDist < 5 and vDist < 5 then
+        -- Terminar si está muy cerca
+        if hDist < 5 and vDist < 8 then
             break
         end
         
-        local safeY = targetPos.Y + 60
+        local safeY = targetPos.Y + 45
         local flightWaypoint
         
         if hDist > 20 then
@@ -1261,7 +1262,8 @@ local function FlyToPos(targetPos)
                 flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
             end
         else
-            flightWaypoint = Vector3.new(targetPos.X, targetPos.Y + 3.5, targetPos.Z)
+            -- Bajar justo al ras del objetivo
+            flightWaypoint = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
         end
         
         local dir = (flightWaypoint - curPos).Unit
@@ -1303,8 +1305,21 @@ local function VenderAutomaticamente(miBasket)
     NoclipActivo = true -- Forzamos Noclip para que vuele atravesando muros
     
     if npcRoot then
-        StatusLabel.Text = "✈️ Volando hacia el NPC Cey para vender..."
-        FlyToPos(npcRoot.Position)
+        local dest = npcRoot.Position
+        StatusLabel.Text = "✈️ Volando hacia el NPC Cey (Timeout 15s)..."
+        FlyToPos(dest)
+        
+        -- MUY IMPORTANTE: Apagar vuelo físico temporalmente para que el NPC te ponga enfrente 
+        -- sin causar colisión de físicas de BodyVelocity (lo que provocaba el flag de Anti-cheat "kill")
+        NoclipActivo = false
+        pcall(function()
+            local xbv = root:FindFirstChild("_NoclipBV")
+            if xbv then xbv:Destroy() end
+        end)
+        -- Si falló el vuelo, teleport al NPC los últimos studs
+        if (root.Position - dest).Magnitude > 8 then
+            root.CFrame = CFrame.new(dest) * CFrame.new(0,0, -3)
+        end
         task.wait(0.5)
     end
     
@@ -1333,17 +1348,20 @@ local function VenderAutomaticamente(miBasket)
     pcall(function() RE_DialogueEvent_Sell:FireServer("Closed") end)
     
     -- REGRESAR A POSICIÓN ORIGINAL
-    StatusLabel.Text = "✈️ Venta lista. Regresando a tu zona de farmeo..."
+    StatusLabel.Text = "✈️ Venta lista. Regresando a zona de farmeo..."
+    NoclipActivo = true -- Reactivar vuelo
     FlyToPos(oldPos)
+    
+    if (root.Position - oldPos).Magnitude > 8 then
+        root.CFrame = CFrame.new(oldPos)
+    end
     task.wait(0.2)
     
     NoclipActivo = oldNoclip
-    if not oldNoclip then
-        pcall(function()
-            local bv = root:FindFirstChild("_NoclipBV")
-            if bv then bv:Destroy() end
-        end)
-    end
+    pcall(function()
+        local bv = root:FindFirstChild("_NoclipBV")
+        if not oldNoclip and bv then bv:Destroy() end
+    end)
     
     -- Reanudar Farmeo
     if oldKite then
