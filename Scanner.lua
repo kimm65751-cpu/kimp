@@ -1,12 +1,13 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.5 (UNFROZEN FINAL PATCH)
+-- 🗡️ FORGE OMNI-ANALYZER V8.6 (NO-NAMECALL FINAL PATCH)
 -- ==============================================================================
--- Soluciona de raíz el BUG CRÍTICO de WalkSpeed congelado.
--- El análisis profundo reveló que EndForge NO era una fase de ChangeSequence, 
--- sino un RemoteFunction independiente. Esto causaba la desincronización y el freeze.
+-- 🚨 SOLUCIÓN AL BUG DEL BOTÓN "¡FORJAR!":
+-- Delta Executor rompe internamente la UI del juego (Eventos/ProximityPrompt)
+-- si usamos `hookmetamethod(__namecall)`. En V8.6 se ELIMINÓ por completo.
+-- Ahora interceptamos limpiamente los Módulos de Lua (como en V4.0).
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.5 - OMEGA UNFROZEN FINAL"
+local SCRIPT_VERSION = "V8.6 - NO-NAMECALL OMEGA"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,9 +16,7 @@ local InputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 local BotActivo = false
-local AutoOresActivo = false
 local BotEnFaseSalida = false
-local OresNecesarios = 6 -- Cuántos ores insertar antes de "Let's Start"
 local TiempMelt = 7.55
 local TiempPour = 3.55
 local TiempWtr = 3.55
@@ -28,14 +27,15 @@ local InterceptMode = false
 -- LIMPIEZA TOTAL PARA EL ANTI-FREEZE
 -- ==============================================
 local function DesaparecerForjaUIDelJuego()
-    -- Solo esconderla en vez de destruirla evita errores en el motor local
-    pcall(function()
-        if LocalPlayer.PlayerGui:FindFirstChild("Forge") then
-            LocalPlayer.PlayerGui.Forge.Enabled = false
-        end
-        if LocalPlayer.PlayerGui:FindFirstChild("ForgeRecipes") then
-            LocalPlayer.PlayerGui.ForgeRecipes.Enabled = false
-        end
+    task.spawn(function()
+        pcall(function()
+            if LocalPlayer.PlayerGui:FindFirstChild("Forge") then
+                LocalPlayer.PlayerGui.Forge.Enabled = false
+            end
+            if LocalPlayer.PlayerGui:FindFirstChild("ForgeRecipes") then
+                LocalPlayer.PlayerGui.ForgeRecipes.Enabled = false
+            end
+        end)
     end)
 end
 
@@ -60,7 +60,7 @@ local function ForceUnfreezeCharacter()
 end
 
 -- ==============================================
--- UI PRINCIPAL DEL BOT V8.5
+-- UI PRINCIPAL DEL BOT V8.6
 -- ==============================================
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForgeAnalyzerUI" then v:Destroy() end end
@@ -75,16 +75,16 @@ Panel.Size = UDim2.new(0, 560, 0, 420)
 Panel.Position = UDim2.new(0, 5, 0, 5)
 Panel.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
 Panel.BorderSizePixel = 3
-Panel.BorderColor3 = Color3.fromRGB(0, 255, 255)
+Panel.BorderColor3 = Color3.fromRGB(0, 255, 100)
 Panel.Active = true
 Panel.Draggable = true
 Panel.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -60, 0, 28)
-Title.BackgroundColor3 = Color3.fromRGB(0, 40, 50)
+Title.BackgroundColor3 = Color3.fromRGB(0, 50, 20)
 Title.Text = " " .. SCRIPT_VERSION
-Title.TextColor3 = Color3.fromRGB(0, 255, 255)
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -174,18 +174,21 @@ local function IniciarForjaAutomatica()
     if BotActivo then return end
     BotActivo = true
     BotEnFaseSalida = false
-    Log("[SISTEMA] Iniciando Forja Automática Omega...", Color3.fromRGB(0, 255, 255))
+    Log("[SISTEMA] Iniciando Forja Automática Omega V8.6...", Color3.fromRGB(0, 255, 255))
+    DesaparecerForjaUIDelJuego()
     
     task.spawn(function()
         pcall(function()
-            -- ¡IDENTIFICACIÓN PRECISA DE REMOTES!
-            local knit = ReplicatedStorage.Shared.Packages.Knit.Services
-            local changeSeqRF = knit.ForgeService.RF.ChangeSequence
-            local endForgeRF = knit.ForgeService.RF.EndForge
-            local hammerRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction
+            local knit = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
+            local changeSeqRF = knit:WaitForChild("ForgeService"):WaitForChild("RF"):WaitForChild("ChangeSequence")
+            local endForgeRF = knit.ForgeService.RF:WaitForChild("EndForge")
+            
+            -- El martillo tiene su propio remote en Controllers (no en Knit)
+            local controllersFolder = ReplicatedStorage:WaitForChild("Controllers")
+            local forgeControllerFolder = controllersFolder:WaitForChild("ForgeController")
+            local hammerRF = forgeControllerFolder:WaitForChild("HammerMinigame"):WaitForChild("RemoteFunction")
 
-            -- ⏱️ TIEMPOS ENCONTRADOS DEL BACKEND
-            local meltTime = 120.5 -- Rango real detectado
+            local meltTime = 120.5
             local otherTime = 100.0
 
             local function SafeChangeSequence(fase, clientTimeParam)
@@ -198,88 +201,90 @@ local function IniciarForjaAutomatica()
                 end)
             end
 
-            -- 1️⃣ MELT MINIGAME (SKIP)
+            -- 1️⃣ MELT (SKIP)
             Log(">> Fase 1: Sincronizando Melt...", Color3.fromRGB(255, 165, 0))
             SafeChangeSequence("Melt", meltTime)
             task.wait(TiempMelt)
 
-            -- 2️⃣ POUR MINIGAME (SKIP)
+            -- 2️⃣ POUR (SKIP)
             Log(">> Fase 2: Pour (SKIP animación)...", Color3.fromRGB(240, 230, 140))
             SafeChangeSequence("Pour", otherTime)
             task.wait(TiempPour)
 
-            -- 3️⃣ HAMMER MINIGAME (PERFECT OVERFLOW)
-            Log(">> Fase 3: Hammer (Acelerado Perfect x20)...", Color3.fromRGB(0, 255, 0))
+            -- 3️⃣ HAMMER (PERFECT OVERFLOW x25)
+            Log(">> Fase 3: Hammer (Acelerado Perfect x25)...", Color3.fromRGB(0, 255, 0))
             SafeChangeSequence("Hammer", nil)
             task.wait(1.5)
-            for i = 1, 25 do -- Enviamos 25 Perfects espaciados. El servidor ignorará los sobrantes.
-                pcall(function()
-                    hammerRF:InvokeServer({Name = "Perfect"})
-                end)
-                task.wait(TiempHmmr / 25) -- Mismo tiempo total, pero los reparte equitativamente.
+            for i = 1, 25 do
+                pcall(function() hammerRF:InvokeServer({Name = "Perfect"}) end)
+                task.wait(TiempHmmr / 25)
             end
             task.wait(0.5)
 
-            -- 4️⃣ WATER MINIGAME (SKIP)
+            -- 4️⃣ WATER (SKIP)
             Log(">> Fase 4: Sincronizando Water...", Color3.fromRGB(0, 150, 255))
             SafeChangeSequence("Water", otherTime)
             task.wait(TiempWtr)
 
-            -- 5️⃣ SHOWCASE Y SALIDA (¡LA REPARACIÓN MÁS GRANDE!)
+            -- 5️⃣ SHOWCASE Y SALIDA (END FORGE REAL)
             BotEnFaseSalida = true
             Log(">> Fase 5: Showcase (Forzando Cierre).", Color3.fromRGB(200, 0, 255))
             SafeChangeSequence("Showcase", nil)
             task.wait(2.5)
             
             Log(">> Fase 6: Llamando END FORGE REAL (Anti-Freeze)...", Color3.fromRGB(255, 0, 50))
-            pcall(function()
-                endForgeRF:InvokeServer()
-            end)
+            pcall(function() endForgeRF:InvokeServer() end)
             
             task.wait(1)
             DesaparecerForjaUIDelJuego()
             ForceUnfreezeCharacter()
             
-            Log("✅ FORJA OMEGA COMPLETADA. PERSONAJE LIBERADO.", Color3.fromRGB(0, 255, 0))
+            Log("✅ FORJA OMEGA V8.6 COMPLETADA. ERES LIBRE.", Color3.fromRGB(0, 255, 0))
             BotActivo = false
         end)
     end)
 end
 
 -- ==============================================
--- HOOK GLOBAL DE DEFENSA Y DETECCIÓN (Solo si está activo)
+-- HOOK DIRECTO A LOS MÓDULOS DEL JUEGO (EL FIX DEL BOTÓN "¡FORJAR!")
 -- ==============================================
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
+local function AplicarHookDeModulos()
+    local ForgeController
+    pcall(function()
+        ForgeController = require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("ForgeController"))
+    end)
 
-    if InterceptMode and not checkcaller() and method == "InvokeServer" then
-    
-        -- AUTO-PERFECT: Si decides hacer clic manualmente por error, forzamos tu clic a "Perfect"
-        if self.Name == "RemoteFunction" and args[1] and type(args[1]) == "table" and args[1].Name then
-            if args[1].Name == "Bad" or args[1].Name == "Good" then
-                args[1].Name = "Perfect"
-                return OriginalNamecall(self, unpack(args))
-            end
-        end
+    if not ForgeController then
+        Log("❌ ERROR CRÍTICO: No se pudo obtener ForgeController.", Color3.fromRGB(255, 0, 0))
+        return
+    end
 
-        if self.Name == "ChangeSequence" and args[1] == "Melt" and not BotActivo then
+    local OldChangeSequence = ForgeController.ChangeSequence
+
+    -- Reemplazar la función principal local para capturar transiciones sin romper interacciones de red
+    ForgeController.ChangeSequence = function(self, fase, data, ...)
+        
+        -- Si el BotOmega está inactivo, pero el modo interceptar está prendido 
+        -- y el juego trata de iniciar "Melt" (Ocurre tras presionar el botón de ¡FORJAR!)
+        if InterceptMode and not BotActivo and fase == "Melt" then
             task.spawn(function()
-                Log("[INTERCEPT] Melt detectado. ¡Bot omega toma el control!", Color3.fromRGB(255, 255, 0))
+                Log("[V8.6] ¡Botón FORJAR detectado! Tomando el control...", Color3.fromRGB(255, 255, 0))
                 IniciarForjaAutomatica()
             end)
-            return nil -- Congela la interfaz local fallida
+            return -- Aborta la carga del UI/minijuegos visuales localmente para dejarle paso al bot
         end
-        if BotActivo and not BotEnFaseSalida then
-            local isForgeRemote = self.Name == "ChangeSequence" or self.Name == "RemoteFunction" or self.Name == "EndForge"
-            if isForgeRemote then
-                return nil -- Bloquea remordimientos de UI congelada
-            end
+        
+        -- Si el BotOmega está corriendo, silenciar los intentos del servidor por actualizar nuestro UI
+        if BotActivo and (fase == "Melt" or fase == "Pour" or fase == "Hammer" or fase == "Water" or fase == "Showcase") then
+            return -- La UI nunca renderiza las fases, evitando lags o interrupciones
         end
+
+        -- Para cualquier otra cosa (ej. si el modo intercept está apagado) dejar que fluya normal
+        return OldChangeSequence(self, fase, data, ...)
     end
-    return OriginalNamecall(self, ...)
-end)
+end
+
+task.spawn(AplicarHookDeModulos)
 
 -- LOOP PROTECTOR DE WALK SPEED
 task.spawn(function()
@@ -290,6 +295,6 @@ task.spawn(function()
     end
 end)
 
-Log("[SISTEMA] V8.5 - OMEGA UNFROZEN FINAL INICIADO.", Color3.fromRGB(0, 255, 255))
-Log("[SISTEMA] Fallo del WalkSpeed solucionado (EndForge es un remote separado).", Color3.fromRGB(0, 255, 100))
-Log("Activa 'HOOK: ON' si quieres que intercepte automáticamente.", Color3.fromRGB(255, 255, 0))
+Log("[SISTEMA] V8.6 - NO-NAMECALL OMEGA INICIADO.", Color3.fromRGB(0, 255, 100))
+Log("[SISTEMA] hookmetamethod ELIMINADO. Tu botón FORJAR ahora funciona.", Color3.fromRGB(255, 255, 0))
+Log("1️⃣ Pon los minerales.\n2️⃣ Activa 'HOOK: ON'.\n3️⃣ Dale click a ¡FORJAR!.", Color3.fromRGB(200, 200, 200))
