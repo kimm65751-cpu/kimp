@@ -341,8 +341,16 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             if phaseName == "Close" then
                 RondaActivaActual = false
                 pcall(function()
+                    -- APLICAMOS EL "SANTO GRIAL" QUE ENCONTRAMOS EN EL DUMP:
+                    local Knit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
+                    local fc = Knit.GetController("ForgeController")
+                    if fc then fc.ForgeActive = false end
+                    
+                    local cc = Knit.GetController("CharacterController")
+                    if cc then cc.WalkSpeed = 16; if cc.SetWalkSpeed then cc:SetWalkSpeed(16) end end
+
                     AddUILog("SUCCESS", "¡ChangeSequence(Close) Ejecutado Nativamente!", Color3.fromRGB(50, 255, 50))
-                    AddUILog("SUCCESS", "El WalkSpeed se reabastecerá nativamente. No hay mas freeze.", Color3.fromRGB(50, 255, 50))
+                    AddUILog("SUCCESS", "La variable ForgeActive ha sido destruida. Libre.", Color3.fromRGB(50, 255, 50))
                 end)
             end
         end
