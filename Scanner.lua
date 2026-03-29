@@ -1,489 +1,133 @@
 -- ==============================================================================
--- 🗡️ OMEGA BOT V8.16 (KNIT SINGLETON BYPASS)
+-- 👑 DELTA MASTER ANALYZER 2026 (INDUSTRY STANDARD)
 -- ==============================================================================
--- 1. Eliminados los hooks de diagnóstico que colapsaban la memoria de tu ejecutor.
--- 2. Sistema de ocultación corregido: YA NO destruye la UI principal, por lo que 
---    el TutorialController nativo YA NO crasheará (el causante del congelamiento).
--- 3. Inyección Perfecta y protocolo Handshake intactos.
+-- Utilizando las API más agresivas y correctas de Delta (getloadedmodules, 
+-- getscenv, saveinstance, getnilinstances) para destripar la memoria activa.
+-- Este no lee el código estático, lee la memoria RAM del juego en tiempo real.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.16 - KNIT SINGLETON BYPASS"
-
+local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
+local LP = Players.LocalPlayer
 
-local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LocalPlayer:WaitForChild("PlayerGui")
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "ForgeAnalyzerUI" then v:Destroy() end end
+local DumpFile = "DeltaMasterDump_2026.txt"
+pcall(function() if writefile then writefile(DumpFile, "=== 👑 DELTA MASTER ANALYZER 2026 ===\n\n") end end)
+
+local function AppendLog(str)
+    task.spawn(function()
+        pcall(function()
+            if appendfile then appendfile(DumpFile, str .. "\n")
+            elseif writefile then writefile(DumpFile, readfile(DumpFile) .. str .. "\n") end
+        end)
+    end)
+end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ForgeAnalyzerUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = parentUI
+ScreenGui.Name = "DeltaAnalyzerUI"
+ScreenGui.Parent = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LP:WaitForChild("PlayerGui")
 
-local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 560, 0, 420)
-Panel.Position = UDim2.new(1, -580, 0.5, -210)
-Panel.BackgroundColor3 = Color3.fromRGB(15, 10, 20)
-Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(150, 255, 255)
-Panel.Active = true
-Panel.Draggable = true
-Panel.Parent = ScreenGui
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 450, 0, 150)
+Frame.Position = UDim2.new(0.5, -225, 0.8, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.16 (KNIT SINGLETON BYPASS)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 200)
-Title.TextSize = 13
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = " 👑 DELTA MASTER ANALYZER 2026"
 Title.Font = Enum.Font.Code
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Panel
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 30)
-CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.Code
-CloseBtn.TextSize = 16
-CloseBtn.Parent = Panel
+local Status = Instance.new("TextLabel", Frame)
+Status.Size = UDim2.new(1, 0, 1, -30)
+Status.Position = UDim2.new(0, 0, 0, 30)
+Status.BackgroundTransparency = 1
+Status.TextColor3 = Color3.fromRGB(0, 255, 100)
+Status.Text = "Iniciando barrido de memoria..."
+Status.Font = Enum.Font.Code
 
-local BypassFrame = Instance.new("Frame")
-BypassFrame.Size = UDim2.new(1, -8, 0, 40)
-BypassFrame.Position = UDim2.new(0, 4, 0, 35)
-BypassFrame.BackgroundColor3 = Color3.fromRGB(30, 10, 30)
-BypassFrame.Parent = Panel
-Instance.new("UICorner", BypassFrame).CornerRadius = UDim.new(0, 4)
-
-local AutoBotBtn = Instance.new("TextButton")
-AutoBotBtn.Size = UDim2.new(1, -8, 1, -8)
-AutoBotBtn.Position = UDim2.new(0, 4, 0, 4)
-AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
-AutoBotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AutoBotBtn.Font = Enum.Font.Code
-AutoBotBtn.TextSize = 13
-AutoBotBtn.Parent = BypassFrame
-
-local TimeControlFrame = Instance.new("Frame")
-TimeControlFrame.Size = UDim2.new(1, -8, 0, 30)
-TimeControlFrame.Position = UDim2.new(0, 4, 0, 80)
-TimeControlFrame.BackgroundColor3 = Color3.fromRGB(20, 30, 40)
-TimeControlFrame.Parent = Panel
-
-local TimeLabel = Instance.new("TextLabel")
-TimeLabel.Size = UDim2.new(0, 150, 1, 0)
-TimeLabel.BackgroundTransparency = 1
-TimeLabel.Text = " Tiempo de Forja (s): "
-TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimeLabel.Font = Enum.Font.Code
-TimeLabel.TextSize = 13
-TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-TimeLabel.Parent = TimeControlFrame
-
-local TimeTextBox = Instance.new("TextBox")
-TimeTextBox.Size = UDim2.new(0, 100, 1, -4)
-TimeTextBox.Position = UDim2.new(0, 160, 0, 2)
-TimeTextBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-TimeTextBox.TextColor3 = Color3.fromRGB(0, 255, 255)
-TimeTextBox.Text = "7.55"
-TimeTextBox.Font = Enum.Font.Code
-TimeTextBox.TextSize = 14
-TimeTextBox.ClearTextOnFocus = false
-TimeTextBox.Parent = TimeControlFrame
-Instance.new("UICorner", TimeTextBox).CornerRadius = UDim.new(0, 4)
-
-local SubBtn = Instance.new("TextButton")
-SubBtn.Size = UDim2.new(0, 30, 1, -4)
-SubBtn.Position = UDim2.new(0, 270, 0, 2)
-SubBtn.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-SubBtn.Text = "-"
-SubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SubBtn.Parent = TimeControlFrame
-
-local AddBtn = Instance.new("TextButton")
-AddBtn.Size = UDim2.new(0, 30, 1, -4)
-AddBtn.Position = UDim2.new(0, 305, 0, 2)
-AddBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-AddBtn.Text = "+"
-AddBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AddBtn.Parent = TimeControlFrame
-
-local GlobalDynamicTime = 7.55
-
-TimeTextBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local val = tonumber(TimeTextBox.Text)
-    if val then GlobalDynamicTime = val end
-end)
-
-SubBtn.MouseButton1Click:Connect(function()
-    local val = tonumber(TimeTextBox.Text) or 7.55
-    TimeTextBox.Text = string.format("%.2f", val - 0.1)
-    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
-end)
-AddBtn.MouseButton1Click:Connect(function()
-    local val = tonumber(TimeTextBox.Text) or 7.55
-    TimeTextBox.Text = string.format("%.2f", val + 0.1)
-    GlobalDynamicTime = tonumber(TimeTextBox.Text) or 7.55
-end)
-
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -165)
-LogScroll.Position = UDim2.new(0, 4, 0, 120)
-LogScroll.BackgroundColor3 = Color3.fromRGB(10, 15, 10)
-LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 6
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.Parent = Panel
-local ListLayout = Instance.new("UIListLayout", LogScroll)
-ListLayout.Padding = UDim.new(0, 2)
-
-local ControlsFrame = Instance.new("Frame")
-ControlsFrame.Size = UDim2.new(1, -8, 0, 35)
-ControlsFrame.Position = UDim2.new(0, 4, 1, -38)
-ControlsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-ControlsFrame.Parent = Panel
-
-local ClearBtn = Instance.new("TextButton")
-ClearBtn.Size = UDim2.new(0.5, -2, 1, 0)
-ClearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-ClearBtn.Text = "🗑️ LIMPIAR LOGS"
-ClearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClearBtn.Font = Enum.Font.Code
-ClearBtn.TextSize = 12
-ClearBtn.Parent = ControlsFrame
-
-local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(0.5, -2, 1, 0)
-CopyBtn.Position = UDim2.new(0.5, 2, 0, 0)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
-CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES"
-CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
-CopyBtn.Parent = ControlsFrame
-
-local MasterLogList = {}
-local ModosBypass = {BotActivo = false}
-local BotJugandoAhoraMismo = false
-local BotBypassingNetwork = false
-
-local DumpTableDeep
-DumpTableDeep = function(tbl, depth)
-    depth = depth or 0
-    if type(tbl) ~= "table" then return tostring(tbl) end
-    if depth > 5 then return "{MAX_DEPTH}" end
-    local str = "{"
-    for k, v in pairs(tbl) do
-        local vt = typeof(v)
-        if vt == "table" then str = str .. "["..tostring(k).."]=" .. DumpTableDeep(v, depth + 1) .. ", "
-        else str = str .. "["..tostring(k).."]=" .. tostring(v) .. ", " end
-    end
-    return str .. "}"
-end
-
-local function AddUILog(logType, message, color)
-    local fullString = "[" .. os.date("%H:%M:%S") .. "] [" .. logType .. "] " .. message
-    table.insert(MasterLogList, fullString)
-    if #MasterLogList > 500 then table.remove(MasterLogList, 1) end
-    task.defer(function()
-        pcall(function()
-            local clr = color or Color3.fromRGB(200, 200, 200)
-            local txt = Instance.new("TextLabel")
-            txt.Size = UDim2.new(1, -4, 0, 0)
-            txt.BackgroundTransparency = 1
-            txt.Text = fullString
-            txt.TextColor3 = clr
-            txt.Font = Enum.Font.Code
-            txt.TextSize = 11
-            txt.TextXAlignment = Enum.TextXAlignment.Left
-            txt.TextWrapped = true
-            txt.Parent = LogScroll
-            local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, math.huge))
-            txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
-            LogScroll.CanvasPosition = Vector2.new(0, 999999)
-        end)
-    end)
-end
-
-AutoBotBtn.MouseButton1Click:Connect(function()
-    ModosBypass.BotActivo = not ModosBypass.BotActivo
-    if ModosBypass.BotActivo then
-        AutoBotBtn.Text = "🛑 STOP: BOT HABILITADO (Presiona GO en Forja)"
-        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-        AddUILog("SISTEMA", "Bot ARMADO usando el tiempo de " .. TimeTextBox.Text .. "s.", Color3.fromRGB(100,255,100))
-    else
-        AutoBotBtn.Text = "🤖 START: HABILITAR OMEGA BOT"
-        AutoBotBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-        AddUILog("SISTEMA", "Bot APAGADO.", Color3.fromRGB(255,100,100))
-    end
-end)
-
-ClearBtn.MouseButton1Click:Connect(function()
-    for _, v in pairs(LogScroll:GetChildren()) do if v:IsA("TextLabel") then v:Destroy() end end
-    MasterLogList = {}
-end)
-CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL V8.16 ===\n\n"
-    for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
-    if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
-    task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
-end)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
-local function ExtractTimes(tbl)
-    local req, start = nil, nil
-    local seen = {}
-    local function search(t)
-        if type(t) ~= "table" or seen[t] then return end
-        seen[t] = true
-        for k, v in pairs(t) do
-            if type(k) == "string" and k == "RequiredTime" then req = v end
-            if type(k) == "string" and k == "StartTime" then start = v end
-            if type(v) == "table" then search(v) end
-        end
-    end
-    search(tbl)
-    return req, start
-end
-
-local function ForceUnfreezeCharacter()
-    AddUILog("BOT_V8", ">> FORZANDO SALIDA DEL CONTROLADOR NAT...", Color3.fromRGB(0, 255, 100))
+task.spawn(function()
+    AppendLog("=========== [1] MÓDULOS CARGADOS EN MEMORIA (getloadedmodules) ===========")
+    Status.Text = "Extrayendo módulos inicializados..."
     pcall(function()
-        -- 1. Restaurar Cámara Físicamente
-        local cam = workspace.CurrentCamera
-        cam.CameraType = Enum.CameraType.Custom
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            cam.CameraSubject = hum or cam.CameraSubject
-            -- 2. Forzar Físicas
-            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.Anchored = false end
-        end
-    end)
-    
-    pcall(function()
-        -- 3. Habilitar Controles Nativos (PlayerModule)
-        local PlayerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
-        if PlayerModule then
-            local controls = PlayerModule:GetControls()
-            if controls then controls:Enable() end
-        end
-    end)
-    
-    pcall(function()
-        -- 4. Forzar el Controlador Nativo localmente invocando al Singleton de Knit
-        -- CRÍTICO: NO usar require(path), eso crea un objeto fantasma inútil.
-        local Knit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
-        local fc = Knit.GetController("ForgeController")
-        if fc and fc.ChangeSequence then
-            fc:ChangeSequence("Close")
-        end
-    end)
-    
-    pcall(function()
-        -- 5. Parche definitivo al CharacterController activo
-        local Knit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
-        local cc = Knit.GetController("CharacterController")
-        if cc then
-            -- Sobrescribimos la variable interna que te obliga a caminar lento o anclado
-            cc.WalkSpeed = 16
-            if cc.SetWalkSpeed then cc:SetWalkSpeed(16) end
-        end
-    end)
-    AddUILog("BOT_V8", "✅ DESCONGELAMIENTO APLICADO.", Color3.fromRGB(0, 255, 100))
-end
-
-local function DestroyNativeMinigames()
-    for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
-        local nameLower = string.lower(v.Name)
-        if nameLower == "forge" then
-            -- EL FIX DEFINITIVO DEL CONGELAMIENTO: No destrozar la GUI principal.
-            pcall(function() v.Enabled = false end)
-        elseif string.find(nameLower, "minigame") then
-            -- Aniquilamos los scripts de los minijuegos nativos para que no interfieran.
-            v:Destroy()
-        end
-    end
-end
-
-local function SafeInvoke(forgeRF, phase, clientTimeParam)
-    local s, r = false, nil
-    local completed = false
-    BotBypassingNetwork = true
-    task.spawn(function()
-        local _s, _r = pcall(function() 
-            if clientTimeParam then return forgeRF:InvokeServer(phase, {ClientTime = clientTimeParam})
-            else return forgeRF:InvokeServer(phase, {}) end
-        end)
-        s, r = _s, _r
-        completed = true
-    end)
-    local timeout = os.clock()
-    while not completed and (os.clock() - timeout) < 5 do task.wait() end
-    BotBypassingNetwork = false
-    if not completed then AddUILog("TIMEOUT", "El servidor silenció (" .. phase .. ")", Color3.fromRGB(255,100,0)) end
-    return s, r
-end
-
-local function WaitUntilServerTime(targetTime)
-    local maxWait = targetTime + 2.0
-    while workspace:GetServerTimeNow() < targetTime do
-        if workspace:GetServerTimeNow() > maxWait then break end
-        task.wait()
-    end
-    return workspace:GetServerTimeNow()
-end
-
-local function ExecutePerfectSequence(forgeRF, primerMeltReturn)
-    task.spawn(function()
-        xpcall(function()
-            BotJugandoAhoraMismo = true
-            DestroyNativeMinigames()
-            
-            local DYNAMIC_TIME = GlobalDynamicTime
-            if type(DYNAMIC_TIME) ~= "number" or DYNAMIC_TIME <= 0 then DYNAMIC_TIME = 7.55 end
-            
-            AddUILog("BOT_V8", ">> Fase 1: Sincronizando Melt...", Color3.fromRGB(50,255,200))
-            local req1, start1 = ExtractTimes(primerMeltReturn)
-            req1 = req1 or 2.15
-            start1 = start1 or workspace:GetServerTimeNow()
-            local trueTime1 = WaitUntilServerTime(start1 + req1)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 2: Pour...", Color3.fromRGB(50,255,200))
-            local s2, r2 = SafeInvoke(forgeRF, "Pour", trueTime1)
-            local req2, start2 = ExtractTimes(r2)
-            req2 = req2 or 4.50
-            start2 = start2 or workspace:GetServerTimeNow()
-            local trueTime2 = WaitUntilServerTime(start2 + req2)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 3: Hammer...", Color3.fromRGB(50,255,200))
-            local s3, r3 = SafeInvoke(forgeRF, "Hammer", trueTime2)
-            local req3, start3 = ExtractTimes(r3)
-            req3 = req3 or DYNAMIC_TIME
-            start3 = start3 or workspace:GetServerTimeNow()
-            AddUILog("BOT_V8", "⏳ Hammer Delay: " .. string.format("%.2f", req3) .. "s (Bucle Perfect Activo)...", Color3.fromRGB(200, 150, 0))
-            
-            task.spawn(function()
-                local hammerRF = nil
-                pcall(function() hammerRF = ReplicatedStorage.Controllers.ForgeController.HammerMinigame.RemoteFunction end)
-                if hammerRF then
-                    for i=1, 25 do
-                        if not BotJugandoAhoraMismo then break end
-                        BotBypassingNetwork = true
-                        pcall(function() hammerRF:InvokeServer({Name = "Perfect"}) end)
-                        BotBypassingNetwork = false
-                        task.wait(req3 / 25)
+        local modules = getloadedmodules()
+        for i, mod in ipairs(modules) do
+            local nameLower = string.lower(mod.Name)
+            if string.find(nameLower, "character") or string.find(nameLower, "forge") or string.find(nameLower, "tutorial") then
+                AppendLog("📦 Módulo Activo: " .. mod:GetFullName())
+                -- Requerimos el módulo activo real para ver su tabla de metadatos en vivo
+                local s, req = pcall(function() return require(mod) end)
+                if s and type(req) == "table" then
+                    AppendLog("   -> Tabla del Singleton obtenida en RAM. Llaves vivas:")
+                    for key, val in pairs(req) do
+                        local valType = type(val)
+                        if valType == "function" or valType == "table" or valType == "string" or valType == "number" or valType == "boolean" then
+                            AppendLog("      ["..valType.."] " .. tostring(key) .. " = " .. tostring(val))
+                        end
                     end
                 end
-            end)
-
-            local trueTime3 = WaitUntilServerTime(start3 + req3)
-            
-            AddUILog("BOT_V8", ">> Ejecutando fase 4: Water...", Color3.fromRGB(50,255,200))
-            local s4, r4 = SafeInvoke(forgeRF, "Water", trueTime3)
-            local req4, start4 = ExtractTimes(r4)
-            req4 = req4 or DYNAMIC_TIME
-            start4 = start4 or workspace:GetServerTimeNow()
-            AddUILog("BOT_V8", "⏳ Water Delay: " .. string.format("%.2f", req4) .. "s...", Color3.fromRGB(255, 50, 50))
-            WaitUntilServerTime(start4 + req4)
-            
-            AddUILog("BOT_V8", ">> ¡Reclamando arma! Iniciando Handshake Final...", Color3.fromRGB(255,255,50))
-            SafeInvoke(forgeRF, "Showcase", nil)
-            task.wait(2.5)
-            
-            AddUILog("BOT_V8", ">> Handshake: Enviando OreSelect...", Color3.fromRGB(200,200,100))
-            SafeInvoke(forgeRF, "OreSelect", nil)
-            task.wait(0.5)
-            
-            AddUILog("BOT_V8", ">> Handshake: Enviando EndForge...", Color3.fromRGB(255,100,50))
-            local end_success = false
-            pcall(function()
-                local knit = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
-                local endForgeRF = knit.ForgeService.RF:WaitForChild("EndForge")
-                if endForgeRF then
-                    BotBypassingNetwork = true
-                    endForgeRF:InvokeServer()
-                    BotBypassingNetwork = false
-                    end_success = true
-                end
-            end)
-            if not end_success then SafeInvoke(forgeRF, "EndForge", nil) end
-            task.wait(0.5)
-            
-            AddUILog("BOT_V8", ">> Handshake: Enviando Close...", Color3.fromRGB(150,255,150))
-            SafeInvoke(forgeRF, "Close", nil)
-            task.wait(0.5)
-
-            AddUILog("BOT_V8", "=== ESPADA CREADA Y RECIBIDA ===", Color3.fromRGB(0,255,0))
-            ForceUnfreezeCharacter()
-            BotJugandoAhoraMismo = false
-        end, function(err)
-            BotJugandoAhoraMismo = false
-            AddUILog("FATAL_ERROR", "ERROR DEL SISTEMA: " .. tostring(err), Color3.fromRGB(255, 0, 0))
-            ForceUnfreezeCharacter()
-        end)
-    end)
-end
-
-local OriginalNamecall
-OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if not checkcaller() and method == "InvokeServer" then
-        local fullName = self.GetFullName(self)
-        local nameLower = string.lower(fullName)
-        
-        if string.find(nameLower, "changesequence") then
-            local phaseName = tostring(args[1])
-            if BotBypassingNetwork then return OriginalNamecall(self, ...) end
-            
-            if phaseName ~= "Melt" and ModosBypass.BotActivo and BotJugandoAhoraMismo then
-                task.spawn(function() AddUILog("BLOCK", "Señal NATIVA Anulada [" .. phaseName .. "].", Color3.fromRGB(255, 50, 50)) end)
-                return nil 
             end
-            
-            local RetTuple = {OriginalNamecall(self, ...)}
-            local returnVal = RetTuple[1]
-            task.spawn(function()
-                if phaseName == "Melt" then
-                    AddUILog("INTERCEPT", "Melt detectado. ¡El Omega Bot toma el control absoluto!", Color3.fromRGB(255,100,255))
-                    if ModosBypass.BotActivo and not BotJugandoAhoraMismo then ExecutePerfectSequence(self, returnVal) end
+        end
+    end)
+    task.wait(1)
+
+    AppendLog("\n=========== [2] INSTANCIAS OCULTAS (getnilinstances) ===========")
+    Status.Text = "Buscando scripts ocultos en Nil..."
+    pcall(function()
+        for _, inst in pairs(getnilinstances()) do
+            if inst:IsA("LocalScript") or inst:IsA("ModuleScript") then
+                AppendLog("👻 Instancia Fantasma: " .. inst.Name .. " (Clase: " .. inst.ClassName .. ")")
+            end
+        end
+    end)
+    task.wait(1)
+
+    AppendLog("\n=========== [3] CONEXIONES Y VALORES (getconnections & getconstants) ===========")
+    Status.Text = "Interceptando Remotes y Señales..."
+    local searchAreas = {RS, LP.PlayerGui, LP.Character}
+    for _, area in ipairs(searchAreas) do
+        if area then
+            for _, obj in ipairs(area:GetDescendants()) do
+                if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") then
+                    pcall(function()
+                        local ev = (obj:IsA("RemoteEvent") or obj:IsA("BindableEvent")) and obj.Event or obj.OnClientInvoke
+                        local cons = getconnections(ev)
+                        if #cons > 0 then
+                            AppendLog("📡 [Red/Local] " .. obj:GetFullName() .. " tiene " .. #cons .. " oyentes:")
+                            for i, con in ipairs(cons) do
+                                local info = debug.getinfo(con.Function)
+                                AppendLog("   -> Escuchado en: " .. (info.short_src or "Unknown") .. " Línea: " .. tostring(info.linedefined))
+                                
+                                local consts = debug.getconstants(con.Function)
+                                local strConsts = ""
+                                for _, c in pairs(consts) do
+                                    if type(c)=="string" and #c > 2 and #c < 20 then strConsts = strConsts .. c .. ", " end
+                                end
+                                if strConsts ~= "" then AppendLog("      Constantes: " .. strConsts) end
+                            end
+                        end
+                    end)
                 end
-            end)
-            return unpack(RetTuple)
+            end
         end
     end
-    
-    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        task.spawn(function()
-            pcall(function()
-                local nameLower = string.lower(self.GetFullName(self))
-                local BlacklistWords = {"move", "mouse", "camera", "ping", "update", "render", "step", "chat", "chatb", "character", "root", "position", "look"}
-                local skip = false
-                for _, w in pairs(BlacklistWords) do if string.find(nameLower, w) then skip = true break end end
-                
-                if not skip and not string.find(nameLower, "changesequence") then
-                    local argDump = ""
-                    for i, v in ipairs(args) do
-                        if typeof(v) == "table" then
-                            local s, r = pcall(function() return DumpTableDeep(v) end)
-                            argDump = argDump .. "Arg["..i.."]=" .. (s and r or "ERR") .. " "
-                        else pcall(function() argDump = argDump .. "Arg["..i.."]="..tostring(v).." " end) end
-                    end
-                    AddUILog("NET_OUT:"..method, self.Name .. " >> " .. argDump, Color3.fromRGB(100, 100, 100))
-                end
-            end)
-        end)
-    end
-    return OriginalNamecall(self, ...)
-end)
+    task.wait(1)
 
-AddUILog("SISTEMA", "V8.16 KNIT SINGLETON CARGADO. Dominio absoluto.", Color3.fromRGB(150, 255, 150))
+    AppendLog("\n=========== [4] DECOMPILACIÓN TOTAL (saveinstance) ===========")
+    Status.Text = "Guardando el juego completo en tu disco (saveinstance)..."
+    pcall(function()
+        AppendLog("⚠️ Ejecutando saveinstance(). El juego será copiado a tu carpeta de workspace como un archivo .rbxlx")
+        saveinstance({
+            mode = "optimized",
+            noscripts = false,
+            decompile = true,
+            decomptype = "new",
+            timeout = 30000
+        })
+        AppendLog("✅ saveinstance() completado o en progreso (Revisa la carpeta de tu ejecutor).")
+    end)
+
+    Status.Text = "✅ ¡ANÁLISIS MASTER COMPLETADO!\n1. Revisa DeltaMasterDump_2026.txt\n2. Revisa el archivo .rbxlx creado."
+    task.wait(4)
+    ScreenGui:Destroy()
+end)
