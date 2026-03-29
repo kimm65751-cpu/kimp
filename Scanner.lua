@@ -149,7 +149,7 @@ local ReloadBtn = Instance.new("TextButton")
 ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
 ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
 ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
-ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
+ReloadBtn.Text = "🔄 RECARGAR SCRIEPT"
 ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
 ReloadBtn.Font = Enum.Font.Code
 ReloadBtn.TextSize = 11
@@ -1131,17 +1131,26 @@ AutoVenderBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Función: Leer capacidad del inventario (busca "X/Y" en la UI del juego)
+-- Función: Leer capacidad del inventario (usando el módulo Knit del juego)
+local InvController_Sell = nil
+pcall(function() InvController_Sell = require(ReplicatedStorage.Controllers.UIController.Inventory) end)
+
 local function LeerCapacidadInventario()
     local cur, maxm = nil, nil
+    -- Obtener máximo del módulo Knit
+    if InvController_Sell then
+        pcall(function() maxm = InvController_Sell:GetBagCapacity() end)
+    end
+    if not maxm then maxm = 144 end
+    -- Buscar el label "X/144" para obtener cantidad actual
     pcall(function()
         for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
             if obj:IsA("TextLabel") and obj.Visible then
                 local x, y = string.match(obj.Text, "(%d+)/(%d+)")
                 if x and y then
                     local valY = tonumber(y)
-                    if valY == 144 or valY > 50 then
-                        cur, maxm = tonumber(x), valY
+                    if valY == maxm then
+                        cur = tonumber(x)
                         return
                     end
                 end
