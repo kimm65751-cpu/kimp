@@ -1,11 +1,10 @@
 -- ==============================================================================
--- ⚔️ FORGE AUTOPLAYER v1.0 — JUEGA LOS 3 MINIJUEGOS PERFECTO
+-- ⚔️ FORGE AUTOPLAYER v3.0 — CORREGIDO POR DATOS REALES
 -- ==============================================================================
--- ZERO hooks. Detecta UI por .Visible y simula inputs humanos.
--- Basado en telemetría real del X-RAY v5.0
--- MELT:   Spam click en Heater.Top (TextButton)
--- POUR:   mouse1press/release adaptativo persiguiendo Area.Position.Y
--- HAMMER: Click en círculos cuando Circle.Size ≈ 1.1 (zona Perfect)
+-- MELT:    ¡MANTENER PRESIONADO! No soltar nunca. Hold continuo.
+-- POUR:    mouse press/release adaptativo (YA FUNCIONA)
+-- HAMMER:  Los círculos SON los golpes. Click en cada TextButton.
+--          No hay fase "romper" separada — todo son círculos.
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -15,12 +14,11 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- ============ CONFIG ============
-local MELT_CLICK_INTERVAL = 0.08    -- Segundos entre clicks del Heater
-local POUR_THRESHOLD = 0.06         -- Margen para decidir press/release
-local HAMMER_PERFECT_ZONE = 1.12    -- Click cuando Circle.Size <= este valor
-local HAMMER_MIN_SIZE = 0.85        -- No clickear si ya pasó de este punto
+local POUR_THRESHOLD = 0.06
+local CIRCLE_PERFECT_ZONE = 1.15
+local CIRCLE_MIN_SIZE = 0.60
 
--- ============ COMPACT UI ============
+-- ============ UI ============
 local CoreGui = game:GetService("CoreGui")
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or PlayerGui
 for _, v in pairs(parentUI:GetChildren()) do if v.Name == "AutoForgeUI" then v:Destroy() end end
@@ -32,67 +30,51 @@ SG.DisplayOrder = 1000
 SG.Parent = parentUI
 
 local StatusBar = Instance.new("TextLabel")
-StatusBar.Size = UDim2.new(0, 300, 0, 28)
-StatusBar.Position = UDim2.new(0.5, -150, 0, 4)
+StatusBar.Size = UDim2.new(0, 400, 0, 28)
+StatusBar.Position = UDim2.new(0.5, -200, 0, 4)
 StatusBar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 StatusBar.BorderColor3 = Color3.fromRGB(50, 200, 100)
 StatusBar.BorderSizePixel = 2
-StatusBar.Text = " ⚔️ FORGE AUTO v1.0 | Esperando..."
+StatusBar.Text = " ⚔️ FORGE AUTO v3.0"
 StatusBar.TextColor3 = Color3.fromRGB(150, 255, 150)
-StatusBar.TextSize = 12
+StatusBar.TextSize = 11
 StatusBar.Font = Enum.Font.Code
 StatusBar.TextXAlignment = Enum.TextXAlignment.Left
 StatusBar.Parent = SG
 
-local function SetStatus(text, color)
-    StatusBar.Text = " ⚔️ " .. text
-    StatusBar.TextColor3 = color or Color3.fromRGB(150, 255, 150)
+local function SetStatus(t, c)
+    pcall(function() StatusBar.Text = " ⚔️ " .. t; StatusBar.TextColor3 = c or Color3.fromRGB(150,255,150) end)
 end
 
--- ============ INPUT SIMULATION (VIM = VirtualInputManager) ============
--- El juego usa UserInputService, NO eventos de botón.
--- fireclick/firesignal no funcionan. Solo VIM simula clicks reales.
+-- ============ VIM HELPERS ============
+local mouseIsDown = false
+local lastMX, lastMY = 0, 0
 
-local function ClickAtPosition(x, y)
-    -- Simula mouse down + up en la posición (x,y) de la pantalla
+local function VIMPress(x, y)
+    lastMX, lastMY = x, y
+    mouseIsDown = true
+    VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+end
+
+local function VIMRelease()
+    mouseIsDown = false
+    VIM:SendMouseButtonEvent(lastMX, lastMY, 0, false, game, 0)
+end
+
+local function VIMClick(x, y)
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.02)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
 end
 
-local function ClickElement(element)
-    if not element or not element.Parent then return end
-    pcall(function()
-        local pos = element.AbsolutePosition
-        local sz = element.AbsoluteSize
-        local cx = pos.X + sz.X / 2
-        local cy = pos.Y + sz.Y / 2
-        -- Pequeño offset random para parecer humano
-        cx = cx + math.random(-2, 2)
-        cy = cy + math.random(-2, 2)
-        ClickAtPosition(cx, cy)
-    end)
+local function ElemCenter(el)
+    local p = el.AbsolutePosition
+    local s = el.AbsoluteSize
+    return p.X + s.X/2, p.Y + s.Y/2
 end
 
-local mouseDown = false
-local lastMouseX, lastMouseY = 0, 0
-
-local function PressMouseAt(x, y)
-    if mouseDown then return end
-    mouseDown = true
-    lastMouseX, lastMouseY = x, y
-    VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
-end
-
-local function ReleaseMouse()
-    if not mouseDown then return end
-    mouseDown = false
-    VIM:SendMouseButtonEvent(lastMouseX, lastMouseY, 0, false, game, 0)
-end
-
--- ============ FIND FORGE GUI ============
-local ForgeGui = nil
-local MeltMG, PourMG, HammerMG = nil, nil, nil
+-- ============ FIND FORGE ============
+local ForgeGui, MeltMG, PourMG, HammerMG
 
 local function FindForge()
     ForgeGui = PlayerGui:FindFirstChild("Forge")
@@ -112,70 +94,82 @@ if not ForgeGui then
     end)
 end
 
--- ============ GAME 1: MELT ============
+-- ================================================================
+-- FASE 1: MELT — MANTENER PRESIONADO sobre el Heater TODO EL TIEMPO
+-- No soltar. Si sueltas, la barra baja. Hold continuo.
+-- ================================================================
 local meltActive = false
 local meltThread = nil
 
 local function PlayMelt()
     if meltActive then return end
     meltActive = true
-    SetStatus("MELT — Bombeando...", Color3.fromRGB(255, 100, 50))
-    
-    local heaterTop = nil
-    pcall(function()
-        heaterTop = MeltMG.Heater.Top
-    end)
-    
-    if not heaterTop then
-        SetStatus("MELT — ERROR: Heater.Top no encontrado", Color3.fromRGB(255, 0, 0))
-        meltActive = false
-        return
-    end
-    
-    -- También buscar el ImageButton dentro de Top (hijo clickeable real)
-    local clickTarget = heaterTop
-    pcall(function()
-        local ib = heaterTop:FindFirstChild("ImageButton")
-        if ib then clickTarget = ib end
-    end)
+    SetStatus("MELT — Presionando Heater...", Color3.fromRGB(255, 100, 50))
     
     meltThread = task.spawn(function()
-        while meltActive and MeltMG and MeltMG.Visible do
-            -- Click en la posición REAL del Heater pump usando VIM
-            ClickElement(clickTarget)
-            
-            -- Check bar level
-            local areaSize = 0
-            pcall(function()
-                areaSize = MeltMG.Bar.Area.Size.Y.Scale
-            end)
-            
-            SetStatus(string.format("MELT — Barra: %.0f%%", areaSize * 100), Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
-            
-            -- Check if Finish button is clickable
-            pcall(function()
-                local finish = MeltMG.Finish
-                if finish and finish.Position.Y.Scale < 1.0 then
-                    task.wait(0.1)
-                    ClickElement(finish)
-                end
-            end)
-            
-            task.wait(MELT_CLICK_INTERVAL)
+        -- Esperar a que el Heater esté en posición (se mueve al inicio)
+        task.wait(0.5)
+        
+        -- Encontrar Heater.Top
+        local heaterTop = nil
+        pcall(function() heaterTop = MeltMG.Heater.Top end)
+        if not heaterTop then
+            pcall(function() heaterTop = MeltMG.Heater end)
         end
+        if not heaterTop then
+            SetStatus("MELT — ERROR: Heater no encontrado", Color3.fromRGB(255, 0, 0))
+            meltActive = false
+            return
+        end
+        
+        -- MANTENER PRESIONADO: VIM press y NO soltar
+        local cx, cy = 200, 250
+        pcall(function() cx, cy = ElemCenter(heaterTop) end)
+        
+        -- Press DOWN y mantener
+        VIMPress(cx, cy)
+        SetStatus(string.format("MELT — HOLD en (%d,%d)...", cx, cy), Color3.fromRGB(255, 150, 50))
+        
+        -- Loop: solo monitorear la barra y mantener presionado
+        -- Si la posición del heater cambia, mover el press
+        while meltActive and MeltMG and MeltMG.Visible do
+            -- Verificar si el Heater se movió (puede pasar al inicio)
+            local nx, ny = cx, cy
+            pcall(function() nx, ny = ElemCenter(heaterTop) end)
+            
+            -- Si se movió significativamente, re-press en nueva posición
+            if math.abs(nx - cx) > 10 or math.abs(ny - cy) > 10 then
+                cx, cy = nx, ny
+                VIMRelease()
+                task.wait(0.02)
+                VIMPress(cx, cy)
+            end
+            
+            -- Leer nivel de la barra
+            local areaSize = 0
+            pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
+            
+            SetStatus(string.format("MELT — HOLD ▼ Barra: %.0f%%", areaSize * 100),
+                Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
+            
+            task.wait(0.1)
+        end
+        
+        -- Soltar al terminar
+        VIMRelease()
         meltActive = false
     end)
 end
 
 local function StopMelt()
     meltActive = false
-    if meltThread then
-        pcall(function() task.cancel(meltThread) end)
-        meltThread = nil
-    end
+    VIMRelease()
+    if meltThread then pcall(function() task.cancel(meltThread) end); meltThread = nil end
 end
 
--- ============ GAME 2: POUR ============
+-- ================================================================
+-- FASE 2: POUR — Seguir zona amarilla (YA FUNCIONA EN v1)
+-- ================================================================
 local pourActive = false
 local pourThread = nil
 
@@ -197,12 +191,11 @@ local function PlayPour()
         return
     end
     
-    -- Position mouse over the game area
     local screenCenter = Vector2.new(500, 300)
     pcall(function()
         local fp = frame.AbsolutePosition
         local fs = frame.AbsoluteSize
-        screenCenter = Vector2.new(fp.X + fs.X / 2, fp.Y + fs.Y / 2)
+        screenCenter = Vector2.new(fp.X + fs.X/2, fp.Y + fs.Y/2)
     end)
     
     pourThread = task.spawn(function()
@@ -211,98 +204,106 @@ local function PlayPour()
             pcall(function() areaY = area.Position.Y.Scale end)
             pcall(function() lineY = line.Position.Y.Scale end)
             
-            -- Area center = areaY + (areaHeight/2)
-            -- We want Line to be at the CENTER of the Area
-            local areaHeight = 0.200 -- Area is ~20% of bar height
+            local areaHeight = 0.200
             pcall(function() areaHeight = area.Size.Y.Scale end)
             local areaCenter = areaY + areaHeight / 2
-            
             local diff = lineY - areaCenter
             
             if diff > POUR_THRESHOLD then
-                -- Line is BELOW area center → need to go UP → PRESS
-                PressMouseAt(screenCenter.X, screenCenter.Y)
+                if not mouseIsDown then VIMPress(screenCenter.X, screenCenter.Y) end
             elseif diff < -POUR_THRESHOLD then
-                -- Line is ABOVE area center → need to go DOWN → RELEASE
-                ReleaseMouse()
+                if mouseIsDown then VIMRelease() end
             end
-            -- If within threshold → hold current state (keeps steady)
             
-            SetStatus(string.format("POUR — Line:%.2f Area:%.2f Diff:%.3f %s", 
-                lineY, areaCenter, diff, mouseDown and "▲HOLD" or "▼FREE"), 
+            SetStatus(string.format("POUR — L:%.2f A:%.2f %s",
+                lineY, areaCenter, mouseIsDown and "▲HOLD" or "▼FREE"),
                 Color3.fromRGB(100, 200, 255))
             
-            task.wait() -- Every frame
+            task.wait()
         end
-        ReleaseMouse()
+        VIMRelease()
         pourActive = false
     end)
 end
 
 local function StopPour()
     pourActive = false
-    ReleaseMouse()
-    if pourThread then
-        pcall(function() task.cancel(pourThread) end)
-        pourThread = nil
-    end
+    VIMRelease()
+    if pourThread then pcall(function() task.cancel(pourThread) end); pourThread = nil end
 end
 
--- ============ GAME 3: HAMMER (Circles) ============
+-- ================================================================
+-- FASE 3+4: HAMMER + CIRCLES
+-- Los círculos (TextButton) aparecen como hijos DIRECTOS de HammerMinigame
+-- Cada uno tiene Position.Offset = posición random sobre el arma
+-- Circle.Size empieza en 2.5 y se encoge a 0
+-- Click cuando Circle.Size ≈ 1.1 para "Perfect"
+-- ================================================================
 local hammerActive = false
-local hammerConn = nil
+local hammerThread = nil
+local circleConn = nil
 local circlesHandled = 0
 
-local function HandleCircle(textButton)
-    -- Each circle structure:
-    -- Frame [TextButton] ← click this
-    --   ├── Frame [ImageLabel] (center dot)
-    --   ├── Border [ImageLabel] (Size 1.1)
-    --   └── Circle [ImageLabel] (Size starts at 2.5, shrinks to 0)
-    
+local function HandleCircle(btn)
     task.spawn(function()
-        -- Wait for Circle child to appear
+        if not btn or not btn.Parent then return end
+        
+        -- Esperar que Circle hijo aparezca
         local circle = nil
-        local tries = 0
-        while tries < 30 and not circle do
-            for _, child in pairs(textButton:GetChildren()) do
-                if child.Name == "Circle" and child:IsA("ImageLabel") then
-                    circle = child
+        for i = 1, 60 do
+            for _, ch in pairs(btn:GetChildren()) do
+                if ch.Name == "Circle" and ch:IsA("ImageLabel") then
+                    circle = ch
                     break
                 end
             end
-            if not circle then
-                task.wait(0.05)
-                tries = tries + 1
-            end
+            if circle then break end
+            task.wait(0.03)
         end
         
-        if not circle then return end
+        if not circle then
+            -- Sin Circle, click directo como fallback
+            pcall(function()
+                local bx, by = ElemCenter(btn)
+                VIMClick(bx, by)
+                circlesHandled = circlesHandled + 1
+            end)
+            return
+        end
         
-        -- Monitor Circle.Size.X.Scale and click at the perfect moment
+        -- Monitorear Circle.Size y clickear en zona perfecta
         local clicked = false
-        while not clicked and circle.Parent and textButton.Parent and hammerActive do
+        while not clicked and hammerActive do
+            local exists = pcall(function() return circle.Parent and btn.Parent end)
+            if not exists then break end
+            
             local sz = 2.5
             pcall(function() sz = circle.Size.X.Scale end)
             
-            if sz <= HAMMER_PERFECT_ZONE and sz >= HAMMER_MIN_SIZE then
-                -- PERFECT ZONE! Click NOW!
-                task.wait(0.01)
-                ClickElement(textButton)
+            if sz <= CIRCLE_PERFECT_ZONE and sz >= CIRCLE_MIN_SIZE then
+                -- ¡ZONA PERFECTA!
+                pcall(function()
+                    local bx, by = ElemCenter(btn)
+                    VIMClick(bx + math.random(-2,2), by + math.random(-2,2))
+                end)
                 clicked = true
                 circlesHandled = circlesHandled + 1
-                SetStatus(string.format("HAMMER — ✨ CLICK! #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 255, 0))
-            elseif sz < HAMMER_MIN_SIZE then
-                -- Missed the zone, click anyway
-                ClickElement(textButton)
+                SetStatus(string.format("CIRCLES — ✨ Perfect #%d (%.2f)", circlesHandled, sz),
+                    Color3.fromRGB(0, 255, 100))
+                    
+            elseif sz < CIRCLE_MIN_SIZE and sz > 0.02 then
+                -- Late click
+                pcall(function()
+                    local bx, by = ElemCenter(btn)
+                    VIMClick(bx, by)
+                end)
                 clicked = true
                 circlesHandled = circlesHandled + 1
-                SetStatus(string.format("HAMMER — ⚡ Late #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 150, 0))
+                SetStatus(string.format("CIRCLES — ⚡ Late #%d (%.2f)", circlesHandled, sz),
+                    Color3.fromRGB(255, 150, 0))
             end
             
-            if not clicked then
-                task.wait() -- Check every frame
-            end
+            if not clicked then task.wait() end
         end
     end)
 end
@@ -313,105 +314,102 @@ local function PlayHammer()
     circlesHandled = 0
     SetStatus("HAMMER — Esperando círculos...", Color3.fromRGB(255, 200, 50))
     
-    -- Listen for new TextButtons (circles) appearing
-    hammerConn = HammerMG.DescendantAdded:Connect(function(obj)
+    -- Escuchar nuevos TextButtons (son hijos DIRECTOS de HammerMinigame)
+    circleConn = HammerMG.ChildAdded:Connect(function(obj)
         if not hammerActive then return end
-        -- Each circle appears as a TextButton named "Frame"
-        if obj:IsA("TextButton") and obj.Name == "Frame" then
-            task.wait(0.05) -- Let the circle children spawn
+        if obj:IsA("TextButton") then
+            task.wait(0.08) -- Esperar que Circle/Border/Frame spawnen como hijos
             HandleCircle(obj)
         end
     end)
     
-    -- Also check for any TextButtons that already exist (in case some spawned before connection)
+    -- Check existing
     for _, child in pairs(HammerMG:GetChildren()) do
-        if child:IsA("TextButton") and child.Name == "Frame" then
+        if child:IsA("TextButton") then
             HandleCircle(child)
         end
     end
+    
+    -- Thread para actualizar status
+    hammerThread = task.spawn(function()
+        while hammerActive and HammerMG and HammerMG.Visible do
+            if circlesHandled == 0 then
+                SetStatus("HAMMER — Esperando círculos...", Color3.fromRGB(255, 200, 50))
+            else
+                SetStatus(string.format("HAMMER — %d círculos hechos", circlesHandled),
+                    Color3.fromRGB(200, 255, 100))
+            end
+            task.wait(0.3)
+        end
+        hammerActive = false
+    end)
 end
 
 local function StopHammer()
     hammerActive = false
-    if hammerConn then
-        hammerConn:Disconnect()
-        hammerConn = nil
-    end
+    if hammerThread then pcall(function() task.cancel(hammerThread) end); hammerThread = nil end
+    if circleConn then circleConn:Disconnect(); circleConn = nil end
 end
 
--- ============ GAME DETECTION & MAIN LOOP ============
+-- ============ GAME DETECTION ============
 local function SetupGameDetection()
     if not ForgeGui then return end
     
-    -- MELT
     if MeltMG then
         MeltMG:GetPropertyChangedSignal("Visible"):Connect(function()
             if MeltMG.Visible then
-                task.wait(1.5) -- Wait for entrance animation + countdown
+                task.wait(2.0) -- Countdown 3,2,1,GO + entrada animación
                 PlayMelt()
             else
                 StopMelt()
-                SetStatus("MELT completado ✅", Color3.fromRGB(0, 255, 100))
+                SetStatus("MELT ✅", Color3.fromRGB(0, 255, 100))
             end
         end)
     end
     
-    -- POUR
     if PourMG then
         PourMG:GetPropertyChangedSignal("Visible"):Connect(function()
             if PourMG.Visible then
-                task.wait(1.5) -- Wait for entrance + countdown
+                task.wait(2.0)
                 PlayPour()
             else
                 StopPour()
-                SetStatus("POUR completado ✅", Color3.fromRGB(0, 255, 100))
+                SetStatus("POUR ✅", Color3.fromRGB(0, 255, 100))
             end
         end)
     end
     
-    -- HAMMER
     if HammerMG then
         HammerMG:GetPropertyChangedSignal("Visible"):Connect(function()
             if HammerMG.Visible then
-                task.wait(1.5) -- Wait for entrance + countdown
+                task.wait(2.0)
                 PlayHammer()
             else
                 StopHammer()
-                SetStatus(string.format("HAMMER completado ✅ (%d círculos)", circlesHandled), Color3.fromRGB(0, 255, 100))
+                SetStatus(string.format("HAMMER ✅ (%d círculos)", circlesHandled),
+                    Color3.fromRGB(0, 255, 100))
             end
         end)
     end
     
-    SetStatus("LISTO — Inicia la forja ⚒️", Color3.fromRGB(150, 255, 150))
+    SetStatus("v3.0 LISTO — Inicia la forja ⚒️", Color3.fromRGB(150, 255, 150))
 end
 
 -- ============ INIT ============
 task.spawn(function()
     if not ForgeGui then
-        SetStatus("Esperando Forge GUI...", Color3.fromRGB(255, 200, 50))
-        local tries = 0
-        while not ForgeGui and tries < 120 do
-            task.wait(0.5)
-            FindForge()
-            tries = tries + 1
-        end
+        SetStatus("Esperando Forge...", Color3.fromRGB(255, 200, 50))
+        local t = 0
+        while not ForgeGui and t < 120 do task.wait(0.5); FindForge(); t = t + 1 end
     end
-    
     if ForgeGui then
         SetupGameDetection()
-        
-        -- If any game is already visible (hot reload)
-        if MeltMG and MeltMG.Visible then PlayMelt() end
-        if PourMG and PourMG.Visible then PlayPour() end
-        if HammerMG and HammerMG.Visible then PlayHammer() end
+        if MeltMG and MeltMG.Visible then task.wait(0.5); PlayMelt() end
+        if PourMG and PourMG.Visible then task.wait(0.5); PlayPour() end
+        if HammerMG and HammerMG.Visible then task.wait(0.5); PlayHammer() end
     else
-        SetStatus("ERROR: Forge GUI no encontrado", Color3.fromRGB(255, 0, 0))
+        SetStatus("ERROR: Forge no encontrado", Color3.fromRGB(255, 0, 0))
     end
 end)
 
--- Cleanup on script removal
-SG.Destroying:Connect(function()
-    StopMelt()
-    StopPour()
-    StopHammer()
-end)
+SG.Destroying:Connect(function() StopMelt(); StopPour(); StopHammer() end)
