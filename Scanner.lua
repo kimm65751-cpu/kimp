@@ -2,7 +2,7 @@
 -- 🗺️ EXPLORADOR DE ÁRBOLES DE DIÁLOGO V1.1 (SEGURO)
 -- ==============================================================================
 -- Lee la estructura de ReplicatedStorage.Dialogues SIN require() peligrosos.
--- Solao lee la jerarquía de instancias y sus propiedades visibles.
+-- Solo lee la jerarquía de instancias y sus propiedades visibles.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,7 +33,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -170, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(20, 30, 50)
-Title.Text = " 🗺️ EXPLORADOR DIÁLOGOS V1.2"
+Title.Text = " 🗺️ EXPLORADOR DIÁLOGOS V1.1"
 Title.TextColor3 = Color3.fromRGB(100, 200, 255)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
@@ -104,17 +104,23 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 local FullLogText = "=== EXPLORADOR DE ÁRBOLES DE DIÁLOGO ===\n\n"
+local linesSinceLastSave = 0
+
 CopyBtn.MouseButton1Click:Connect(function()
-    if writefile then
-        writefile("datos.txt", FullLogText)
-        CopyBtn.Text = "¡GUARDADO!"
-        LogGUI("[✔] Archivo datos.txt guardado en workspace de Delta.", Color3.fromRGB(100, 255, 100))
-        task.delay(2, function() CopyBtn.Text = "💾 GUARDAR" end)
-    end
+    writefile("datos.txt", FullLogText)
+    if setclipboard then setclipboard(FullLogText) end
+    CopyBtn.Text = "¡GUARDADO!"
+    task.delay(2, function() CopyBtn.Text = "💾 GUARDAR" end)
 end)
 
 local function LogGUI(text, color)
     FullLogText = FullLogText .. text .. "\n"
+    linesSinceLastSave = linesSinceLastSave + 1
+    -- Auto-guardar cada 20 líneas para no perder datos si crashea
+    if linesSinceLastSave >= 20 then
+        pcall(function() writefile("datos.txt", FullLogText) end)
+        linesSinceLastSave = 0
+    end
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(1, -10, 0, 18)
     msg.BackgroundTransparency = 1
@@ -280,12 +286,8 @@ LogGUI("  📊 RESUMEN", Color3.fromRGB(100, 255, 100))
 LogGUI("============================================================", Color3.fromRGB(100, 255, 100))
 LogGUI("🤖 NPCs con Diálogos encontrados: " .. npcCount, Color3.fromRGB(200, 200, 200))
 
--- AUTO-GUARDAR al terminar
-if writefile then
-    writefile("datos.txt", FullLogText)
-    LogGUI("\n[✔] ARCHIVO GUARDADO AUTOMÁTICAMENTE: datos.txt (workspace de Delta)", Color3.fromRGB(100, 255, 100))
-else
-    LogGUI("\n[⚠] writefile no disponible, usa el botón GUARDAR.", Color3.fromRGB(255, 200, 50))
-end
+-- GUARDAR FINAL
+writefile("datos.txt", FullLogText)
+LogGUI("\n[✔] datos.txt GUARDADO. Total: " .. #FullLogText .. " caracteres.", Color3.fromRGB(100, 255, 100))
 
 LogGUI("[✔] Exploración completada.", Color3.fromRGB(100, 255, 100))
