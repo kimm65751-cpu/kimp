@@ -263,15 +263,17 @@ local function AplicarHookDeModulos()
 
     -- Reemplazar la función principal local para capturar transiciones sin romper interacciones de red
     ForgeController.ChangeSequence = function(self, fase, data, ...)
-        
-        -- Si el BotOmega está inactivo, pero el modo interceptar está prendido 
-        -- y el juego trata de iniciar "Melt" (Ocurre tras presionar el botón de ¡FORJAR!)
-        if InterceptMode and not BotActivo and fase == "Melt" then
-            task.spawn(function()
-                Log("[V8.6] ¡Botón FORJAR detectado! Tomando el control...", Color3.fromRGB(255, 255, 0))
-                IniciarForjaAutomatica()
-            end)
-            return -- Aborta la carga del UI/minijuegos visuales localmente para dejarle paso al bot
+        if InterceptMode then
+            local faseStr = tostring(fase)
+            task.spawn(function() Log(">> [HOOK] ChangeSequence intentó cargar: " .. faseStr, Color3.fromRGB(150, 150, 150)) end)
+            
+            if not BotActivo and fase == "Melt" then
+                task.spawn(function()
+                    Log("[V8.6] ¡Botón FORJAR detectado! Tomando el control...", Color3.fromRGB(255, 255, 0))
+                    IniciarForjaAutomatica()
+                end)
+                return -- Aborta la carga del UI/minijuegos visuales localmente para dejarle paso al bot
+            end
         end
         
         -- Si el BotOmega está corriendo, silenciar los intentos del servidor por actualizar nuestro UI
