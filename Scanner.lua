@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🗡️ OMEGA BOT V8.15 (THE PERFECT ESCAPE)
+-- 🗡️ OMEGA BOT V8.16 (KNIT SINGLETON BYPASS)
 -- ==============================================================================
 -- 1. Eliminados los hooks de diagnóstico que colapsaban la memoria de tu ejecutor.
 -- 2. Sistema de ocultación corregido: YA NO destruye la UI principal, por lo que 
@@ -7,7 +7,7 @@
 -- 3. Inyección Perfecta y protocolo Handshake intactos.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.15 - THE PERFECT ESCAPE"
+local SCRIPT_VERSION = "V8.16 - KNIT SINGLETON BYPASS"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,7 +35,7 @@ Panel.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(10, 80, 50)
-Title.Text = " 📡 FORGE V8.15 (THE PERFECT ESCAPE)"
+Title.Text = " 📡 FORGE V8.16 (KNIT SINGLETON BYPASS)"
 Title.TextColor3 = Color3.fromRGB(150, 255, 200)
 Title.TextSize = 13
 Title.Font = Enum.Font.Code
@@ -228,7 +228,7 @@ ClearBtn.MouseButton1Click:Connect(function()
     MasterLogList = {}
 end)
 CopyBtn.MouseButton1Click:Connect(function()
-    local result = "=== REPORTE TOTAL V8.15 ===\n\n"
+    local result = "=== REPORTE TOTAL V8.16 ===\n\n"
     for i, _ in ipairs(MasterLogList) do result = result .. MasterLogList[i] .. "\n" end
     if setclipboard then setclipboard(result); CopyBtn.Text = "✅ ¡COPIADO!" else CopyBtn.Text = "❌ ERROR" end
     task.delay(2, function() CopyBtn.Text = "📋 COPIAR AL PORTAPAPELES" end)
@@ -278,11 +278,23 @@ local function ForceUnfreezeCharacter()
     end)
     
     pcall(function()
-        -- 4. Forzar el Controlador Nativo localmente a su fase 'Close'
-        -- CRÍTICO: Esto le dirá al 'CharacterController' que deje de mantener el WalkSpeed en 0.
-        local fc = require(game:GetService("ReplicatedStorage"):WaitForChild("Controllers"):WaitForChild("ForgeController"))
+        -- 4. Forzar el Controlador Nativo localmente invocando al Singleton de Knit
+        -- CRÍTICO: NO usar require(path), eso crea un objeto fantasma inútil.
+        local Knit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
+        local fc = Knit.GetController("ForgeController")
         if fc and fc.ChangeSequence then
             fc:ChangeSequence("Close")
+        end
+    end)
+    
+    pcall(function()
+        -- 5. Parche definitivo al CharacterController activo
+        local Knit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
+        local cc = Knit.GetController("CharacterController")
+        if cc then
+            -- Sobrescribimos la variable interna que te obliga a caminar lento o anclado
+            cc.WalkSpeed = 16
+            if cc.SetWalkSpeed then cc:SetWalkSpeed(16) end
         end
     end)
     AddUILog("BOT_V8", "✅ DESCONGELAMIENTO APLICADO.", Color3.fromRGB(0, 255, 100))
@@ -474,4 +486,4 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OriginalNamecall(self, ...)
 end)
 
-AddUILog("SISTEMA", "V8.15 ESCAPE PERFECTO CARGADO. ¡El congelamiento final murió!", Color3.fromRGB(150, 255, 150))
+AddUILog("SISTEMA", "V8.16 KNIT SINGLETON CARGADO. Dominio absoluto.", Color3.fromRGB(150, 255, 150))
