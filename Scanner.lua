@@ -375,11 +375,21 @@ LogGUI("[*] ¡Ve y habla con un NPC ahora para capturar la misión!\n", Color3.f
 -- ⚠️ CERO hookmetamethod. CERO hookfunction. Solo escuchamos OnClientEvent.
 -- Esto NUNCA interfiere con la tecla E ni con ProximityPrompts.
 
+local filtroMisiones = {"dialogue", "quest", "mission", "accept", "complete", "claim", "progress", "achievement"}
+
+local function EsRemotoRelevante(nombre)
+    local n = string.lower(nombre)
+    for _, k in pairs(filtroMisiones) do
+        if string.find(n, k) then return true end
+    end
+    return false
+end
+
 local conexionesEscucha = {}
 local remotosEscuchados = 0
 
 for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") then
+    if obj:IsA("RemoteEvent") and EsRemotoRelevante(obj.Name) then
         local c = obj.OnClientEvent:Connect(function(...)
             local args = {...}
             task.spawn(function()
