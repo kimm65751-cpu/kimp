@@ -32,7 +32,8 @@ local OriginalLighting = nil
 local OreBlacklist = {} -- {[ore] = tick() cuando fue baneado}
 local MiningTracker = {ore = nil, startHP = nil, startTime = nil}
 local MINE_TIMEOUT = 4 -- Segundos sin bajar HP antes de saltar al siguiente
-local GlobalMineIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global 5s
+local GlobalMineIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global Minas 8s
+local GlobalMobIdleTracker = {lastHitTime = tick(), isIdle = false} -- Anti-Atasco Global Mobs 8s
 local BLACKLIST_EXPIRE = 60 -- Segundos antes de reintentar un mineral baneado
 
 -- SELECTOR DE OBJETIVOS: Qué tipos de mobs y minas farmear
@@ -149,7 +150,7 @@ local ReloadBtn = Instance.new("TextButton")
 ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
 ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
 ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
-ReloadBtn.Text = "🔄 RECARGAR SCeeRIPT"
+ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
 ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
 ReloadBtn.Font = Enum.Font.Code
 ReloadBtn.TextSize = 11
@@ -973,6 +974,7 @@ local function IniciarFarm()
                         end
                         
                         if mode == "Combat" then
+                            GlobalMobIdleTracker.lastHitTime = tick()
                             local mobLvl = GetMobLevel(targetObj)
                             StatusLabel.Text = "🗡️ Atacando: " .. targetObj.Name .. " (Lvl " .. tostring(mobLvl) .. ") | Tu Lvl: " .. tostring(myLevel)
                             
@@ -1008,6 +1010,7 @@ KiteBtn.MouseButton1Click:Connect(function()
     if KiteActivo then
         KiteBtn.Text = "🗡️ MOBS: ON (Lvl " .. tostring(GetMyLevel()) .. ")"
         KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        GlobalMobIdleTracker.lastHitTime = tick()
         IniciarFarm()
     else
         KiteBtn.Text = "🗡️ FARM MOBS"
@@ -1031,22 +1034,80 @@ MineBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- ANTI-ATASCO GLOBAL: Si Farm Minas está ON y lleva 5s sin picar, se auto-reinicia
+-- ANTI-ATASCO INTELIGENTE: Alterna entre Minar y Mobs para Desbloquearse
 -- ==========================================
+local CambiandoModoStuck = false
 task.spawn(function()
     while true do
         task.wait(1)
-        if MineActivo and (tick() - GlobalMineIdleTracker.lastHitTime) > 5 then
-            GlobalMineIdleTracker.lastHitTime = tick()
-            -- Auto-reinicio: apagar y prender farm minas
+        if CambiandoModoStuck then continue end
+        
+        local now = tick()
+        
+        -- 1. Atascado en MINERIA por 8 segundos -> Forzar Mobs por 3s
+        if MineActivo and not KiteActivo and (now - GlobalMineIdleTracker.lastHitTime) > 8 then
+            CambiandoModoStuck = true
+            StatusLabel.Text = "🔄 [ANTI-STUCK] Atascado en Mina.\nActivando Farmeo Zombis 3s para liberar..."
+            
+            -- Detenemos minas, activamos mobs temporalmente
             MineActivo = false
+            KiteActivo = true
+            MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+            KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+            KiteBtn.Text = "🗡️ MOBS: (ANTI-STUCK)"
+            
             DetenerFarm()
-            task.wait(0.3)
-            MineActivo = true
-            MineBtn.Text = "⛏️ MINAS: ON"
-            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
-            StatusLabel.Text = "🔄 Anti-Atasco: Reiniciando Farm Minas..."
+            task.wait(0.1)
             IniciarFarm()
+            
+            -- Dejamos que farmee/camine a un zombi 3 segundos
+            task.wait(3.5)
+            
+            -- Restaurar estado: Volvemos a Minas
+            StatusLabel.Text = "🔄 [ANTI-STUCK] Regresando a Minas..."
+            KiteActivo = false
+            MineActivo = true
+            
+            KiteBtn.Text = "🗡️ FARM MOBS"
+            KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+            MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+            
+            DetenerFarm()
+            task.wait(0.1)
+            GlobalMineIdleTracker.lastHitTime = tick()
+            IniciarFarm()
+            CambiandoModoStuck = false
+            
+        -- 2. Atascado en MOBS por 8 segundos -> Forzar Minas por 3s
+        elseif KiteActivo and not MineActivo and (now - GlobalMobIdleTracker.lastHitTime) > 8 then
+            CambiandoModoStuck = true
+            StatusLabel.Text = "🔄 [ANTI-STUCK] Atascado en Zombis.\nActivando Farmeo Minas 3s para liberar..."
+            
+            KiteActivo = false
+            MineActivo = true
+            KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
+            MineBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+            MineBtn.Text = "⛏️ MINAS: (ANTI-STUCK)"
+            
+            DetenerFarm()
+            task.wait(0.1)
+            IniciarFarm()
+            
+            task.wait(3.5)
+            
+            StatusLabel.Text = "🔄 [ANTI-STUCK] Regresando a Zombis..."
+            MineActivo = false
+            KiteActivo = true
+            
+            MineBtn.Text = "⛏️ FARM MINAS"
+            MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40)
+            KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+            
+            DetenerFarm()
+            task.wait(0.1)
+            GlobalMobIdleTracker.lastHitTime = tick()
+            IniciarFarm()
+            CambiandoModoStuck = false
         end
     end
 end)
