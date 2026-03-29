@@ -95,68 +95,138 @@ if not ForgeGui then
 end
 
 -- ================================================================
--- FASE 1: MELT — MANTENER PRESIONADO sobre el Heater TODO EL TIEMPO
--- No soltar. Si sueltas, la barra baja. Hold continuo.
+-- FASE 1: MELT — MULTI-MÉTODO
+-- Intento 1: Inyectar barra directamente (más rápido)
+-- Intento 2: mousemoveabs + mouse1press (executor functions)
+-- Intento 3: VIM con corrección GuiInset
 -- ================================================================
 local meltActive = false
 local meltThread = nil
 
+-- Obtener GuiInset para corregir coordenadas VIM
+local GuiInset = Vector2.new(0, 0)
+pcall(function()
+    GuiInset = game:GetService("GuiService"):GetGuiInset()
+end)
+
 local function PlayMelt()
     if meltActive then return end
     meltActive = true
-    SetStatus("MELT — Presionando Heater...", Color3.fromRGB(255, 100, 50))
+    SetStatus("MELT — Detectando método...", Color3.fromRGB(255, 100, 50))
     
     meltThread = task.spawn(function()
-        -- Esperar a que el Heater esté en posición (se mueve al inicio)
         task.wait(0.5)
         
-        -- Encontrar Heater.Top
-        local heaterTop = nil
-        pcall(function() heaterTop = MeltMG.Heater.Top end)
-        if not heaterTop then
-            pcall(function() heaterTop = MeltMG.Heater end)
-        end
-        if not heaterTop then
-            SetStatus("MELT — ERROR: Heater no encontrado", Color3.fromRGB(255, 0, 0))
-            meltActive = false
-            return
-        end
+        -- ========== MÉTODO 1: INYECCIÓN DIRECTA ==========
+        -- Intentar llenar la barra directamente modificando Area.Size
+        local barArea = nil
+        pcall(function() barArea = MeltMG.Bar.Area end)
         
-        -- MANTENER PRESIONADO: VIM press y NO soltar
-        local cx, cy = 200, 250
-        pcall(function() cx, cy = ElemCenter(heaterTop) end)
-        
-        -- Press DOWN y mantener
-        VIMPress(cx, cy)
-        SetStatus(string.format("MELT — HOLD en (%d,%d)...", cx, cy), Color3.fromRGB(255, 150, 50))
-        
-        -- Loop: solo monitorear la barra y mantener presionado
-        -- Si la posición del heater cambia, mover el press
-        while meltActive and MeltMG and MeltMG.Visible do
-            -- Verificar si el Heater se movió (puede pasar al inicio)
-            local nx, ny = cx, cy
-            pcall(function() nx, ny = ElemCenter(heaterTop) end)
-            
-            -- Si se movió significativamente, re-press en nueva posición
-            if math.abs(nx - cx) > 10 or math.abs(ny - cy) > 10 then
-                cx, cy = nx, ny
-                VIMRelease()
-                task.wait(0.02)
-                VIMPress(cx, cy)
+        if barArea then
+            SetStatus("MELT — Inyectando barra...", Color3.fromRGB(255, 200, 50))
+            -- Subir rápido la barra
+            for i = 1, 60 do
+                if not meltActive or not MeltMG or not MeltMG.Visible then break end
+                pcall(function()
+                    barArea.Size = UDim2.new(1, 0, math.min(i * 0.02, 1), 0)
+                end)
+                local areaSize = 0
+                pcall(function() areaSize = barArea.Size.Y.Scale end)
+                SetStatus(string.format("MELT — Inyección: %.0f%%", areaSize * 100),
+                    Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
+                -- Si la barra se sobreescribe (el script la resetea), la inyección no funciona
+                if i > 5 and areaSize < 0.05 then
+                    SetStatus("MELT — Inyección bloqueada, usando mouse...", Color3.fromRGB(255, 150, 0))
+                    break -- El juego resetea la barra, ir a método 2
+                end
+                task.wait(0.05)
             end
             
-            -- Leer nivel de la barra
-            local areaSize = 0
-            pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
-            
-            SetStatus(string.format("MELT — HOLD ▼ Barra: %.0f%%", areaSize * 100),
-                Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
-            
-            task.wait(0.1)
+            -- Check si la inyección funcionó
+            local finalSize = 0
+            pcall(function() finalSize = barArea.Size.Y.Scale end)
+            if finalSize > 0.5 then
+                -- ¡Funcionó! Esperar a que termine
+                while meltActive and MeltMG and MeltMG.Visible do
+                    pcall(function() barArea.Size = UDim2.new(1, 0, 1, 0) end)
+                    SetStatus("MELT — Barra llena! ✅", Color3.fromRGB(0, 255, 100))
+                    task.wait(0.2)
+                end
+                meltActive = false
+                return
+            end
         end
         
-        -- Soltar al terminar
-        VIMRelease()
+        -- ========== MÉTODO 2: EXECUTOR MOUSE FUNCTIONS ==========
+        local heaterTop = nil
+        pcall(function() heaterTop = MeltMG.Heater.Top end)
+        if not heaterTop then pcall(function() heaterTop = MeltMG.Heater end) end
+        
+        if heaterTop then
+            local cx, cy = 200, 250
+            pcall(function() cx, cy = ElemCenter(heaterTop) end)
+            
+            -- Intentar con mousemoveabs + mouse1press (executor nativo)
+            local useExecMouse = false
+            pcall(function()
+                mousemoveabs(cx, cy)
+                mouse1press()
+                useExecMouse = true
+            end)
+            
+            if useExecMouse then
+                SetStatus(string.format("MELT — MOUSE HOLD en (%d,%d)", cx, cy), Color3.fromRGB(100, 255, 100))
+                
+                while meltActive and MeltMG and MeltMG.Visible do
+                    -- Re-leer posición por si se movió
+                    pcall(function()
+                        local nx, ny = ElemCenter(heaterTop)
+                        if math.abs(nx - cx) > 10 or math.abs(ny - cy) > 10 then
+                            cx, cy = nx, ny
+                            mouse1release()
+                            task.wait(0.02)
+                            mousemoveabs(cx, cy)
+                            mouse1press()
+                        end
+                    end)
+                    
+                    local areaSize = 0
+                    pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
+                    SetStatus(string.format("MELT — HOLD (%d,%d) Barra: %.0f%%", cx, cy, areaSize * 100),
+                        Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
+                    task.wait(0.1)
+                end
+                pcall(function() mouse1release() end)
+                meltActive = false
+                return
+            end
+            
+            -- ========== MÉTODO 3: VIM con corrección GuiInset ==========
+            -- Corregir coordenadas: AbsolutePosition incluye inset, VIM no
+            local vx = cx - GuiInset.X
+            local vy = cy - GuiInset.Y
+            VIMPress(vx, vy)
+            SetStatus(string.format("MELT — VIM HOLD (%d,%d→%d,%d)", cx, cy, vx, vy), Color3.fromRGB(255, 200, 100))
+            
+            while meltActive and MeltMG and MeltMG.Visible do
+                pcall(function()
+                    local nx, ny = ElemCenter(heaterTop)
+                    local nvx, nvy = nx - GuiInset.X, ny - GuiInset.Y
+                    if math.abs(nvx - vx) > 10 or math.abs(nvy - vy) > 10 then
+                        vx, vy = nvx, nvy
+                        VIMRelease(); task.wait(0.02); VIMPress(vx, vy)
+                    end
+                end)
+                
+                local areaSize = 0
+                pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
+                SetStatus(string.format("MELT — VIM Barra: %.0f%%", areaSize * 100),
+                    Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
+                task.wait(0.1)
+            end
+            VIMRelease()
+        end
+        
         meltActive = false
     end)
 end
