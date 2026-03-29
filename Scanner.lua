@@ -39,7 +39,7 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Size = UDim2.new(1, -120, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
 Title.Text = " 🕵️ QUEST FORENSICS V1.0"
 Title.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -47,6 +47,25 @@ Title.TextSize = 14
 Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
+
+local CopyBtn = Instance.new("TextButton")
+CopyBtn.Size = UDim2.new(0, 120, 0, 30)
+CopyBtn.Position = UDim2.new(1, -120, 0, 0)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+CopyBtn.Text = "📥 COPIAR LOG"
+CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyBtn.Font = Enum.Font.Code
+CopyBtn.TextSize = 12
+CopyBtn.Parent = MainFrame
+
+local FullLogText = "=== REPORTE DE MISIONES (QUEST FORENSICS) ===\n\n"
+CopyBtn.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(FullLogText)
+        CopyBtn.Text = "¡COPIADO!"
+        task.delay(2, function() CopyBtn.Text = "📥 COPIAR LOG" end)
+    end
+end)
 
 local OutputScroll = Instance.new("ScrollingFrame")
 OutputScroll.Size = UDim2.new(1, -10, 1, -40)
@@ -61,8 +80,11 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 2)
 
 local logCount = 0
+
 local function LogGUI(text, color)
     print(text)
+    FullLogText = FullLogText .. text .. "\n"
+    
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(1, -10, 0, 20)
     msg.BackgroundTransparency = 1
