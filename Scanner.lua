@@ -34,7 +34,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -180, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 15, 15)
-Title.Text = " 🎯 SNIFFER DIÁLOGO"
+Title.Text = " 🎯 SNIFFER DIÁLOGOeee"
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
@@ -183,14 +183,7 @@ local function IrHaciaNPC(targetPos, npcName)
     if noclipConn then noclipConn:Disconnect() end
     noclipConn = RunService.Stepped:Connect(function()
         if not isFlyingTo then
-            if noclipConn then noclipConn:Disconnect() end
-            -- RESTAURAR colisiones para que funcione la E
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = true end
-            end
-            if char:FindFirstChild("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end
+            if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
             return
         end
         for _, v in pairs(char:GetDescendants()) do
@@ -206,6 +199,12 @@ local function IrHaciaNPC(targetPos, npcName)
             if dist < 5 then
                 bv:Destroy()
                 isFlyingTo = false
+                -- Esperar a que Stepped se desconecte
+                task.wait(0.2)
+                -- Tocar suelo: el juego se encarga de restaurar CanCollide
+                if char:FindFirstChild("Humanoid") then
+                    char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end
                 LogGUI("✅ Llegaste a " .. npcName .. ". Presiona E.", Color3.fromRGB(100, 255, 100))
                 break
             end
