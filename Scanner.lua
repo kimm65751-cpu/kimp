@@ -1,13 +1,13 @@
 -- ==============================================================================
--- 🗡️ FORGE OMNI-ANALYZER V8.6 (NO-NAMECALL FINAL PATCH)
+-- 🗡️ FORGE OMNI-ANALYZER V8.7 (CLEAN SLATE OMEGA)
 -- ==============================================================================
--- 🚨 SOLUCIÓN AL BUG DEL BOTÓN "¡FORJAR!":
--- Delta Executor rompe internamente la UI del juego (Eventos/ProximityPrompt)
--- si usamos `hookmetamethod(__namecall)`. En V8.6 se ELIMINÓ por completo.
--- Ahora interceptamos limpiamente los Módulos de Lua (como en V4.0).
+-- 🚨 BUG DEL "FANTASMA EN LA MEMORIA":
+-- Si anteriormente usaste un script con hookmetamethod, Delta bloquea las 
+-- interacciones del juego permanentemente HASTA QUE REINICIES ROBLOX.
+-- Este V8.7 es libre de hooks nativos. REINICIA EL JUEGO para usarlo.
 -- ==============================================================================
 
-local SCRIPT_VERSION = "V8.6 - NO-NAMECALL OMEGA"
+local SCRIPT_VERSION = "V8.7 - CLEAN SLATE OMEGA"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -174,7 +174,7 @@ local function IniciarForjaAutomatica()
     if BotActivo then return end
     BotActivo = true
     BotEnFaseSalida = false
-    Log("[SISTEMA] Iniciando Forja Automática Omega V8.6...", Color3.fromRGB(0, 255, 255))
+    Log("[SISTEMA] Iniciando Forja Automática Omega V8.7...", Color3.fromRGB(0, 255, 255))
     DesaparecerForjaUIDelJuego()
     
     task.spawn(function()
@@ -239,7 +239,7 @@ local function IniciarForjaAutomatica()
             DesaparecerForjaUIDelJuego()
             ForceUnfreezeCharacter()
             
-            Log("✅ FORJA OMEGA V8.6 COMPLETADA. ERES LIBRE.", Color3.fromRGB(0, 255, 0))
+            Log("✅ FORJA OMEGA V8.7 COMPLETADA. ERES LIBRE.", Color3.fromRGB(0, 255, 0))
             BotActivo = false
         end)
     end)
@@ -269,7 +269,7 @@ local function AplicarHookDeModulos()
             
             if not BotActivo and fase == "Melt" then
                 task.spawn(function()
-                    Log("[V8.6] ¡Botón FORJAR detectado! Tomando el control...", Color3.fromRGB(255, 255, 0))
+                    Log("[V8.7] ¡Botón FORJAR detectado! Tomando el control...", Color3.fromRGB(255, 255, 0))
                     IniciarForjaAutomatica()
                 end)
                 return -- Aborta la carga del UI/minijuegos visuales localmente para dejarle paso al bot
@@ -297,6 +297,6 @@ task.spawn(function()
     end
 end)
 
-Log("[SISTEMA] V8.6 - NO-NAMECALL OMAAAAEGA INICIADO.", Color3.fromRGB(0, 255, 100))
-Log("[SISTEMA] hookmetamethod ELIMINADO. Tu botón FORJAR ahora funciona.", Color3.fromRGB(255, 255, 0))
-Log("1️⃣ Pon los minerales.\n2️⃣ Activa 'HOOK: ON'.\n3️⃣ Dale click a ¡FORJAR!.", Color3.fromRGB(200, 200, 200))
+Log("[SISTEMA] V8.7 - CLEAN SLATE INICIADO.", Color3.fromRGB(0, 255, 100))
+Log("⚠️ IMPORTANTE: SI TU JUEGO ESTÁ PEGADO, REINICIA ROBLOX.", Color3.fromRGB(255, 0, 50))
+Log("1️⃣ Entra a un server NUEVO.\n2️⃣ Activa 'HOOK: ON'.\n3️⃣ Dale click a ¡FORJAR!.", Color3.fromRGB(200, 200, 200))
