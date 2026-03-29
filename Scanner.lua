@@ -35,7 +35,7 @@ StatusBar.Position = UDim2.new(0.5, -200, 0, 4)
 StatusBar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 StatusBar.BorderColor3 = Color3.fromRGB(50, 200, 100)
 StatusBar.BorderSizePixel = 2
-StatusBar.Text = " ⚔️ FORGE AUTO v3.1"
+StatusBar.Text = " ⚔️ FORGE AUTO v3.0"
 StatusBar.TextColor3 = Color3.fromRGB(150, 255, 150)
 StatusBar.TextSize = 11
 StatusBar.Font = Enum.Font.Code
@@ -102,10 +102,9 @@ if not ForgeGui then
 end
 
 -- ================================================================
--- FASE 1: MELT — MULTI-MÉTODO
--- Intento 1: Inyectar barra directamente (más rápido)
--- Intento 2: mousemoveabs + mouse1press (executor functions)
--- Intento 3: VIM con corrección GuiInset
+-- FASE 1: MELT — MANTENER PRESIONADO sobre Heater
+-- La barra sube mientras mantienes presionado. Baja si sueltas.
+-- Probamos: firesignal → executor mouse → VIM
 -- ================================================================
 local meltActive = false
 local meltThread = nil
@@ -113,118 +112,149 @@ local meltThread = nil
 local function PlayMelt()
     if meltActive then return end
     meltActive = true
-    SetStatus("MELT — Detectando método...", Color3.fromRGB(255, 100, 50))
     
     meltThread = task.spawn(function()
-        task.wait(0.5)
+        task.wait(0.5) -- Esperar que el Heater se posicione
         
-        -- ========== MÉTODO 1: INYECCIÓN DIRECTA ==========
-        -- Intentar llenar la barra directamente modificando Area.Size
-        local barArea = nil
-        pcall(function() barArea = MeltMG.Bar.Area end)
-        
-        if barArea then
-            SetStatus("MELT — Inyectando barra...", Color3.fromRGB(255, 200, 50))
-            -- Subir rápido la barra
-            for i = 1, 60 do
-                if not meltActive or not MeltMG or not MeltMG.Visible then break end
-                pcall(function()
-                    barArea.Size = UDim2.new(1, 0, math.min(i * 0.02, 1), 0)
-                end)
-                local areaSize = 0
-                pcall(function() areaSize = barArea.Size.Y.Scale end)
-                SetStatus(string.format("MELT — Inyección: %.0f%%", areaSize * 100),
-                    Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
-                -- Si la barra se sobreescribe (el script la resetea), la inyección no funciona
-                if i > 5 and areaSize < 0.05 then
-                    SetStatus("MELT — Inyección bloqueada, usando mouse...", Color3.fromRGB(255, 150, 0))
-                    break -- El juego resetea la barra, ir a método 2
-                end
-                task.wait(0.05)
-            end
-            
-            -- Check si la inyección funcionó
-            local finalSize = 0
-            pcall(function() finalSize = barArea.Size.Y.Scale end)
-            if finalSize > 0.5 then
-                -- ¡Funcionó! Esperar a que termine
-                while meltActive and MeltMG and MeltMG.Visible do
-                    pcall(function() barArea.Size = UDim2.new(1, 0, 1, 0) end)
-                    SetStatus("MELT — Barra llena! ✅", Color3.fromRGB(0, 255, 100))
-                    task.wait(0.2)
-                end
-                meltActive = false
-                return
-            end
-        end
-        
-        -- ========== MÉTODO 2: EXECUTOR MOUSE FUNCTIONS ==========
         local heaterTop = nil
         pcall(function() heaterTop = MeltMG.Heater.Top end)
         if not heaterTop then pcall(function() heaterTop = MeltMG.Heater end) end
+        if not heaterTop then
+            SetStatus("MELT — ERROR: Heater nil", Color3.fromRGB(255, 0, 0))
+            meltActive = false
+            return
+        end
         
-        if heaterTop then
-            local cx, cy = 200, 250
-            pcall(function() cx, cy = ElemCenter(heaterTop) end)
+        -- Leer posición real del Heater.Top
+        local cx, cy = 0, 0
+        pcall(function() cx, cy = ElemCenter(heaterTop) end)
+        SetStatus(string.format("MELT — Heater en (%d,%d)", cx, cy), Color3.fromRGB(255, 200, 0))
+        task.wait(0.3)
+        
+        -- ===== MÉTODO A: firesignal en MouseButton1Down =====
+        local methodUsed = "none"
+        
+        -- Intentar firesignal (no requiere coordenadas correctas)
+        local fireOK = pcall(function()
+            firesignal(heaterTop.MouseButton1Down)
+        end)
+        
+        if fireOK then
+            -- Verificar si funcionó: esperar 0.5s y ver si la barra empezó a subir
+            task.wait(0.5)
+            local testSize = 0
+            pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
             
-            -- Intentar con mousemoveabs + mouse1press (executor nativo)
-            local useExecMouse = false
-            pcall(function()
+            if testSize > 0.01 then
+                methodUsed = "firesignal"
+                SetStatus("MELT — firesignal OK ✅", Color3.fromRGB(0, 255, 100))
+            else
+                -- firesignal se ejecutó pero no tuvo efecto real
+                -- Intentar fireUp para resetear estado
+                pcall(function() firesignal(heaterTop.MouseButton1Up) end)
+            end
+        end
+        
+        -- ===== MÉTODO B: Executor mouse (mousemoveabs + mouse1press) =====
+        if methodUsed == "none" then
+            local execOK = pcall(function()
                 mousemoveabs(cx, cy)
                 mouse1press()
-                useExecMouse = true
             end)
             
-            if useExecMouse then
-                SetStatus(string.format("MELT — MOUSE HOLD en (%d,%d)", cx, cy), Color3.fromRGB(100, 255, 100))
+            if execOK then
+                task.wait(0.5)
+                local testSize = 0
+                pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
                 
-                while meltActive and MeltMG and MeltMG.Visible do
-                    -- Re-leer posición por si se movió
+                if testSize > 0.01 then
+                    methodUsed = "execmouse"
+                    SetStatus(string.format("MELT — ExecMouse OK en (%d,%d)", cx, cy), Color3.fromRGB(0, 255, 100))
+                else
+                    pcall(function() mouse1release() end)
+                    -- Probar con GuiInset correction
                     pcall(function()
-                        local nx, ny = ElemCenter(heaterTop)
-                        if math.abs(nx - cx) > 10 or math.abs(ny - cy) > 10 then
-                            cx, cy = nx, ny
-                            mouse1release()
-                            task.wait(0.02)
-                            mousemoveabs(cx, cy)
-                            mouse1press()
-                        end
+                        mousemoveabs(cx - GuiInset.X, cy - GuiInset.Y)
+                        mouse1press()
                     end)
-                    
-                    local areaSize = 0
-                    pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
-                    SetStatus(string.format("MELT — HOLD (%d,%d) Barra: %.0f%%", cx, cy, areaSize * 100),
-                        Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
-                    task.wait(0.1)
-                end
-                pcall(function() mouse1release() end)
-                meltActive = false
-                return
-            end
-            
-            -- ========== MÉTODO 3: VIM con corrección GuiInset ==========
-            -- Corregir coordenadas: AbsolutePosition incluye inset, VIM no
-            local vx = cx - GuiInset.X
-            local vy = cy - GuiInset.Y
-            VIMPress(vx, vy)
-            SetStatus(string.format("MELT — VIM HOLD (%d,%d→%d,%d)", cx, cy, vx, vy), Color3.fromRGB(255, 200, 100))
-            
-            while meltActive and MeltMG and MeltMG.Visible do
-                pcall(function()
-                    local nx, ny = ElemCenter(heaterTop)
-                    local nvx, nvy = nx - GuiInset.X, ny - GuiInset.Y
-                    if math.abs(nvx - vx) > 10 or math.abs(nvy - vy) > 10 then
-                        vx, vy = nvx, nvy
-                        VIMRelease(); task.wait(0.02); VIMPress(vx, vy)
+                    task.wait(0.5)
+                    pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
+                    if testSize > 0.01 then
+                        methodUsed = "execmouse_inset"
+                        cx, cy = cx - GuiInset.X, cy - GuiInset.Y
+                        SetStatus(string.format("MELT — ExecMouse+Inset (%d,%d)", cx, cy), Color3.fromRGB(0, 255, 100))
+                    else
+                        pcall(function() mouse1release() end)
                     end
-                end)
-                
-                local areaSize = 0
-                pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
-                SetStatus(string.format("MELT — VIM Barra: %.0f%%", areaSize * 100),
-                    Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
-                task.wait(0.1)
+                end
             end
+        end
+        
+        -- ===== MÉTODO C: VIM en varias posiciones =====
+        if methodUsed == "none" then
+            -- Probar VIM en la posición del heater
+            VIMPress(cx, cy)
+            task.wait(0.5)
+            local testSize = 0
+            pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
+            
+            if testSize > 0.01 then
+                methodUsed = "vim_raw"
+            else
+                VIMRelease()
+                -- Probar con corrección GuiInset
+                VIMPress(cx - GuiInset.X, cy - GuiInset.Y)
+                task.wait(0.5)
+                pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
+                if testSize > 0.01 then
+                    methodUsed = "vim_inset"
+                    cx, cy = cx - GuiInset.X, cy - GuiInset.Y
+                else
+                    VIMRelease()
+                    -- Probar con GuiInset SUMADO (dirección opuesta)
+                    VIMPress(cx + GuiInset.X, cy + GuiInset.Y)
+                    task.wait(0.5)
+                    pcall(function() testSize = MeltMG.Bar.Area.Size.Y.Scale end)
+                    if testSize > 0.01 then
+                        methodUsed = "vim_inset_add"
+                        cx, cy = cx + GuiInset.X, cy + GuiInset.Y
+                    else
+                        VIMRelease()
+                    end
+                end
+            end
+        end
+        
+        -- ===== RESULTADO =====
+        if methodUsed == "none" then
+            SetStatus(string.format("MELT — NINGÚN MÉTODO FUNCIONÓ pos=(%d,%d) inset=(%d,%d)", 
+                cx, cy, GuiInset.X, GuiInset.Y), Color3.fromRGB(255, 0, 0))
+            meltActive = false
+            return
+        end
+        
+        -- MANTENER PRESIONADO: loop de monitoreo
+        SetStatus(string.format("MELT — [%s] HOLD activo", methodUsed), Color3.fromRGB(100, 255, 100))
+        
+        while meltActive and MeltMG and MeltMG.Visible do
+            -- Si es firesignal, re-disparar periódicamente por si se pierde
+            if methodUsed == "firesignal" then
+                pcall(function() firesignal(heaterTop.MouseButton1Down) end)
+            end
+            
+            local areaSize = 0
+            pcall(function() areaSize = MeltMG.Bar.Area.Size.Y.Scale end)
+            SetStatus(string.format("MELT — [%s] Barra: %.0f%%", methodUsed, areaSize * 100),
+                Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
+            task.wait(0.15)
+        end
+        
+        -- Cleanup según método
+        if methodUsed == "firesignal" then
+            pcall(function() firesignal(heaterTop.MouseButton1Up) end)
+        elseif methodUsed:find("exec") then
+            pcall(function() mouse1release() end)
+        else
             VIMRelease()
         end
         
@@ -463,7 +493,7 @@ local function SetupGameDetection()
         end)
     end
     
-    SetStatus("v3.0 LISTO — Inicia la forja ⚒️", Color3.fromRGB(150, 255, 150))
+    SetStatus("v3.1 LISTO — Inicia la forja ⚒️", Color3.fromRGB(150, 255, 150))
 end
 
 -- ============ INIT ============
