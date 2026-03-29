@@ -49,54 +49,45 @@ local function SetStatus(text, color)
     StatusBar.TextColor3 = color or Color3.fromRGB(150, 255, 150)
 end
 
--- ============ INPUT SIMULATION ============
-local function ClickButton(button)
-    if not button or not button.Parent then return end
-    -- Method 1: fireclick
-    local ok1 = pcall(function() fireclick(button) end)
-    if ok1 then return end
-    -- Method 2: firesignal
-    local ok2 = pcall(function()
-        if button:IsA("TextButton") or button:IsA("ImageButton") then
-            firesignal(button.MouseButton1Click)
-        end
-    end)
-    if ok2 then return end
-    -- Method 3: VirtualInputManager click at button center
+-- ============ INPUT SIMULATION (VIM = VirtualInputManager) ============
+-- El juego usa UserInputService, NO eventos de botón.
+-- fireclick/firesignal no funcionan. Solo VIM simula clicks reales.
+
+local function ClickAtPosition(x, y)
+    -- Simula mouse down + up en la posición (x,y) de la pantalla
+    VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+    task.wait(0.02)
+    VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+end
+
+local function ClickElement(element)
+    if not element or not element.Parent then return end
     pcall(function()
-        local pos = button.AbsolutePosition
-        local sz = button.AbsoluteSize
-        local cx, cy = pos.X + sz.X/2, pos.Y + sz.Y/2
-        VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
-        task.wait()
-        VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
+        local pos = element.AbsolutePosition
+        local sz = element.AbsoluteSize
+        local cx = pos.X + sz.X / 2
+        local cy = pos.Y + sz.Y / 2
+        -- Pequeño offset random para parecer humano
+        cx = cx + math.random(-2, 2)
+        cy = cy + math.random(-2, 2)
+        ClickAtPosition(cx, cy)
     end)
 end
 
 local mouseDown = false
+local lastMouseX, lastMouseY = 0, 0
+
 local function PressMouseAt(x, y)
     if mouseDown then return end
     mouseDown = true
-    local ok = pcall(function()
-        mousemoveabs(x, y)
-        mouse1press()
-    end)
-    if not ok then
-        pcall(function()
-            VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
-        end)
-    end
+    lastMouseX, lastMouseY = x, y
+    VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
 end
 
 local function ReleaseMouse()
     if not mouseDown then return end
     mouseDown = false
-    local ok = pcall(function() mouse1release() end)
-    if not ok then
-        pcall(function()
-            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        end)
-    end
+    VIM:SendMouseButtonEvent(lastMouseX, lastMouseY, 0, false, game, 0)
 end
 
 -- ============ FIND FORGE GUI ============
@@ -141,10 +132,17 @@ local function PlayMelt()
         return
     end
     
+    -- También buscar el ImageButton dentro de Top (hijo clickeable real)
+    local clickTarget = heaterTop
+    pcall(function()
+        local ib = heaterTop:FindFirstChild("ImageButton")
+        if ib then clickTarget = ib end
+    end)
+    
     meltThread = task.spawn(function()
         while meltActive and MeltMG and MeltMG.Visible do
-            -- Click the pump
-            ClickButton(heaterTop)
+            -- Click en la posición REAL del Heater pump usando VIM
+            ClickElement(clickTarget)
             
             -- Check bar level
             local areaSize = 0
@@ -152,14 +150,14 @@ local function PlayMelt()
                 areaSize = MeltMG.Bar.Area.Size.Y.Scale
             end)
             
-            SetStatus(string.format("MELT — Barra: %.0f%%", areaSize * 100), Color3.fromRGB(255, math.floor(200 * areaSize), 50))
+            SetStatus(string.format("MELT — Barra: %.0f%%", areaSize * 100), Color3.fromRGB(255, math.floor(200 * math.min(areaSize, 1)), 50))
             
-            -- Check if Finish button is clickable (visible on screen)
+            -- Check if Finish button is clickable
             pcall(function()
                 local finish = MeltMG.Finish
                 if finish and finish.Position.Y.Scale < 1.0 then
                     task.wait(0.1)
-                    ClickButton(finish)
+                    ClickElement(finish)
                 end
             end)
             
@@ -289,17 +287,17 @@ local function HandleCircle(textButton)
             
             if sz <= HAMMER_PERFECT_ZONE and sz >= HAMMER_MIN_SIZE then
                 -- PERFECT ZONE! Click NOW!
-                task.wait(0.01) -- Tiny delay for human-like timing
-                ClickButton(textButton)
+                task.wait(0.01)
+                ClickElement(textButton)
                 clicked = true
                 circlesHandled = circlesHandled + 1
                 SetStatus(string.format("HAMMER — ✨ CLICK! #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 255, 0))
             elseif sz < HAMMER_MIN_SIZE then
-                -- Missed the zone, click anyway to not miss entirely
-                ClickButton(textButton)
+                -- Missed the zone, click anyway
+                ClickElement(textButton)
                 clicked = true
                 circlesHandled = circlesHandled + 1
-                SetStatus(string.format("HAMMER — ⚡ Late click #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 150, 0))
+                SetStatus(string.format("HAMMER — ⚡ Late #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 150, 0))
             end
             
             if not clicked then
