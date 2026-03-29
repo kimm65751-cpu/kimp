@@ -41,7 +41,7 @@ MainFrame.Parent = ScreenGui
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -170, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
-Title.Text = " 🕵️ QUEST FORENSICS V1.1"
+Title.Text = " 🕵️ QUEST FORENSICS V1.2"
 Title.TextColor3 = Color3.fromRGB(255, 200, 100)
 Title.TextSize = 14
 Title.Font = Enum.Font.Code
@@ -380,15 +380,13 @@ end
 local OriginalNamecall
 OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
-    local args = {...}
     
     if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
+        local args = {...}
         local successName, rName = pcall(function() return self.Name end)
         local successPath, rPath = pcall(function() return self:GetFullName() end)
         
         if successName and EsRemotoDeMision(rName) then
-            -- Usar task.spawn para sacar toda la carga pesada (como Inyectar GUIs y Logs) fuera
-            -- del hilo principal de C, evitando que se trabe el juego al interactuar.
             task.spawn(function()
                 LogGUI("\n========== [ REPORTE DE RED: CLIENTE -> SERVER ] ==========", Color3.fromRGB(255, 100, 100))
                 LogGUI("📡 Tipo de Llamada : " .. method, Color3.fromRGB(200, 200, 200))
@@ -406,6 +404,9 @@ OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 LogGUI("=========================================================================\n", Color3.fromRGB(255, 100, 100))
             end)
         end
+        -- DELTA FIX: Si atrapas varargs (...) en una tabla, debes devolverlos empacados, 
+        -- sino los RemoteFunctions como el de Diálogo se quedan colgados esperando respuesta.
+        return OriginalNamecall(self, unpack(args))
     end
     
     return OriginalNamecall(self, ...)
