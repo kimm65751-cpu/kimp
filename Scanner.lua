@@ -1,597 +1,419 @@
 -- ==============================================================================
--- 🔬 FORGE X-RAY v5.0 — MONITOR PRECISO DE LOS 4 MINIJUEGOS
+-- ⚔️ FORGE AUTOPLAYER v1.0 — JUEGA LOS 3 MINIJUEGOS PERFECTO
 -- ==============================================================================
--- ❌ CERO hooks. CERO modificaciones. Juega 100% normal.
--- ✅ Monitorea Forge.MeltMinigame / PourMinigame / HammerMinigame por Visible
--- ✅ DescendantAdded para capturar círculos dinámicos (Juego 4 = Hammer circles)
--- ✅ Captura Water como animación, no juego
--- ✅ Logs a info5.txt automático
+-- ZERO hooks. Detecta UI por .Visible y simula inputs humanos.
+-- Basado en telemetría real del X-RAY v5.0
+-- MELT:   Spam click en Heater.Top (TextButton)
+-- POUR:   mouse1press/release adaptativo persiguiendo Area.Position.Y
+-- HAMMER: Click en círculos cuando Circle.Size ≈ 1.1 (zona Perfect)
 -- ==============================================================================
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local VIM = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- ============ ARCHIVO ============
-local FILE_PATH = "info5.txt"
-local fileBuffer = {}
-local fileBlockCount = 0
+-- ============ CONFIG ============
+local MELT_CLICK_INTERVAL = 0.08    -- Segundos entre clicks del Heater
+local POUR_THRESHOLD = 0.06         -- Margen para decidir press/release
+local HAMMER_PERFECT_ZONE = 1.12    -- Click cuando Circle.Size <= este valor
+local HAMMER_MIN_SIZE = 0.85        -- No clickear si ya pasó de este punto
 
-local function FlushToFile()
-    if #fileBuffer == 0 then return end
-    fileBlockCount = fileBlockCount + 1
-    local content = table.concat(fileBuffer, "\n")
-    pcall(function()
-        if fileBlockCount == 1 then
-            writefile(FILE_PATH, "=== FORGE X-RAY v5.0 === " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n\n" .. content .. "\n")
-        else
-            appendfile(FILE_PATH, "\n" .. content .. "\n")
+-- ============ COMPACT UI ============
+local CoreGui = game:GetService("CoreGui")
+local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or PlayerGui
+for _, v in pairs(parentUI:GetChildren()) do if v.Name == "AutoForgeUI" then v:Destroy() end end
+
+local SG = Instance.new("ScreenGui")
+SG.Name = "AutoForgeUI"
+SG.ResetOnSpawn = false
+SG.DisplayOrder = 1000
+SG.Parent = parentUI
+
+local StatusBar = Instance.new("TextLabel")
+StatusBar.Size = UDim2.new(0, 300, 0, 28)
+StatusBar.Position = UDim2.new(0.5, -150, 0, 4)
+StatusBar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+StatusBar.BorderColor3 = Color3.fromRGB(50, 200, 100)
+StatusBar.BorderSizePixel = 2
+StatusBar.Text = " ⚔️ FORGE AUTO v1.0 | Esperando..."
+StatusBar.TextColor3 = Color3.fromRGB(150, 255, 150)
+StatusBar.TextSize = 12
+StatusBar.Font = Enum.Font.Code
+StatusBar.TextXAlignment = Enum.TextXAlignment.Left
+StatusBar.Parent = SG
+
+local function SetStatus(text, color)
+    StatusBar.Text = " ⚔️ " .. text
+    StatusBar.TextColor3 = color or Color3.fromRGB(150, 255, 150)
+end
+
+-- ============ INPUT SIMULATION ============
+local function ClickButton(button)
+    if not button or not button.Parent then return end
+    -- Method 1: fireclick
+    local ok1 = pcall(function() fireclick(button) end)
+    if ok1 then return end
+    -- Method 2: firesignal
+    local ok2 = pcall(function()
+        if button:IsA("TextButton") or button:IsA("ImageButton") then
+            firesignal(button.MouseButton1Click)
         end
     end)
-    fileBuffer = {}
-end
-
-local function LogToFile(text)
-    table.insert(fileBuffer, text)
-    if #fileBuffer >= 20 then FlushToFile() end
-end
-
--- ============ UI PANEL ============
-local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or PlayerGui
-for _, v in ipairs(parentUI:GetChildren()) do if v.Name == "XRayUI" then v:Destroy() end end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "XRayUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.DisplayOrder = 999
-ScreenGui.Parent = parentUI
-
-local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 560, 0, 400)
-Panel.Position = UDim2.new(1, -580, 0.5, -200)
-Panel.BackgroundColor3 = Color3.fromRGB(8, 4, 12)
-Panel.BorderSizePixel = 2
-Panel.BorderColor3 = Color3.fromRGB(80, 180, 255)
-Panel.Active = true
-Panel.Draggable = true
-Panel.Parent = ScreenGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 0, 26)
-Title.BackgroundColor3 = Color3.fromRGB(10, 40, 70)
-Title.Text = " 🔬 X-RAY v5.0 | Melt·Pour·Hammer·Circles"
-Title.TextColor3 = Color3.fromRGB(130, 210, 255)
-Title.TextSize = 11
-Title.Font = Enum.Font.Code
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Panel
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 26)
-CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
-CloseBtn.Font = Enum.Font.Code
-CloseBtn.TextSize = 14
-CloseBtn.Parent = Panel
-CloseBtn.MouseButton1Click:Connect(function() FlushToFile(); ScreenGui:Destroy() end)
-
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -8, 0, 18)
-StatusLabel.Position = UDim2.new(0, 4, 0, 28)
-StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-StatusLabel.Text = " Esperando forja..."
-StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-StatusLabel.TextSize = 10
-StatusLabel.Font = Enum.Font.Code
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.Parent = Panel
-
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Size = UDim2.new(1, -8, 1, -80)
-LogScroll.Position = UDim2.new(0, 4, 0, 50)
-LogScroll.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
-LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 5
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.Parent = Panel
-Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 1)
-
-local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(1, -8, 0, 24)
-CopyBtn.Position = UDim2.new(0, 4, 1, -28)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(25, 70, 140)
-CopyBtn.Text = "📋 COPIAR LOG"
-CopyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 11
-CopyBtn.Parent = Panel
-
-local MasterLog = {}
-local logCount = 0
-
-local function AddLog(tag, msg, clr)
-    logCount = logCount + 1
-    if logCount > 5000 then return end
-    local full = "[" .. os.date("%H:%M:%S") .. "] [" .. tag .. "] " .. msg
-    table.insert(MasterLog, full)
-    LogToFile(full)
-    task.defer(function()
-        pcall(function()
-            local txt = Instance.new("TextLabel")
-            txt.Size = UDim2.new(1, -4, 0, 0)
-            txt.BackgroundTransparency = 1
-            txt.Text = full
-            txt.TextColor3 = clr or Color3.fromRGB(190,190,190)
-            txt.Font = Enum.Font.Code
-            txt.TextSize = 9
-            txt.TextXAlignment = Enum.TextXAlignment.Left
-            txt.TextWrapped = true
-            txt.Parent = LogScroll
-            local ts = game:GetService("TextService")
-            local s = ts:GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 12, math.huge))
-            txt.Size = UDim2.new(1, -4, 0, s.Y + 2)
-            LogScroll.CanvasPosition = Vector2.new(0, 999999)
-        end)
+    if ok2 then return end
+    -- Method 3: VirtualInputManager click at button center
+    pcall(function()
+        local pos = button.AbsolutePosition
+        local sz = button.AbsoluteSize
+        local cx, cy = pos.X + sz.X/2, pos.Y + sz.Y/2
+        VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
+        task.wait()
+        VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
     end)
 end
 
-CopyBtn.MouseButton1Click:Connect(function()
-    FlushToFile()
-    if setclipboard then setclipboard(table.concat(MasterLog, "\n")); CopyBtn.Text = "✅ " .. #MasterLog .. " líneas" end
-    task.delay(2, function() pcall(function() CopyBtn.Text = "📋 COPIAR LOG" end) end)
-end)
-
--- ============ UTILIDADES ============
-local function FP(v) return string.format("%.3f", v) end
-local function DPos(o)
-    local ok, p = pcall(function() return o.Position end)
-    if ok then return "P(S" .. FP(p.X.Scale) .. "," .. FP(p.Y.Scale) .. " O" .. p.X.Offset .. "," .. p.Y.Offset .. ")" end
-    return "P(?)"
-end
-local function DSz(o)
-    local ok, s = pcall(function() return o.Size end)
-    if ok then return "Sz(S" .. FP(s.X.Scale) .. "," .. FP(s.Y.Scale) .. " O" .. s.X.Offset .. "," .. s.Y.Offset .. ")" end
-    return "Sz(?)"
-end
-local function DAbs(o)
-    local ap, as = "?", "?"
-    pcall(function() ap = math.floor(o.AbsolutePosition.X) .. "," .. math.floor(o.AbsolutePosition.Y) end)
-    pcall(function() as = math.floor(o.AbsoluteSize.X) .. "x" .. math.floor(o.AbsoluteSize.Y) end)
-    return "Abs(" .. ap .. ") " .. as
+local mouseDown = false
+local function PressMouseAt(x, y)
+    if mouseDown then return end
+    mouseDown = true
+    local ok = pcall(function()
+        mousemoveabs(x, y)
+        mouse1press()
+    end)
+    if not ok then
+        pcall(function()
+            VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+        end)
+    end
 end
 
--- ============ FORGE GUI ============
+local function ReleaseMouse()
+    if not mouseDown then return end
+    mouseDown = false
+    local ok = pcall(function() mouse1release() end)
+    if not ok then
+        pcall(function()
+            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        end)
+    end
+end
+
+-- ============ FIND FORGE GUI ============
 local ForgeGui = nil
 local MeltMG, PourMG, HammerMG = nil, nil, nil
-local activeGame = ""
-local trackedElements = {}
 
--- Esperar al Forge GUI
 local function FindForge()
     ForgeGui = PlayerGui:FindFirstChild("Forge")
     if ForgeGui then
         MeltMG = ForgeGui:FindFirstChild("MeltMinigame")
         PourMG = ForgeGui:FindFirstChild("PourMinigame")
         HammerMG = ForgeGui:FindFirstChild("HammerMinigame")
-        AddLog("INIT", "✅ Forge GUI encontrado. Melt=" .. tostring(MeltMG ~= nil) .. " Pour=" .. tostring(PourMG ~= nil) .. " Hammer=" .. tostring(HammerMG ~= nil), Color3.fromRGB(0, 255, 0))
         return true
     end
     return false
 end
 
-if not FindForge() then
-    PlayerGui.ChildAdded:Connect(function(child)
-        if child.Name == "Forge" then
-            task.wait(0.5)
-            FindForge()
-        end
+FindForge()
+if not ForgeGui then
+    PlayerGui.ChildAdded:Connect(function(c)
+        if c.Name == "Forge" then task.wait(0.5); FindForge() end
     end)
-    AddLog("INIT", "⏳ Esperando Forge GUI...", Color3.fromRGB(255, 200, 50))
 end
 
--- ============ TRACK PROPERTY CHANGES ============
-local function TrackElement(obj, gameName)
-    local key = tostring(obj) .. obj:GetFullName()
-    if trackedElements[key] then return end
-    trackedElements[key] = true
+-- ============ GAME 1: MELT ============
+local meltActive = false
+local meltThread = nil
+
+local function PlayMelt()
+    if meltActive then return end
+    meltActive = true
+    SetStatus("MELT — Bombeando...", Color3.fromRGB(255, 100, 50))
     
-    local shortName = obj.Name
-    
-    -- Position
+    local heaterTop = nil
     pcall(function()
-        obj:GetPropertyChangedSignal("Position"):Connect(function()
-            AddLog("MOVE", "🔸 [" .. gameName .. "] " .. shortName .. " " .. DPos(obj) .. " " .. DAbs(obj), Color3.fromRGB(0, 220, 200))
-        end)
+        heaterTop = MeltMG.Heater.Top
     end)
     
-    -- Size
-    pcall(function()
-        obj:GetPropertyChangedSignal("Size"):Connect(function()
-            AddLog("SIZE", "📐 [" .. gameName .. "] " .. shortName .. " " .. DSz(obj) .. " " .. DAbs(obj), Color3.fromRGB(255, 255, 0))
-        end)
-    end)
-    
-    -- Visible
-    pcall(function()
-        obj:GetPropertyChangedSignal("Visible"):Connect(function()
-            AddLog("VIS", "👁️ [" .. gameName .. "] " .. shortName .. " V=" .. tostring(obj.Visible), Color3.fromRGB(255, 150, 0))
-        end)
-    end)
-    
-    -- Rotation (para los círculos que aparecen)
-    pcall(function()
-        obj:GetPropertyChangedSignal("Rotation"):Connect(function()
-            AddLog("ROT", "🔄 [" .. gameName .. "] " .. shortName .. " R=" .. FP(obj.Rotation), Color3.fromRGB(200, 100, 255))
-        end)
-    end)
-    
-    -- Text
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-        pcall(function()
-            local lastT = obj.Text
-            obj:GetPropertyChangedSignal("Text"):Connect(function()
-                if obj.Text ~= lastT then
-                    lastT = obj.Text
-                    AddLog("TEXT", "💬 [" .. gameName .. "] " .. shortName .. " → \"" .. string.sub(obj.Text, 1, 60) .. "\"", Color3.fromRGB(255, 255, 150))
-                end
-            end)
-        end)
+    if not heaterTop then
+        SetStatus("MELT — ERROR: Heater.Top no encontrado", Color3.fromRGB(255, 0, 0))
+        meltActive = false
+        return
     end
     
-    -- BackgroundColor3
-    pcall(function()
-        obj:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
-            local c = obj.BackgroundColor3
-            AddLog("CLR", "🎨 [" .. gameName .. "] " .. shortName .. " RGB(" .. math.floor(c.R*255) .. "," .. math.floor(c.G*255) .. "," .. math.floor(c.B*255) .. ")", Color3.fromRGB(100, 200, 255))
-        end)
-    end)
-    
-    -- BackgroundTransparency
-    pcall(function()
-        local lastBT = obj.BackgroundTransparency
-        obj:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
-            if math.abs(obj.BackgroundTransparency - lastBT) > 0.05 then
-                lastBT = obj.BackgroundTransparency
-                AddLog("FADE", "🌫️ [" .. gameName .. "] " .. shortName .. " BgT=" .. FP(obj.BackgroundTransparency), Color3.fromRGB(150, 150, 255))
-            end
-        end)
-    end)
-    
-    -- ImageTransparency
-    if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-        pcall(function()
-            local lastIT = obj.ImageTransparency
-            obj:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
-                if math.abs(obj.ImageTransparency - lastIT) > 0.05 then
-                    lastIT = obj.ImageTransparency
-                    AddLog("IFADE", "🖼️ [" .. gameName .. "] " .. shortName .. " IT=" .. FP(obj.ImageTransparency), Color3.fromRGB(120, 120, 255))
-                end
-            end)
-        end)
-    end
-end
-
--- ============ SNAPSHOT DE UN MINIJUEGO ============
-local snapshotDone = {}
-
-local function SnapshotGame(root, gameName)
-    if snapshotDone[gameName] then return end
-    snapshotDone[gameName] = true
-    
-    AddLog("SNAP", "══════ SNAPSHOT: " .. gameName .. " ══════", Color3.fromRGB(255, 200, 50))
-    
-    local desc = root:GetDescendants()
-    AddLog("SNAP", "Total descendientes: " .. #desc, Color3.fromRGB(200, 200, 100))
-    
-    for _, obj in pairs(desc) do
-        if obj:IsA("GuiObject") then
-            local info = obj.Name .. " [" .. obj.ClassName .. "] V=" .. tostring(obj.Visible)
-            pcall(function() info = info .. " " .. DPos(obj) .. " " .. DSz(obj) .. " " .. DAbs(obj) end)
-            pcall(function()
-                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    info = info .. " T=\"" .. string.sub(obj.Text, 1, 30) .. "\""
-                end
-            end)
-            pcall(function()
-                local c = obj.BackgroundColor3
-                info = info .. " Bg=(" .. math.floor(c.R*255) .. "," .. math.floor(c.G*255) .. "," .. math.floor(c.B*255) .. ")"
-            end)
-            AddLog("EL", "  " .. info, Color3.fromRGB(170, 170, 200))
+    meltThread = task.spawn(function()
+        while meltActive and MeltMG and MeltMG.Visible do
+            -- Click the pump
+            ClickButton(heaterTop)
             
-            -- Track cambios en este elemento
-            TrackElement(obj, gameName)
+            -- Check bar level
+            local areaSize = 0
+            pcall(function()
+                areaSize = MeltMG.Bar.Area.Size.Y.Scale
+            end)
+            
+            SetStatus(string.format("MELT — Barra: %.0f%%", areaSize * 100), Color3.fromRGB(255, math.floor(200 * areaSize), 50))
+            
+            -- Check if Finish button is clickable (visible on screen)
+            pcall(function()
+                local finish = MeltMG.Finish
+                if finish and finish.Position.Y.Scale < 1.0 then
+                    task.wait(0.1)
+                    ClickButton(finish)
+                end
+            end)
+            
+            task.wait(MELT_CLICK_INTERVAL)
+        end
+        meltActive = false
+    end)
+end
+
+local function StopMelt()
+    meltActive = false
+    if meltThread then
+        pcall(function() task.cancel(meltThread) end)
+        meltThread = nil
+    end
+end
+
+-- ============ GAME 2: POUR ============
+local pourActive = false
+local pourThread = nil
+
+local function PlayPour()
+    if pourActive then return end
+    pourActive = true
+    SetStatus("POUR — Siguiendo zona...", Color3.fromRGB(100, 200, 255))
+    
+    local frame, area, line
+    pcall(function()
+        frame = PourMG.Frame
+        area = frame.Area
+        line = frame.Line
+    end)
+    
+    if not area or not line then
+        SetStatus("POUR — ERROR: Area/Line no encontrado", Color3.fromRGB(255, 0, 0))
+        pourActive = false
+        return
+    end
+    
+    -- Position mouse over the game area
+    local screenCenter = Vector2.new(500, 300)
+    pcall(function()
+        local fp = frame.AbsolutePosition
+        local fs = frame.AbsoluteSize
+        screenCenter = Vector2.new(fp.X + fs.X / 2, fp.Y + fs.Y / 2)
+    end)
+    
+    pourThread = task.spawn(function()
+        while pourActive and PourMG and PourMG.Visible do
+            local areaY, lineY = 0.5, 0.5
+            pcall(function() areaY = area.Position.Y.Scale end)
+            pcall(function() lineY = line.Position.Y.Scale end)
+            
+            -- Area center = areaY + (areaHeight/2)
+            -- We want Line to be at the CENTER of the Area
+            local areaHeight = 0.200 -- Area is ~20% of bar height
+            pcall(function() areaHeight = area.Size.Y.Scale end)
+            local areaCenter = areaY + areaHeight / 2
+            
+            local diff = lineY - areaCenter
+            
+            if diff > POUR_THRESHOLD then
+                -- Line is BELOW area center → need to go UP → PRESS
+                PressMouseAt(screenCenter.X, screenCenter.Y)
+            elseif diff < -POUR_THRESHOLD then
+                -- Line is ABOVE area center → need to go DOWN → RELEASE
+                ReleaseMouse()
+            end
+            -- If within threshold → hold current state (keeps steady)
+            
+            SetStatus(string.format("POUR — Line:%.2f Area:%.2f Diff:%.3f %s", 
+                lineY, areaCenter, diff, mouseDown and "▲HOLD" or "▼FREE"), 
+                Color3.fromRGB(100, 200, 255))
+            
+            task.wait() -- Every frame
+        end
+        ReleaseMouse()
+        pourActive = false
+    end)
+end
+
+local function StopPour()
+    pourActive = false
+    ReleaseMouse()
+    if pourThread then
+        pcall(function() task.cancel(pourThread) end)
+        pourThread = nil
+    end
+end
+
+-- ============ GAME 3: HAMMER (Circles) ============
+local hammerActive = false
+local hammerConn = nil
+local circlesHandled = 0
+
+local function HandleCircle(textButton)
+    -- Each circle structure:
+    -- Frame [TextButton] ← click this
+    --   ├── Frame [ImageLabel] (center dot)
+    --   ├── Border [ImageLabel] (Size 1.1)
+    --   └── Circle [ImageLabel] (Size starts at 2.5, shrinks to 0)
+    
+    task.spawn(function()
+        -- Wait for Circle child to appear
+        local circle = nil
+        local tries = 0
+        while tries < 30 and not circle do
+            for _, child in pairs(textButton:GetChildren()) do
+                if child.Name == "Circle" and child:IsA("ImageLabel") then
+                    circle = child
+                    break
+                end
+            end
+            if not circle then
+                task.wait(0.05)
+                tries = tries + 1
+            end
         end
         
-        -- Decompilar scripts encontrados
-        if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-            pcall(function()
-                local src = decompile(obj)
-                if src and #src > 10 then
-                    LogToFile("\n===== DECOMPILE [" .. gameName .. "]: " .. obj:GetFullName() .. " =====")
-                    local lc = 0
-                    for line in string.gmatch(src, "[^\n]+") do
-                        lc = lc + 1
-                        LogToFile("  " .. line)
-                        if lc > 500 then LogToFile("  ... TRUNCADO"); break end
-                    end
-                    LogToFile("===== FIN =====\n")
-                    FlushToFile()
-                    AddLog("DECOMPILE", "📜 " .. obj.Name .. " → " .. lc .. " líneas en info5.txt", Color3.fromRGB(255, 100, 255))
-                end
-            end)
-        end
-    end
-    
-    AddLog("SNAP", "══════ FIN " .. gameName .. " ══════", Color3.fromRGB(255, 200, 50))
-    FlushToFile()
-end
-
--- ============ MONITOREAR HIJOS DINÁMICOS (CÍRCULOS) ============
-local function WatchForDynamicChildren(root, gameName)
-    root.DescendantAdded:Connect(function(obj)
-        local info = "➕ " .. obj.Name .. " [" .. obj.ClassName .. "]"
-        pcall(function()
-            if obj:IsA("GuiObject") then
-                info = info .. " V=" .. tostring(obj.Visible) .. " " .. DPos(obj) .. " " .. DSz(obj) .. " " .. DAbs(obj)
-                pcall(function()
-                    local c = obj.BackgroundColor3
-                    info = info .. " Bg=(" .. math.floor(c.R*255) .. "," .. math.floor(c.G*255) .. "," .. math.floor(c.B*255) .. ")"
-                end)
-                -- Track este nuevo elemento
-                TrackElement(obj, gameName)
-            end
-        end)
-        AddLog("NEW", info, Color3.fromRGB(0, 255, 100))
-    end)
-    
-    root.DescendantRemoving:Connect(function(obj)
-        if obj:IsA("GuiObject") then
-            local info = "➖ " .. obj.Name .. " [" .. obj.ClassName .. "]"
-            pcall(function() info = info .. " " .. DAbs(obj) end)
-            AddLog("DEL", info, Color3.fromRGB(255, 80, 80))
-        end
-    end)
-end
-
--- ============ DETECTAR CUANDO SE ACTIVA CADA JUEGO ============
-local function SetupGameDetector(miniGameFrame, gameName)
-    if not miniGameFrame then return end
-    
-    -- Cuando el frame se hace visible = juego empezó
-    miniGameFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-        if miniGameFrame.Visible then
-            activeGame = gameName
-            StatusLabel.Text = " 🎮 JUGANDO: " .. gameName
-            StatusLabel.BackgroundColor3 = Color3.fromRGB(50, 80, 20)
-            AddLog("JUEGO", "🎮🎮🎮 " .. gameName .. " ACTIVADO 🎮🎮🎮", Color3.fromRGB(0, 255, 0))
+        if not circle then return end
+        
+        -- Monitor Circle.Size.X.Scale and click at the perfect moment
+        local clicked = false
+        while not clicked and circle.Parent and textButton.Parent and hammerActive do
+            local sz = 2.5
+            pcall(function() sz = circle.Size.X.Scale end)
             
-            -- Tomar snapshot la primera vez
-            task.spawn(function()
-                task.wait(0.3) -- dar tiempo a que carguen hijos dinámicos
-                SnapshotGame(miniGameFrame, gameName)
-            end)
-        else
-            if activeGame == gameName then
-                AddLog("JUEGO", "❌ " .. gameName .. " TERMINÓ", Color3.fromRGB(255, 100, 50))
-                FlushToFile()
-                activeGame = ""
-                StatusLabel.Text = " ⏳ Esperando siguiente..."
-                StatusLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+            if sz <= HAMMER_PERFECT_ZONE and sz >= HAMMER_MIN_SIZE then
+                -- PERFECT ZONE! Click NOW!
+                task.wait(0.01) -- Tiny delay for human-like timing
+                ClickButton(textButton)
+                clicked = true
+                circlesHandled = circlesHandled + 1
+                SetStatus(string.format("HAMMER — ✨ CLICK! #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 255, 0))
+            elseif sz < HAMMER_MIN_SIZE then
+                -- Missed the zone, click anyway to not miss entirely
+                ClickButton(textButton)
+                clicked = true
+                circlesHandled = circlesHandled + 1
+                SetStatus(string.format("HAMMER — ⚡ Late click #%d (Size=%.2f)", circlesHandled, sz), Color3.fromRGB(255, 150, 0))
+            end
+            
+            if not clicked then
+                task.wait() -- Check every frame
             end
         end
     end)
-    
-    -- Monitorear TODOS los hijos dinámicos (círculos del juego Hammer, etc.)
-    WatchForDynamicChildren(miniGameFrame, gameName)
-    
-    -- PRE-track de elementos clave que ya existen
-    for _, obj in pairs(miniGameFrame:GetDescendants()) do
-        if obj:IsA("GuiObject") then
-            TrackElement(obj, gameName)
-        end
-    end
-    
-    AddLog("SETUP", "✅ " .. gameName .. " monitoreado (" .. #miniGameFrame:GetDescendants() .. " desc)", Color3.fromRGB(100, 200, 100))
 end
 
--- ============ SETUP DE TODO EL FORGE ============
-local function SetupForgeMonitoring()
+local function PlayHammer()
+    if hammerActive then return end
+    hammerActive = true
+    circlesHandled = 0
+    SetStatus("HAMMER — Esperando círculos...", Color3.fromRGB(255, 200, 50))
+    
+    -- Listen for new TextButtons (circles) appearing
+    hammerConn = HammerMG.DescendantAdded:Connect(function(obj)
+        if not hammerActive then return end
+        -- Each circle appears as a TextButton named "Frame"
+        if obj:IsA("TextButton") and obj.Name == "Frame" then
+            task.wait(0.05) -- Let the circle children spawn
+            HandleCircle(obj)
+        end
+    end)
+    
+    -- Also check for any TextButtons that already exist (in case some spawned before connection)
+    for _, child in pairs(HammerMG:GetChildren()) do
+        if child:IsA("TextButton") and child.Name == "Frame" then
+            HandleCircle(child)
+        end
+    end
+end
+
+local function StopHammer()
+    hammerActive = false
+    if hammerConn then
+        hammerConn:Disconnect()
+        hammerConn = nil
+    end
+end
+
+-- ============ GAME DETECTION & MAIN LOOP ============
+local function SetupGameDetection()
     if not ForgeGui then return end
     
-    -- Monitorear los 3 minijuegos estáticos
-    SetupGameDetector(MeltMG, "MELT")
-    SetupGameDetector(PourMG, "POUR")
-    SetupGameDetector(HammerMG, "HAMMER")
-    
-    -- Monitorear CUALQUIER hijo nuevo que aparezca en Forge (para Water u otros)
-    ForgeGui.ChildAdded:Connect(function(child)
-        AddLog("FORGE+", "📦 Nuevo hijo en Forge: " .. child.Name .. " [" .. child.ClassName .. "]", Color3.fromRGB(255, 200, 50))
-        
-        if child:IsA("Frame") or child:IsA("ScreenGui") then
-            task.wait(0.5)
-            -- Si es algo nuevo (no MeltMinigame/PourMinigame/HammerMinigame/EndScreen/OreSelect)
-            local known = {MeltMinigame=1, PourMinigame=1, HammerMinigame=1, EndScreen=1, OreSelect=1}
-            if not known[child.Name] then
-                AddLog("FORGE+", "🆕 ELEMENTO DINÁMICO DETECTADO: " .. child.Name, Color3.fromRGB(255, 50, 255))
-                SnapshotGame(child, "DYNAMIC_" .. child.Name)
-                WatchForDynamicChildren(child, "DYNAMIC_" .. child.Name)
-                
-                if child:IsA("GuiObject") then
-                    child:GetPropertyChangedSignal("Visible"):Connect(function()
-                        AddLog("DYNVIS", "👁️ " .. child.Name .. " V=" .. tostring(child.Visible), Color3.fromRGB(255, 200, 100))
-                    end)
-                end
+    -- MELT
+    if MeltMG then
+        MeltMG:GetPropertyChangedSignal("Visible"):Connect(function()
+            if MeltMG.Visible then
+                task.wait(1.5) -- Wait for entrance animation + countdown
+                PlayMelt()
+            else
+                StopMelt()
+                SetStatus("MELT completado ✅", Color3.fromRGB(0, 255, 100))
             end
-        end
-    end)
+        end)
+    end
     
-    ForgeGui.ChildRemoved:Connect(function(child)
-        AddLog("FORGE-", "🗑️ Removido de Forge: " .. child.Name, Color3.fromRGB(255, 80, 80))
-        FlushToFile()
-    end)
-    
-    -- También monitorear descendientes NUEVOS de Forge completo
-    ForgeGui.DescendantAdded:Connect(function(obj)
-        -- Solo loguear cosas interesantes (ignorar UIStroke, UIGradient, etc.)
-        if obj:IsA("Frame") or obj:IsA("ImageLabel") or obj:IsA("ImageButton") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
-            -- Solo si está DENTRO de un juego activo
-            local parentName = ""
-            pcall(function()
-                local p = obj.Parent
-                while p and p ~= ForgeGui do
-                    if p.Name == "MeltMinigame" or p.Name == "PourMinigame" or p.Name == "HammerMinigame" then
-                        parentName = p.Name
-                        break
-                    end
-                    p = p.Parent
-                end
-            end)
-            
-            if parentName ~= "" then
-                local info = "➕ " .. obj.Name .. " [" .. obj.ClassName .. "]"
-                pcall(function()
-                    info = info .. " " .. DPos(obj) .. " " .. DSz(obj) .. " " .. DAbs(obj)
-                end)
-                pcall(function()
-                    if obj:IsA("Frame") then
-                        local c = obj.BackgroundColor3
-                        info = info .. " Bg=(" .. math.floor(c.R*255) .. "," .. math.floor(c.G*255) .. "," .. math.floor(c.B*255) .. ")"
-                        info = info .. " BgT=" .. FP(obj.BackgroundTransparency)
-                    end
-                end)
-                AddLog("CHILD+", "[" .. parentName .. "] " .. info, Color3.fromRGB(50, 255, 150))
-                
-                -- IMPORTANTE: Track changes en este nuevo hijo
-                if obj:IsA("GuiObject") then
-                    TrackElement(obj, parentName)
-                end
+    -- POUR
+    if PourMG then
+        PourMG:GetPropertyChangedSignal("Visible"):Connect(function()
+            if PourMG.Visible then
+                task.wait(1.5) -- Wait for entrance + countdown
+                PlayPour()
+            else
+                StopPour()
+                SetStatus("POUR completado ✅", Color3.fromRGB(0, 255, 100))
             end
-        end
-    end)
+        end)
+    end
+    
+    -- HAMMER
+    if HammerMG then
+        HammerMG:GetPropertyChangedSignal("Visible"):Connect(function()
+            if HammerMG.Visible then
+                task.wait(1.5) -- Wait for entrance + countdown
+                PlayHammer()
+            else
+                StopHammer()
+                SetStatus(string.format("HAMMER completado ✅ (%d círculos)", circlesHandled), Color3.fromRGB(0, 255, 100))
+            end
+        end)
+    end
+    
+    SetStatus("LISTO — Inicia la forja ⚒️", Color3.fromRGB(150, 255, 150))
 end
 
--- ============ POLLING ForgeActive (LECTURA PASIVA) ============
-local FC = nil
-local lastForgeActive = nil
-
-pcall(function()
-    local Knit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Packages"):WaitForChild("Knit"))
-    FC = Knit.GetController("ForgeController")
-    if FC then
-        AddLog("FC", "✅ ForgeController.ForgeActive = " .. tostring(FC.ForgeActive), Color3.fromRGB(0, 255, 0))
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if not ScreenGui.Parent then return end
-    if not FC then return end
-    
-    local fa = nil
-    pcall(function() fa = FC.ForgeActive end)
-    if fa ~= nil and fa ~= lastForgeActive then
-        lastForgeActive = fa
-        if fa then
-            AddLog("FC", "🔥 ForgeActive = TRUE", Color3.fromRGB(255, 50, 50))
-        else
-            AddLog("FC", "✅ ForgeActive = FALSE", Color3.fromRGB(0, 255, 0))
-            FlushToFile()
-        end
-    end
-end)
-
--- ============ LISTAR REMOTES ============
-pcall(function()
-    local fcFolder = ReplicatedStorage:FindFirstChild("Controllers")
-    if fcFolder then
-        fcFolder = fcFolder:FindFirstChild("ForgeController")
-        if fcFolder then
-            for _, d in pairs(fcFolder:GetDescendants()) do
-                if d:IsA("RemoteFunction") or d:IsA("RemoteEvent") then
-                    AddLog("REMOTE", "📡 " .. d.ClassName .. ": " .. d:GetFullName(), Color3.fromRGB(200, 200, 100))
-                end
-            end
-        end
-    end
-    local knitSvc = ReplicatedStorage:FindFirstChild("Knit")
-    if knitSvc then
-        local svcs = knitSvc:FindFirstChild("Services")
-        if svcs then
-            for _, svc in pairs(svcs:GetChildren()) do
-                if string.find(string.lower(svc.Name), "forge") then
-                    for _, rf in pairs(svc:GetDescendants()) do
-                        if rf:IsA("RemoteFunction") or rf:IsA("RemoteEvent") then
-                            AddLog("REMOTE", "📡 " .. rf.ClassName .. ": " .. rf:GetFullName(), Color3.fromRGB(200, 200, 100))
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- ============ GC SCAN ============
-pcall(function()
-    local found = 0
-    for _, v in pairs(getgc(true)) do
-        if type(v) == "table" then
-            for k, val in pairs(v) do
-                local ks = tostring(k):lower()
-                if ks == "forgeactive" or ks == "currentsequence" or ks == "meltbar" or ks == "pourbar" or ks == "hammerresult" or ks == "perfect" or ks == "score" then
-                    found = found + 1
-                    AddLog("GC", "🧠 " .. tostring(k) .. " = " .. tostring(val), Color3.fromRGB(200, 150, 255))
-                    if found > 30 then break end
-                end
-            end
-        end
-        if found > 30 then break end
-    end
-    AddLog("GC", "Búsqueda GC: " .. found .. " hits", Color3.fromRGB(150, 150, 200))
-end)
-
--- ============ INICIAR ============
+-- ============ INIT ============
 task.spawn(function()
-    -- Si Forge no existía al inicio, esperar
     if not ForgeGui then
+        SetStatus("Esperando Forge GUI...", Color3.fromRGB(255, 200, 50))
         local tries = 0
-        while not ForgeGui and tries < 60 do
-            task.wait(1)
+        while not ForgeGui and tries < 120 do
+            task.wait(0.5)
             FindForge()
             tries = tries + 1
         end
     end
     
     if ForgeGui then
-        SetupForgeMonitoring()
+        SetupGameDetection()
+        
+        -- If any game is already visible (hot reload)
+        if MeltMG and MeltMG.Visible then PlayMelt() end
+        if PourMG and PourMG.Visible then PlayPour() end
+        if HammerMG and HammerMG.Visible then PlayHammer() end
     else
-        AddLog("ERROR", "❌ Forge GUI no encontrado después de 60s", Color3.fromRGB(255, 0, 0))
+        SetStatus("ERROR: Forge GUI no encontrado", Color3.fromRGB(255, 0, 0))
     end
 end)
 
--- Auto-flush
-task.spawn(function()
-    while ScreenGui.Parent do FlushToFile(); task.wait(3) end
+-- Cleanup on script removal
+SG.Destroying:Connect(function()
+    StopMelt()
+    StopPour()
+    StopHammer()
 end)
-
--- Monitorear PlayerGui
-PlayerGui.ChildAdded:Connect(function(child)
-    AddLog("GUI+", "📦 " .. child.Name .. " [" .. child.ClassName .. "]", Color3.fromRGB(255, 200, 100))
-    if child.Name == "Forge" and not ForgeGui then
-        task.wait(0.5)
-        if FindForge() then SetupForgeMonitoring() end
-    end
-end)
-PlayerGui.ChildRemoved:Connect(function(child)
-    AddLog("GUI-", "🗑️ " .. child.Name, Color3.fromRGB(255, 80, 80))
-    FlushToFile()
-end)
-
-AddLog("SYS", "🔬 X-RAY v5.0 LISTO. CERO hooks. Juega normal.", Color3.fromRGB(100, 255, 100))
-AddLog("SYS", "Monitoreando: Forge.MeltMinigame / PourMinigame / HammerMinigame", Color3.fromRGB(100, 255, 100))
-AddLog("SYS", "Círculos dinámicos se capturan via DescendantAdded", Color3.fromRGB(100, 255, 100))
-AddLog("SYS", "info5.txt se guarda cada 3 seg. 📋 Botón para copiar.", Color3.fromRGB(100, 255, 100))
-FlushToFile()
