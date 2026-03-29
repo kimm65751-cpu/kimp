@@ -39,7 +39,7 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -120, 0, 30)
+Title.Size = UDim2.new(1, -170, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
 Title.Text = " 🕵️ QUEST FORENSICS V1.0"
 Title.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -49,21 +49,65 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
 local CopyBtn = Instance.new("TextButton")
-CopyBtn.Size = UDim2.new(0, 120, 0, 30)
-CopyBtn.Position = UDim2.new(1, -120, 0, 0)
+CopyBtn.Size = UDim2.new(0, 100, 0, 30)
+CopyBtn.Position = UDim2.new(1, -170, 0, 0)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-CopyBtn.Text = "📥 COPIAR LOG"
+CopyBtn.Text = "📥 COPIAR"
 CopyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyBtn.Font = Enum.Font.Code
-CopyBtn.TextSize = 12
+CopyBtn.TextSize = 11
 CopyBtn.Parent = MainFrame
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 35, 0, 30)
+MinBtn.Position = UDim2.new(1, -70, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 16
+MinBtn.Parent = MainFrame
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 35, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 20, 20)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.Code
+CloseBtn.TextSize = 16
+CloseBtn.Parent = MainFrame
+
+local OutputScroll = Instance.new("ScrollingFrame")
+OutputScroll.Size = UDim2.new(1, -10, 1, -40)
+OutputScroll.Position = UDim2.new(0, 5, 0, 35)
+OutputScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+OutputScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+OutputScroll.ScrollBarThickness = 5
+OutputScroll.Parent = MainFrame
+
+local isMinimized = false
+MinBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MainFrame.Size = UDim2.new(0, 450, 0, 30)
+        OutputScroll.Visible = false
+    else
+        MainFrame.Size = UDim2.new(0, 450, 0, 350)
+        OutputScroll.Visible = true
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
 local FullLogText = "=== REPORTE DE MISIONES (QUEST FORENSICS) ===\n\n"
 CopyBtn.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard(FullLogText)
         CopyBtn.Text = "¡COPIADO!"
-        task.delay(2, function() CopyBtn.Text = "📥 COPIAR LOG" end)
+        task.delay(2, function() CopyBtn.Text = "📥 COPIAR" end)
     end
 end)
 
@@ -78,6 +122,10 @@ local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = OutputScroll
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 2)
+
+UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 15)
+end)
 
 local logCount = 0
 
@@ -98,12 +146,7 @@ local function LogGUI(text, color)
     
     -- Ajustar altura dinámica
     msg.Size = UDim2.new(1, -10, 0, msg.TextBounds.Y + 8)
-    local totalHeight = 0
-    for _, child in ipairs(OutputScroll:GetChildren()) do
-        if child:IsA("TextLabel") then totalHeight = totalHeight + child.Size.Y.Offset + 2 end
-    end
-    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-    OutputScroll.CanvasPosition = Vector2.new(0, totalHeight)
+    OutputScroll.CanvasPosition = Vector2.new(0, 99999) -- Auto-scroll hacia abajo
     
     logCount = logCount + 1
     if logCount > 200 then
@@ -124,8 +167,11 @@ local function PcallJSON(tbl)
 end
 
 local isFlyingTo = false
+local noclipConnection = nil
+
 local function IrHaciaNPC(targetPos)
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return end
     if root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
     
@@ -135,6 +181,21 @@ local function IrHaciaNPC(targetPos)
     bv.Parent = root
     
     isFlyingTo = true
+    
+    -- Hacer que el personaje atraviese todas las paredes (NOCLIP FISICO Y REAL)
+    if noclipConnection then noclipConnection:Disconnect() end
+    noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+        if not isFlyingTo then
+            if noclipConnection then noclipConnection:Disconnect() end
+            return
+        end
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end)
+    
     task.spawn(function()
         while isFlyingTo and bv.Parent and root.Parent do
             local dist = (root.Position - targetPos).Magnitude
@@ -192,12 +253,13 @@ local function LogNPCWithButton(npcName, coords, targetPos, detailText)
         goBtn.MouseButton1Click:Connect(function()
             if isFlyingTo then
                 isFlyingTo = false
+                if noclipConnection then noclipConnection:Disconnect() end
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if root and root:FindFirstChild("_NoclipAnalyzer") then root._NoclipAnalyzer:Destroy() end
                 goBtn.Text = "✈️ IR"
                 goBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
             else
-                LogGUI("[✈️] Volando hacia " .. npcName .. "...", Color3.fromRGB(100, 255, 255))
+                LogGUI("[✈️] Volando TRASPASANDO PAREDES hacia " .. npcName .. "...", Color3.fromRGB(100, 255, 255))
                 goBtn.Text = "🛑 STOP"
                 goBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
                 IrHaciaNPC(targetPos)
@@ -212,12 +274,6 @@ local function LogNPCWithButton(npcName, coords, targetPos, detailText)
         end)
     end
     
-    local totalHeight = 0
-    for _, child in ipairs(OutputScroll:GetChildren()) do
-        if child:IsA("Frame") or child:IsA("TextLabel") then totalHeight = totalHeight + child.Size.Y.Offset + 2 end
-    end
-    OutputScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-    OutputScroll.CanvasPosition = Vector2.new(0, totalHeight)
     logCount = logCount + 1
 end
 
