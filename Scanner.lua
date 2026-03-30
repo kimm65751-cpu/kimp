@@ -9,13 +9,12 @@ local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local VIM = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
 -- REFERENCIA CRÍTICA DEL SERVIDOR (Knit ToolService)
 -- ==========================================
--- EXCLUIDO POR SEGURIDAD: local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
+local ToolRF = ReplicatedStorage.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
 
 -- ==========================================
 -- VARIABLES DE ESTADO
@@ -965,11 +964,8 @@ local function IniciarFarm()
                         local lookTarget = Vector3.new(targetPart.Position.X, myRoot.Position.Y, targetPart.Position.Z)
                         myRoot.CFrame = CFrame.lookAt(myRoot.Position, lookTarget)
                         
-                        -- GOLPE INDETECTABLE CON VIRTUAL INPUT (Simula clic de mouse)
-                        local vp = workspace.CurrentCamera.ViewportSize
-                        VIM:SendMouseButtonEvent(vp.X/2, vp.Y/2, 0, true, game, 0)
-                        task.wait(0.05)
-                        VIM:SendMouseButtonEvent(vp.X/2, vp.Y/2, 0, false, game, 0)
+                        local serverArg = mode == "Mining" and "Pickaxe" or "Weapon"
+                        ToolRF:InvokeServer(serverArg)
                         
                         -- ANTI-ATASCO GLOBAL: Registrar que estamos golpeando
                         if mode == "Mining" then
