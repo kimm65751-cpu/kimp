@@ -32,7 +32,7 @@ SB.Size = UDim2.new(0,420,0,28); SB.Position = UDim2.new(0.5,-210,0,4)
 SB.BackgroundColor3 = Color3.fromRGB(10,10,20); SB.BorderColor3 = Color3.fromRGB(50,200,100)
 SB.BorderSizePixel = 2; SB.TextColor3 = Color3.fromRGB(150,255,150)
 SB.TextSize = 11; SB.Font = Enum.Font.Code; SB.TextXAlignment = Enum.TextXAlignment.Left
-SB.Text = " ⚔️ AUTO v4.0"; SB.Parent = SG
+SB.Text = " ⚔️ AUTO v4.1"; SB.Parent = SG
 
 local function S(t,c) pcall(function() SB.Text = " ⚔️ "..t; SB.TextColor3 = c or Color3.fromRGB(150,255,150) end) end
 
@@ -40,9 +40,20 @@ local function S(t,c) pcall(function() SB.Text = " ⚔️ "..t; SB.TextColor3 = 
 local mDown = false
 local mX, mY = 0, 0
 
-local function VPress(x,y) mX,mY=x,y; mDown=true; VIM:SendMouseButtonEvent(x,y,0,true,game,0) end
-local function VRelease() mDown=false; VIM:SendMouseButtonEvent(mX,mY,0,false,game,0) end
+
+local function VPress(x,y)
+    mX,mY=x,y; mDown=true
+    VIM:SendMouseMoveEvent(x,y,game) -- MOVER cursor primero
+    task.wait(0.01)
+    VIM:SendMouseButtonEvent(x,y,0,true,game,0) -- LUEGO presionar
+end
+local function VRelease()
+    mDown=false
+    VIM:SendMouseButtonEvent(mX,mY,0,false,game,0)
+end
 local function VClick(x,y)
+    VIM:SendMouseMoveEvent(x,y,game) -- MOVER cursor primero
+    task.wait(0.01)
     VIM:SendMouseButtonEvent(x,y,0,true,game,0)
     task.wait(0.02)
     VIM:SendMouseButtonEvent(x,y,0,false,game,0)
@@ -71,7 +82,8 @@ FindForge()
 if not FG then PG.ChildAdded:Connect(function(c) if c.Name=="Forge" then task.wait(0.5); FindForge() end end) end
 
 -- ================================================================
--- MELT — getconnections para disparar callbacks reales
+-- MELT — Mouse al 20% izquierda del viewport, HOLD continuo
+-- El área de click del Heater es amplia, no necesitamos coords exactas
 -- ================================================================
 local meltOn = false
 local meltTh = nil
@@ -83,108 +95,27 @@ local function PlayMelt()
     meltTh = task.spawn(function()
         task.wait(0.8)
         
-        local top = nil
-        pcall(function() top = Melt.Heater.Top end)
-        if not top then
-            S("MELT — ERROR: no Heater.Top", Color3.fromRGB(255,0,0))
-            meltOn = false; return
-        end
+        -- Calcular posición: 20% desde la izquierda, 50% altura
+        local vp = Camera.ViewportSize
+        local cx = math.floor(vp.X * 0.18)  -- 18% del ancho (sobre el heater)
+        local cy = math.floor(vp.Y * 0.55)  -- 55% de alto (centro del heater)
         
-        -- ===== MÉTODO: getconnections =====
-        -- Disparar directamente las funciones conectadas al evento
-        local conns = nil
-        local hasGetConn = pcall(function() conns = getconnections(top.MouseButton1Down) end)
+        S(string.format("MELT — MoveTo (%d,%d) vp=%dx%d", cx, cy, vp.X, vp.Y),
+            Color3.fromRGB(255, 200, 0))
         
-        if hasGetConn and conns and #conns > 0 then
-            S(string.format("MELT — %d conexiones encontradas", #conns), Color3.fromRGB(0,255,100))
-            
-            while meltOn and Melt and Melt.Visible do
-                -- Disparar TODAS las conexiones cada frame
-                pcall(function()
-                    for _, conn in pairs(getconnections(top.MouseButton1Down)) do
-                        pcall(function() conn:Fire() end)
-                    end
-                end)
-                
-                local sz = 0
-                pcall(function() sz = Melt.Bar.Area.Size.Y.Scale end)
-                S(string.format("MELT — [getconn] Barra: %.0f%%", sz*100),
-                    Color3.fromRGB(255, math.floor(200*math.min(sz,1)), 50))
-                task.wait(0.08)
-            end
-            -- Fire MouseButton1Up connections to reset
-            pcall(function()
-                for _, conn in pairs(getconnections(top.MouseButton1Up)) do
-                    pcall(function() conn:Fire() end)
-                end
-            end)
-            meltOn = false; return
-        end
+        -- Mover cursor al Heater y MANTENER PRESIONADO
+        VPress(cx, cy)
         
-        -- ===== FALLBACK: InputBegan on the button =====
-        local ibConns = nil
-        local hasIB = pcall(function() ibConns = getconnections(top.InputBegan) end)
-        
-        if hasIB and ibConns and #ibConns > 0 then
-            S(string.format("MELT — %d InputBegan conns", #ibConns), Color3.fromRGB(0,255,100))
-            
-            while meltOn and Melt and Melt.Visible do
-                pcall(function()
-                    for _, conn in pairs(getconnections(top.InputBegan)) do
-                        pcall(function()
-                            conn:Fire({
-                                UserInputType = Enum.UserInputType.MouseButton1,
-                                UserInputState = Enum.UserInputState.Begin,
-                                Position = Vector3.new(0,0,0)
-                            })
-                        end)
-                    end
-                end)
-                
-                local sz = 0
-                pcall(function() sz = Melt.Bar.Area.Size.Y.Scale end)
-                S(string.format("MELT — [InputBegan] Barra: %.0f%%", sz*100),
-                    Color3.fromRGB(255, math.floor(200*math.min(sz,1)), 50))
-                task.wait(0.08)
-            end
-            meltOn = false; return
-        end
-        
-        -- ===== FALLBACK 2: Activated =====
-        local actConns = nil
-        local hasAct = pcall(function() actConns = getconnections(top.Activated) end)
-        
-        if hasAct and actConns and #actConns > 0 then
-            S("MELT — Usando Activated", Color3.fromRGB(0,255,100))
-            while meltOn and Melt and Melt.Visible do
-                pcall(function()
-                    for _, conn in pairs(getconnections(top.Activated)) do
-                        pcall(function() conn:Fire() end)
-                    end
-                end)
-                local sz = 0
-                pcall(function() sz = Melt.Bar.Area.Size.Y.Scale end)
-                S(string.format("MELT — [Activated] Barra: %.0f%%", sz*100),
-                    Color3.fromRGB(255, math.floor(200*math.min(sz,1)), 50))
-                task.wait(0.08)
-            end
-            meltOn = false; return
-        end
-        
-        -- ===== ÚLTIMO INTENTO: VIM spam click en Heater =====
-        S("MELT — Probando VIM spam...", Color3.fromRGB(255,200,0))
+        -- Monitorear barra
         while meltOn and Melt and Melt.Visible do
-            local cx, cy = 200, 200
-            pcall(function() cx, cy = Center(top) end)
-            VClick(cx, cy)
-            
             local sz = 0
             pcall(function() sz = Melt.Bar.Area.Size.Y.Scale end)
-            S(string.format("MELT — [VIM] (%d,%d) Barra: %.0f%%", cx, cy, sz*100),
-                Color3.fromRGB(255, math.floor(200*math.min(sz,1)), 50))
-            task.wait(0.1)
+            S(string.format("MELT — HOLD (%d,%d) Barra: %.0f%%", cx, cy, sz * 100),
+                Color3.fromRGB(255, math.floor(200 * math.min(sz, 1)), 50))
+            task.wait(0.15)
         end
         
+        VRelease()
         meltOn = false
     end)
 end
