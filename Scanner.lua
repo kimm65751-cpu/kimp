@@ -149,7 +149,7 @@ local ReloadBtn = Instance.new("TextButton")
 ReloadBtn.Size = UDim2.new(1, -8, 0, 28)
 ReloadBtn.Position = UDim2.new(0, 4, 0, 34)
 ReloadBtn.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
-ReloadBtn.Text = "🔄 RECARGAR SCRIPT"
+ReloadBtn.Text = "🔄 RECARGAR SCeeRIPT"
 ReloadBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
 ReloadBtn.Font = Enum.Font.Code
 ReloadBtn.TextSize = 11
@@ -1047,6 +1047,341 @@ task.spawn(function()
             MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
             StatusLabel.Text = "🔄 Anti-Atasco: Reiniciando Farm Minas..."
             IniciarFarm()
+        end
+    end
+end)
+
+-- ==============================================================================
+-- 💰 MÓDULO AUTO-VENDER (COMPLETO Y REPARADO)
+-- ==============================================================================
+
+-- Remotos de la tienda
+local RF_RunCommand_Sell, RF_ForceDialogue_Sell, RE_DialogueEvent_Sell, SeyNPC_Sell = nil, nil, nil, nil
+
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+        SeyNPC_Sell = obj; break
+    end
+end
+for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("RemoteFunction") then
+        if obj.Name == "RunCommand" then RF_RunCommand_Sell = obj end
+        if obj.Name == "ForceDialogue" then RF_ForceDialogue_Sell = obj end
+    elseif obj:IsA("RemoteEvent") then
+        if obj.Name == "DialogueEvent" then RE_DialogueEvent_Sell = obj end
+    end
+end
+
+-- Items a vender automáticamente (Nombres Forenses Correctos)
+local ITEMS_AUTO_VENDER = {
+    ["Tiny Essence"] = true,
+    ["Medium Essence"] = true,
+    ["Cobalt"] = true,
+    ["Boneite"] = true,
+    ["Titanium"] = true,
+    ["Amethyst"] = true,
+    ["Lapis Lazuli"] = true,
+    ["Silver"] = true,
+    ["Gold"] = true,
+}
+
+local ITEMS_SCAN_NAMES = {
+    {es="esencia pequeña", exact="Esencia pequeña", en="Tiny Essence"},
+    {es="esencia mediana", exact="Esencia mediana", en="Medium Essence"},
+    {es="cobalto",         exact="Cobalto",         en="Cobalt"},
+    {es="boneita",         exact="Boneita",         en="Boneite"},
+    {es="titánico",        exact="Titánico",        en="Titanium"},
+    {es="ametista",        exact="Ametista",        en="Amethyst"},
+    {es="lapis lazuli",    exact="Lapis Lazuli",    en="Lapis Lazuli"},
+    {es="plata",           exact="Plata",           en="Silver"},
+    {es="oro",             exact="Oro",             en="Gold"},
+}
+
+local AutoVenderActivo = false
+
+-- UI: Botón AUTOVENDER en el panel principal
+local AutoVenderBtn = Instance.new("TextButton")
+AutoVenderBtn.Size = UDim2.new(0.5, -6, 0, 28)
+AutoVenderBtn.Position = UDim2.new(0, 4, 0, 415)
+AutoVenderBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+AutoVenderBtn.Text = "💰 AUTOVENDER: OFF"
+AutoVenderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoVenderBtn.Font = Enum.Font.Code
+AutoVenderBtn.TextSize = 10
+AutoVenderBtn.Parent = Panel
+
+-- UI: Label de capacidad del inventario
+local InvLabel = Instance.new("TextLabel")
+InvLabel.Size = UDim2.new(0.5, -6, 0, 28)
+InvLabel.Position = UDim2.new(0.5, 2, 0, 415)
+InvLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+InvLabel.Text = "📦 Items: ?/?"
+InvLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+InvLabel.Font = Enum.Font.Code
+InvLabel.TextSize = 10
+InvLabel.Parent = Panel
+
+AutoVenderBtn.MouseButton1Click:Connect(function()
+    AutoVenderActivo = not AutoVenderActivo
+    if AutoVenderActivo then
+        AutoVenderBtn.Text = "💰 AUTOVENDER: ON ✅"
+        AutoVenderBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    else
+        AutoVenderBtn.Text = "💰 AUTOVENDER: OFF"
+        AutoVenderBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+    end
+end)
+
+-- Función: Leer capacidad del inventario
+local InvController_Sell = nil
+pcall(function() InvController_Sell = require(ReplicatedStorage.Controllers.UIController.Inventory) end)
+
+local function LeerCapacidadInventario()
+    local cur, maxm = nil, nil
+    if InvController_Sell then
+        pcall(function() maxm = InvController_Sell:GetBagCapacity() end)
+    end
+    if not maxm then maxm = 144 end
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextLabel") and obj.Visible then
+                local x, y = string.match(obj.Text, "(%d+)/(%d+)")
+                if x and y then
+                    local valY = tonumber(y)
+                    if valY == maxm then
+                        cur = tonumber(x)
+                        return
+                    end
+                end
+            end
+        end
+    end)
+    return cur, maxm
+end
+
+-- Función: Escanear cuántos de cada mineral tienes (Regex Seguro sin falsos positivos de UI)
+local function EscanearMinerales()
+    local dir = {}
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextLabel") then
+                local txt = string.lower(obj.Text)
+                for _, item in ipairs(ITEMS_SCAN_NAMES) do
+                    if txt == item.es or obj.Text == item.exact or txt == string.lower(item.en) then
+                        local padre = obj.Parent
+                        if padre then
+                            for _, child in pairs(padre:GetDescendants()) do
+                                if child:IsA("TextLabel") then
+                                    local mx = string.match(child.Text, "[xX](%d+)")
+                                    if mx then
+                                        local n = tonumber(mx)
+                                        if n > (dir[item.en] or 0) then dir[item.en] = n end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return dir
+end
+
+-- Escudo __newindex para evitar paralisis de NPCs
+if not getgenv().InmunidadV11Activa then
+    getgenv().InmunidadV11Activa = true
+    local OriginalNewIndex
+    OriginalNewIndex = hookmetamethod(game, "__newindex", function(t, k, v)
+        if not checkcaller() then
+            if t:IsA("BasePart") and t.Name == "HumanoidRootPart" and k == "Anchored" and v == true then return end
+            if t:IsA("Camera") and k == "CameraType" and v ~= Enum.CameraType.Custom then return end
+            if t:IsA("Humanoid") and (k == "WalkSpeed" and v < 16) then return end
+        end
+        return OriginalNewIndex(t, k, v)
+    end)
+end
+
+-- Función: Vuelo Anti-Kicks (Viaja físicamente hacia una posición con Timeout)
+local function FlyToPos(targetPos)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local currentHum = char and char:FindFirstChild("Humanoid")
+    if not root or not currentHum then return end
+    
+    root.Anchored = false
+    local bv = root:FindFirstChild("_NoclipBV")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "_NoclipBV"
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Parent = root
+    end
+    
+    local speed = (currentHum.WalkSpeed or 16) * 3
+    local timeout = tick() + 15
+    
+    while char and root and currentHum and currentHum.Health > 0 and tick() < timeout do
+        local curPos = root.Position
+        local hDist = (Vector2.new(curPos.X, curPos.Z) - Vector2.new(targetPos.X, targetPos.Z)).Magnitude
+        local vDist = math.abs(curPos.Y - targetPos.Y)
+        
+        if hDist < 5 and vDist < 8 then
+            break
+        end
+        
+        local safeY = targetPos.Y + 45
+        local flightWaypoint
+        if hDist > 20 then
+            if curPos.Y < safeY then
+                flightWaypoint = Vector3.new(curPos.X, safeY + 15, curPos.Z)
+            else
+                flightWaypoint = Vector3.new(targetPos.X, curPos.Y, targetPos.Z)
+            end
+        else
+            flightWaypoint = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
+        end
+        
+        local dir = (flightWaypoint - curPos).Unit
+        bv.Velocity = dir * speed
+        task.wait(0.05)
+    end
+    if bv then bv.Velocity = Vector3.zero end
+end
+
+-- Función: Ejecutar venta segura (evita colisiones al aterrizar)
+local function VenderAutomaticamente(miBasket)
+    if not RF_RunCommand_Sell or not RF_ForceDialogue_Sell or not RE_DialogueEvent_Sell then return end
+    
+    local npcActual = nil
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and string.find(string.lower(obj.Name), "cey") then
+            npcActual = obj; break
+        end
+    end
+    if not npcActual then return end
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local paqueteFinal = { Basket = miBasket }
+    local oldPos = root.Position
+    local npcRoot = npcActual:FindFirstChild("HumanoidRootPart") or npcActual:FindFirstChild("Torso") or npcActual:FindFirstChildWhichIsA("BasePart")
+    
+    -- Pausar farmeo
+    local oldKite = KiteActivo
+    local oldMine = MineActivo
+    if KiteActivo then KiteBtn.Text = "🗡️ FARM MOBS"; KiteActivo = false; KiteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40) end
+    if MineActivo then MineBtn.Text = "⛏️ FARM MINAS"; MineActivo = false; MineBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 40) end
+    DetenerFarm()
+    task.wait(0.2)
+    
+    local oldNoclip = NoclipActivo
+    NoclipActivo = true
+    
+    if npcRoot then
+        local dest = npcRoot.Position
+        StatusLabel.Text = "✈️ Volando hacia el NPC Cey (Timeout 15s)..."
+        FlyToPos(dest)
+        
+        NoclipActivo = false
+        pcall(function()
+            local xbv = root:FindFirstChild("_NoclipBV")
+            if xbv then xbv:Destroy() end
+        end)
+        
+        if (root.Position - dest).Magnitude > 8 then
+            root.CFrame = CFrame.new(dest) * CFrame.new(0,0,-3)
+        end
+        task.wait(0.5)
+    end
+    
+    StatusLabel.Text = "💰 Negociando con el NPC..."
+    -- SECUENCIA DE COMPRA EXACTA V8
+    pcall(function() RF_ForceDialogue_Sell:InvokeServer(npcActual, "SellConfirmMisc") end)
+    task.wait(0.2)
+    pcall(function() RE_DialogueEvent_Sell:FireServer("Opened") end)
+    
+    pcall(function() RF_RunCommand_Sell:InvokeServer("SellConfirm", paqueteFinal) end)
+    task.wait(0.5)
+    
+    pcall(function()
+        for _, obj in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if obj:IsA("TextButton") and obj.Visible then
+                local t = string.lower(obj.Text)
+                if string.find(t, "adi") or string.find(t, "bye") or string.find(t, "2.") or string.find(t, "2%]") then
+                    pcall(function() firesignal(obj.MouseButton1Click) end)
+                    pcall(function() for _, c in pairs(getconnections(obj.MouseButton1Click)) do c:Fire() end end)
+                end
+            end
+        end
+    end)
+    pcall(function() RE_DialogueEvent_Sell:FireServer("Closed") end)
+    
+    -- REGRESO
+    StatusLabel.Text = "✈️ Venta lista. Regresando a zona de farmeo..."
+    NoclipActivo = true
+    FlyToPos(oldPos)
+    
+    if (root.Position - oldPos).Magnitude > 8 then
+        root.CFrame = CFrame.new(oldPos)
+    end
+    task.wait(0.2)
+    
+    NoclipActivo = oldNoclip
+    pcall(function()
+        local bv = root:FindFirstChild("_NoclipBV")
+        if not oldNoclip and bv then bv:Destroy() end
+    end)
+    
+    -- Reanudar
+    if oldKite then
+        KiteBtn.Text = "🗡️ MOBS: ON"
+        KiteBtn.BackgroundColor3 = Color3.fromRGB(220, 130, 40)
+        KiteActivo = true
+        IniciarFarm()
+    end
+    if oldMine then
+        MineBtn.Text = "⛏️ MINAS: ON"
+        MineBtn.BackgroundColor3 = Color3.fromRGB(120, 220, 40)
+        MineActivo = true
+        IniciarFarm()
+    end
+end
+
+-- Bucle: Vender Automáticamente
+task.spawn(function()
+    while true do
+        task.wait(5)
+        pcall(function()
+            local cur, maxm = LeerCapacidadInventario()
+            if cur and maxm then
+                InvLabel.Text = "📦 Items: " .. cur .. "/" .. maxm
+            end
+        end)
+        
+        if AutoVenderActivo then
+            pcall(function()
+                local cur, maxm = LeerCapacidadInventario()
+                if cur and maxm and cur >= (maxm - 5) then
+                    local stock = EscanearMinerales()
+                    local autoBasket = {}
+                    local count = 0
+                    for itemEN, _ in pairs(ITEMS_AUTO_VENDER) do
+                        local cant = stock[itemEN] or 0
+                        if cant > 0 then
+                            autoBasket[itemEN] = cant
+                            count = count + 1
+                        end
+                    end
+                    if count > 0 then
+                        StatusLabel.Text = "💰 INV LLENO → Vendiendo " .. count .. " minerales..."
+                        VenderAutomaticamente(autoBasket)
+                        StatusLabel.Text = "💰 Venta automática completada."
+                    end
+                end
+            end)
         end
     end
 end)
