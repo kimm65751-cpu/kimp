@@ -51,7 +51,7 @@ Panel.Parent = SG
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -35, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(10, 40, 80)
-Title.Text = " ⛏️ MINING DEEP ANALYZER v1.3"
+Title.Text = " ⛏️ MINING DEEP ANALYZER v1.5"
 Title.TextColor3 = Color3.fromRGB(100, 220, 255)
 Title.TextSize = 13; Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -413,19 +413,43 @@ local function StartMonitor()
                 local args = {...}
                 local remoteName = obj.Name
                 
-                -- ⚡ FILTRO ANTI-SPAM: ignorar ReplicaSet con Stamina/Playtime
+                -- ⚡ RATE-LIMIT: ReplicaSet spamea 100+/seg
+                -- Solo logear si pasó 0.5s desde el último con el mismo ID+Path
+                -- O si el valor cambió significativamente (ej: golpe a roca)
                 if remoteName == "ReplicaSet" then
-                    for _, arg in ipairs(args) do
-                        if typeof(arg) == "table" then
-                            for _, v in pairs(arg) do
-                                local vs = tostring(v):lower()
-                                if vs == "stamina" or vs == "playtime" or vs == "position" 
-                                   or vs == "hunger" or vs == "thirst" then
-                                    return -- SKIP spam
-                                end
-                            end
+                    local replicaId = tostring(args[1] or "?")
+                    local pathKey = ""
+                    if typeof(args[2]) == "table" then
+                        for _, v in pairs(args[2]) do pathKey = pathKey .. tostring(v) end
+                    end
+                    local uniqueKey = replicaId .. "_" .. pathKey
+                    local now = tick()
+                    
+                    if not _G._replicaRateLimit then _G._replicaRateLimit = {} end
+                    local lastEntry = _G._replicaRateLimit[uniqueKey]
+                    
+                    if lastEntry then
+                        local timeDiff = now - lastEntry.time
+                        local oldVal = lastEntry.value
+                        local newVal = args[3]
+                        
+                        -- Calcular si el valor cambió significativamente
+                        local bigChange = false
+                        if typeof(newVal) == "number" and typeof(oldVal) == "number" then
+                            local diff = math.abs(newVal - oldVal)
+                            -- Cambio grande = más del 5% o más de 5 unidades
+                            bigChange = (diff > math.abs(oldVal) * 0.05) or (diff > 5)
+                        elseif tostring(newVal) ~= tostring(oldVal) then
+                            bigChange = true
+                        end
+                        
+                        -- Skip si pasó poco tiempo Y no hubo cambio grande
+                        if timeDiff < 0.5 and not bigChange then
+                            return
                         end
                     end
+                    
+                    _G._replicaRateLimit[uniqueKey] = {time = now, value = args[3]}
                 end
                 
                 local now = tick()
