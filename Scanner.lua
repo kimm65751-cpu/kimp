@@ -51,7 +51,7 @@ Panel.Parent = SG
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -35, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(10, 40, 80)
-Title.Text = " ⛏️ MINING DEEP ANALYZER v1.1"
+Title.Text = " ⛏️ MINING DEEP ANALYZER v1.0"
 Title.TextColor3 = Color3.fromRGB(100, 220, 255)
 Title.TextSize = 13; Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -413,6 +413,21 @@ local function StartMonitor()
                 local args = {...}
                 local remoteName = obj.Name
                 
+                -- ⚡ FILTRO ANTI-SPAM: ignorar ReplicaSet con Stamina/Playtime
+                if remoteName == "ReplicaSet" then
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "table" then
+                            for _, v in pairs(arg) do
+                                local vs = tostring(v):lower()
+                                if vs == "stamina" or vs == "playtime" or vs == "position" 
+                                   or vs == "hunger" or vs == "thirst" then
+                                    return -- SKIP spam
+                                end
+                            end
+                        end
+                    end
+                end
+                
                 local now = tick()
                 local lastHit = hitTimestamps[remoteName]
                 local cooldown = lastHit and string.format("%.3fs", now - lastHit) or "FIRST"
@@ -431,7 +446,7 @@ local function StartMonitor()
                 
                 AddLog("S→C", string.format("🔻 %s (cd:%s)", remoteName, cooldown), Color3.fromRGB(100,200,255))
                 for i, arg in ipairs(args) do
-                    if i <= 8 then -- Limitar args mostrados para no saturar
+                    if i <= 8 then
                         AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg):sub(1,200)),
                             Color3.fromRGB(150,200,255))
                     end
