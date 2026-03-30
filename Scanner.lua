@@ -104,11 +104,26 @@ LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.Parent = Panel
 Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 1)
 
+-- ============ AUTO-SAVE ============
+local saveCounter = 0
+local function AutoSave()
+    pcall(function()
+        writefile(AUTO_SAVE_PATH, table.concat(LOG, "\n"))
+    end)
+end
+
 -- ============ LOG FUNCTIONS ============
 local function AddLog(tag, msg, color)
     local fullStr = string.format("[%s] [%s] %s", os.date("%H:%M:%S"), tag, msg)
     table.insert(LOG, fullStr)
     if #LOG > MAX_LOG then table.remove(LOG, 1) end
+    
+    -- Auto-save cada 50 líneas
+    saveCounter = saveCounter + 1
+    if saveCounter >= 50 then
+        saveCounter = 0
+        task.defer(AutoSave)
+    end
     
     task.defer(function()
         pcall(function()
@@ -362,7 +377,9 @@ local function ScanMines()
 end
 
 -- ==============================================================
--- 📡 MONITOR: Interceptar tráfico de red en tiempo real
+-- 📡 MONITOR: Escuchar tráfico S→C de forma PASIVA
+-- SIN hookmetamethod (no cuelga el juego)
+-- Solo conecta OnClientEvent a los remotes
 -- ==============================================================
 local function StartMonitor()
     if isMonitoring then
@@ -370,11 +387,11 @@ local function StartMonitor()
         MonitorBtn.Text = "📡 MONITOR"
         MonitorBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 50)
         AddLog("MON", "⏹️ Monitor DETENIDO", Color3.fromRGB(255,200,100))
-        -- Limpiar hooks
         for _, conn in pairs(hookConnections) do
             pcall(function() conn:Disconnect() end)
         end
         hookConnections = {}
+        AutoSave()
         return
     end
     
@@ -382,133 +399,50 @@ local function StartMonitor()
     MonitorBtn.Text = "⏹️ PARAR"
     MonitorBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 30)
     
-    Sep("MONITOR DE TRÁFICO EN TIEMPO REAL")
-    AddLog("MON", "📡 Interceptando TODOS los RemoteEvents/Functions...", Color3.fromRGB(0,255,100))
-    AddLog("MON", "💡 Empieza a minar para ver el tráfico!", Color3.fromRGB(255,255,100))
+    Sep("MONITOR PASIVO (S→C) — Sin hooks")
+    AddLog("MON", "📡 Conectando a RemoteEvents (solo Server→Client)...", Color3.fromRGB(0,255,100))
+    AddLog("MON", "💡 Empieza a minar! Verás lo que el servidor envía.", Color3.fromRGB(255,255,100))
+    AddLog("MON", "💾 Auto-guarda en: " .. AUTO_SAVE_PATH, Color3.fromRGB(200,200,100))
     
-    -- Hook TODOS los remotes via __namecall
-    local origNamecall = nil
-    local hookOk = pcall(function()
-        origNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            local args = {...}
-            
-            if isMonitoring and not checkcaller() then
-                -- FireServer (cliente → servidor)
-                if method == "FireServer" and self:IsA("RemoteEvent") then
-                    local remoteName = self.Name
-                    local fullPath = ""
-                    pcall(function() fullPath = self:GetFullName() end)
-                    
-                    -- Timestamp para calcular cooldowns
-                    local now = tick()
-                    local lastHit = hitTimestamps[remoteName]
-                    local cooldown = lastHit and string.format("%.3fs", now - lastHit) or "FIRST"
-                    hitTimestamps[remoteName] = now
-                    
-                    -- Registrar
-                    table.insert(remoteTraffic, {
-                        Time = os.date("%H:%M:%S"),
-                        Tick = now,
-                        Dir = "C→S",
-                        Type = "Event",
-                        Name = remoteName,
-                        Path = fullPath,
-                        Args = args,
-                        Cooldown = cooldown
-                    })
-                    
-                    AddLog("C→S", string.format("🔺 %s (cd:%s)", remoteName, cooldown), Color3.fromRGB(255,150,80))
-                    for i, arg in ipairs(args) do
-                        AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg)), 
-                            Color3.fromRGB(255,200,150))
-                    end
-                end
+    -- Conectar OnClientEvent a CADA RemoteEvent
+    local connCount = 0
+    for _, obj in pairs(RS:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            local conn = obj.OnClientEvent:Connect(function(...)
+                if not isMonitoring then return end
+                local args = {...}
+                local remoteName = obj.Name
                 
-                -- InvokeServer (cliente → servidor con respuesta)
-                if method == "InvokeServer" and self:IsA("RemoteFunction") then
-                    local remoteName = self.Name
-                    local fullPath = ""
-                    pcall(function() fullPath = self:GetFullName() end)
-                    
-                    local now = tick()
-                    local lastHit = hitTimestamps[remoteName]
-                    local cooldown = lastHit and string.format("%.3fs", now - lastHit) or "FIRST"
-                    hitTimestamps[remoteName] = now
-                    
-                    table.insert(remoteTraffic, {
-                        Time = os.date("%H:%M:%S"),
-                        Tick = now,
-                        Dir = "C→S",
-                        Type = "Function",
-                        Name = remoteName,
-                        Path = fullPath,
-                        Args = args,
-                        Cooldown = cooldown
-                    })
-                    
-                    AddLog("C→S", string.format("🔶 %s (cd:%s) [RF]", remoteName, cooldown), Color3.fromRGB(255,200,50))
-                    for i, arg in ipairs(args) do
-                        AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg)),
-                            Color3.fromRGB(255,230,150))
-                    end
-                end
-            end
-            
-            return origNamecall(self, ...)
-        end)
-    end)
-    
-    if not hookOk then
-        AddLog("ERR", "❌ hookmetamethod no disponible, usando método alternativo", Color3.fromRGB(255,100,100))
-        
-        -- Alternativa: conectar OnClientEvent a cada remote
-        for _, obj in pairs(RS:GetDescendants()) do
-            if obj:IsA("RemoteEvent") then
-                local conn = obj.OnClientEvent:Connect(function(...)
-                    if not isMonitoring then return end
-                    local args = {...}
-                    
-                    table.insert(remoteTraffic, {
-                        Time = os.date("%H:%M:%S"),
-                        Tick = tick(),
-                        Dir = "S→C",
-                        Type = "Event",
-                        Name = obj.Name,
-                        Path = obj:GetFullName(),
-                        Args = args
-                    })
-                    
-                    AddLog("S→C", string.format("🔻 %s", obj.Name), Color3.fromRGB(100,200,255))
-                    for i, arg in ipairs(args) do
-                        AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg)),
+                local now = tick()
+                local lastHit = hitTimestamps[remoteName]
+                local cooldown = lastHit and string.format("%.3fs", now - lastHit) or "FIRST"
+                hitTimestamps[remoteName] = now
+                
+                table.insert(remoteTraffic, {
+                    Time = os.date("%H:%M:%S"),
+                    Tick = now,
+                    Dir = "S→C",
+                    Type = "Event",
+                    Name = remoteName,
+                    Path = obj:GetFullName(),
+                    Args = args,
+                    Cooldown = cooldown
+                })
+                
+                AddLog("S→C", string.format("🔻 %s (cd:%s)", remoteName, cooldown), Color3.fromRGB(100,200,255))
+                for i, arg in ipairs(args) do
+                    if i <= 8 then -- Limitar args mostrados para no saturar
+                        AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg):sub(1,200)),
                             Color3.fromRGB(150,200,255))
                     end
-                end)
-                table.insert(hookConnections, conn)
-            end
-        end
-        AddLog("MON", string.format("Conectado a %d RemoteEvents (solo S→C)", #hookConnections), Color3.fromRGB(200,200,100))
-    else
-        AddLog("MON", "✅ hookmetamethod activo (C→S + S→C)", Color3.fromRGB(0,255,100))
-        
-        -- También conectar OnClientEvent para ver respuestas del servidor
-        for _, obj in pairs(RS:GetDescendants()) do
-            if obj:IsA("RemoteEvent") then
-                local conn = obj.OnClientEvent:Connect(function(...)
-                    if not isMonitoring then return end
-                    local args = {...}
-                    
-                    AddLog("S→C", string.format("🔻 %s", obj.Name), Color3.fromRGB(100,150,255))
-                    for i, arg in ipairs(args) do
-                        AddLog("ARG", string.format("  [%d] %s = %s", i, typeof(arg), Serialize(arg)),
-                            Color3.fromRGB(150,180,255))
-                    end
-                end)
-                table.insert(hookConnections, conn)
-            end
+                end
+            end)
+            table.insert(hookConnections, conn)
+            connCount = connCount + 1
         end
     end
+    
+    AddLog("MON", string.format("✅ Conectado a %d RemoteEvents", connCount), Color3.fromRGB(0,255,100))
 end
 
 -- ==============================================================
@@ -845,12 +779,11 @@ local function AnalyzeCooldowns()
 end
 
 -- ============ BUTTON EVENTS ============
-ScanBtn.MouseButton1Click:Connect(function() task.spawn(ScanMines) end)
+ScanBtn.MouseButton1Click:Connect(function() task.spawn(function() ScanMines(); AutoSave() end) end)
 MonitorBtn.MouseButton1Click:Connect(function() task.spawn(StartMonitor) end)
-DecompBtn.MouseButton1Click:Connect(function() task.spawn(DecompileScripts) end)
+DecompBtn.MouseButton1Click:Connect(function() task.spawn(function() DecompileScripts(); AutoSave() end) end)
 MemBtn.MouseButton1Click:Connect(function() 
-    task.spawn(ScanMemory) 
-    task.spawn(AnalyzeCooldowns)
+    task.spawn(function() ScanMemory(); AnalyzeCooldowns(); AutoSave() end)
 end)
 
 CopyBtn.MouseButton1Click:Connect(function()
