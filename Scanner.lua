@@ -51,7 +51,7 @@ Panel.Parent = SG
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -35, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(10, 40, 80)
-Title.Text = " ⛏️ MINING DEEP ANALYZER v1.0"
+Title.Text = " ⛏️ MINING DEEP ANALYZER v1.3"
 Title.TextColor3 = Color3.fromRGB(100, 220, 255)
 Title.TextSize = 13; Title.Font = Enum.Font.Code
 Title.TextXAlignment = Enum.TextXAlignment.Left
