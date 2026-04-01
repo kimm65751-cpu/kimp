@@ -208,7 +208,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAEeeS / LOGS "
+BoardTitle.Text = " 📜AAA EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -499,9 +499,10 @@ BtnPing.MouseButton1Click:Connect(function()
                 local todasHerramientas = CS:GetTagged("Item")
                 local tomables = {}
                 for _, obj in ipairs(todasHerramientas) do
-                    -- Ignorar monedas o herramientas humanas ocupadas
+                    -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
-                        if obj.Name ~= "100" and not string.find(string.lower(obj.Name), "coin") then
+                        local n = string.lower(obj.Name)
+                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") then
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
