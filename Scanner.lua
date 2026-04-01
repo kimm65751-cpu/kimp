@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY VeeeMODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY111ODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -416,6 +416,16 @@ BtnPing.MouseButton1Click:Connect(function()
                                         pcall(ActualizarPizarraResolucion)
                                     end
                                 end
+                            -- 🔥 TERMÓMETRO REMOTO: El servidor envía temperatura aunque no lo tengas
+                            elseif string.find(n, "thermometerdisplay") then
+                                local temp = tonumber(args[2]) or 99
+                                if temp < 0 then
+                                    if not EvidenciasEncontradas["Temperaturas Heladas"] then
+                                        AddLog("❄️ TEMPERATURA DETECTADA: " .. string.format("%.1f", temp) .. "°C", Color3.fromRGB(100, 200, 255))
+                                        EvidenciasEncontradas["Temperaturas Heladas"] = true
+                                        pcall(ActualizarPizarraResolucion)
+                                    end
+                                end
                             -- 🔥 SPIRIT BOX: Los '####' en PostChatMessage = fantasma hablo por radio
                             elseif string.find(n, "chatmessage") or string.find(n, "chatbubble") then
                                 if string.find(msg, "###") then
@@ -457,12 +467,14 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- Palabras válidas para herramientas (Ignorar monedas/huesos que son solo números o coins)
-                local TOOL_WORDS = {"emf", "spirit", "box", "therm", "uv", "light", "camera", "video", "book", "journal", "laser", "dot", "projector", "lidar", "scanner", "crucifix", "smudge", "salt", "candle", "sanit", "photo"}
+                -- Palabras válidas para ESTRICTAMENTE herramientas de evidencia
+                local TOOL_WORDS = {"emf", "spirit", "box", "therm", "uv", "camera", "video", "book", "journal", "laser", "dot", "projector", "lidar", "scanner"}
                 
                 local function EsHerramientaValida(nombre)
                     local nl = string.lower(nombre)
-                    if tonumber(nl) then return false end -- Ignorar si el nombre es un número (ej. "100")
+                    if tonumber(nl) then return false end
+                    -- Bloquear objetos de mapa explícitamente
+                    if string.find(nl, "switch") or string.find(nl, "candle") or string.find(nl, "door") then return false end
                     for _, w in pairs(TOOL_WORDS) do
                         if string.find(nl, w) then return true end
                     end
