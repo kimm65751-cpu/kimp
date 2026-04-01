@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "rrrrESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -1017,59 +1017,54 @@ BtnEvidence.MouseButton1Click:Connect(function()
     end
 end)
 
-BtnDump.Text = "🧠 DEEP SCAN (FUGAS)"
+BtnDump.Text = "🧠 DEEP SCAN (DESCOMPILAR)"
 BtnDump.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
 BtnDump.MouseButton1Click:Connect(function()
-    AddLog("━━━ DEEP SCAN V8.27 (CAZA DE MEMORIA) ━━━", Color3.fromRGB(200, 100, 255))
-    AddLog("🔎 Escaneando millones de variables en RAM...", Color3.fromRGB(200, 200, 0))
+    AddLog("━━━ DEEP SCAN V8.28 (DESCOMPILADOR) ━━━", Color3.fromRGB(200, 100, 255))
+    AddLog("🔎 Extrayendo Código Fuente y Jerarquía de Módulos...", Color3.fromRGB(200, 200, 0))
     
-    local found = false
-    local leakLocs = {}
-    
-    local ghostsToHunt = {}
-    for ghostName, _ in pairs(GHOST_DB) do
-        table.insert(ghostsToHunt, ghostName)
-    end
-    
-    local function CheckFuga(valor, ubicacion)
-        if type(valor) == "string" and valor ~= "" then
-            local strL = string.lower(valor)
-            for _, ghost in ipairs(ghostsToHunt) do
-                if strL == string.lower(ghost) then
-                    local locL = string.lower(ubicacion)
-                    -- Filtrar nuestros propios scripts y GUI del juego que solo sean diccionarios
-                    if not string.find(locL, "demonologyspeedrunpro") and not string.find(locL, "journal") and not string.find(locL, "dictionary") and not string.find(locL, "playergui") then
-                        if not leakLocs[ubicacion] then
-                            leakLocs[ubicacion] = true
-                            AddLog("🚨 ¡FUGA DE MEMORIA!: Fantasma real es -> " .. ghost, Color3.fromRGB(255, 50, 50))
-                            AddLog("   └─> CÓDIGO FUENTE: " .. ubicacion, Color3.fromRGB(255, 100, 100))
-                            found = true
-                        end
+    task.spawn(function()
+        if writefile or appendfile then
+            local t = "\n============================================================\n"
+            t = t .. "🧠 DEMONOLOGY EXPORTACIÓN JERÁRQUICA: MÓDULOS DE JUEGO Y ARMAS\n"
+            t = t .. "FECHA: " .. os.date("%c") .. "\n"
+            t = t .. "============================================================\n\n"
+            
+            pcall(function() if appendfile then appendfile("OjoDeDios_DeepLog.txt", t) end end)
+            
+            local scriptsCount = 0
+            for _, obj in pairs(game:GetDescendants()) do
+                if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+                    -- Filtrar el propio roblox core
+                    if not string.find(obj:GetFullName(), "CoreGui") and not string.find(obj:GetFullName(), "CorePackages") then
+                        scriptsCount = scriptsCount + 1
+                        local treeData = "\n[+] " .. obj.ClassName .. " | Ubicación Jerárquica: " .. obj:GetFullName() .. "\n"
+                        
+                        -- Intentar ingeniería inversa al texto crudo si el Executor tiene permisos Nivel 7
+                        pcall(function()
+                            if decompile then
+                                local source = decompile(obj)
+                                if source and source ~= "" then
+                                    treeData = treeData .. "--- CÓDIGO FUENTE ("..obj.Name..") ---\n"
+                                    treeData = treeData .. source .. "\n"
+                                    treeData = treeData .. "--- FIN DE " .. obj.Name .. " ---\n"
+                                else
+                                    treeData = treeData .. "   └─> [Bloqueado por Obfuscación o Vacio]\n"
+                                end
+                            else
+                                treeData = treeData .. "   └─> [Tu executor actual no soporta descompilación (decompile() no encontrado)]\n"
+                            end
+                        end)
+                        
+                        -- Guardar en disco progresivamente para evitar colapso de RAM
+                        pcall(function() if appendfile then appendfile("OjoDeDios_DeepLog.txt", treeData) end end)
                     end
                 end
             end
-        end
-    end
-    
-    task.spawn(function()
-        for _, obj in pairs(game:GetDescendants()) do
-            pcall(function()
-                if obj:IsA("StringValue") then
-                    CheckFuga(obj.Value, obj:GetFullName() .. " (StringValue)")
-                end
-                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    CheckFuga(obj.Text, obj:GetFullName() .. " (Texto UI)")
-                end
-                local objAttrs = obj:GetAttributes()
-                for k, v in pairs(objAttrs) do
-                    CheckFuga(tostring(v), obj:GetFullName() .. " [Attribute: " .. tostring(k) .. "]")
-                end
-            end)
-        end
-        if not found then
-            AddLog("✅ RESULTADO ANÁLISIS FORENSE:", Color3.fromRGB(100, 255, 100))
-            AddLog("   └─> El Servidor NO FILTRA el nombre a los jugadores. Código protegido.", Color3.fromRGB(150, 255, 150))
-            AddLog("   └─> CONCLUSIÓN: Es matemáticamente obligatorio usar herramientas.", Color3.fromRGB(150, 255, 150))
+            AddLog("✅ ¡Exportación Completada! ("..scriptsCount.." Módulos rastreados). Revisa el .txt.", Color3.fromRGB(100, 255, 100))
+            AddLog("   └─> Cierra el juego si sientes lag. Todo está seguro en tu disco.", Color3.fromRGB(150, 255, 150))
+        else
+            AddLog("❌ ERROR: Tu executor no tiene permisos de lectura/escritura (writefile).", Color3.fromRGB(255, 50, 50))
         end
     end)
 end)
