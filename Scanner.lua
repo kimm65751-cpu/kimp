@@ -900,7 +900,6 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         end)
                     end
                 end)
-                end
                 task.wait(2)
             end
         end)
