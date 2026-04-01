@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️3& ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -484,27 +484,34 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- === AUTO-LABORATORIO V8.10: HACK DE COLLECTION SERVICE ===
+                -- === AUTO-LABORATORIO V8.10/8.21: HACK DE COLLECTION SERVICE ==================
                 local CS = game:GetService("CollectionService")
+                if not _G.ObjetosSecuestrados then _G.ObjetosSecuestrados = {} end
                 
-                -- Buscar todas las herramientas existentes en el juego etiquetadas internamente por el desarrollador
+                -- Buscar todas las herramientas existentes en el juego etiquetadas internamente
                 local todasHerramientas = CS:GetTagged("Item")
                 local tomables = {}
                 for _, obj in ipairs(todasHerramientas) do
-                    -- Filtrar monedas (como "100") y objetos que ya tiene alguien
+                    -- Filtrar monedas, objetos equipados y objetos YA SECUESTRADOS en rondas previas
+                    local targetName = obj:GetAttribute("ItemName") or obj.Name
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
                         if obj.Name ~= "100" and not string.find(string.lower(obj.Name), "coin") then
-                            table.insert(tomables, obj)
+                            if not _G.ObjetosSecuestrados[targetName] then
+                                table.insert(tomables, obj)
+                            end
                         end
                     end
                 end
                 
-                -- Fallback (Inyección de Strings V2) por si el CS falla
+                -- Fallback (Inyección de Strings V2) por si el CS falla y no hemos sacado nada aún
                 if #tomables == 0 then
-                    tomables = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
+                    local count = 0; for k,v in pairs(_G.ObjetosSecuestrados) do count = count + 1 end
+                    if count == 0 then
+                        tomables = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
+                    end
                 end
                 
-                AddLog("━━━ DEMONOLOGY ZERO-DAY V8.11: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
+                AddLog("━━━ DEMONOLOGY ZERO-DAY V8.21: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
                 
                 for i, target in ipairs(tomables) do
                     if not pingActivo then break end
@@ -632,6 +639,9 @@ BtnPing.MouseButton1Click:Connect(function()
                                         end
                                     end)
                                     AddLog("       📍 Objeto plantado en cuarto del fantasma.", Color3.fromRGB(200, 200, 255))
+                                    -- ¡MEMORIA CACHE! Ignorar este objeto particular en futuras rondas de escaneo
+                                    _G.ObjetosSecuestrados[capturedItemName] = true
+                                    _G.ObjetosSecuestrados[target.Name] = true
                                 end
                                 
                                 -- NO destruir localmente para no desvincular el ID
