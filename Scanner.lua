@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ aaaaaaaP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -870,7 +870,7 @@ BtnEvidence.MouseButton1Click:Connect(function()
                     
                     -- Book Written (Decal o Modelo de Libro Escrito)
                     if (string.find(nl, "write") or string.find(nl, "written")) and (obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Model")) then
-                        evName = "Escritura de Fantasmas"
+                        evName = "Escritura de fantasmas"
                         isEvi = true
                     end
                     
@@ -921,7 +921,6 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         
                         -- Hackear frecuencias del Lector EMF
                         if string.find(n, "emf") or string.find(attr, "emf") then
-                            -- Los EMF activan la luz roja (Index 5) poniéndola material Neon, o modificando un valor numérico
                             if item:GetAttribute("EMFLevel") then
                                 local lvl = tonumber(item:GetAttribute("EMFLevel"))
                                 if lvl and lvl >= 5 and not EvidenciasEncontradas["Nivel EMF 5"] then
@@ -931,7 +930,6 @@ BtnEvidence.MouseButton1Click:Connect(function()
                                 end
                             end
                             for _, desc in pairs(item:GetDescendants()) do
-                                -- Si hay un material Neon brillante en el bombillo 5 o rojo
                                 if desc:IsA("BasePart") and desc.Material == Enum.Material.Neon then
                                     if string.find(string.lower(desc.Name), "5") or string.find(string.lower(desc.Name), "red") then
                                         if not EvidenciasEncontradas["Nivel EMF 5"] then
@@ -941,6 +939,28 @@ BtnEvidence.MouseButton1Click:Connect(function()
                                         end
                                     end
                                 end
+                            end
+                        end
+                        
+                        -- Análisis de Tinta Forense (Libros Abandonados)
+                        if string.find(n, "book") or string.find(attr, "book") or string.find(n, "libro") or string.find(attr, "libro") then
+                            local hasInk = false
+                            if item:GetAttribute("Written") == true or item:GetAttribute("IsWritten") == true then hasInk = true end
+                            for _, desc in pairs(item:GetDescendants()) do
+                                local dName = string.lower(desc.Name)
+                                if desc:IsA("Decal") or desc:IsA("Texture") or desc:IsA("ImageLabel") then
+                                    local alpha = desc:IsA("ImageLabel") and desc.ImageTransparency or desc.Transparency
+                                    if alpha < 0.5 then
+                                        if string.find(dName, "writ") or string.find(dName, "text") or string.find(dName, "mess") or string.find(dName, "scrib") or string.find(dName, "ghost") or string.find(dName, "ink") or string.find(dName, "draw") then
+                                            hasInk = true
+                                        end
+                                    end
+                                end
+                            end
+                            if hasInk and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                ActualizarPizarraResolucion()
+                                AddLog("⭐ EVIDENCIA OBTENIDA: Escritura de fantasmas (Tinta Analizada)", Color3.fromRGB(255, 255, 255))
                             end
                         end
                     end
