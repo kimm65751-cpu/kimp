@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V21 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.012 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -278,14 +278,25 @@ BtnScan.MouseButton1Click:Connect(function()
         for _, v in pairs(getgc(true)) do
             if type(v) == "table" then
                 -- Buscar si la tabla guarda la identidad del fantasma o sus evidencias
-                local fType = rawget(v, "GhostType") or rawget(v, "Type") or rawget(v, "Ghost")
+                local fType = rawget(v, "GhostType") or rawget(v, "Type") or rawget(v, "Ghost") or rawget(v, "TrueGhost") or rawget(v, "GhostIdentity")
                 local hasEvi = rawget(v, "Evidence1") or rawget(v, "Evidence") or rawget(v, "Evidences")
                 
                 if fType and type(fType) == "string" and string.len(fType) > 2 then
-                    -- Filtrar cosas que no sean fantasmas
                     if string.match(fType, "^%a+$") then
                         RegistrarLog("SCAN", "🔥 IDENTIDAD OCULTA ENCONTRADA: " .. tostring(fType), Color3.fromRGB(255, 0, 0))
                         hallado = true
+                        
+                        -- [NUEVO] FORENSE DE LA TABLA (Vamos a ver qué más guarda el juego aquí)
+                        RegistrarLog("SCAN", "--- DUMP DE DATOS DE ESTA TABLA ---", Color3.fromRGB(255, 100, 255))
+                        for key, val in pairs(v) do
+                            local valType = type(val)
+                            if valType == "string" or valType == "number" or valType == "boolean" then
+                                RegistrarLog("TABLA", tostring(key) .. " = " .. tostring(val), Color3.fromRGB(200, 200, 255))
+                            elseif valType == "table" then
+                                RegistrarLog("TABLA", tostring(key) .. " = {Tabla Interna}", Color3.fromRGB(150, 150, 200))
+                            end
+                        end
+                        RegistrarLog("SCAN", "-----------------------------------", Color3.fromRGB(255, 100, 255))
                     end
                 end
                 
