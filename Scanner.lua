@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = "rrrrESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -643,19 +643,14 @@ BtnPing.MouseButton1Click:Connect(function()
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
                                 task.wait(0.5) -- Esperar a que el motor local amarre la heramienta a la mano
                                 
-                                -- Forzar Encendido (Hardware Level) - Doble pulso para asegurar
+                                -- Forzar Encendido Auténtico (Hardware Level) - Un Solo Pulso Táctico Analógico
                                 pcall(function()
-                                    if remToggle then remToggle:FireServer() end
                                     local vim = game:GetService("VirtualInputManager")
+                                    -- Enviando solo UN clic biológico. Si el script local lo procesa, él enviará el "ToggleItemState" al servidor naturalmente.
                                     vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
                                     task.wait(0.1)
                                     vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
-                                    task.wait(0.2)
-                                    vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                                    task.wait(0.1)
-                                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
-                                    -- Auto-guardado en log para el Deep Spy de uso de herramientas
-                                    if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_USED (Virtual D-Click): " .. capturedItemName .. "\n") end
+                                    if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_USED (Single Click): " .. capturedItemName .. "\n") end
                                 end)
                                 task.wait(1.5)
                                 
@@ -977,7 +972,7 @@ BtnEvidence.MouseButton1Click:Connect(function()
                                     local dName = string.lower(desc.Name)
                                     local alpha = desc:IsA("ImageLabel") and desc.ImageTransparency or desc:IsA("SurfaceGui") and 1 or desc.Transparency
                                     if alpha <= 0.5 then
-                                        if dName == "roblox" or dName == "decal" or dName == "image" or string.find(dName, "writ") or string.find(dName, "text") or string.find(dName, "draw") then
+                                        if string.find(dName, "writ") or string.find(dName, "text") or string.find(dName, "mess") or string.find(dName, "scrib") or string.find(dName, "ink") or string.find(dName, "draw") then
                                             hasInk = true
                                         end
                                     end
