@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 ErCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -435,18 +435,11 @@ BtnPing.MouseButton1Click:Connect(function()
                         end)
                         -- -------------------------------------------------------------
                         
-                        -- ORO PURO: ObjectiveCompleted con numero -> mapear a evidencia
+                        -- 🔥 V8.47: Se eliminó el mapeo roto de ObjectiveCompleted que causaba falsos positivos de 'Orbe Fantasma'.
+                        -- Los objetivos NO SON equivalentes a los IDs de evidencias.
                         if string.find(n, "objective") then
-                            AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
-                            local idx = tonumber(string.match(msg, "%d+"))
-                            if idx and EvidenciasEncontradas then
-                                local eviNombre = EVI_MAP_IDX[idx]
-                                if eviNombre then
-                                    AddLog("⭐ OBJETIVO "..idx.." = ".. eviNombre, Color3.fromRGB(255, 255, 0))
-                                    EvidenciasEncontradas[eviNombre] = true
-                                    pcall(ActualizarPizarraResolucion)
-                                end
-                            end
+                            AddLog("🎯 Notificación de Objetivo: " .. msg, Color3.fromRGB(200, 200, 200))
+                        
                         -- 🔥 TERMÓMETRO REMOTO: El servidor envía temperatura aunque no lo tengas
                         elseif string.find(n, "thermometerdisplay") then
                             local temp = tonumber(args[2]) or 99
@@ -654,32 +647,46 @@ BtnPing.MouseButton1Click:Connect(function()
                                 local posOriginal = LP.Character and LP.Character.PrimaryPart and LP.Character.PrimaryPart.CFrame or nil
                                 
                                 if ghostPos and LP.Character and LP.Character.PrimaryPart then
-                                    AddLog("       🚀 TP al fantasma: " .. tostring(ghostPos), Color3.fromRGB(200, 200, 255))
                                     local hrp = LP.Character.PrimaryPart
-                                    -- Congelar física para que el servidor no nos rebote
                                     pcall(function() hrp.Velocity = Vector3.new(0,0,0) end)
                                     pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0,0,0) end)
-                                    hrp.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 0.5, math.random(-2,2)))
-                                    -- Esperar a que el servidor registre nuestra nueva posición
+                                    
+                                    -- 🚀 V8.47: AUTO-AIM TÁCTICO (Noclip + LookAt) a 4 studs
+                                    local dirToGhost = (hrp.Position - ghostPos).Unit
+                                    if dirToGhost.Magnitude < 0.1 then dirToGhost = Vector3.new(0,0,1) end
+                                    local standPos = ghostPos + (dirToGhost * 4)
+                                    standPos = Vector3.new(standPos.X, ghostPos.Y, standPos.Z) -- Mismo nivel Y
+                                    
+                                    hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
+                                    AddLog("       🎯 Auto-Aim Target: Apuntando a " .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs", Color3.fromRGB(200, 200, 255))
                                     task.wait(1.5)
-                                    -- Re-confirmar posición (el servidor puede haberla rechazado)
-                                    hrp.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 0.5, math.random(-2,2)))
+                                    hrp.CFrame = CFrame.lookAt(standPos, ghostPos) -- Re-confirmar rotación en el server
                                     task.wait(0.3)
                                 else
                                     AddLog("       ⚠️ ghostPos NO encontrado, soltando aquí.", Color3.fromRGB(255, 100, 100))
                                 end
                                 
                                 -- ==========================================================
-                                -- ⚡ V8.45: ENCENDIDO ESPECÍFICO POR HERRAMIENTA
-                                -- Usa realItemName (nombre real, no ID numérico)
+                                -- ⚡ V8.47: ENCENDIDO Y USO AUTÓNOMO CON AUTO-AIM (MOUSE2)
                                 -- ==========================================================
                                 local itemNameLower = string.lower(tostring(realItemName))
                                 pcall(function()
-                                    if string.find(itemNameLower, "video camera") then
-                                        local camEvent = game.ReplicatedStorage.Events:FindFirstChild("EnableVideoCamera")
-                                        if camEvent then camEvent:FireServer(itemFalso) end
-                                        AddLog("       📹 Video Camera ENCENDIDA (EnableVideoCamera)", Color3.fromRGB(0, 255, 150))
-                                        
+                                    if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
+                                        -- Clic derecho para entrar en modo trípode/soporte
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
+                                        task.wait(0.2)
+                                        -- FireServer de la cámara si la tiene
+                                        if string.find(itemNameLower, "video camera") then
+                                            local camEvent = game.ReplicatedStorage.Events:FindFirstChild("EnableVideoCamera")
+                                            if camEvent then camEvent:FireServer(itemFalso) end
+                                        end
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
+                                        AddLog("       ✅ Herramienta Apuntada (Clic Derecho Simulado)", Color3.fromRGB(0, 255, 150))
+                                    elseif string.find(itemNameLower, "thermometer") then
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
+                                        task.wait(0.5)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
+                                        AddLog("       🌡️ Termómetro escaneado manualmente", Color3.fromRGB(0, 255, 150))
                                     elseif string.find(itemNameLower, "salt") then
                                         local saltEvent = game.ReplicatedStorage.Events:FindFirstChild("LaySaltPile")
                                         if saltEvent then saltEvent:FireServer() end
@@ -804,13 +811,16 @@ BtnPing.MouseButton1Click:Connect(function()
                             
                             AddLog("📖 Spirit Book detectado — vigilando escritura...", Color3.fromRGB(255, 200, 100))
                             
-                            -- Método 1: Vigilar CUALQUIER Decal/Texture nueva (sin filtrar nombres)
+                            -- Método 1: Vigilar CUALQUIER Decal/Texture nueva, pero filtrando las texturas base
                             item.DescendantAdded:Connect(function(desc)
                                 if not EvidenciasEncontradas["Escritura de fantasmas"] then
                                     if desc:IsA("Decal") or desc:IsA("Texture") or desc:IsA("SurfaceGui") then
-                                        EvidenciasEncontradas["Escritura de fantasmas"] = true
-                                        AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Decal en Spirit Book!)", Color3.fromRGB(255, 255, 0))
-                                        pcall(ActualizarPizarraResolucion)
+                                        local dn = string.lower(desc.Name)
+                                        if string.find(dn, "writ") or string.find(dn, "ink") or string.find(dn, "scrib") or string.find(dn, "draw") then
+                                            EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                            AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Tinta Activa en Book!)", Color3.fromRGB(255, 255, 0))
+                                            pcall(ActualizarPizarraResolucion)
+                                        end
                                     end
                                 end
                             end)
@@ -832,9 +842,8 @@ BtnPing.MouseButton1Click:Connect(function()
                             -- Método 3: Si el libro YA tiene Decals cuando llegamos (escritura pasada)
                             for _, desc in pairs(item:GetDescendants()) do
                                 if (desc:IsA("Decal") or desc:IsA("Texture")) and not EvidenciasEncontradas["Escritura de fantasmas"] then
-                                    -- Solo contar si NO es la textura base del libro
-                                    local parent = desc.Parent
-                                    if parent and parent:IsA("BasePart") and string.lower(parent.Name) ~= "main" then
+                                    local dn = string.lower(desc.Name)
+                                    if string.find(dn, "writ") or string.find(dn, "ink") or string.find(dn, "scrib") or string.find(dn, "draw") then
                                         EvidenciasEncontradas["Escritura de fantasmas"] = true
                                         AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Libro YA tenía marcas!)", Color3.fromRGB(255, 255, 0))
                                         pcall(ActualizarPizarraResolucion)
