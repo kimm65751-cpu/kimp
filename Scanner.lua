@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY111ODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMON333 ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -467,18 +467,18 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- Palabras válidas para ESTRICTAMENTE herramientas de evidencia
-                local TOOL_WORDS = {"emf", "spirit", "box", "therm", "uv", "camera", "video", "book", "journal", "laser", "dot", "projector", "lidar", "scanner"}
+                -- FILTRO NEGATIVO: En vez de adivinar el nombre de la herramienta, descartamos la basura del mapa
+                -- Así atraparemos el ítem sin importar qué nombre raro tenga internamente
+                local NOT_TOOLS = {"door", "switch", "fuse", "candle", "drawer", "cabinet", "locker", "closet", "key", "bone", "skull", "coin", "tv", "bed", "hide", "generator", "lightswitch", "hiding", "radio"}
                 
                 local function EsHerramientaValida(nombre)
                     local nl = string.lower(nombre)
                     if tonumber(nl) then return false end
-                    -- Bloquear objetos de mapa explícitamente
-                    if string.find(nl, "switch") or string.find(nl, "candle") or string.find(nl, "door") then return false end
-                    for _, w in pairs(TOOL_WORDS) do
-                        if string.find(nl, w) then return true end
+                    
+                    for _, bad in pairs(NOT_TOOLS) do
+                        if string.find(nl, bad) then return false end
                     end
-                    return false
+                    return true
                 end
                 
                 -- Escanear la camioneta/mapa por objetos físicos interactivos válidos
