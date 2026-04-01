@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️44 & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -515,12 +515,12 @@ BtnPing.MouseButton1Click:Connect(function()
                     local remChange = game.ReplicatedStorage:FindFirstChild("ChangeSelectedItem", true)
                     
                     -- ==========================================
-                    -- 0. VACIAR SLOTS VIRTUALES (Forzar Índices)
+                    -- 0. VACIAR SLOTS VIRTUALES (LLAVE OFICIAL)
                     -- ==========================================
                     for slot = 1, 4 do
+                        local slotStr = "InvSlot" .. slot
                         if remDrop then 
-                            pcall(function() remDrop:FireServer(slot) end)
-                            pcall(function() remDrop:FireServer(tostring(slot)) end)
+                            pcall(function() remDrop:FireServer(slotStr) end)
                         end
                         task.wait(0.1)
                     end
@@ -533,11 +533,12 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                     task.wait(0.8)
                     
-                    -- 2. Forzar al servidor a materializar simulando selección de todos los posibles slots
+                    -- 2. Forzar al servidor a materializar simulando selección oficial
                     for slot = 1, 4 do
+                        local slotStr = "InvSlot" .. slot
                         if remChange then 
-                            pcall(function() remChange:FireServer(slot) end)
-                            pcall(function() remChange:FireServer(tostring(slot)) end)
+                            pcall(function() remChange:FireServer(slotStr) end)
+                            pcall(function() remChange:FireServer(slot) end) -- fallback just in case
                         end
                         task.wait(0.2)
                     end
@@ -568,21 +569,19 @@ BtnPing.MouseButton1Click:Connect(function()
                         if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
                         task.wait(2.5) -- Pausa Crítica
                         
-                        -- Expulsar el objeto usando índices numéricos y objeto total
+                        -- Expulsar el objeto usando las llaves de red oficiales
                         if remDrop then 
                             for slot = 1, 4 do
-                                pcall(function() remDrop:FireServer(slot) end)
-                                pcall(function() remDrop:FireServer(tostring(slot)) end)
+                                pcall(function() remDrop:FireServer("InvSlot" .. slot) end)
                             end
                             pcall(function() remDrop:FireServer(itemFalso) end)
-                            pcall(function() remDrop:FireServer(itemFalso.Name) end) 
                         end
                         task.wait(0.5)
                         
                         -- Forzar desaparición local
                         pcall(function() itemFalso:Destroy() end)
                     else
-                        AddLog("   └─> Carga fallida. Slot bloqueado por inventario duro.", Color3.fromRGB(150, 150, 150))
+                        AddLog("   └─> Fallo al confirmar slot. La ID de equipamiento fue denegada.", Color3.fromRGB(150, 150, 150))
                     end
                     
                     -- Pausa anticheat
