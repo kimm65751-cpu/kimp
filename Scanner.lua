@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DE.& ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -521,42 +521,50 @@ BtnPing.MouseButton1Click:Connect(function()
                     local remDrop = game.ReplicatedStorage.Events:FindFirstChild("RequestItemDrop")
                     local remChange = game.ReplicatedStorage.Events:FindFirstChild("ChangeSelectedItem")
                     local remEquipRemote = game.ReplicatedStorage.Events:FindFirstChild("RequestItemEquip")
+                    local remToggle = game.ReplicatedStorage.Events:FindFirstChild("ToggleItemState")
                     
                     -- ==========================================
-                    -- 0. LECTURA DE VERDAD ABSOLUTA (SERVER ATTRIBUTES)
+                    -- 0. VACIADOR BLINDADO (El servidor exige equipar antes de tirar)
                     -- ==========================================
                     local function GetFreeSlot()
-                        for i=1, 3 do
-                            if not LP:GetAttribute("InvSlot" .. i) or LP:GetAttribute("InvSlot" .. i) == "" then return "InvSlot"..i end
+                        for _i=1, 3 do
+                            if not LP:GetAttribute("InvSlot" .. _i) or LP:GetAttribute("InvSlot" .. _i) == "" then return "InvSlot".._i end
                         end
                         return nil
                     end
                     
                     if not GetFreeSlot() then
-                        -- El inventario está rigurosamente lleno en el servidor, vaciamos a la fuerza
-                        for i=1, 3 do
-                            local slotName = "InvSlot" .. i
+                        for _i=1, 3 do
+                            local slotName = "InvSlot" .. _i
                             local val = LP:GetAttribute(slotName)
                             if val and val ~= "" and not string.find(string.lower(val), "journal") then
-                                if remDrop then pcall(function() remDrop:FireServer(slotName) end) end
+                                pcall(function()
+                                    if remChange then remChange:FireServer(slotName) end
+                                    task.wait(0.2)
+                                    if remDrop then remDrop:FireServer(slotName) end
+                                end)
                                 task.wait(0.2)
                             end
                         end
                     end
+
+                    -- Capturar memoria de inventario ANTES de recoger
+                    local memAntes = {}
+                    for _i=1, 3 do memAntes["InvSlot".._i] = LP:GetAttribute("InvSlot".._i) end
 
                     -- 1. Intentar recoger objetivo real
                     if remPickup then 
                         pcall(function() remPickup:FireServer(target) end)
                     end
                     
-                    -- Esperar confirmación criptográfica de subida (max 1.5s)
+                    -- Esperar a que un Slot CAMBIE (diferente a memAntes)
                     local filledSlot = nil
                     local capturedItemName = nil
                     for timer = 1, 15 do
-                        for i=1, 3 do
-                            local val = LP:GetAttribute("InvSlot"..i)
-                            if val and val ~= "" and not string.find(string.lower(val), "journal") then
-                                filledSlot = "InvSlot"..i
+                        for _i=1, 3 do
+                            local val = LP:GetAttribute("InvSlot".._i)
+                            if val and val ~= "" and val ~= memAntes["InvSlot".._i] and not string.find(string.lower(val), "journal") then
+                                filledSlot = "InvSlot".._i
                                 capturedItemName = val
                                 break
                             end
@@ -566,14 +574,10 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                     
                     if filledSlot and capturedItemName then
-                        -- 2. Equipar basándonos en las reglas de estado
+                        -- 2. Equipar
                         pcall(function()
-                            if remChange then
-                                remChange:FireServer(filledSlot)
-                            end
-                            if remEquipRemote then
-                                remEquipRemote:FireServer(filledSlot)
-                            end
+                            if remChange then remChange:FireServer(filledSlot) end
+                            if remEquipRemote then remEquipRemote:FireServer(filledSlot) end
                         end)
                         
                         -- Esperar a que el servidor confirme que lo tenemos en mano
@@ -587,7 +591,7 @@ BtnPing.MouseButton1Click:Connect(function()
                         end
                         
                         if materializado then
-                            -- 3. Buscar la réplica física
+                            -- 3. Buscar la réplica física local
                             local itemFalso = nil
                             if LP.Character then
                                 for _, v in pairs(LP.Character:GetChildren()) do
@@ -604,11 +608,11 @@ BtnPing.MouseButton1Click:Connect(function()
                             if itemFalso then
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
                                 
-                                -- Generar evidencia (El clic derecho es simplemente ToggleItemState sin booleanos extra)
+                                -- Encender (Clic Derecho real en el código fuente de devs)
                                 if remToggle then pcall(function() remToggle:FireServer(itemFalso) end) end
-                                task.wait(1.5) -- Pausa corta de encendido
+                                task.wait(1.5) 
                                 
-                                -- Buscar ubicación del fantasma en el mapa
+                                -- Buscar centro de masa del fantasma
                                 local ghostPos = nil
                                 for _, obj in pairs(workspace:GetDescendants()) do
                                     if obj:IsA("Model") and (obj:GetAttribute("IsGhost") == true or string.find(string.lower(obj.Name), "ghost")) then
@@ -617,7 +621,7 @@ BtnPing.MouseButton1Click:Connect(function()
                                     end
                                 end
                                 
-                                -- Desechar oficial
+                                -- Desechar Oficial
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
                                 task.wait(0.5)
                                 
