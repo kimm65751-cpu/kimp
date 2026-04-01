@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 ErCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -635,11 +635,13 @@ BtnPing.MouseButton1Click:Connect(function()
                             end
                             
                             if itemFalso then
-                                AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
+                                -- V8.45: Resolver el NOMBRE REAL de la herramienta (el slot guarda IDs numéricos)
+                                local realItemName = itemFalso:GetAttribute("ItemName") or itemFalso:GetAttribute("DisplayName") or itemFalso.Name or capturedItemName
+                                AddLog("   └─> ¡MATERIALIZADO!: " .. tostring(realItemName) .. " (slot=" .. capturedItemName .. ")", Color3.fromRGB(150, 255, 150))
                                 task.wait(0.5)
                                 
                                 -- ==========================================================
-                                -- 🚀 V8.43: TELETRANSPORTE PRIMERO, LUEGO ENCENDER, LUEGO SOLTAR
+                                -- 🚀 V8.45: TELETRANSPORTE BLINDADO AL CUARTO DEL FANTASMA
                                 -- ==========================================================
                                 local ghostPos = nil
                                 for _, g_obj in pairs(workspace:GetDescendants()) do
@@ -651,33 +653,39 @@ BtnPing.MouseButton1Click:Connect(function()
                                 
                                 local posOriginal = LP.Character and LP.Character.PrimaryPart and LP.Character.PrimaryPart.CFrame or nil
                                 
-                                -- 1. Teletransportar al cuarto del fantasma
                                 if ghostPos and LP.Character and LP.Character.PrimaryPart then
-                                    LP.Character.PrimaryPart.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-3,3), 0, math.random(-3,3)))
+                                    AddLog("       🚀 TP al fantasma: " .. tostring(ghostPos), Color3.fromRGB(200, 200, 255))
+                                    local hrp = LP.Character.PrimaryPart
+                                    -- Congelar física para que el servidor no nos rebote
+                                    pcall(function() hrp.Velocity = Vector3.new(0,0,0) end)
+                                    pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0,0,0) end)
+                                    hrp.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 0.5, math.random(-2,2)))
+                                    -- Esperar a que el servidor registre nuestra nueva posición
+                                    task.wait(1.5)
+                                    -- Re-confirmar posición (el servidor puede haberla rechazado)
+                                    hrp.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 0.5, math.random(-2,2)))
                                     task.wait(0.3)
+                                else
+                                    AddLog("       ⚠️ ghostPos NO encontrado, soltando aquí.", Color3.fromRGB(255, 100, 100))
                                 end
                                 
                                 -- ==========================================================
-                                -- ⚡ V8.43: ENCENDIDO ESPECÍFICO POR HERRAMIENTA
-                                -- Basado en el código fuente descompilado de cada LocalScript
+                                -- ⚡ V8.45: ENCENDIDO ESPECÍFICO POR HERRAMIENTA
+                                -- Usa realItemName (nombre real, no ID numérico)
                                 -- ==========================================================
-                                local itemNameLower = string.lower(capturedItemName)
+                                local itemNameLower = string.lower(tostring(realItemName))
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") then
-                                        -- Video Camera: usa EnableVideoCamera (NO ToggleItemState)
                                         local camEvent = game.ReplicatedStorage.Events:FindFirstChild("EnableVideoCamera")
                                         if camEvent then camEvent:FireServer(itemFalso) end
                                         AddLog("       📹 Video Camera ENCENDIDA (EnableVideoCamera)", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "salt") then
-                                        -- Salt Canister: usa LaySaltPile para soltar trampa de sal
                                         local saltEvent = game.ReplicatedStorage.Events:FindFirstChild("LaySaltPile")
                                         if saltEvent then saltEvent:FireServer() end
                                         AddLog("       🧂 Sal derramada (LaySaltPile)", Color3.fromRGB(200, 200, 200))
                                     
-                                    elseif string.find(itemNameLower, "photo camera") then
-                                        -- Photo Camera: NO se enciende, se usa para tomar fotos
-                                        -- Fraude Fotográfico
+                                    elseif string.find(itemNameLower, "photo") then
                                         local photoSpoof = game.ReplicatedStorage.Events:FindFirstChild("TakePhotoWithCamera")
                                         if photoSpoof then
                                             AddLog("       📸 Generando 5 Fotos 3-Estrellas...", Color3.fromRGB(200, 255, 100))
@@ -692,80 +700,73 @@ BtnPing.MouseButton1Click:Connect(function()
                                         end
                                         
                                     elseif string.find(itemNameLower, "lidar") then
-                                        -- LIDAR: ToggleItemState + Spoofear detección instantánea
                                         if remToggle then remToggle:FireServer(itemFalso) end
                                         task.wait(0.3)
                                         local lidarSpoof = game.ReplicatedStorage.Events:FindFirstChild("DetectedGhostWithLIDAR")
                                         if lidarSpoof then
                                             lidarSpoof:FireServer()
-                                            AddLog("       ⭐ LIDAR Spoofeado (Marchitar instantáneo)", Color3.fromRGB(0, 255, 255))
+                                            AddLog("       ⭐ LIDAR Spoofeado (Marchitar)", Color3.fromRGB(0, 255, 255))
                                             EvidenciasEncontradas["Marchitar"] = true
                                             pcall(ActualizarPizarraResolucion)
                                         end
                                         
-                                    elseif string.find(itemNameLower, "blacklight") or string.find(itemNameLower, "uv") then
-                                        -- Blacklight: ToggleItemState + buscar huellas
+                                    elseif string.find(itemNameLower, "blacklight") or string.find(itemNameLower, "uv light") then
                                         if remToggle then remToggle:FireServer(itemFalso) end
                                         task.wait(0.3)
-                                        local handprints = workspace:FindFirstChild("Handprints")
-                                        if handprints then
-                                            for _, hp in pairs(handprints:GetChildren()) do
-                                                pcall(function()
-                                                    local sg = hp:FindFirstChildOfClass("SurfaceGui")
-                                                    if sg then
-                                                        local img = sg:FindFirstChildOfClass("ImageLabel")
-                                                        if img and img.ImageTransparency < 1 then
-                                                            local blHover = game.ReplicatedStorage.Events:FindFirstChild("BlacklightHoveredPrint")
-                                                            if blHover then blHover:FireServer(hp) end
-                                                            AddLog("       ⭐ Huellas UV detectadas!", Color3.fromRGB(0, 255, 255))
-                                                            EvidenciasEncontradas["Huellas Dactilares"] = true
-                                                            pcall(ActualizarPizarraResolucion)
+                                        pcall(function()
+                                            local handprints = workspace:FindFirstChild("Handprints")
+                                            if handprints then
+                                                for _, hp in pairs(handprints:GetChildren()) do
+                                                    pcall(function()
+                                                        local sg = hp:FindFirstChildOfClass("SurfaceGui")
+                                                        if sg then
+                                                            local img = sg:FindFirstChildOfClass("ImageLabel")
+                                                            if img and img.ImageTransparency < 1 then
+                                                                local blHover = game.ReplicatedStorage.Events:FindFirstChild("BlacklightHoveredPrint")
+                                                                if blHover then blHover:FireServer(hp) end
+                                                                EvidenciasEncontradas["Huellas Dactilares"] = true
+                                                                pcall(ActualizarPizarraResolucion)
+                                                            end
                                                         end
-                                                    end
-                                                end)
+                                                    end)
+                                                end
                                             end
-                                        end
+                                        end)
                                     
                                     elseif string.find(itemNameLower, "lantern") then
-                                        -- Lantern: usa ToggleLantern (NO ToggleItemState)
                                         local lanternEvent = game.ReplicatedStorage.Events:FindFirstChild("ToggleLantern")
                                         if lanternEvent then lanternEvent:FireServer() end
-                                        AddLog("       🏮 Lantern encendida (ToggleLantern)", Color3.fromRGB(255, 200, 50))
+                                        AddLog("       🏮 Lantern encendida", Color3.fromRGB(255, 200, 50))
                                     
                                     elseif string.find(itemNameLower, "lighter") then
-                                        -- Lighter: usa UseLighter
                                         local lighterEvent = game.ReplicatedStorage.Events:FindFirstChild("UseLighter")
                                         if lighterEvent then lighterEvent:FireServer() end
-                                        AddLog("       🔥 Lighter activado (UseLighter)", Color3.fromRGB(255, 150, 0))
+                                        AddLog("       🔥 Lighter activado", Color3.fromRGB(255, 150, 0))
                                     
                                     elseif string.find(itemNameLower, "music box") then
-                                        -- Music Box: usa PlayMusicBox (objeto maldito, provoca cacería)
                                         local musicEvent = game.ReplicatedStorage.Events:FindFirstChild("PlayMusicBox")
                                         if musicEvent then musicEvent:FireServer() end
-                                        AddLog("       🎵 Music Box activada (PlayMusicBox)", Color3.fromRGB(200, 100, 255))
+                                        AddLog("       🎵 Music Box activada", Color3.fromRGB(200, 100, 255))
                                     
                                     else
-                                        -- EMF, Thermometer, Laser Projector, Spirit Box, Flashlight:
-                                        -- Todos usan ToggleItemState:FireServer(instancia)
-                                        if itemFalso:GetAttribute("Enabled") ~= true then
-                                            if remToggle then remToggle:FireServer(itemFalso) end
-                                            AddLog("       🔋 Herramienta encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
-                                        end
+                                        -- EMF, Thermometer, Laser Projector, Spirit Box, Flashlight
+                                        if remToggle then remToggle:FireServer(itemFalso) end
+                                        AddLog("       🔋 " .. tostring(realItemName) .. " encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
                                     end
                                     
                                     if appendfile then 
-                                        appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_ACTIVATED: " .. capturedItemName .. "\n") 
+                                        appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_ACTIVATED: " .. tostring(realItemName) .. "\n") 
                                     end
                                 end)
                                 task.wait(0.5)
                                 
-                                -- 3. Soltar la herramienta (ya encendida, cae en el cuarto del fantasma)
+                                -- 3. Soltar (ya estamos en el cuarto del fantasma)
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
                                 task.wait(0.5)
                                 
-                                AddLog("       📍 Herramienta plantada EN el cuarto del fantasma.", Color3.fromRGB(200, 200, 255))
+                                AddLog("       📍 " .. tostring(realItemName) .. " plantada EN el cuarto.", Color3.fromRGB(200, 200, 255))
                                 
-                                -- 4. Regresar al jugador a su posición original
+                                -- 4. Regresar
                                 if posOriginal and LP.Character and LP.Character.PrimaryPart then
                                     LP.Character.PrimaryPart.CFrame = posOriginal
                                 end
@@ -790,34 +791,74 @@ BtnPing.MouseButton1Click:Connect(function()
                 end
                 
                 -- ========================================================
-                -- 📖 MONITOR DE LIBRO: Detectar escritura en tiempo real
+                -- 📖 V8.45: MONITOR DE LIBRO (Spirit Book)
+                -- El ItemName real es "Spirit Book" (confirmado en código fuente)
+                -- La escritura se manifiesta como Decals en el modelo del libro
                 -- ========================================================
                 if not _G.LibroMonitoreado then
                     _G.LibroMonitoreado = true
                     pcall(function()
-                        local CS = game:GetService("CollectionService")
-                        for _, item in ipairs(CS:GetTagged("Item")) do
-                            local itemName = string.lower(tostring(item:GetAttribute("ItemName") or item.Name))
-                            if string.find(itemName, "book") or string.find(itemName, "journal") or string.find(itemName, "writing") then
-                                item:GetAttributeChangedSignal("Written"):Connect(function()
-                                    if item:GetAttribute("Written") == true and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                        local function MonitorearLibro(item)
+                            local itemName = tostring(item:GetAttribute("ItemName") or "")
+                            if itemName ~= "Spirit Book" then return end
+                            
+                            AddLog("📖 Spirit Book detectado — vigilando escritura...", Color3.fromRGB(255, 200, 100))
+                            
+                            -- Método 1: Vigilar CUALQUIER Decal/Texture nueva (sin filtrar nombres)
+                            item.DescendantAdded:Connect(function(desc)
+                                if not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                    if desc:IsA("Decal") or desc:IsA("Texture") or desc:IsA("SurfaceGui") then
                                         EvidenciasEncontradas["Escritura de fantasmas"] = true
-                                        AddLog("⭐ EVIDENCIA OBTENIDA: Escritura de fantasmas (Libro Escrito en Vivo!)", Color3.fromRGB(255, 255, 0))
+                                        AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Decal en Spirit Book!)", Color3.fromRGB(255, 255, 0))
                                         pcall(ActualizarPizarraResolucion)
                                     end
-                                end)
-                                -- Vigilar también nuevos hijos (Decals de tinta apareciendo)
-                                item.DescendantAdded:Connect(function(desc)
-                                    if (desc:IsA("Decal") or desc:IsA("Texture")) and not EvidenciasEncontradas["Escritura de fantasmas"] then
-                                        local dn = string.lower(desc.Name)
-                                        if string.find(dn, "writ") or string.find(dn, "ink") or string.find(dn, "text") or string.find(dn, "mess") or string.find(dn, "scrib") or string.find(dn, "draw") then
-                                            EvidenciasEncontradas["Escritura de fantasmas"] = true
-                                            AddLog("⭐ EVIDENCIA OBTENIDA: Escritura de fantasmas (Tinta Detectada en Vivo!)", Color3.fromRGB(255, 255, 0))
-                                            pcall(ActualizarPizarraResolucion)
-                                        end
+                                end
+                            end)
+                            
+                            -- Método 2: Vigilar CUALQUIER cambio de atributo del libro
+                            item.AttributeChanged:Connect(function(attrName)
+                                if not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                    AddLog("📖 Spirit Book atributo cambió: " .. attrName .. " = " .. tostring(item:GetAttribute(attrName)), Color3.fromRGB(255, 200, 100))
+                                    -- Si el atributo indica escritura
+                                    local an = string.lower(attrName)
+                                    if string.find(an, "writ") or string.find(an, "drawn") or string.find(an, "used") or string.find(an, "active") then
+                                        EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                        AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Atributo Spirit Book!)", Color3.fromRGB(255, 255, 0))
+                                        pcall(ActualizarPizarraResolucion)
                                     end
-                                end)
+                                end
+                            end)
+                            
+                            -- Método 3: Si el libro YA tiene Decals cuando llegamos (escritura pasada)
+                            for _, desc in pairs(item:GetDescendants()) do
+                                if (desc:IsA("Decal") or desc:IsA("Texture")) and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                    -- Solo contar si NO es la textura base del libro
+                                    local parent = desc.Parent
+                                    if parent and parent:IsA("BasePart") and string.lower(parent.Name) ~= "main" then
+                                        EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                        AddLog("⭐ EVIDENCIA: Escritura de fantasmas (Libro YA tenía marcas!)", Color3.fromRGB(255, 255, 0))
+                                        pcall(ActualizarPizarraResolucion)
+                                    end
+                                end
                             end
+                        end
+                        
+                        -- Buscar en Items del workspace
+                        local items = workspace:FindFirstChild("Items")
+                        if items then
+                            for _, item in pairs(items:GetChildren()) do
+                                MonitorearLibro(item)
+                            end
+                            items.ChildAdded:Connect(function(newItem)
+                                task.wait(0.5)
+                                MonitorearLibro(newItem)
+                            end)
+                        end
+                        
+                        -- También buscar por CollectionService
+                        local CS = game:GetService("CollectionService")
+                        for _, item in ipairs(CS:GetTagged("Item")) do
+                            MonitorearLibro(item)
                         end
                     end)
                 end
@@ -1014,12 +1055,17 @@ BtnESP.MouseButton1Click:Connect(function()
                                 end
                                 
                                 -- =======================================================
-                                -- 🧠 PERFILADO PSICOLÓGICO Y ANATÓMICO (Comportamiento)
+                                -- 🧠 V8.46: PERFILADO PSICOLÓGICO Y ANATÓMICO CORREGIDO
                                 -- =======================================================
                                 local tieneCabeza = false
-                                for _, c in pairs(obj:GetChildren()) do
-                                    if c:IsA("BasePart") and string.find(string.lower(c.Name), "head") and c.Transparency < 1 then
-                                        tieneCabeza = true
+                                -- Usamos GetDescendants porque algunos modelos (como Rattle) tienen el MeshPart profundamente anidado
+                                for _, c in pairs(obj:GetDescendants()) do
+                                    if c:IsA("BasePart") or c:IsA("MeshPart") then
+                                        local n = string.lower(c.Name)
+                                        if string.find(n, "head") and c.Transparency < 1 then
+                                            tieneCabeza = true
+                                            break
+                                        end
                                     end
                                 end
                                 if not tieneCabeza then
@@ -1033,6 +1079,30 @@ BtnESP.MouseButton1Click:Connect(function()
                                     AddLog("🎭 TEXTURA ASIGNADA: " .. tostring(face.Texture), Color3.fromRGB(0, 255, 255))
                                 end
                                 
+                                -- =======================================================
+                                -- 🚨 SISTEMA DE ALERTA TEMPRANA CONTRA ATAQUES
+                                -- =======================================================
+                                if not _G.HuntMonitorActivo then
+                                    _G.HuntMonitorActivo = true
+                                    obj.AttributeChanged:Connect(function(attr)
+                                        local an = string.lower(attr)
+                                        if string.find(an, "hunt") and obj:GetAttribute(attr) == true then
+                                            AddLog("💀 ¡¡ALERTA MÁXIMA!! ¡EL FANTASMA ENTRÓ EN MODO CACERÍA!", Color3.fromRGB(255, 0, 0))
+                                            AddLog("   └─> Escóndete o usa un Crucifijo AHORA.", Color3.fromRGB(255, 100, 100))
+                                        elseif string.find(an, "visible") or string.find(an, "reveal") then
+                                            AddLog("👁️ EL FANTASMA ES VISIBLE AHORA MISMO: " .. tostring(obj:GetAttribute(attr)), Color3.fromRGB(255, 150, 0))
+                                        end
+                                    end)
+                                    
+                                    -- Chequear si la partida entera (workspace) entra en hunt
+                                    workspace.AttributeChanged:Connect(function(attr)
+                                        local an = string.lower(attr)
+                                        if string.find(an, "hunt") and workspace:GetAttribute(attr) == true then
+                                            AddLog("💀 ¡¡ALERTA GLOBAL!! ¡INICIO DE CACERÍA (Workspace)!", Color3.fromRGB(255, 0, 0))
+                                        end
+                                    end)
+                                end
+                                
                                 -- Hook Conductual de Sonido y Físicas (Solo se inyecta una vez)
                                 if not _G.ConductaHookeada then
                                     _G.ConductaHookeada = true
@@ -1040,17 +1110,21 @@ BtnESP.MouseButton1Click:Connect(function()
                                         pcall(function()
                                             -- Detectar Lamentos Personalizados (Skinwalker / Banshee)
                                             if desc:IsA("Sound") and desc.Name == "Hunt" then
-                                                -- El descompilador reveló que los "Wails" suben el PlaybackSpeed > 1
                                                 if desc.PlaybackSpeed > 1 then
                                                     AddLog("⚠️ ALERTA ACÚSTICA: 'Ghost Wail' (Grito Especial) Detectado!", Color3.fromRGB(255, 0, 0))
                                                     AddLog("   └─> CULPABLE POSIBLE: BANSHEE o SKINWALKER", Color3.fromRGB(255, 50, 50))
                                                 end
                                             end
                                             
-                                            -- Detectar Cristales/Espejos Rotos (Banshee)
-                                            if desc:IsA("Sound") and (string.find(string.lower(desc.Name), "glass") or string.find(string.lower(desc.Name), "shatter") or string.find(string.lower(desc.Name), "break")) then
-                                                AddLog("⚠️ ALERTA FÍSICA: ¡Cristal o Espejo Roto!", Color3.fromRGB(255, 0, 0))
-                                                AddLog("   └─> CULPABLE CASI SEGURO: BANSHEE", Color3.fromRGB(255, 50, 50))
+                                            -- Detectar Cristales/Espejos Rotos (Banshee) - Evitar pasos sobre cristal
+                                            if desc:IsA("Sound") then
+                                                local sn = string.lower(desc.Name)
+                                                if not string.find(sn, "footstep") and not string.find(sn, "step") then
+                                                    if string.find(sn, "glass") or string.find(sn, "shatter") or string.find(sn, "break") then
+                                                        AddLog("⚠️ ALERTA FÍSICA: ¡Cristal o Espejo Roto! (" .. desc.Name .. ")", Color3.fromRGB(255, 0, 0))
+                                                        AddLog("   └─> CULPABLE CASI SEGURO: BANSHEE", Color3.fromRGB(255, 50, 50))
+                                                    end
+                                                end
                                             end
                                         end)
                                     end)
