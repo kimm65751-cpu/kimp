@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V41 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -378,9 +378,29 @@ BtnESP.MouseButton1Click:Connect(function()
                                 for _, ch in pairs(obj:GetChildren()) do
                                     if ch:IsA("StringValue") or ch:IsA("IntValue") or ch:IsA("BoolValue") or ch:IsA("NumberValue") then
                                         count = count + 1
-                                        AddLog(">> [VARIABLE] " .. ch.Name .. " = " .. tostring(ch.Value), Color3.fromRGB(150, 200, 255))
+                                        AddLog(">> [VAR] " .. ch.Name .. " = " .. tostring(ch.Value), Color3.fromRGB(150, 200, 255))
                                     end
                                 end
+                                
+                                AddLog("🦴 [ESQUELETO 3D DEL FANTASMA]:", Color3.fromRGB(200, 100, 255))
+                                for _, desc in pairs(obj:GetDescendants()) do
+                                    -- Filtrar partes del cuerpo básico (Head, Torso, etc.)
+                                    local dn = desc.Name
+                                    if not string.find(dn, "Arm") and not string.find(dn, "Leg") and not string.find(dn, "Torso") and dn ~= "Humanoid" and dn ~= "HumanoidRootPart" and dn ~= "Head" then
+                                        count = count + 1
+                                        AddLog(">> [PIEZA] " .. desc.ClassName .. " | " .. dn, Color3.fromRGB(150, 150, 200))
+                                        
+                                        -- Auto-Detectar indicios basados en el esqueleto
+                                        if string.find(string.lower(dn), "emf") then
+                                            AddLog("⭐ EVIDENCIA LEAKEADA: NIVEL EMF 5", Color3.fromRGB(255, 255, 0))
+                                        elseif string.find(string.lower(dn), "spirit") or string.find(string.lower(dn), "box") then
+                                            AddLog("⭐ EVIDENCIA LEAKEADA: CAJA DE ESPÍRITUS", Color3.fromRGB(255, 255, 0))
+                                        elseif string.find(string.lower(dn), "wither") or string.find(string.lower(dn), "lidar") then
+                                            AddLog("⭐ EVIDENCIA LEAKEADA: MARCHITAR", Color3.fromRGB(255, 255, 0))
+                                        end
+                                    end
+                                end
+                                
                                 if count == 0 then
                                     AddLog("❌ El creador no filtró evidencias en el modelo.", Color3.fromRGB(255, 50, 50))
                                 else
