@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️44 & ESP "
+Title.Text = " ⏱️ D1111P "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -511,77 +511,110 @@ BtnPing.MouseButton1Click:Connect(function()
                     local n = type(target) == "string" and target or target.Name
                     AddLog("💀 ["..i.."] Secuestrando: " .. n, Color3.fromRGB(200, 100, 0))
                     
-                    local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
-                    local remChange = game.ReplicatedStorage:FindFirstChild("ChangeSelectedItem", true)
+                    local remDrop = game.ReplicatedStorage.Events:FindFirstChild("RequestItemDrop")
+                    local remChange = game.ReplicatedStorage.Events:FindFirstChild("ChangeSelectedItem")
+                    local remEquipRemote = game.ReplicatedStorage.Events:FindFirstChild("RequestItemEquip")
                     
                     -- ==========================================
-                    -- 0. VACIAR SLOTS VIRTUALES (LLAVE OFICIAL)
+                    -- 0. LECTURA DE VERDAD ABSOLUTA (SERVER ATTRIBUTES)
                     -- ==========================================
-                    for slot = 1, 4 do
-                        local slotStr = "InvSlot" .. slot
-                        if remDrop then 
-                            pcall(function() remDrop:FireServer(slotStr) end)
+                    local function GetFreeSlot()
+                        for i=1, 3 do
+                            if not LP:GetAttribute("InvSlot" .. i) or LP:GetAttribute("InvSlot" .. i) == "" then return "InvSlot"..i end
                         end
-                        task.wait(0.1)
+                        return nil
                     end
-                    task.wait(0.5)
+                    
+                    if not GetFreeSlot() then
+                        -- El inventario está rigurosamente lleno en el servidor, vaciamos a la fuerza
+                        for i=1, 3 do
+                            local slotName = "InvSlot" .. i
+                            local val = LP:GetAttribute(slotName)
+                            if val and val ~= "" and not string.find(string.lower(val), "journal") then
+                                if remDrop then pcall(function() remDrop:FireServer(slotName) end) end
+                                task.wait(0.2)
+                            end
+                        end
+                    end
 
-                    -- 1. Intentar recoger objetivo (Irá al slot 1 virtual vacío)
+                    -- 1. Intentar recoger objetivo real
                     if remPickup then 
                         pcall(function() remPickup:FireServer(target) end)
-                        pcall(function() remPickup:FireServer(target.Name) end)
                     end
-                    task.wait(0.8)
                     
-                    -- 2. Forzar al servidor a materializar simulando selección oficial
-                    for slot = 1, 4 do
-                        local slotStr = "InvSlot" .. slot
-                        if remChange then 
-                            pcall(function() remChange:FireServer(slotStr) end)
-                            pcall(function() remChange:FireServer(slot) end) -- fallback just in case
-                        end
-                        task.wait(0.2)
-                    end
-                    task.wait(0.4)
-                    
-                    -- 3. Buscar la herramienta física generada en el personaje (Ignorar "Journal")
-                    local itemFalso = nil
-                    if LP.Character then
-                        for _, v in pairs(LP.Character:GetChildren()) do
-                            local n = string.lower(v.Name)
-                            if not string.find(n, "journal") and not string.find(n, "handbook") then
-                                if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
-                                    itemFalso = v
-                                    break
-                                end
-                                if v:IsA("Model") and not v:FindFirstChild("Humanoid") then
-                                    itemFalso = v
-                                    break
-                                end
+                    -- Esperar confirmación criptográfica de subida (max 1.5s)
+                    local filledSlot = nil
+                    local capturedItemName = nil
+                    for timer = 1, 15 do
+                        for i=1, 3 do
+                            local val = LP:GetAttribute("InvSlot"..i)
+                            if val and val ~= "" and not string.find(string.lower(val), "journal") then
+                                filledSlot = "InvSlot"..i
+                                capturedItemName = val
+                                break
                             end
                         end
+                        if filledSlot then break end
+                        task.wait(0.1)
                     end
                     
-                    if itemFalso then
-                        AddLog("   └─> ¡RECOLECTADO! Analizando Físico: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
-                        
-                        -- Generar evidencia
-                        if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
-                        task.wait(2.5) -- Pausa Crítica
-                        
-                        -- Expulsar el objeto usando las llaves de red oficiales
-                        if remDrop then 
-                            for slot = 1, 4 do
-                                pcall(function() remDrop:FireServer("InvSlot" .. slot) end)
+                    if filledSlot and capturedItemName then
+                        -- 2. Equipar basándonos en las reglas de estado
+                        pcall(function()
+                            if remChange then
+                                remChange:FireServer(filledSlot)
                             end
-                            pcall(function() remDrop:FireServer(itemFalso) end)
-                        end
-                        task.wait(0.5)
+                            if remEquipRemote then
+                                remEquipRemote:FireServer(filledSlot)
+                            end
+                        end)
                         
-                        -- Forzar desaparición local
-                        pcall(function() itemFalso:Destroy() end)
+                        -- Esperar a que el servidor confirme que lo tenemos en mano
+                        local materializado = false
+                        for timer = 1, 15 do
+                            if LP:GetAttribute("EquippedObject") == capturedItemName then
+                                materializado = true
+                                break
+                            end
+                            task.wait(0.1)
+                        end
+                        
+                        if materializado then
+                            -- 3. Buscar la réplica física
+                            local itemFalso = nil
+                            if LP.Character then
+                                for _, v in pairs(LP.Character:GetChildren()) do
+                                    if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
+                                        itemFalso = v
+                                        break
+                                    end
+                                    if v:IsA("Model") and not v:FindFirstChild("Humanoid") and not string.find(string.lower(v.Name), "journal") then
+                                        itemFalso = v
+                                    end
+                                end
+                            end
+                            
+                            if itemFalso then
+                                AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
+                                
+                                -- Generar evidencia on
+                                if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
+                                task.wait(2.5) -- Pausa Crítica
+                                
+                                -- Desechar oficial
+                                if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                                task.wait(0.5)
+                                pcall(function() itemFalso:Destroy() end)
+                            else
+                                AddLog("   └─> Confirmado en base de datos, pero sin modelo 3D local.", Color3.fromRGB(150, 150, 150))
+                                if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                            end
+                        else
+                            AddLog("   └─> Bloqueo en protocolo de Equipar ("..capturedItemName..").", Color3.fromRGB(255, 100, 100))
+                            if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                        end
                     else
-                        AddLog("   └─> Fallo al confirmar slot. La ID de equipamiento fue denegada.", Color3.fromRGB(150, 150, 150))
+                        AddLog("   └─> Denegado por servidor. No se registró en tu Attribute.", Color3.fromRGB(150, 150, 150))
                     end
                     
                     -- Pausa anticheat
