@@ -849,8 +849,8 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         isEvi = true
                     end
                     
-                    -- Huellas (Suelen aparecer como calcomanías/decals)
-                    if obj:IsA("Decal") and (string.find(nl, "finger") or string.find(nl, "hand") or string.find(nl, "print")) and obj.Transparency < 1 then
+                    -- Huellas (Calcomanías, Decals invisibles o visibles)
+                    if obj:IsA("Decal") and (string.find(nl, "finger") or string.find(nl, "hand") or string.find(nl, "print")) then
                         evName = "Huellas Dactilares"
                         isEvi = true
                     end
@@ -861,9 +861,15 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         isEvi = true
                     end
                     
-                    -- Book Written (El libro se actualiza a escrito)
-                    if (string.find(nl, "write") or string.find(nl, "written")) and string.find(nl, "book") then
+                    -- Book Written (Decal o Modelo de Libro Escrito)
+                    if (string.find(nl, "write") or string.find(nl, "written")) and (obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Model")) then
                         evName = "Escritura de Fantasmas"
+                        isEvi = true
+                    end
+                    
+                    -- Proyector D.O.T.S (Cuando el fantasma colisiona, su fantasma verde D.O.T.S aparece)
+                    if string.find(nl, "dot") and string.find(nl, "ghost") then
+                        evName = "Proyector láser"
                         isEvi = true
                     end
                     
@@ -872,6 +878,28 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         ApplyESPTag(obj, "🔴 " .. evName, Color3.fromRGB(255, 100, 0), true)
                         ActualizarPizarraResolucion()
                     end
+                end
+                
+                -- V8.26: Interceptor Radiactivo del Spirit Box (ShowSubtitle Event)
+                pcall(function()
+                    local RS = game:GetService("ReplicatedStorage")
+                    if RS:FindFirstChild("Events") and RS.Events:FindFirstChild("ShowSubtitle") and not _G.SpiritBoxInterceptado then
+                        _G.SpiritBoxInterceptado = true
+                        RS.Events.ShowSubtitle.OnClientEvent:Connect(function(msg)
+                            if msg then
+                                local t = string.lower(tostring(msg))
+                                AddLog("🎤 [ESPÍRITU RESPONDIÓ]: " .. tostring(msg), Color3.fromRGB(200, 150, 255))
+                                if string.find(t, "behind") or string.find(t, "away") or string.find(t, "close") or string.find(t, "here") or string.find(t, "old") then
+                                    if not EvidenciasEncontradas["Caja de Espíritus"] then
+                                        EvidenciasEncontradas["Caja de Espíritus"] = true
+                                        ActualizarPizarraResolucion()
+                                        AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus", Color3.fromRGB(0, 255, 0))
+                                    end
+                                end
+                            end
+                        end)
+                    end
+                end)
                 end
                 task.wait(2)
             end
@@ -883,77 +911,59 @@ BtnEvidence.MouseButton1Click:Connect(function()
     end
 end)
 
+BtnDump.Text = "🧠 DEEP SCAN (FUGAS)"
+BtnDump.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
 BtnDump.MouseButton1Click:Connect(function()
-    AddLog("━━━ INCURSIÓN DE DATOS UI V8.17 ━━━", Color3.fromRGB(200, 100, 255))
-    if not decompile then 
-        AddLog("❌ Tu ejecutor actual no soporta la función decompile()", Color3.fromRGB(255, 0, 0))
-        return 
+    AddLog("━━━ DEEP SCAN V8.27 (CAZA DE MEMORIA) ━━━", Color3.fromRGB(200, 100, 255))
+    AddLog("🔎 Escaneando millones de variables en RAM...", Color3.fromRGB(200, 200, 0))
+    
+    local found = false
+    local leakLocs = {}
+    
+    local ghostsToHunt = {}
+    for ghostName, _ in pairs(GHOST_DB) do
+        table.insert(ghostsToHunt, ghostName)
     end
     
-    local txt = "=== EVENTOS REMOTOS DEL SERVIDOR ===\n"
-    for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            txt = txt .. obj.ClassName .. ": " .. obj:GetFullName() .. "\n"
-        end
-    end
-    
-    txt = txt .. "\n=== CODIGO FUENTE (DECOMPILED UI) ===\n"
-    local count = 0
-    
-    local LP = game.Players.LocalPlayer
-    
-    local function scanScripts(container)
-        if not container then return end
-        for _, s in pairs(container:GetDescendants()) do
-            if s:IsA("LocalScript") then
-                pcall(function()
-                    local src = decompile(s)
-                    if src and (string.find(src, "RequestItemDrop") or string.find(src, "ChangeSelectedItem") or string.find(src, "RequestItemEquip") or string.find(src, "ToggleItemState")) then
-                        count = count + 1
-                        txt = txt .. "\n--- LocalScript: " .. s:GetFullName() .. " ---\n"
-                        txt = txt .. string.sub(src, 1, 3000) .. "\n"
+    local function CheckFuga(valor, ubicacion)
+        if type(valor) == "string" and valor ~= "" then
+            local strL = string.lower(valor)
+            for _, ghost in ipairs(ghostsToHunt) do
+                if strL == string.lower(ghost) then
+                    local locL = string.lower(ubicacion)
+                    -- Filtrar nuestros propios scripts y GUI del juego que solo sean diccionarios
+                    if not string.find(locL, "demonologyspeedrunpro") and not string.find(locL, "journal") and not string.find(locL, "dictionary") and not string.find(locL, "playergui") then
+                        if not leakLocs[ubicacion] then
+                            leakLocs[ubicacion] = true
+                            AddLog("🚨 ¡FUGA DE MEMORIA!: Fantasma real es -> " .. ghost, Color3.fromRGB(255, 50, 50))
+                            AddLog("   └─> CÓDIGO FUENTE: " .. ubicacion, Color3.fromRGB(255, 100, 100))
+                            found = true
+                        end
                     end
-                end)
+                end
             end
         end
     end
     
-    if LP then
-        AddLog("⏳ Decompilando PlayerGui...", Color3.fromRGB(200, 200, 0))
-        scanScripts(LP:FindFirstChild("PlayerGui"))
-        
-        AddLog("⏳ Decompilando PlayerScripts...", Color3.fromRGB(200, 200, 0))
-        scanScripts(LP:FindFirstChild("PlayerScripts"))
-        
-        AddLog("⏳ Decompilando Character...", Color3.fromRGB(200, 200, 0))
-        scanScripts(LP.Character)
-    end
-    
-    if count == 0 then
-        txt = txt .. "No se encontraron scripts locales con 'RequestItemDrop', buscando exhaustivamente en ReplicatedStorage...\n"
-        AddLog("⏳ Decompilando TODO ReplicatedStorage...", Color3.fromRGB(200, 200, 0))
-        for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
-                pcall(function()
-                    local source = decompile(obj)
-                    if source and (string.find(source, "RequestItemDrop") or string.find(source, "ChangeSelectedItem") or string.find(source, "RequestItemEquip")) then
-                        txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
-                        txt = txt .. string.sub(source, 1, 2000) .. "\n"
-                    end
-                end)
-            end
+    task.spawn(function()
+        for _, obj in pairs(game:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("StringValue") then
+                    CheckFuga(obj.Value, obj:GetFullName() .. " (StringValue)")
+                end
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                    CheckFuga(obj.Text, obj:GetFullName() .. " (Texto UI)")
+                end
+                local objAttrs = obj:GetAttributes()
+                for k, v in pairs(objAttrs) do
+                    CheckFuga(tostring(v), obj:GetFullName() .. " [Attribute: " .. tostring(k) .. "]")
+                end
+            end)
         end
-    end
-    
-    if type(writefile) == "function" then
-        local ok, err = pcall(writefile, "Demonology_UI_Drop.txt", txt)
-        if ok then
-            AddLog("✅ Crack guardado: 'workspace/Demonology_UI_Drop.txt'", Color3.fromRGB(50, 255, 100))
-        else
-            AddLog("❌ Error: " .. tostring(err), Color3.fromRGB(255, 50, 50))
+        if not found then
+            AddLog("✅ RESULTADO ANÁLISIS FORENSE:", Color3.fromRGB(100, 255, 100))
+            AddLog("   └─> El Servidor NO FILTRA el nombre a los jugadores. Código protegido.", Color3.fromRGB(150, 255, 150))
+            AddLog("   └─> CONCLUSIÓN: Es matemáticamente obligatorio usar herramientas.", Color3.fromRGB(150, 255, 150))
         end
-    else
-        AddLog("No hay writefile(), revisa tu consola.", Color3.fromRGB(255, 200, 50))
-        print(txt)
-    end
+    end)
 end)
