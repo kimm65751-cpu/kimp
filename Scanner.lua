@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️eP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -516,47 +516,49 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                     task.wait(0.6)
                     
-                    -- Las herramientas se guardan en la mochila con el mismo nombre o como números
+                    -- Solo buscaremos EXACTAMENTE la herramienta actual, para no mezclar si el inventario está atascado
+                    local n = type(target) == "string" and target or target.Name
                     local itemFalso = nil
                     
                     if LP:FindFirstChild("Backpack") then
                         itemFalso = LP.Backpack:FindFirstChild(n)
-                        if not itemFalso then
-                            -- Buscar cualquier cosa que sea un número (herramienta) y no el Journal
-                            for _, v in pairs(LP.Backpack:GetChildren()) do
-                                if tonumber(v.Name) and v.Name ~= "100" then
-                                    itemFalso = v
-                                    break
-                                end
-                            end
-                        end
                     end
                     
                     if not itemFalso and LP.Character then
                         itemFalso = LP.Character:FindFirstChild(n)
-                        if not itemFalso then
-                            for _, v in pairs(LP.Character:GetChildren()) do
-                                if tonumber(v.Name) and v.Name ~= "100" then itemFalso = v break end
-                            end
-                        end
                     end
                     
                     if itemFalso then
                         AddLog("   └─> ¡RECOLECTADO! Procesando: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
                         
+                        -- Equipar
                         if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
                         task.wait(0.4)
                         
+                        -- Encender
                         if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
                         task.wait(2.5) -- Pausa crítica para generar la evidencia
                         
-                        -- Usar el remoto oficial para soltar
-                        if remDrop then pcall(function() remDrop:FireServer(itemFalso) end) end
+                        -- FUERZA BRUTA DE DESCARGA (Soltar ítem al piso)
+                        -- Como no sabemos el argumento exacto, disparamos todas las posibles lógicas del desarrollador
+                        local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
+                        local remUnequip = game.ReplicatedStorage:FindFirstChild("RequestItemUnequip", true)
+                        
+                        if remDrop then 
+                            pcall(function() remDrop:FireServer(itemFalso) end) -- Instancia
+                            pcall(function() remDrop:FireServer(itemFalso.Name) end) -- String name
+                            pcall(function() remDrop:FireServer() end) -- Vacío (suelta el equipado actual)
+                        end
+                        if remUnequip then pcall(function() remUnequip:FireServer(itemFalso) end) end
+                        
                         task.wait(0.6)
                         
-                        -- Si sigue atascado, forzar tirar el hijo (por seguridad)
+                        -- Destruir localmente solo para visual, el servidor debería haberlo soltado
                         if LP.Character and LP.Character:FindFirstChild(itemFalso.Name) then
-                            itemFalso.Parent = Workspace
+                            itemFalso:Destroy()
+                        end
+                        if LP.Backpack and LP.Backpack:FindFirstChild(itemFalso.Name) then
+                            itemFalso:Destroy()
                         end
                     else
                         AddLog("   └─> Bloqueado por inventario o lag.", Color3.fromRGB(150, 150, 150))
