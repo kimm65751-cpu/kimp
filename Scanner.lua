@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.012 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.0 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -313,6 +313,17 @@ BtnScan.MouseButton1Click:Connect(function()
     else
         RegistrarLog("ERROR", "Tu ejecutor no soporta getgc() para leer la memoria profunda.", Color3.fromRGB(255, 50, 50))
     end
+    
+    -- 3. [V2.7] VOLCADO DE ESTRUCTURA DE RED (Busca el "botón de Submit")
+    RegistrarLog("SCAN", "--- DUMP DE PUERTOS DE RED (REPLICATED STORAGE) ---", Color3.fromRGB(0, 255, 200))
+    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            RegistrarLog("REMOTOS", "[Evento] " .. obj.Name, Color3.fromRGB(200, 255, 150))
+        elseif obj:IsA("RemoteFunction") then
+            RegistrarLog("REMOTOS", "[Función] " .. obj.Name, Color3.fromRGB(150, 200, 255))
+        end
+    end
+    RegistrarLog("SCAN", "---------------------------------------------------", Color3.fromRGB(0, 255, 200))
     
     if not hallado then
         RegistrarLog("SCAN", "El fantasma está completamente cifrado por el servidor y no envía su nombre hasta el final.", Color3.fromRGB(255, 150, 100))
