@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️a "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -629,13 +629,9 @@ BtnPing.MouseButton1Click:Connect(function()
                             if itemFalso then
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
                                 
-                                -- Encender (Virtual Input Manager para simular un clic derecho humano real)
+                                -- Encender (Pulsación de red cruda sin argumentos, bypass de seguridad)
                                 pcall(function()
-                                    if remToggle then remToggle:FireServer(itemFalso) end -- Fallback
-                                    local vim = game:GetService("VirtualInputManager")
-                                    vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                                    task.wait(0.1)
-                                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                                    if remToggle then remToggle:FireServer() end 
                                 end)
                                 task.wait(1.5)
                                 
