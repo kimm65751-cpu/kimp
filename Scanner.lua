@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️E3 "
+Title.Text = " ⏱️epoooooP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -653,6 +653,8 @@ BtnPing.MouseButton1Click:Connect(function()
                                     vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
                                     task.wait(0.1)
                                     vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                                    -- Auto-guardado en log para el Deep Spy de uso de herramientas
+                                    if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_USED (Virtual D-Click): " .. capturedItemName .. "\n") end
                                 end)
                                 task.wait(1.5)
                                 
