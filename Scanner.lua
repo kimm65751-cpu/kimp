@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.1 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.2 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -259,18 +259,37 @@ end)
 
 -- ==================== 2. AUTO-SCANNER ====================
 BtnScan.MouseButton1Click:Connect(function()
-    RegistrarLog("SCAN", "Escaneando Variables Secretas...", Color3.fromRGB(150, 255, 150))
+    RegistrarLog("SCAN", "Extrayendo secretos del modelo del Fantasma...", Color3.fromRGB(150, 255, 150))
     local hallado = false
     
+    -- Buscar atributos en los modelos físicos del fantasma (los que vimos en el ESP)
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        local nl = string.lower(obj.Name)
+        if nl == "ghost" or nl == "entity" or nl == "demon" or nl == "monster" then
+            local attrs = obj:GetAttributes()
+            for k, v in pairs(attrs) do
+                RegistrarLog("SCAN", "💡 Atributo ["..obj.Name.."]: " .. tostring(k) .. " = " .. tostring(v), Color3.fromRGB(200, 255, 100))
+                hallado = true
+            end
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("StringValue") or child:IsA("IntValue") then
+                    RegistrarLog("SCAN", "💡 Valor ["..obj.Name.."]: " .. child.Name .. " = " .. tostring(child.Value), Color3.fromRGB(200, 255, 100))
+                    hallado = true
+                end
+            end
+        end
+    end
+    
+    -- Buscar globals en ReplicatedStorage
     for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
         if obj:IsA("StringValue") and string.find(string.lower(obj.Name), "ghost") then
-            RegistrarLog("SCAN", "Pista Atrapada: " .. obj.Name .. " -> " .. tostring(obj.Value), Color3.fromRGB(255, 255, 0))
+            RegistrarLog("SCAN", "Pista Atrapada (RS): " .. obj.Name .. " -> " .. tostring(obj.Value), Color3.fromRGB(255, 255, 0))
             hallado = true
         end
     end
     
     if not hallado then
-        RegistrarLog("SCAN", "El fantasma no expone su tipo públicamente en texto. Requiere analizar eventos.", Color3.fromRGB(255, 150, 100))
+        RegistrarLog("SCAN", "El fantasma no expone su tipo públicamente ni en sus atributos. Revisa el Monitor de Red ahora.", Color3.fromRGB(255, 150, 100))
     end
 end)
 
@@ -286,14 +305,14 @@ local PALABRAS_CLAVE = {"Data", "Challenge", "Ghost", "Result", "Earn", "Money",
 local function EsImportante(nombre)
     local nl = string.lower(nombre)
     -- IGNORAR eventos basura y de spam constante
-    if string.find(nl, "mouse") or string.find(nl, "move") or string.find(nl, "sound") or string.find(nl, "step") or string.find(nl, "chat") or string.find(nl, "party") then
+    if string.find(nl, "mouse") or string.find(nl, "move") or string.find(nl, "sound") or string.find(nl, "step") or string.find(nl, "chat") or string.find(nl, "party") or string.find(nl, "door") or string.find(nl, "state") or string.find(nl, "equip") or string.find(nl, "update") then
         return false
     end
     -- APROBAR palabras clave
     for _, p in pairs(PALABRAS_CLAVE) do
         if string.find(nl, string.lower(p)) then return true end
     end
-    -- Si no sabemos qué es, loguearlo limitadamente (los raros a veces son los mejores)
+    -- Si no sabemos qué es, loguearlo limitadamente.
     return true
 end
 
