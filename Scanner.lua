@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V6 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V888 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -361,20 +361,29 @@ BtnPing.MouseButton1Click:Connect(function()
                 
                 local askLidar = game.ReplicatedStorage:FindFirstChild("DetectedGhostWithLIDAR", true)
                 if askLidar then
+                    AddLog("[ATAQUE] Disparando red de Escáner LIDAR...", Color3.fromRGB(200, 255, 0))
                     pcall(function() askLidar:FireServer() end)
                 end
                 
-                -- PROVOCACIÓN AVANZADA (Wiki Secret Commands):
-                -- Forzar escritura de fantasma, EMF y apariciones en chat.
+                -- PROVOCACIÓN AVANZADA (Forzar Escritura y EMF):
+                AddLog("[ATAQUE] Enviando conjuros al Chat para obligarlo a interactuar...", Color3.fromRGB(255, 150, 0))
                 pcall(function()
-                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Can you write in the book", "All")
+                    local tcs = game:GetService("TextChatService")
+                    if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
+                        tcs.TextChannels.RBXGeneral:SendAsync("Can you write in the book")
+                        task.wait(1)
+                        tcs.TextChannels.RBXGeneral:SendAsync("Give me a sign")
+                        task.wait(1)
+                        tcs.TextChannels.RBXGeneral:SendAsync("Show yourself")
+                    else
+                        local req = game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest
+                        req:FireServer("Can you write in the book", "All")
+                        task.wait(1)
+                        req:FireServer("Give me a sign", "All")
+                        task.wait(1)
+                        req:FireServer("Show yourself", "All")
+                    end
                 end)
-                task.wait(1)
-                pcall(function()
-                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Give me a sign", "All")
-                end)
-                
-                AddLog("[ATAQUE] Comandos de Provocación de chat enviados al Servidor.", Color3.fromRGB(255, 100, 0))
                 
                 -- Se espera 20 segundos por el cooldown oficial revelado en la wiki
                 for i = 1, 20 do
