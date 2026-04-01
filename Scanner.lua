@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V20 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -347,11 +347,14 @@ end)
 
 -- 1. OJO DE DIOS (FANTASMA Y SU HABITACIÓN)
 local EspFantasma = false
+local AdnDescifrado = false
+
 BtnESP.MouseButton1Click:Connect(function()
     EspFantasma = not EspFantasma
     if EspFantasma then
         BtnESP.Text = "👁️ ESP FANTASMA: ON"
         BtnESP.BackgroundColor3 = Color3.fromRGB(120, 20, 40)
+        AdnDescifrado = false
         task.spawn(function()
             while EspFantasma do
                 for _, obj in pairs(Workspace:GetDescendants()) do
@@ -360,6 +363,30 @@ BtnESP.MouseButton1Click:Connect(function()
                         if nl == "ghost" or nl == "entity" or nl == "demon" or nl == "monster" then
                             local favRoom = obj:GetAttribute("FavoriteRoom") or "Desconocida"
                             ApplyESPTag(obj, "👻 FANTASMA ("..favRoom..")", Color3.fromRGB(255, 0, 0), false)
+                            
+                            -- Escáner de ADN (Extraer Variables Ocultas)
+                            if not AdnDescifrado then
+                                AdnDescifrado = true
+                                AddLog("--------------------------------", Color3.fromRGB(100, 100, 100))
+                                AddLog("🧬 EXTRACCIÓN DE ADN ("..obj.Name..")", Color3.fromRGB(255, 100, 255))
+                                local attrs = obj:GetAttributes()
+                                local count = 0
+                                for k, v in pairs(attrs) do
+                                    count = count + 1
+                                    AddLog(">> [ATRIBUTO] " .. tostring(k) .. " = " .. tostring(v), Color3.fromRGB(200, 150, 255))
+                                end
+                                for _, ch in pairs(obj:GetChildren()) do
+                                    if ch:IsA("StringValue") or ch:IsA("IntValue") or ch:IsA("BoolValue") or ch:IsA("NumberValue") then
+                                        count = count + 1
+                                        AddLog(">> [VARIABLE] " .. ch.Name .. " = " .. tostring(ch.Value), Color3.fromRGB(150, 200, 255))
+                                    end
+                                end
+                                if count == 0 then
+                                    AddLog("❌ El creador no filtró evidencias en el modelo.", Color3.fromRGB(255, 50, 50))
+                                else
+                                    AddLog("✅ MIRA SI HAY UNA EVIDENCIA ESCONDIDA ARRIBA.", Color3.fromRGB(100, 255, 100))
+                                end
+                            end
                         end
                     end
                 end
