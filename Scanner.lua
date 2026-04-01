@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️eP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -516,57 +516,74 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                     task.wait(0.6)
                     
-                    -- Solo buscaremos EXACTAMENTE la herramienta actual, para no mezclar si el inventario está atascado
-                    local n = type(target) == "string" and target or target.Name
                     local itemFalso = nil
                     
-                    if LP:FindFirstChild("Backpack") then
-                        itemFalso = LP.Backpack:FindFirstChild(n)
-                    end
-                    
-                    if not itemFalso and LP.Character then
-                        itemFalso = LP.Character:FindFirstChild(n)
+                    -- El juego renombra el objeto a su slot (1, 2 o 3)
+                    for _, slot in pairs({"1", "2", "3"}) do
+                        if LP.Character and LP.Character:FindFirstChild(slot) then
+                            itemFalso = LP.Character:FindFirstChild(slot)
+                            break
+                        end
+                        if LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild(slot) then
+                            itemFalso = LP.Backpack:FindFirstChild(slot)
+                            break
+                        end
                     end
                     
                     if itemFalso then
-                        AddLog("   └─> ¡RECOLECTADO! Procesando: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
+                        AddLog("   └─> ¡RECOLECTADO! Slot Ocupado: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
                         
-                        -- Equipar
                         if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
-                        task.wait(0.4)
+                        task.wait(0.5)
+                        
+                        -- Si el objeto sigue en mochila forzar movimiento a Mano para poder tirarlo (como presionar G)
+                        if itemFalso.Parent == LP.Backpack and LP.Character then
+                            pcall(function() LP.Character.Humanoid:EquipTool(itemFalso) end)
+                            task.wait(0.2)
+                        end
                         
                         -- Encender
                         if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
                         task.wait(2.5) -- Pausa crítica para generar la evidencia
                         
-                        -- FUERZA BRUTA DE DESCARGA (Soltar ítem al piso)
-                        -- Como no sabemos el argumento exacto, disparamos todas las posibles lógicas del desarrollador
+                        -- =====================================
+                        -- FUERZA BRUTA DE DESCARGA (TECLA G)
+                        -- =====================================
                         local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                         local remUnequip = game.ReplicatedStorage:FindFirstChild("RequestItemUnequip", true)
                         
                         if remDrop then 
-                            pcall(function() remDrop:FireServer(itemFalso) end) -- Instancia
-                            pcall(function() remDrop:FireServer(itemFalso.Name) end) -- String name
-                            pcall(function() remDrop:FireServer() end) -- Vacío (suelta el equipado actual)
+                            pcall(function() remDrop:FireServer(itemFalso) end)
+                            pcall(function() remDrop:FireServer(itemFalso.Name) end) 
+                            pcall(function() remDrop:FireServer() end)
                         end
-                        if remUnequip then pcall(function() remUnequip:FireServer(itemFalso) end) end
                         
-                        task.wait(0.6)
+                        task.wait(0.5)
                         
-                        -- Destruir localmente solo para visual, el servidor debería haberlo soltado
+                        -- Limpieza forzada loca
                         if LP.Character and LP.Character:FindFirstChild(itemFalso.Name) then
-                            itemFalso:Destroy()
+                            pcall(function() itemFalso.Parent = Workspace end)
                         end
-                        if LP.Backpack and LP.Backpack:FindFirstChild(itemFalso.Name) then
-                            itemFalso:Destroy()
+                        if LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild(itemFalso.Name) then
+                            pcall(function() itemFalso.Parent = Workspace end)
                         end
                     else
-                        AddLog("   └─> Bloqueado por inventario o lag.", Color3.fromRGB(150, 150, 150))
+                        AddLog("   └─> Bloqueado por inventario lleno.", Color3.fromRGB(150, 150, 150))
+                        
+                        -- SI ESTÁ LLENO, VACIARLO A LA FUERZA PARA EL PRÓXIMO CICLO
+                        local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
+                        for _, slot in pairs({"1", "2", "3"}) do
+                            local traba = (LP.Character and LP.Character:FindFirstChild(slot)) or (LP.Backpack and LP.Backpack:FindFirstChild(slot))
+                            if traba and remDrop then
+                                pcall(function() remDrop:FireServer(traba) end)
+                                pcall(function() traba.Parent = Workspace end)
+                            end
+                        end
                     end
                     
                     -- Pausa anticheat
                     if i % 3 == 0 then 
-                        AddLog("⏳ Pausando para resetear inventario...", Color3.fromRGB(150, 150, 150))
+                        AddLog("⏳ Pausando para cooldown del servidor...", Color3.fromRGB(150, 150, 150))
                         task.wait(2) 
                     end
                 end
