@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOG4MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY VeeeMODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -451,55 +451,92 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- Escanear TODO el workspace por objetos interactivos (herramientas en el camión)
+                -- === AUTO-LABORATORIO V8.2: Gestión Real de Inventario ===
+                local remEquip  = game.ReplicatedStorage:FindFirstChild("RequestItemEquip", true)
+                local remToggle = game.ReplicatedStorage:FindFirstChild("ToggleItemState", true)
+                local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
+                local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
+                
+                -- Palabras válidas para herramientas (Ignorar monedas/huesos que son solo números o coins)
+                local TOOL_WORDS = {"emf", "spirit", "box", "therm", "uv", "light", "camera", "video", "book", "journal", "laser", "dot", "projector", "lidar", "scanner", "crucifix", "smudge", "salt", "candle", "sanit", "photo"}
+                
+                local function EsHerramientaValida(nombre)
+                    local nl = string.lower(nombre)
+                    if tonumber(nl) then return false end -- Ignorar si el nombre es un número (ej. "100")
+                    for _, w in pairs(TOOL_WORDS) do
+                        if string.find(nl, w) then return true end
+                    end
+                    return false
+                end
+                
+                -- Escanear la camioneta/mapa por objetos físicos interactivos válidos
                 local tomables = {}
                 local procesados = {}
                 for _, obj in pairs(Workspace:GetDescendants()) do
-                    -- Si tiene ProximityPrompt o la propiedad IsItem, o es un Tool
-                    if obj:FindFirstChildWhichIsA("ProximityPrompt") or obj:GetAttribute("IsItem") or obj:IsA("Tool") then
-                        local n = string.lower(obj.Name)
-                        -- Excluir modelos grandes irrelevantes
-                        if not string.find(n, "door") and not string.find(n, "switch") and not string.find(n, "camper") then
-                            local realObj = obj
-                            if obj.Parent and obj.Parent:IsA("Model") and obj.Parent ~= Workspace then
-                                realObj = obj.Parent
-                            end
-                            if not procesados[realObj] then
-                                procesados[realObj] = true
-                                table.insert(tomables, realObj)
-                            end
+                    if obj:FindFirstChildWhichIsA("ProximityPrompt") then
+                        local realObj = obj
+                        if obj.Parent and obj.Parent:IsA("Model") and obj.Parent ~= Workspace then realObj = obj.Parent end
+                        
+                        if not procesados[realObj] and EsHerramientaValida(realObj.Name) then
+                            procesados[realObj] = true
+                            table.insert(tomables, realObj)
                         end
                     end
                 end
                 
                 if #tomables == 0 then
-                    AddLog("⚠️ No se hallaron objetos interactivos (ProximityPrompts). Busca y prueba a mano...", Color3.fromRGB(255,100,0))
+                    AddLog("⚠️ No se detectaron Herramientas en el camión. Revisa la lista o hazlo manual.", Color3.fromRGB(255,100,0))
                 else
-                    AddLog("━━━ AUTO-LAB V8.1: " .. #tomables .. " tools secuestradas ━━━", Color3.fromRGB(255, 165, 0))
+                    AddLog("━━━ AUTO-LAB V8.2: " .. #tomables .. " Herramientas Encontradas ━━━", Color3.fromRGB(255, 165, 0))
                 end
                 
                 AddLog("━━━ AUTO-LABORATORIO INICIADO ━━━", Color3.fromRGB(255, 165, 0))
                 
-                for i, obj in ipairs(tomables) do
+                for i, vObj in ipairs(tomables) do
                     if not pingActivo then break end
-                    AddLog("🔧 ["..i.."] Probando: " .. obj.Name, Color3.fromRGB(200, 200, 0))
-                    -- 1. Pickup si está en el suelo
-                    if remPickup then pcall(function() remPickup:FireServer(obj) end) end
-                    task.wait(0.4)
-                    -- 2. Equipar
-                    if remEquip then pcall(function() remEquip:FireServer(obj) end) end
-                    task.wait(0.4)
-                    -- 3. Activar / Encender
-                    if remToggle then pcall(function() remToggle:FireServer(obj, true) end) end
-                    task.wait(2.5) -- Dar tiempo al servidor para responder
-                    -- 4. Soltar en el cuarto del fantasma
-                    if remDrop then pcall(function() remDrop:FireServer(obj) end) end
-                    task.wait(0.3)
+                    AddLog("🔧 ["..i.."] Extrayendo: " .. vObj.Name, Color3.fromRGB(200, 200, 0))
                     
-                    if i % 3 == 0 then
-                        AddLog("⏳ Pausando por límite de inventario...", Color3.fromRGB(150, 150, 150))
-                        task.wait(1.5)
+                    -- 1. Agarrar del tablero
+                    if remPickup then pcall(function() remPickup:FireServer(vObj) end) end
+                    task.wait(0.8) -- Dar tiempo a que llegue al Backpack
+                    
+                    -- 2. Buscar LA COPIA (El Tool real) dentro del Backpack del jugador
+                    local realTool = nil
+                    if LP:FindFirstChild("Backpack") then
+                        for _, t in pairs(LP.Backpack:GetChildren()) do
+                            if t:IsA("Tool") and (string.find(string.lower(t.Name), string.lower(vObj.Name)) or EsHerramientaValida(t.Name)) then
+                                realTool = t
+                                break
+                            end
+                        end
                     end
+                    
+                    -- Si ya la tenía en la mano
+                    if not realTool and LP.Character then
+                        realTool = LP.Character:FindFirstChildWhichIsA("Tool")
+                    end
+                    
+                    if realTool then
+                        AddLog("   └─> Probando en el cuarto...", Color3.fromRGB(150, 255, 150))
+                        -- Equipar
+                        pcall(function() LP.Character.Humanoid:EquipTool(realTool) end)
+                        if remEquip then pcall(function() remEquip:FireServer(realTool) end) end
+                        task.wait(0.5)
+                        
+                        -- Encender
+                        if remToggle then pcall(function() remToggle:FireServer(realTool, true) end) end
+                        task.wait(2.5) -- Esperar que el servidor procese si hay evidencia
+                        
+                        -- Tirarla al piso (Para vaciar inventario)
+                        if remDrop then pcall(function() remDrop:FireServer(realTool) end) end
+                        task.wait(0.5)
+                    else
+                        AddLog("   └─> Falló al entrar a la mochila.", Color3.fromRGB(255, 100, 100))
+                    end
+                    
+                    -- Pausa cada 3 ítems no es tan necesaria si los soltamos exitosamente,
+                    -- pero por seguridad de lag del servidor:
+                    if i % 3 == 0 then task.wait(1) end
                 end
                 
                 -- Spirit Box por chat + comandos secretos Wiki
