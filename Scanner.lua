@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DONP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -1102,7 +1102,21 @@ BtnESP.MouseButton1Click:Connect(function()
                                         local an = string.lower(attr)
                                         if string.find(an, "hunt") and obj:GetAttribute(attr) == true then
                                             AddLog("💀 ¡¡ALERTA MÁXIMA!! ¡EL FANTASMA ENTRÓ EN MODO CACERÍA!", Color3.fromRGB(255, 0, 0))
-                                            AddLog("   └─> Escóndete o usa un Crucifijo AHORA.", Color3.fromRGB(255, 100, 100))
+                                            
+                                            -- 🚀 AUTO-EVASIÓN INMEDIATA 🚀
+                                            pcall(function()
+                                                local hrp = LP.Character and LP.Character.PrimaryPart
+                                                if hrp then
+                                                    local safeSpot = nil
+                                                    for _, v in pairs(workspace:GetDescendants()) do
+                                                        if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                                    end
+                                                    if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
+                                                    hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
+                                                    AddLog("   └─> ¡AUTO-EVASIÓN ACTIVADA! Huyendo al Camión.", Color3.fromRGB(0, 255, 0))
+                                                end
+                                            end)
+                                            
                                         elseif string.find(an, "visible") or string.find(an, "reveal") then
                                             AddLog("👁️ EL FANTASMA ES VISIBLE AHORA MISMO: " .. tostring(obj:GetAttribute(attr)), Color3.fromRGB(255, 150, 0))
                                         end
@@ -1113,6 +1127,18 @@ BtnESP.MouseButton1Click:Connect(function()
                                         local an = string.lower(attr)
                                         if string.find(an, "hunt") and workspace:GetAttribute(attr) == true then
                                             AddLog("💀 ¡¡ALERTA GLOBAL!! ¡INICIO DE CACERÍA (Workspace)!", Color3.fromRGB(255, 0, 0))
+                                            pcall(function()
+                                                local hrp = LP.Character and LP.Character.PrimaryPart
+                                                if hrp then
+                                                    local safeSpot = nil
+                                                    for _, v in pairs(workspace:GetDescendants()) do
+                                                        if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                                    end
+                                                    if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
+                                                    hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
+                                                    AddLog("   └─> ¡AUTO-EVASIÓN GLOBAR ACTIVADA!", Color3.fromRGB(0, 255, 0))
+                                                end
+                                            end)
                                         end
                                     end)
                                 end
@@ -1130,10 +1156,10 @@ BtnESP.MouseButton1Click:Connect(function()
                                                 end
                                             end
                                             
-                                            -- Detectar Cristales/Espejos Rotos (Banshee) - Evitar pasos sobre cristal
+                                            -- Detectar Cristales/Espejos Rotos (Banshee) - Evitar pasos y huesos
                                             if desc:IsA("Sound") then
                                                 local sn = string.lower(desc.Name)
-                                                if not string.find(sn, "footstep") and not string.find(sn, "step") then
+                                                if not string.find(sn, "footstep") and not string.find(sn, "step") and not string.find(sn, "bone") then
                                                     if string.find(sn, "glass") or string.find(sn, "shatter") or string.find(sn, "break") then
                                                         AddLog("⚠️ ALERTA FÍSICA: ¡Cristal o Espejo Roto! (" .. desc.Name .. ")", Color3.fromRGB(255, 0, 0))
                                                         AddLog("   └─> CULPABLE CASI SEGURO: BANSHEE", Color3.fromRGB(255, 50, 50))
