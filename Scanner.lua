@@ -208,7 +208,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAEeeS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -505,8 +505,14 @@ BtnPing.MouseButton1Click:Connect(function()
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
-                                local p = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                                if p and (p.Position - ghostPos).Magnitude <= 30 then
+                                local p = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
+                                if not p then
+                                    for _, ch in pairs(obj:GetDescendants()) do
+                                        if ch:IsA("BasePart") then p = ch; break end
+                                    end
+                                end
+                                
+                                if p and (p.Position - ghostPos).Magnitude <= 35 then
                                     isPlanted = true
                                 end
                             end
