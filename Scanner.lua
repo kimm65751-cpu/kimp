@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V222 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -398,42 +398,32 @@ BtnPing.MouseButton1Click:Connect(function()
                 rem.OnClientEvent:Connect(function(...)
                     if pingActivo then
                         local n = string.lower(rem.Name)
-                        if not string.find(n, "move") and not string.find(n, "mouse") and not string.find(n, "playsound") and not string.find(n, "stopsound") then
+                        -- Ignorar SOLO ruido puro de movimiento y sonido
+                        if not string.find(n, "playsound") and not string.find(n, "stopsound") and not string.find(n, "mousemove") then
                             local args = {...}
                             local msg = ""
                             for _, arg in pairs(args) do msg = msg .. tostring(arg) .. " " end
                             
-                            -- ORO PURO: Objetivo / Evidencia / Recompensa completada
-                            if string.find(n, "objective") or string.find(n, "evidence") or string.find(n, "complete") or string.find(n, "reward") or string.find(n, "ghost") or string.find(n, "fetch") or string.find(n, "result") then
+                            -- ORO PURO: ObjectiveCompleted con numero -> mapear a evidencia
+                            if string.find(n, "objective") then
                                 AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
-                                -- Auto-registrar como evidencia si parece relevante
-                                if string.find(string.lower(msg), "emf") then
-                                    EvidenciasEncontradas["Nivel EMF 5"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "spirit") or string.find(string.lower(msg), "box") then
-                                    EvidenciasEncontradas["Caja de Espíritus"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "orb") then
-                                    EvidenciasEncontradas["Orbe Fantasma"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "writ") then
-                                    EvidenciasEncontradas["Escritura de fantasmas"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "freez") or string.find(string.lower(msg), "cold") or string.find(string.lower(msg), "temp") then
-                                    EvidenciasEncontradas["Temperaturas Heladas"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "print") or string.find(string.lower(msg), "hand") or string.find(string.lower(msg), "finger") then
-                                    EvidenciasEncontradas["Huellas Dactilares"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "laser") or string.find(string.lower(msg), "lidar") or string.find(string.lower(msg), "dot") then
-                                    EvidenciasEncontradas["Proyector láser"] = true
-                                    ActualizarPizarraResolucion()
-                                elseif string.find(string.lower(msg), "wither") then
-                                    EvidenciasEncontradas["Marchitar"] = true
-                                    ActualizarPizarraResolucion()
+                                -- Intentar mapear el numero de objetivo a evidencia
+                                local idx = tonumber(string.match(msg, "%d+"))
+                                if idx and EvidenciasEncontradas then
+                                    local eviNombre = EVI_MAP_IDX[idx]
+                                    if eviNombre then
+                                        AddLog("⭐ OBJETIVO "..idx.." = ".. eviNombre, Color3.fromRGB(255, 255, 0))
+                                        EvidenciasEncontradas[eviNombre] = true
+                                        pcall(ActualizarPizarraResolucion)
+                                    end
                                 end
+                            -- EVIDENCIA directa por nombre
+                            elseif string.find(n, "evidence") or string.find(n, "complete") or string.find(n, "reward") or string.find(n, "result") then
+                                AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
+                            -- Aparatos de evidencia respondiendo
                             elseif string.find(n, "spirit") or string.find(n, "lidar") or string.find(n, "thermometer") or string.find(n, "emf") then
                                 AddLog("🚨 RESPUESTA SERVIDOR ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 0, 0))
+                            -- Cualquier otro evento (captura todo en azul)
                             else
                                 AddLog(">> [S->C] " .. rem.Name .. ": " .. string.sub(msg, 1, 60), Color3.fromRGB(50, 150, 255))
                             end
