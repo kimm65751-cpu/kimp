@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.2 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.0 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -257,39 +257,55 @@ BtnESP.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 2. AUTO-SCANNER ====================
+-- ==================== 2. AUTO-SCANNER MEMORIA (MEMORY SCAN) ====================
 BtnScan.MouseButton1Click:Connect(function()
-    RegistrarLog("SCAN", "Extrayendo secretos del modelo del Fantasma...", Color3.fromRGB(150, 255, 150))
+    RegistrarLog("SCAN", "Escaneando Memoria RAM profunda (getgc)...", Color3.fromRGB(150, 255, 150))
     local hallado = false
     
-    -- Buscar atributos en los modelos físicos del fantasma (los que vimos en el ESP)
+    -- 1. Scan básico de atributos primero (para saber la habitación)
     for _, obj in pairs(Workspace:GetDescendants()) do
         local nl = string.lower(obj.Name)
-        if nl == "ghost" or nl == "entity" or nl == "demon" or nl == "monster" then
-            local attrs = obj:GetAttributes()
-            for k, v in pairs(attrs) do
-                RegistrarLog("SCAN", "💡 Atributo ["..obj.Name.."]: " .. tostring(k) .. " = " .. tostring(v), Color3.fromRGB(200, 255, 100))
-                hallado = true
+        if nl == "ghost" or nl == "entity" then
+            local favRoom = obj:GetAttribute("FavoriteRoom")
+            if favRoom then
+                RegistrarLog("SCAN", "📍 El fantasma habita en: " .. tostring(favRoom), Color3.fromRGB(0, 255, 255))
             end
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("StringValue") or child:IsA("IntValue") then
-                    RegistrarLog("SCAN", "💡 Valor ["..obj.Name.."]: " .. child.Name .. " = " .. tostring(child.Value), Color3.fromRGB(200, 255, 100))
-                    hallado = true
+        end
+    end
+    
+    -- 2. Scan de Memoria vía Delta (Busca tablas creadas por los LocalScripts)
+    if getgc then
+        for _, v in pairs(getgc(true)) do
+            if type(v) == "table" then
+                -- Buscar si la tabla guarda la identidad del fantasma o sus evidencias
+                local fType = rawget(v, "GhostType") or rawget(v, "Type") or rawget(v, "Ghost")
+                local hasEvi = rawget(v, "Evidence1") or rawget(v, "Evidence") or rawget(v, "Evidences")
+                
+                if fType and type(fType) == "string" and string.len(fType) > 2 then
+                    -- Filtrar cosas que no sean fantasmas
+                    if string.match(fType, "^%a+$") then
+                        RegistrarLog("SCAN", "🔥 IDENTIDAD OCULTA ENCONTRADA: " .. tostring(fType), Color3.fromRGB(255, 0, 0))
+                        hallado = true
+                    end
+                end
+                
+                if hasEvi and type(hasEvi) == "table" then
+                    local eviStr = ""
+                    for _, ev in pairs(hasEvi) do eviStr = eviStr .. tostring(ev) .. ", " end
+                    if eviStr ~= "" then
+                        RegistrarLog("SCAN", "📖 EVIDENCIAS EN MEMORIA: " .. eviStr, Color3.fromRGB(255, 255, 0))
+                        hallado = true
+                    end
                 end
             end
         end
-    end
-    
-    -- Buscar globals en ReplicatedStorage
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("StringValue") and string.find(string.lower(obj.Name), "ghost") then
-            RegistrarLog("SCAN", "Pista Atrapada (RS): " .. obj.Name .. " -> " .. tostring(obj.Value), Color3.fromRGB(255, 255, 0))
-            hallado = true
-        end
+    else
+        RegistrarLog("ERROR", "Tu ejecutor no soporta getgc() para leer la memoria profunda.", Color3.fromRGB(255, 50, 50))
     end
     
     if not hallado then
-        RegistrarLog("SCAN", "El fantasma no expone su tipo públicamente ni en sus atributos. Revisa el Monitor de Red ahora.", Color3.fromRGB(255, 150, 100))
+        RegistrarLog("SCAN", "El fantasma está completamente cifrado por el servidor y no envía su nombre hasta el final.", Color3.fromRGB(255, 150, 100))
+        RegistrarLog("SCAN", "Usa la Habitación Favorita e intenta adivinarlo enviando un remoto con F9.", Color3.fromRGB(200, 200, 200))
     end
 end)
 
