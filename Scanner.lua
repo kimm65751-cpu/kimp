@@ -10,6 +10,75 @@ local RunService = game:GetService("RunService")
 
 local LP = Players.LocalPlayer
 
+-- ============================================================
+-- INTERCEPTOR SILENCIOSO (Escucha el Diario del Jugador)
+-- Mapeo de indice de objetivo a nombre de evidencia
+-- Basdado en el orden exacto del diario visto en el juego
+-- ============================================================
+local EVI_MAP_IDX = {
+    [1] = "Nivel EMF 5",
+    [2] = "Huellas Dactilares",
+    [3] = "Caja de Espíritus",
+    [4] = "Orbe Fantasma",
+    [5] = "Temperaturas Heladas",
+    [6] = "Escritura de fantasmas",
+    [7] = "Proyector láser",
+    [8] = "Marchitar"
+}
+
+-- Tabla con evidencias; se llena aquí SIN necesitar GUI lista
+local EvidenciasEncontradas = {}
+local function RegistrarEvidencia(nombre)
+    if nombre and not EvidenciasEncontradas[nombre] then
+        EvidenciasEncontradas[nombre] = true
+        -- ActualizarPizarraResolucion se llama después de que la GUI esté lista
+        pcall(ActualizarPizarraResolucion)
+    end
+end
+
+-- Hook silencioso de FireServer pre-GUI
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method == "FireServer" then
+            local n = string.lower(tostring(self.Name))
+            local args = {...}
+            -- Detectar SelectEvidence / MarkEvidence del diario
+            if string.find(n, "evidence") or string.find(n, "select") or string.find(n, "journal") or string.find(n, "mark") then
+                pcall(function()
+                    for _, a in pairs(args) do
+                        local s = string.lower(tostring(a))
+                        if string.find(s, "emf") then RegistrarEvidencia("Nivel EMF 5")
+                        elseif string.find(s, "orb") then RegistrarEvidencia("Orbe Fantasma")
+                        elseif string.find(s, "spirit") or string.find(s, "box") then RegistrarEvidencia("Caja de Espíritus")
+                        elseif string.find(s, "writ") then RegistrarEvidencia("Escritura de fantasmas")
+                        elseif string.find(s, "freez") or string.find(s, "cold") then RegistrarEvidencia("Temperaturas Heladas")
+                        elseif string.find(s, "print") or string.find(s, "hand") then RegistrarEvidencia("Huellas Dactilares")
+                        elseif string.find(s, "laser") or string.find(s, "lidar") then RegistrarEvidencia("Proyector láser")
+                        elseif string.find(s, "wither") then RegistrarEvidencia("Marchitar")
+                        end
+                    end
+                end)
+            end
+        elseif method == "InvokeServer" then
+            local n = string.lower(tostring(self.Name))
+            if string.find(n, "ghost") or string.find(n, "select") then
+                -- Capturar la respuesta del server en remotefunction
+                local ok, resultado = pcall(oldNamecall, self, ...)
+                if ok and resultado then
+                    pcall(function()
+                        local s = string.lower(tostring(resultado))
+                        AddLog("🏆 GetSelectedGhost RESPONDIO: " .. tostring(resultado), Color3.fromRGB(255, 215, 0))
+                    end)
+                    return resultado
+                end
+            end
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
 -- ==================== GUI MASTER (SPEEDRUN THEME) ====================
 local parentUI = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 for _, v in pairs(parentUI:GetChildren()) do if v.Name == "DemonologySpeedrunPro" then v:Destroy() end end
@@ -40,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGYe | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
