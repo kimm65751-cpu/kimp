@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DE.& ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -484,34 +484,48 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- === AUTO-LABORATORIO V8.10/8.21: HACK DE COLLECTION SERVICE ==================
+                -- === AUTO-LABORATORIO V8.25: DRONE-TRACKING (Mover si el fantasma huye) ===
                 local CS = game:GetService("CollectionService")
-                if not _G.ObjetosSecuestrados then _G.ObjetosSecuestrados = {} end
                 
-                -- Buscar todas las herramientas existentes en el juego etiquetadas internamente
+                -- Buscar origen biológico (Fantasma) primero
+                local ghostPos = nil
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") and (obj:GetAttribute("IsGhost") == true or string.find(string.lower(obj.Name), "ghost")) then
+                        local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
+                        if part then ghostPos = part.Position; break end
+                    end
+                end
+
                 local todasHerramientas = CS:GetTagged("Item")
                 local tomables = {}
                 for _, obj in ipairs(todasHerramientas) do
-                    -- Filtrar monedas, objetos equipados y objetos YA SECUESTRADOS en rondas previas
-                    local targetName = obj:GetAttribute("ItemName") or obj.Name
+                    -- Ignorar monedas o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
                         if obj.Name ~= "100" and not string.find(string.lower(obj.Name), "coin") then
-                            if not _G.ObjetosSecuestrados[targetName] then
+                            -- Confirmar si la trampa ya está bien plantada cerca del monstruo
+                            local isPlanted = false
+                            if ghostPos then
+                                local p = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                                if p and (p.Position - ghostPos).Magnitude <= 30 then
+                                    isPlanted = true
+                                end
+                            end
+                            
+                            -- Si el arma está lejos, o el fantasma cambió de cuarto (roaming), la recogemos
+                            if not isPlanted then
                                 table.insert(tomables, obj)
                             end
                         end
                     end
                 end
                 
-                -- Fallback (Inyección de Strings V2) por si el CS falla y no hemos sacado nada aún
                 if #tomables == 0 then
-                    local count = 0; for k,v in pairs(_G.ObjetosSecuestrados) do count = count + 1 end
-                    if count == 0 then
-                        tomables = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
-                    end
+                    AddLog("━━━ ZONA TÁCTICA ASEGURADA. Bot durmiendo... ━━━", Color3.fromRGB(150, 255, 150))
+                    task.wait(3)
+                    -- No forzar fallback de inyección
+                else
+                    AddLog("━━━ DEMONOLOGY ZERO-DAY V8.25: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
                 end
-                
-                AddLog("━━━ DEMONOLOGY ZERO-DAY V8.21: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
                 
                 for i, target in ipairs(tomables) do
                     if not pingActivo then break end
@@ -642,10 +656,7 @@ BtnPing.MouseButton1Click:Connect(function()
                                             end
                                         end
                                     end)
-                                    AddLog("       📍 Objeto plantado en cuarto del fantasma.", Color3.fromRGB(200, 200, 255))
-                                    -- ¡MEMORIA CACHE! Ignorar este objeto particular en futuras rondas de escaneo
-                                    _G.ObjetosSecuestrados[capturedItemName] = true
-                                    _G.ObjetosSecuestrados[target.Name] = true
+                                    AddLog("       📍 Objeto plantado (Drone Tracking activado).", Color3.fromRGB(200, 200, 255))
                                 end
                                 
                                 -- NO destruir localmente para no desvincular el ID
