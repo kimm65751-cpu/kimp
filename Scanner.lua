@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMON333 ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -469,7 +469,7 @@ BtnPing.MouseButton1Click:Connect(function()
                 
                 -- FILTRO NEGATIVO: En vez de adivinar el nombre de la herramienta, descartamos la basura del mapa
                 -- Así atraparemos el ítem sin importar qué nombre raro tenga internamente
-                local NOT_TOOLS = {"door", "switch", "fuse", "candle", "drawer", "cabinet", "locker", "closet", "key", "bone", "skull", "coin", "tv", "bed", "hide", "generator", "lightswitch", "hiding", "radio"}
+                local NOT_TOOLS = {"door", "switch", "fuse", "candle", "drawer", "cabinet", "locker", "closet", "key", "bone", "skull", "coin", "tv", "bed", "hide", "generator", "lightswitch", "hiding", "radio", "truck", "van", "camper", "car"}
                 
                 local function EsHerramientaValida(nombre)
                     local nl = string.lower(nombre)
@@ -485,13 +485,26 @@ BtnPing.MouseButton1Click:Connect(function()
                 local tomables = {}
                 local procesados = {}
                 for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:FindFirstChildWhichIsA("ProximityPrompt") then
+                    if obj:FindFirstChildWhichIsA("ProximityPrompt") or obj:FindFirstChildWhichIsA("ClickDetector") then
                         local realObj = obj
                         if obj.Parent and obj.Parent:IsA("Model") and obj.Parent ~= Workspace then realObj = obj.Parent end
                         
                         if not procesados[realObj] and EsHerramientaValida(realObj.Name) then
                             procesados[realObj] = true
                             table.insert(tomables, realObj)
+                        end
+                    end
+                end
+                
+                -- FALLBACK: Si las herramientas no están en Workspace, buscar en ReplicatedStorage
+                if #tomables == 0 then
+                    for _, folder in pairs(game.ReplicatedStorage:GetChildren()) do
+                        if folder:IsA("Folder") and (string.find(string.lower(folder.Name), "item") or string.find(string.lower(folder.Name), "tool")) then
+                            for _, obj in pairs(folder:GetChildren()) do
+                                if EsHerramientaValida(obj.Name) then
+                                    table.insert(tomables, obj)
+                                end
+                            end
                         end
                     end
                 end
