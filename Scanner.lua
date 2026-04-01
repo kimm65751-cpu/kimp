@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.0 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V21 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -320,15 +320,11 @@ local PALABRAS_CLAVE = {"Data", "Challenge", "Ghost", "Result", "Earn", "Money",
 
 local function EsImportante(nombre)
     local nl = string.lower(nombre)
-    -- IGNORAR eventos basura y de spam constante
-    if string.find(nl, "mouse") or string.find(nl, "move") or string.find(nl, "sound") or string.find(nl, "step") or string.find(nl, "chat") or string.find(nl, "party") or string.find(nl, "door") or string.find(nl, "state") or string.find(nl, "equip") or string.find(nl, "update") then
+    -- IGNORAR SÓLO EVENTOS MUY RUIDOSOS
+    if string.find(nl, "mouse") or string.find(nl, "move") or string.find(nl, "sound") or string.find(nl, "step") or string.find(nl, "camera") then
         return false
     end
-    -- APROBAR palabras clave
-    for _, p in pairs(PALABRAS_CLAVE) do
-        if string.find(nl, string.lower(p)) then return true end
-    end
-    -- Si no sabemos qué es, loguearlo limitadamente.
+    -- Permitir TODO lo demás para no perdernos el paquete del diario
     return true
 end
 
@@ -360,8 +356,7 @@ BtnMonitor.MouseButton1Click:Connect(function()
 
         -- 1. Capturar C -> S (Client to Server) usando hookmetamethod
         if not getgenv().DaemonNetHook then
-            getgenv().DaemonNetHook = true
-            OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            getgenv().OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 if MonitorActivo and not checkcaller() then
                     local method = getnamecallmethod()
                     if method == "FireServer" or method == "InvokeServer" then
@@ -373,7 +368,7 @@ BtnMonitor.MouseButton1Click:Connect(function()
                                 local logStr = "["..method.."] " .. rName .. " | Args: " .. argStr
                                 RegistrarLog("C->S", logStr, Color3.fromRGB(255, 150, 0))
                                 
-                                -- [NUEVO] AUTO-GUARDADO DE EMERGENCIA PARA EVITAR PERDIDA POR TELEPORT
+                                -- AUTO-GUARDADO DE EMERGENCIA PARA EVITAR PERDIDA POR TELEPORT
                                 pcall(function()
                                     local current = ""
                                     pcall(function() current = readfile("Demonology_AutoSave_Red.txt") end)
@@ -383,8 +378,9 @@ BtnMonitor.MouseButton1Click:Connect(function()
                         end
                     end
                 end
-                return OriginalNamecall(self, ...)
+                return getgenv().OriginalNamecall(self, ...)
             end)
+            getgenv().DaemonNetHook = true
         end
 
         -- 2. Capturar S -> C (Server to Client) monitoreando los Remotos de RS
