@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.4 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.0 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -367,10 +367,18 @@ BtnMonitor.MouseButton1Click:Connect(function()
                     if method == "FireServer" or method == "InvokeServer" then
                         local rName = self.Name
                         if EsImportante(rName) then
-                            -- Usar task.spawn para evitar retrasar el envío real del paquete en el juego
+                            -- Usar task.spawn para evitar retrasar el envío real del paquete
                             local argStr = FormatearArgumentos(...)
                             task.spawn(function()
-                                RegistrarLog("C->S", "["..method.."] " .. rName .. " | Args: " .. argStr, Color3.fromRGB(255, 150, 0))
+                                local logStr = "["..method.."] " .. rName .. " | Args: " .. argStr
+                                RegistrarLog("C->S", logStr, Color3.fromRGB(255, 150, 0))
+                                
+                                -- [NUEVO] AUTO-GUARDADO DE EMERGENCIA PARA EVITAR PERDIDA POR TELEPORT
+                                pcall(function()
+                                    local current = ""
+                                    pcall(function() current = readfile("Demonology_AutoSave_Red.txt") end)
+                                    writefile("Demonology_AutoSave_Red.txt", current .. "\n" .. logStr)
+                                end)
                             end)
                         end
                     end
