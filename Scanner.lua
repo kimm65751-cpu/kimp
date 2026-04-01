@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY a | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOG4MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -451,59 +451,54 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- Herramientas conocidas del juego ordenadas por prioridad
-                local TOOLS = {
-                    {name="EMF Reader",       evi="Nivel EMF 5"},
-                    {name="Spirit Box",       evi="Caja de Espíritus"},
-                    {name="Thermometer",      evi="Temperaturas Heladas"},
-                    {name="UV Flashlight",    evi="Huellas Dactilares"},
-                    {name="Video Camera",     evi="Orbe Fantasma"},
-                    {name="Spirit Book",      evi="Escritura de fantasmas"},
-                    {name="Laser Projector",  evi="Proyector láser"},
-                    {name="LIDAR Scanner",    evi="Marchitar"},
-                }
-                
-                -- Buscar herramientas en el backpack, mochila y workspace
-                local function EncontrarHerramienta(nombreBuscar)
-                    local bp = LP:FindFirstChild("Backpack")
-                    if bp then
-                        for _, t in pairs(bp:GetChildren()) do
-                            if string.find(string.lower(t.Name), string.lower(nombreBuscar)) then
-                                return t
+                -- Escanear TODO el workspace por objetos interactivos (herramientas en el camión)
+                local tomables = {}
+                local procesados = {}
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    -- Si tiene ProximityPrompt o la propiedad IsItem, o es un Tool
+                    if obj:FindFirstChildWhichIsA("ProximityPrompt") or obj:GetAttribute("IsItem") or obj:IsA("Tool") then
+                        local n = string.lower(obj.Name)
+                        -- Excluir modelos grandes irrelevantes
+                        if not string.find(n, "door") and not string.find(n, "switch") and not string.find(n, "camper") then
+                            local realObj = obj
+                            if obj.Parent and obj.Parent:IsA("Model") and obj.Parent ~= Workspace then
+                                realObj = obj.Parent
+                            end
+                            if not procesados[realObj] then
+                                procesados[realObj] = true
+                                table.insert(tomables, realObj)
                             end
                         end
                     end
-                    -- Buscar en el workspace (en el camión o suelo)
-                    for _, obj in pairs(Workspace:GetDescendants()) do
-                        if string.find(string.lower(obj.Name), string.lower(nombreBuscar)) and
-                           (obj:IsA("Tool") or obj:IsA("Model")) then
-                            return obj
-                        end
-                    end
-                    return nil
+                end
+                
+                if #tomables == 0 then
+                    AddLog("⚠️ No se hallaron objetos interactivos (ProximityPrompts). Busca y prueba a mano...", Color3.fromRGB(255,100,0))
+                else
+                    AddLog("━━━ AUTO-LAB V8.1: " .. #tomables .. " tools secuestradas ━━━", Color3.fromRGB(255, 165, 0))
                 end
                 
                 AddLog("━━━ AUTO-LABORATORIO INICIADO ━━━", Color3.fromRGB(255, 165, 0))
                 
-                for _, tool in ipairs(TOOLS) do
+                for i, obj in ipairs(tomables) do
                     if not pingActivo then break end
-                    local obj = EncontrarHerramienta(tool.name)
-                    if obj then
-                        AddLog("🔧 PROBANDO: " .. tool.name, Color3.fromRGB(200, 200, 0))
-                        -- 1. Pickup si está en el suelo
-                        if remPickup then pcall(function() remPickup:FireServer(obj) end) end
-                        task.wait(0.5)
-                        -- 2. Equipar
-                        if remEquip then pcall(function() remEquip:FireServer(obj) end) end
-                        task.wait(0.5)
-                        -- 3. Activar / Encender
-                        if remToggle then pcall(function() remToggle:FireServer(obj, true) end) end
-                        task.wait(2) -- Dar tiempo al servidor para responder
-                        -- 4. Soltar en el cuarto del fantasma
-                        if remDrop then pcall(function() remDrop:FireServer(obj) end) end
-                        task.wait(0.5)
-                    else
-                        AddLog("⚠️ No encontrado en inventario: " .. tool.name, Color3.fromRGB(150, 100, 0))
+                    AddLog("🔧 ["..i.."] Probando: " .. obj.Name, Color3.fromRGB(200, 200, 0))
+                    -- 1. Pickup si está en el suelo
+                    if remPickup then pcall(function() remPickup:FireServer(obj) end) end
+                    task.wait(0.4)
+                    -- 2. Equipar
+                    if remEquip then pcall(function() remEquip:FireServer(obj) end) end
+                    task.wait(0.4)
+                    -- 3. Activar / Encender
+                    if remToggle then pcall(function() remToggle:FireServer(obj, true) end) end
+                    task.wait(2.5) -- Dar tiempo al servidor para responder
+                    -- 4. Soltar en el cuarto del fantasma
+                    if remDrop then pcall(function() remDrop:FireServer(obj) end) end
+                    task.wait(0.3)
+                    
+                    if i % 3 == 0 then
+                        AddLog("⏳ Pausando por límite de inventario...", Color3.fromRGB(150, 150, 150))
+                        task.wait(1.5)
                     end
                 end
                 
