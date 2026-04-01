@@ -109,7 +109,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V222 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY a | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -407,7 +407,6 @@ BtnPing.MouseButton1Click:Connect(function()
                             -- ORO PURO: ObjectiveCompleted con numero -> mapear a evidencia
                             if string.find(n, "objective") then
                                 AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
-                                -- Intentar mapear el numero de objetivo a evidencia
                                 local idx = tonumber(string.match(msg, "%d+"))
                                 if idx and EvidenciasEncontradas then
                                     local eviNombre = EVI_MAP_IDX[idx]
@@ -416,6 +415,13 @@ BtnPing.MouseButton1Click:Connect(function()
                                         EvidenciasEncontradas[eviNombre] = true
                                         pcall(ActualizarPizarraResolucion)
                                     end
+                                end
+                            -- 🔥 SPIRIT BOX: Los '####' en PostChatMessage = fantasma hablo por radio
+                            elseif string.find(n, "chatmessage") or string.find(n, "chatbubble") then
+                                if string.find(msg, "###") then
+                                    AddLog("🚨 SPIRIT BOX CONFIRMADA: El fantasma habló por Radio! [##]", Color3.fromRGB(255, 0, 200))
+                                    EvidenciasEncontradas["Caja de Espíritus"] = true
+                                    pcall(ActualizarPizarraResolucion)
                                 end
                             -- EVIDENCIA directa por nombre
                             elseif string.find(n, "evidence") or string.find(n, "complete") or string.find(n, "reward") or string.find(n, "result") then
@@ -436,23 +442,76 @@ BtnPing.MouseButton1Click:Connect(function()
         -- Inyectando engaños a los aparatos a distancia de forma contínua y fuerza bruta
         task.spawn(function()
             while pingActivo do
-                task.wait(3)
+                task.wait(2)
                 if not pingActivo then break end
                 
+                -- === AUTO-LABORATORIO: Equipa y activa cada herramienta ===
+                local remEquip  = game.ReplicatedStorage:FindFirstChild("RequestItemEquip", true)
+                local remToggle = game.ReplicatedStorage:FindFirstChild("ToggleItemState", true)
+                local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
+                local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
+                
+                -- Herramientas conocidas del juego ordenadas por prioridad
+                local TOOLS = {
+                    {name="EMF Reader",       evi="Nivel EMF 5"},
+                    {name="Spirit Box",       evi="Caja de Espíritus"},
+                    {name="Thermometer",      evi="Temperaturas Heladas"},
+                    {name="UV Flashlight",    evi="Huellas Dactilares"},
+                    {name="Video Camera",     evi="Orbe Fantasma"},
+                    {name="Spirit Book",      evi="Escritura de fantasmas"},
+                    {name="Laser Projector",  evi="Proyector láser"},
+                    {name="LIDAR Scanner",    evi="Marchitar"},
+                }
+                
+                -- Buscar herramientas en el backpack, mochila y workspace
+                local function EncontrarHerramienta(nombreBuscar)
+                    local bp = LP:FindFirstChild("Backpack")
+                    if bp then
+                        for _, t in pairs(bp:GetChildren()) do
+                            if string.find(string.lower(t.Name), string.lower(nombreBuscar)) then
+                                return t
+                            end
+                        end
+                    end
+                    -- Buscar en el workspace (en el camión o suelo)
+                    for _, obj in pairs(Workspace:GetDescendants()) do
+                        if string.find(string.lower(obj.Name), string.lower(nombreBuscar)) and
+                           (obj:IsA("Tool") or obj:IsA("Model")) then
+                            return obj
+                        end
+                    end
+                    return nil
+                end
+                
+                AddLog("━━━ AUTO-LABORATORIO INICIADO ━━━", Color3.fromRGB(255, 165, 0))
+                
+                for _, tool in ipairs(TOOLS) do
+                    if not pingActivo then break end
+                    local obj = EncontrarHerramienta(tool.name)
+                    if obj then
+                        AddLog("🔧 PROBANDO: " .. tool.name, Color3.fromRGB(200, 200, 0))
+                        -- 1. Pickup si está en el suelo
+                        if remPickup then pcall(function() remPickup:FireServer(obj) end) end
+                        task.wait(0.5)
+                        -- 2. Equipar
+                        if remEquip then pcall(function() remEquip:FireServer(obj) end) end
+                        task.wait(0.5)
+                        -- 3. Activar / Encender
+                        if remToggle then pcall(function() remToggle:FireServer(obj, true) end) end
+                        task.wait(2) -- Dar tiempo al servidor para responder
+                        -- 4. Soltar en el cuarto del fantasma
+                        if remDrop then pcall(function() remDrop:FireServer(obj) end) end
+                        task.wait(0.5)
+                    else
+                        AddLog("⚠️ No encontrado en inventario: " .. tool.name, Color3.fromRGB(150, 100, 0))
+                    end
+                end
+                
+                -- Spirit Box por chat + comandos secretos Wiki
+                AddLog("[CHAT] Enviando comandos secretos al fantasma...", Color3.fromRGB(255, 150, 0))
                 local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
-                if askSpirit then
-                    AddLog("[ATAQUE] Forzando Spirit Box invisiblemente...", Color3.fromRGB(255, 255, 0))
-                    pcall(function() askSpirit:FireServer("Are you here?") end)
-                end
+                if askSpirit then pcall(function() askSpirit:FireServer("Are you here?") end) end
                 
-                local askLidar = game.ReplicatedStorage:FindFirstChild("DetectedGhostWithLIDAR", true)
-                if askLidar then
-                    AddLog("[ATAQUE] Disparando red de Escáner LIDAR...", Color3.fromRGB(200, 255, 0))
-                    pcall(function() askLidar:FireServer() end)
-                end
-                
-                -- PROVOCACIÓN AVANZADA (Forzar Escritura y EMF):
-                AddLog("[ATAQUE] Enviando conjuros al Chat para obligarlo a interactuar...", Color3.fromRGB(255, 150, 0))
                 pcall(function()
                     local tcs = game:GetService("TextChatService")
                     if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
@@ -462,16 +521,14 @@ BtnPing.MouseButton1Click:Connect(function()
                         task.wait(1)
                         tcs.TextChannels.RBXGeneral:SendAsync("Show yourself")
                     else
-                        local req = game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest
+                        local req = game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
                         req:FireServer("Can you write in the book", "All")
                         task.wait(1)
                         req:FireServer("Give me a sign", "All")
-                        task.wait(1)
-                        req:FireServer("Show yourself", "All")
                     end
                 end)
                 
-                -- Se espera 20 segundos por el cooldown oficial revelado en la wiki
+                AddLog("━━━ CICLO COMPLETO - Esperando 20s ━━━", Color3.fromRGB(100, 100, 100))
                 for i = 1, 20 do
                     if not pingActivo then break end
                     task.wait(1)
