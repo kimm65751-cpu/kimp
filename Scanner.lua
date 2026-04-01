@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ aaaaaaaP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -208,7 +208,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜AAA EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -886,6 +886,65 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         ActualizarPizarraResolucion()
                     end
                 end
+                
+                -- V8.29: HACKEO DE HERRAMIENTAS ELECTRÓNICAS ABANDONADAS (EMF y TERMÓMETRO)
+                pcall(function()
+                    local CS = game:GetService("CollectionService")
+                    for _, item in ipairs(CS:GetTagged("Item")) do
+                        local n = string.lower(item.Name)
+                        local attr = string.lower(tostring(item:GetAttribute("ItemName") or ""))
+                        
+                        -- Hackear sensores del termómetro
+                        if string.find(n, "thermo") or string.find(attr, "thermo") then
+                            for _, desc in pairs(item:GetDescendants()) do
+                                if desc:IsA("TextLabel") and desc.Text then
+                                    local tempStr = tostring(desc.Text)
+                                    -- Si la pantalla marca un signo negativo (ej: -2.4, -0.1) o 0
+                                    if string.find(tempStr, "%-") then
+                                        if not EvidenciasEncontradas["Temperaturas Heladas"] then
+                                            EvidenciasEncontradas["Temperaturas Heladas"] = true
+                                            ActualizarPizarraResolucion()
+                                            AddLog("⭐ EVIDENCIA OBTENIDA: Temperaturas Heladas (Sensor Hackeado)", Color3.fromRGB(0, 255, 255))
+                                        end
+                                    end
+                                end
+                                -- Las temperaturas negativas también cambian Atributos
+                                if desc:GetAttribute("Temperature") then
+                                    local tz = tonumber(desc:GetAttribute("Temperature"))
+                                    if tz and tz <= 0 and not EvidenciasEncontradas["Temperaturas Heladas"] then
+                                        EvidenciasEncontradas["Temperaturas Heladas"] = true
+                                        ActualizarPizarraResolucion()
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- Hackear frecuencias del Lector EMF
+                        if string.find(n, "emf") or string.find(attr, "emf") then
+                            -- Los EMF activan la luz roja (Index 5) poniéndola material Neon, o modificando un valor numérico
+                            if item:GetAttribute("EMFLevel") then
+                                local lvl = tonumber(item:GetAttribute("EMFLevel"))
+                                if lvl and lvl >= 5 and not EvidenciasEncontradas["Nivel EMF 5"] then
+                                    EvidenciasEncontradas["Nivel EMF 5"] = true
+                                    ActualizarPizarraResolucion()
+                                    AddLog("⭐ EVIDENCIA OBTENIDA: Nivel EMF 5 (Datos de Placa Base Leídos)", Color3.fromRGB(255, 0, 0))
+                                end
+                            end
+                            for _, desc in pairs(item:GetDescendants()) do
+                                -- Si hay un material Neon brillante en el bombillo 5 o rojo
+                                if desc:IsA("BasePart") and desc.Material == Enum.Material.Neon then
+                                    if string.find(string.lower(desc.Name), "5") or string.find(string.lower(desc.Name), "red") then
+                                        if not EvidenciasEncontradas["Nivel EMF 5"] then
+                                            EvidenciasEncontradas["Nivel EMF 5"] = true
+                                            ActualizarPizarraResolucion()
+                                            AddLog("⭐ EVIDENCIA OBTENIDA: Nivel EMF 5 (LED 5 Interceptado)", Color3.fromRGB(255, 0, 0))
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
                 
                 -- V8.26: Interceptor Radiactivo del Spirit Box (ShowSubtitle Event)
                 pcall(function()
