@@ -77,7 +77,8 @@ if hookmetamethod then
                     end
                 end)
             end
-        elseif method == "InvokeServer" then
+        end
+        if method == "InvokeServer" then
             local n = string.lower(tostring(self.Name))
             if string.find(n, "ghost") or string.find(n, "select") then
                 -- Capturar la respuesta del server en remotefunction
@@ -261,7 +262,7 @@ local GHOST_DB = {
     ["Wraith"] = {"Nivel EMF 5", "Caja de Espíritus", "Proyector láser"}
 }
 
-local EvidenciasEncontradas = {}
+-- (EvidenciasEncontradas ya declarada en línea 30, NO redeclarar aquí)
 
 local function AddLog(msg, color)
     local txt = Instance.new("TextLabel")
@@ -485,13 +486,7 @@ BtnPing.MouseButton1Click:Connect(function()
                 task.wait(2)
                 if not pingActivo then break end
                 
-                -- === AUTO-LABORATORIO: Equipa y activa cada herramienta ===
-                local remEquip  = game.ReplicatedStorage:FindFirstChild("RequestItemEquip", true)
-                local remToggle = game.ReplicatedStorage:FindFirstChild("ToggleItemState", true)
-                local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
-                local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
-                
-                -- === AUTO-LABORATORIO V8.2: Gestión Real de Inventario ===
+                -- === AUTO-LABORATORIO V8.41: Gestión Real de Inventario ===
                 local remEquip  = game.ReplicatedStorage:FindFirstChild("RequestItemEquip", true)
                 local remToggle = game.ReplicatedStorage:FindFirstChild("ToggleItemState", true)
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
@@ -643,16 +638,82 @@ BtnPing.MouseButton1Click:Connect(function()
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
                                 task.wait(0.5) -- Esperar a que el motor local amarre la heramienta a la mano
                                 
-                                -- Forzar Encendido Auténtico (Hardware Level) - Un Solo Pulso Táctico Analógico
+                                -- Encendido Inteligente de Red (Basado en el Código Fuente Robado)
                                 pcall(function()
-                                    local vim = game:GetService("VirtualInputManager")
-                                    -- Enviando solo UN clic biológico. Si el script local lo procesa, él enviará el "ToggleItemState" al servidor naturalmente.
-                                    vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
-                                    task.wait(0.1)
-                                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
-                                    if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_USED (Single Click): " .. capturedItemName .. "\n") end
+                                    if itemFalso:GetAttribute("Enabled") ~= true then
+                                        if remToggle then remToggle:FireServer(itemFalso) end
+                                        if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_POWERED_ON (NetHack): " .. capturedItemName .. "\n") end
+                                    else
+                                        if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_ALREADY_ON: " .. capturedItemName .. "\n") end
+                                    end
                                 end)
-                                task.wait(1.5)
+                                task.wait(0.5)
+                                
+                                -- ========================================================
+                                -- 🔥 ZERO-DAY: Spoofing de LIDAR Instantáneo (V8.37)
+                                -- ========================================================
+                                pcall(function()
+                                    if string.find(string.lower(capturedItemName), "lidar") then
+                                        local lidarSpoof = game.ReplicatedStorage.Events:FindFirstChild("DetectedGhostWithLIDAR")
+                                        if lidarSpoof then
+                                            lidarSpoof:FireServer()
+                                            AddLog("⭐ EVIDENCIA OBTENIDA: Marchitar (LIDAR Spoofeado)", Color3.fromRGB(0, 255, 255))
+                                            EvidenciasEncontradas["Marchitar"] = true
+                                            pcall(ActualizarPizarraResolucion)
+                                        end
+                                    end
+                                end)
+                                
+                                -- ========================================================
+                                -- 📸 ZERO-DAY: Fraude Fotográfico para Dinero (V8.40)
+                                -- ========================================================
+                                pcall(function()
+                                    if string.find(string.lower(capturedItemName), "photo camera") then
+                                        local photoSpoof = game.ReplicatedStorage.Events:FindFirstChild("TakePhotoWithCamera")
+                                        if photoSpoof then
+                                            AddLog("📸 Generando 5 Fotos 3-Estrellas (Fraude Perfecto)", Color3.fromRGB(200, 255, 100))
+                                            for fotoIdx = 1, 5 do
+                                                local fakePhoto = {
+                                                    ["Object"] = workspace:FindFirstChild("Ghost") or LP.Character,
+                                                    ["Type"] = "Ghost",
+                                                    ["Reward"] = 24,
+                                                    ["Stars"] = 3,
+                                                    ["Percentage"] = 100
+                                                }
+                                                photoSpoof:FireServer(workspace.CurrentCamera.CFrame, fakePhoto)
+                                                task.wait(0.3)
+                                            end
+                                        end
+                                    end
+                                end)
+                                
+                                -- ========================================================
+                                -- 🔦 ZERO-DAY: Spoofing de Blacklight/UV (V8.41)
+                                -- ========================================================
+                                pcall(function()
+                                    if string.find(string.lower(capturedItemName), "blacklight") or string.find(string.lower(capturedItemName), "uv") then
+                                        -- workspace.Handprints contiene las huellas UV (descubierto en Photo Camera source)
+                                        local handprints = workspace:FindFirstChild("Handprints")
+                                        if handprints then
+                                            for _, hp in pairs(handprints:GetChildren()) do
+                                                local sg = hp:FindFirstChildOfClass("SurfaceGui")
+                                                if sg then
+                                                    local img = sg:FindFirstChildOfClass("ImageLabel")
+                                                    if img and img.ImageTransparency < 1 then
+                                                        -- Forzar detección de huella
+                                                        local blHover = game.ReplicatedStorage.Events:FindFirstChild("BlacklightHoveredPrint")
+                                                        if blHover then blHover:FireServer(hp) end
+                                                        AddLog("⭐ EVIDENCIA OBTENIDA: Huellas UV (Blacklight Spoofeado)", Color3.fromRGB(0, 255, 255))
+                                                        EvidenciasEncontradas["Huellas Dactilares"] = true
+                                                        pcall(ActualizarPizarraResolucion)
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end)
+                                
+                                task.wait(1)
                                 
                                 -- Buscar centro de masa del fantasma
                                 local ghostPos = nil
@@ -707,24 +768,28 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                 end
                 
-                -- Spirit Box por chat + comandos secretos Wiki
-                AddLog("[CHAT] Enviando comandos secretos al fantasma...", Color3.fromRGB(255, 150, 0))
+                -- Spirit Box por chat + comandos secretos Wiki (Extraídos del Código Fuente)
+                AddLog("[CHAT] Enviando Protocolo de Interrogatorio al Spirit Box...", Color3.fromRGB(255, 150, 0))
                 local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
-                if askSpirit then pcall(function() askSpirit:FireServer("Are you here?") end) end
+                if askSpirit then 
+                    pcall(function() askSpirit:FireServer("Where are you?") end)
+                    task.wait(1)
+                    pcall(function() askSpirit:FireServer("What do you want?") end) 
+                end
                 
                 pcall(function()
                     local tcs = game:GetService("TextChatService")
                     if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
-                        tcs.TextChannels.RBXGeneral:SendAsync("Can you write in the book")
+                        tcs.TextChannels.RBXGeneral:SendAsync("Where are you?")
                         task.wait(1)
-                        tcs.TextChannels.RBXGeneral:SendAsync("Give me a sign")
+                        tcs.TextChannels.RBXGeneral:SendAsync("What do you want?")
                         task.wait(1)
-                        tcs.TextChannels.RBXGeneral:SendAsync("Show yourself")
+                        tcs.TextChannels.RBXGeneral:SendAsync("How long ago did you die?")
                     else
                         local req = game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
-                        req:FireServer("Can you write in the book", "All")
+                        req:FireServer("Where are you?", "All")
                         task.wait(1)
-                        req:FireServer("Give me a sign", "All")
+                        req:FireServer("What do you want?", "All")
                     end
                 end)
                 
@@ -800,9 +865,52 @@ BtnESP.MouseButton1Click:Connect(function()
                                 end
                                 
                                 if count == 0 then
-                                    AddLog("❌ El creador no filtró evidencias en el modelo.", Color3.fromRGB(255, 50, 50))
+                                    AddLog("❌ El creador ocultó los atributos en el modelo.", Color3.fromRGB(255, 50, 50))
                                 else
                                     AddLog("✅ MIRA SI HAY UNA EVIDENCIA ESCONDIDA ARRIBA.", Color3.fromRGB(100, 255, 100))
+                                end
+                                
+                                -- =======================================================
+                                -- 🧠 PERFILADO PSICOLÓGICO Y ANATÓMICO (Comportamiento)
+                                -- =======================================================
+                                local tieneCabeza = false
+                                for _, c in pairs(obj:GetChildren()) do
+                                    if c:IsA("BasePart") and string.find(string.lower(c.Name), "head") and c.Transparency < 1 then
+                                        tieneCabeza = true
+                                    end
+                                end
+                                if not tieneCabeza then
+                                    AddLog("⚠️ ALERTA ANATÓMICA: ¡El Fantasma no tiene cabeza!", Color3.fromRGB(255, 0, 0))
+                                    AddLog("   └─> CULPABLE CASI SEGURO: DULLAHAN", Color3.fromRGB(255, 50, 50))
+                                end
+                                
+                                -- Texturas/Caras Vistas
+                                local face = obj:FindFirstChild("Head") and obj.Head:FindFirstChildOfClass("Decal")
+                                if face and face.Texture ~= "" then
+                                    AddLog("🎭 TEXTURA ASIGNADA: " .. tostring(face.Texture), Color3.fromRGB(0, 255, 255))
+                                end
+                                
+                                -- Hook Conductual de Sonido y Físicas (Solo se inyecta una vez)
+                                if not _G.ConductaHookeada then
+                                    _G.ConductaHookeada = true
+                                    workspace.DescendantAdded:Connect(function(desc)
+                                        pcall(function()
+                                            -- Detectar Lamentos Personalizados (Skinwalker / Banshee)
+                                            if desc:IsA("Sound") and desc.Name == "Hunt" then
+                                                -- El descompilador reveló que los "Wails" suben el PlaybackSpeed > 1
+                                                if desc.PlaybackSpeed > 1 then
+                                                    AddLog("⚠️ ALERTA ACÚSTICA: 'Ghost Wail' (Grito Especial) Detectado!", Color3.fromRGB(255, 0, 0))
+                                                    AddLog("   └─> CULPABLE POSIBLE: BANSHEE o SKINWALKER", Color3.fromRGB(255, 50, 50))
+                                                end
+                                            end
+                                            
+                                            -- Detectar Cristales/Espejos Rotos (Banshee)
+                                            if desc:IsA("Sound") and (string.find(string.lower(desc.Name), "glass") or string.find(string.lower(desc.Name), "shatter") or string.find(string.lower(desc.Name), "break")) then
+                                                AddLog("⚠️ ALERTA FÍSICA: ¡Cristal o Espejo Roto!", Color3.fromRGB(255, 0, 0))
+                                                AddLog("   └─> CULPABLE CASI SEGURO: BANSHEE", Color3.fromRGB(255, 50, 50))
+                                            end
+                                        end)
+                                    end)
                                 end
                             end
                         end
