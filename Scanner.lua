@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DONP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -634,33 +634,38 @@ BtnPing.MouseButton1Click:Connect(function()
                                 task.wait(0.5)
                                 
                                 -- ==========================================================
-                                -- 🚀 V8.45: TELETRANSPORTE BLINDADO AL CUARTO DEL FANTASMA
+                                -- 🚀 V8.48: TELETRANSPORTE CARA A CARA Y SIN FALSOS POSITIVOS
                                 -- ==========================================================
-                                local ghostPos = nil
+                                local ghostPart = nil
                                 for _, g_obj in pairs(workspace:GetDescendants()) do
-                                    if g_obj:IsA("Model") and (g_obj:GetAttribute("IsGhost") == true or string.find(string.lower(g_obj.Name), "ghost")) then
-                                        local part = g_obj:FindFirstChild("HumanoidRootPart") or g_obj:FindFirstChild("ZoneCheckPart") or g_obj.PrimaryPart
-                                        if part then ghostPos = part.Position; break end
+                                    if g_obj:IsA("Model") and g_obj ~= LP.Character then
+                                        local n = string.lower(g_obj.Name)
+                                        if n == "ghost" or n == "entity" or n == "demon" or g_obj:GetAttribute("IsGhost") == true then
+                                            -- Ignorar explícitamente cosas que no son la entidad
+                                            if not string.find(n, "orb") and not string.find(n, "book") then
+                                                ghostPart = g_obj:FindFirstChild("HumanoidRootPart") or g_obj:FindFirstChild("ZoneCheckPart") or g_obj.PrimaryPart
+                                                if ghostPart then break end
+                                            end
+                                        end
                                     end
                                 end
                                 
                                 local posOriginal = LP.Character and LP.Character.PrimaryPart and LP.Character.PrimaryPart.CFrame or nil
                                 
-                                if ghostPos and LP.Character and LP.Character.PrimaryPart then
+                                if ghostPart and LP.Character and LP.Character.PrimaryPart then
                                     local hrp = LP.Character.PrimaryPart
                                     pcall(function() hrp.Velocity = Vector3.new(0,0,0) end)
                                     pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0,0,0) end)
                                     
-                                    -- 🚀 V8.47: AUTO-AIM TÁCTICO (Noclip + LookAt) a 4 studs
-                                    local dirToGhost = (hrp.Position - ghostPos).Unit
-                                    if dirToGhost.Magnitude < 0.1 then dirToGhost = Vector3.new(0,0,1) end
-                                    local standPos = ghostPos + (dirToGhost * 4)
-                                    standPos = Vector3.new(standPos.X, ghostPos.Y, standPos.Z) -- Mismo nivel Y
+                                    -- Nos ponemos exactamente a 3.5 studs EN FRENTE de hacia donde esté mirando el fantasma
+                                    local ghostPos = ghostPart.Position
+                                    local standPos = ghostPos + (ghostPart.CFrame.LookVector * 3.5)
+                                    standPos = Vector3.new(standPos.X, ghostPos.Y, standPos.Z) -- Emparejar altura Y
                                     
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
-                                    AddLog("       🎯 Auto-Aim Target: Apuntando a " .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs", Color3.fromRGB(200, 200, 255))
+                                    AddLog("       🎯 Auto-Aim: Cara a cara (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
                                     task.wait(1.5)
-                                    hrp.CFrame = CFrame.lookAt(standPos, ghostPos) -- Re-confirmar rotación en el server
+                                    hrp.CFrame = CFrame.lookAt(standPos, ghostPos) -- Re-confirmar rotación
                                     task.wait(0.3)
                                 else
                                     AddLog("       ⚠️ ghostPos NO encontrado, soltando aquí.", Color3.fromRGB(255, 100, 100))
