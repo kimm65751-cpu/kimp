@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAeeeeeS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -488,12 +488,17 @@ BtnPing.MouseButton1Click:Connect(function()
                 -- === AUTO-LABORATORIO V8.25: DRONE-TRACKING (Mover si el fantasma huye) ===
                 local CS = game:GetService("CollectionService")
                 
-                -- Buscar origen biológico (Fantasma) primero
+                -- 🚀 V8.50: FILTRO ESTRICTO DE ORIGEN BIOLÓGICO PARA LA ZONA SEGURA (isPlanted)
                 local ghostPos = nil
                 for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") and (obj:GetAttribute("IsGhost") == true or string.find(string.lower(obj.Name), "ghost")) then
-                        local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
-                        if part then ghostPos = part.Position; break end
+                    if obj:IsA("Model") and obj ~= LP.Character then
+                        local n = string.lower(obj.Name)
+                        if n == "ghost" or n == "entity" or n == "demon" or obj:GetAttribute("IsGhost") == true then
+                            if not string.find(n, "orb") and not string.find(n, "book") then
+                                local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
+                                if part then ghostPos = part.Position; break end
+                            end
+                        end
                     end
                 end
 
@@ -1166,6 +1171,36 @@ BtnESP.MouseButton1Click:Connect(function()
                                                     end
                                                 end
                                             end
+                                            
+                                            -- 🚀 V8.50: AUTO-DETECTAR EVIDENCIAS FÍSICAS EXTREMAS
+                                            local dn = string.lower(desc.Name)
+                                            -- 1. Orbe Fantasma (Usualmente partículas o partes spawnadas en el cuarto)
+                                            if string.find(dn, "ghostorb") or string.find(dn, "orbparticle") or dn == "orb" then
+                                                if not EvidenciasEncontradas["Orbe Fantasma"] then
+                                                    EvidenciasEncontradas["Orbe Fantasma"] = true
+                                                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Orbe Fantasma (Detectado en 3D)", Color3.fromRGB(255, 255, 0))
+                                                    pcall(ActualizarPizarraResolucion)
+                                                end
+                                            end
+                                            
+                                            -- 2. Huellas Dactilares (Decals o Partes en puertas/ventanas)
+                                            if string.find(dn, "handprint") or string.find(dn, "fingerprint") or string.find(dn, "footprint") then
+                                                if not EvidenciasEncontradas["Huellas Dactilares"] then
+                                                    EvidenciasEncontradas["Huellas Dactilares"] = true
+                                                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Huellas Dactilares (Decal detectado)", Color3.fromRGB(255, 255, 0))
+                                                    pcall(ActualizarPizarraResolucion)
+                                                end
+                                            end
+                                            
+                                            -- 3. Proyector Láser (El fantasma crea un clon silueta interactuando con el DOTS)
+                                            if desc:IsA("Model") and (string.find(dn, "silhouette") or string.find(dn, "laserghost") or string.find(dn, "dots")) then
+                                                if not EvidenciasEncontradas["Proyector láser"] then
+                                                    EvidenciasEncontradas["Proyector láser"] = true
+                                                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Proyector Láser (Silueta interceptada)", Color3.fromRGB(255, 255, 0))
+                                                    pcall(ActualizarPizarraResolucion)
+                                                end
+                                            end
+                                            
                                         end)
                                     end)
                                 end
