@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️eeeeeUN & ESP "
+Title.Text = " ⏱️ DEeeqwewqewqeO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -484,26 +484,65 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                AddLog("━━━ DIAGNÓSTICO DE OBJETOS INTERACTIVOS ━━━", Color3.fromRGB(255, 100, 255))
-                local propCount = 0
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
-                        propCount = propCount + 1
-                        -- Print extreme details for the first 15 objects to avoid lag
-                        if propCount <= 15 then
-                            AddLog("📌 " .. obj.ClassName .. ": " .. obj.Parent.Name, Color3.fromRGB(200, 200, 200))
-                        end
-                    end
-                end
-                AddLog("Se hallaron " .. propCount .. " objetos interactivos totales.", Color3.fromRGB(255, 150, 255))
+                -- === AUTO-LABORATORIO V8.8: ATAQUE POR INYECCIÓN DE STRINGS ===
+                -- El dump reveló que las herramientas no son físicas, sino instanciadas por el servidor vía código interno.
+                local INTERNAL_KEYS = {
+                    "EMFLevel5", "SpiritBox", "FreezingTemperatures", "Handprints", 
+                    "GhostOrb", "GhostWriting", "LaserProjector", "Wither",
+                    "EMF", "Thermometer", "UV", "Camera", "Book", "Laser", "Lidar",
+                    "Flashlight", "Lighter", "Crucifix", "SanityPills", "SmudgeSticks"
+                }
+
+                AddLog("━━━ ATAQUE CIEGO DE INVENTARIO V8.8 ━━━", Color3.fromRGB(255, 100, 50))
                 
-                -- También buscar en PlayerGui por si las tools se agarran por UI en pantalla
-                for _, ui in pairs(LP.PlayerGui:GetDescendants()) do
-                    if ui:IsA("TextButton") or ui:IsA("ImageButton") then
-                        if string.find(string.lower(ui.Name), "equip") or string.find(string.lower(ui.Name), "item") then
-                            AddLog("📱 Botón UI Localizado: " .. ui:GetFullName(), Color3.fromRGB(100, 200, 255))
+                for i, secretKey in ipairs(INTERNAL_KEYS) do
+                    if not pingActivo then break end
+                    AddLog("💀 ["..i.."] Inyectando Extracción: " .. secretKey, Color3.fromRGB(200, 100, 0))
+                    
+                    -- 1. Intentar forzar la recolección enviando el string directo
+                    if remPickup then 
+                        pcall(function() remPickup:FireServer(secretKey) end)
+                        pcall(function() remPickup:InvokeServer(secretKey) end) 
+                    end
+                    task.wait(0.5)
+                    
+                    -- 2. Revisar si la inyección funcionó y apareció el objeto en la mochila
+                    local fakeTool = nil
+                    if LP:FindFirstChild("Backpack") then
+                        for _, t in pairs(LP.Backpack:GetChildren()) do
+                            if t:IsA("Tool") then
+                                fakeTool = t
+                                break
+                            end
                         end
                     end
+                    
+                    if not fakeTool and LP.Character then
+                        fakeTool = LP.Character:FindFirstChildWhichIsA("Tool")
+                    end
+                    
+                    if fakeTool then
+                        AddLog("   └─> ¡BURLADO! Equipada: " .. fakeTool.Name, Color3.fromRGB(150, 255, 150))
+                        
+                        -- Equipar
+                        pcall(function() LP.Character.Humanoid:EquipTool(fakeTool) end)
+                        if remEquip then pcall(function() remEquip:FireServer(fakeTool) end) end
+                        task.wait(0.5)
+                        
+                        -- Encender / Activar remotos
+                        if remToggle then 
+                            pcall(function() remToggle:FireServer(fakeTool, true) end) 
+                            pcall(function() fakeTool:Activate() end) -- Activar nativo
+                        end
+                        task.wait(2.5) -- Esperar respuesta del servidor (Evidence)
+                        
+                        -- Tirarla al piso para seguir secuestrando el resto
+                        if remDrop then pcall(function() remDrop:FireServer(fakeTool) end) end
+                        task.wait(0.5)
+                    end
+                    
+                    -- Pausar cada 3 intentos fuertes para no saturar anticheat
+                    if i % 3 == 0 then task.wait(1) end
                 end
                 
                 -- Spirit Box por chat + comandos secretos Wiki
