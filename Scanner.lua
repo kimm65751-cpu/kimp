@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️E3 "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -421,45 +421,57 @@ BtnPing.MouseButton1Click:Connect(function()
                             local msg = ""
                             for _, arg in pairs(args) do msg = msg .. tostring(arg) .. " " end
                             
-                            -- ORO PURO: ObjectiveCompleted con numero -> mapear a evidencia
-                            if string.find(n, "objective") then
-                                AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
-                                local idx = tonumber(string.match(msg, "%d+"))
-                                if idx and EvidenciasEncontradas then
-                                    local eviNombre = EVI_MAP_IDX[idx]
-                                    if eviNombre then
-                                        AddLog("⭐ OBJETIVO "..idx.." = ".. eviNombre, Color3.fromRGB(255, 255, 0))
-                                        EvidenciasEncontradas[eviNombre] = true
-                                        pcall(ActualizarPizarraResolucion)
-                                    end
-                                end
-                            -- 🔥 TERMÓMETRO REMOTO: El servidor envía temperatura aunque no lo tengas
-                            elseif string.find(n, "thermometerdisplay") then
-                                local temp = tonumber(args[2]) or 99
-                                if temp < 0 then
-                                    if not EvidenciasEncontradas["Temperaturas Heladas"] then
-                                        AddLog("❄️ TEMPERATURA DETECTADA: " .. string.format("%.1f", temp) .. "°C", Color3.fromRGB(100, 200, 255))
-                                        EvidenciasEncontradas["Temperaturas Heladas"] = true
-                                        pcall(ActualizarPizarraResolucion)
-                                    end
-                                end
-                            -- 🔥 SPIRIT BOX: Los '####' en PostChatMessage = fantasma hablo por radio
-                            elseif string.find(n, "chatmessage") or string.find(n, "chatbubble") then
-                                if string.find(msg, "###") then
-                                    AddLog("🚨 SPIRIT BOX CONFIRMADA: El fantasma habló por Radio! [##]", Color3.fromRGB(255, 0, 200))
-                                    EvidenciasEncontradas["Caja de Espíritus"] = true
+                        -- -------------------------------------------------------------
+                        -- 🔴 DEEP SPY (Analizador Integral de Logs)
+                        -- -------------------------------------------------------------
+                        -- Guardar automáticamente todo en un txt a nivel de exploit si writefile está habilitado.
+                        pcall(function()
+                            if writefile or appendfile then
+                                local dumpText = "["..os.date("%X").."] " .. (rem and rem.Name or "UNKNOWN") .. " : " .. (msg or "N/A") .. "\n"
+                                if appendfile then appendfile("OjoDeDios_DeepLog.txt", dumpText) 
+                                elseif writefile and readfile then writefile("OjoDeDios_DeepLog.txt", readfile("OjoDeDios_DeepLog.txt") .. dumpText) end
+                            end
+                        end)
+                        -- -------------------------------------------------------------
+                        
+                        -- ORO PURO: ObjectiveCompleted con numero -> mapear a evidencia
+                        if string.find(n, "objective") then
+                            AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
+                            local idx = tonumber(string.match(msg, "%d+"))
+                            if idx and EvidenciasEncontradas then
+                                local eviNombre = EVI_MAP_IDX[idx]
+                                if eviNombre then
+                                    AddLog("⭐ OBJETIVO "..idx.." = ".. eviNombre, Color3.fromRGB(255, 255, 0))
+                                    EvidenciasEncontradas[eviNombre] = true
                                     pcall(ActualizarPizarraResolucion)
                                 end
-                            -- EVIDENCIA directa por nombre
-                            elseif string.find(n, "evidence") or string.find(n, "complete") or string.find(n, "reward") or string.find(n, "result") then
-                                AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
-                            -- Aparatos de evidencia respondiendo
-                            elseif string.find(n, "spirit") or string.find(n, "lidar") or string.find(n, "thermometer") or string.find(n, "emf") then
-                                AddLog("🚨 RESPUESTA SERVIDOR ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 0, 0))
-                            -- Cualquier otro evento (captura todo en azul)
-                            else
-                                AddLog(">> [S->C] " .. rem.Name .. ": " .. string.sub(msg, 1, 60), Color3.fromRGB(50, 150, 255))
                             end
+                        -- 🔥 TERMÓMETRO REMOTO: El servidor envía temperatura aunque no lo tengas
+                        elseif string.find(n, "thermometerdisplay") then
+                            local temp = tonumber(args[2]) or 99
+                            if temp < 0 then
+                                if not EvidenciasEncontradas["Temperaturas Heladas"] then
+                                    AddLog("❄️ TEMPERATURA DETECTADA: " .. string.format("%.1f", temp) .. "°C", Color3.fromRGB(100, 200, 255))
+                                    EvidenciasEncontradas["Temperaturas Heladas"] = true
+                                    pcall(ActualizarPizarraResolucion)
+                                end
+                            end
+                        -- 🔥 SPIRIT BOX: Los '####' en PostChatMessage = fantasma hablo por radio
+                        elseif string.find(n, "chatmessage") or string.find(n, "chatbubble") then
+                            if string.find(msg, "###") then
+                                AddLog("🚨 SPIRIT BOX CONFIRMADA: El fantasma habló por Radio! [##]", Color3.fromRGB(255, 0, 200))
+                                EvidenciasEncontradas["Caja de Espíritus"] = true
+                                pcall(ActualizarPizarraResolucion)
+                            end
+                        -- EVIDENCIA directa por nombre
+                        elseif string.find(n, "evidence") or string.find(n, "complete") or string.find(n, "reward") or string.find(n, "result") then
+                            AddLog("🏆 JACKPOT ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 215, 0))
+                        -- Aparatos de evidencia respondiendo
+                        elseif string.find(n, "spirit") or string.find(n, "lidar") or string.find(n, "thermometer") or string.find(n, "emf") then
+                            AddLog("🚨 RESPUESTA SERVIDOR ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 0, 0))
+                        -- Cualquier otro evento (captura todo en azul)
+                        else
+                            AddLog(">> [S->C] " .. rem.Name .. ": " .. string.sub(msg, 1, 60), Color3.fromRGB(50, 150, 255))
                         end
                     end
                 end)
@@ -628,40 +640,49 @@ BtnPing.MouseButton1Click:Connect(function()
                             
                             if itemFalso then
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
+                                task.wait(0.5) -- Esperar a que el motor local amarre la heramienta a la mano
                                 
-                                -- Encender (Pulsación de red cruda sin argumentos, bypass de seguridad)
+                                -- Forzar Encendido (Hardware Level) - Doble pulso para asegurar
                                 pcall(function()
-                                    if remToggle then remToggle:FireServer() end 
+                                    if remToggle then remToggle:FireServer() end
+                                    local vim = game:GetService("VirtualInputManager")
+                                    vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
+                                    task.wait(0.1)
+                                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
+                                    task.wait(0.2)
+                                    vim:SendMouseButtonEvent(0, 0, 1, true, game, 1)
+                                    task.wait(0.1)
+                                    vim:SendMouseButtonEvent(0, 0, 1, false, game, 1)
                                 end)
                                 task.wait(1.5)
                                 
                                 -- Buscar centro de masa del fantasma
                                 local ghostPos = nil
-                                for _, obj in pairs(workspace:GetDescendants()) do
-                                    if obj:IsA("Model") and (obj:GetAttribute("IsGhost") == true or string.find(string.lower(obj.Name), "ghost")) then
-                                        local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
+                                for _, g_obj in pairs(workspace:GetDescendants()) do
+                                    if g_obj:IsA("Model") and (g_obj:GetAttribute("IsGhost") == true or string.find(string.lower(g_obj.Name), "ghost")) then
+                                        local part = g_obj:FindFirstChild("HumanoidRootPart") or g_obj:FindFirstChild("ZoneCheckPart") or g_obj.PrimaryPart
                                         if part then ghostPos = part.Position; break end
                                     end
                                 end
                                 
                                 -- Desechar Oficial
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
-                                task.wait(0.5)
+                                task.wait(1)
                                 
-                                -- Rehubicación Táctica: Enviar el equipo droppeado al cuarto del fantasma
-                                if ghostPos then
+                                -- Rehubicación Táctica de Nueva Instancia (Volumétrica)
+                                if ghostPos and LP.Character and LP.Character.PrimaryPart then
                                     pcall(function()
-                                        local itemsFolder = workspace:FindFirstChild("Items")
-                                        if itemsFolder then
-                                            for _, dropped in pairs(itemsFolder:GetChildren()) do
-                                                if dropped:GetAttribute("ItemName") == capturedItemName then
-                                                    if dropped.PrimaryPart then
-                                                        dropped:PivotTo(CFrame.new(ghostPos + Vector3.new(math.random(-1,1), 1, math.random(-1,1))))
-                                                    else
-                                                        local p = dropped:FindFirstChildWhichIsA("BasePart")
-                                                        if p then p.CFrame = CFrame.new(ghostPos + Vector3.new(0, 1, 0)) end
-                                                    end
-                                                end
+                                        local miPos = LP.Character.PrimaryPart.Position
+                                        -- El servidor destruye el obj y spawnea uno nuevo en tus pies al droppear. El ping no es instantáneo.
+                                        task.wait(2) -- Retardo incrementado para asegurar que la réplica de red reviva en nuestra cara
+                                        for _, v in pairs(game:GetService("CollectionService"):GetTagged("Item")) do
+                                            local pt = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart", true)
+                                            if not pt then
+                                                for _, ch in pairs(v:GetDescendants()) do if ch:IsA("BasePart") then pt = ch; break end end
+                                            end
+                                            -- Si está aplastado a nuestros pies (recién soltado en el camión), lo pateamos al cuarto
+                                            if pt and (pt.Position - miPos).Magnitude < 15 then
+                                                v:PivotTo(CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 1, math.random(-2,2))))
                                             end
                                         end
                                     end)
@@ -949,11 +970,11 @@ BtnEvidence.MouseButton1Click:Connect(function()
                             local hasInk = false
                             if item:GetAttribute("Written") == true or item:GetAttribute("IsWritten") == true then hasInk = true end
                             for _, desc in pairs(item:GetDescendants()) do
-                                local dName = string.lower(desc.Name)
-                                if desc:IsA("Decal") or desc:IsA("Texture") or desc:IsA("ImageLabel") then
-                                    local alpha = desc:IsA("ImageLabel") and desc.ImageTransparency or desc.Transparency
-                                    if alpha < 0.5 then
-                                        if string.find(dName, "writ") or string.find(dName, "text") or string.find(dName, "mess") or string.find(dName, "scrib") or string.find(dName, "ghost") or string.find(dName, "ink") or string.find(dName, "draw") then
+                                if desc:IsA("Decal") or desc:IsA("Texture") or desc:IsA("ImageLabel") or desc:IsA("SurfaceGui") then
+                                    local dName = string.lower(desc.Name)
+                                    local alpha = desc:IsA("ImageLabel") and desc.ImageTransparency or desc:IsA("SurfaceGui") and 1 or desc.Transparency
+                                    if alpha <= 0.5 then
+                                        if dName == "roblox" or dName == "decal" or dName == "image" or string.find(dName, "writ") or string.find(dName, "text") or string.find(dName, "draw") then
                                             hasInk = true
                                         end
                                     end
