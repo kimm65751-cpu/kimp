@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLeeeee & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -515,65 +515,74 @@ BtnPing.MouseButton1Click:Connect(function()
                     local remChange = game.ReplicatedStorage:FindFirstChild("ChangeSelectedItem", true)
                     
                     -- ==========================================
-                    -- 0. VACIAR SLOTS VIRTUALES (Forzar Teclas 1, 2, 3 y G)
+                    -- 0. VACIAR SLOTS VIRTUALES (Forzar Índices)
                     -- ==========================================
-                    for slot = 1, 3 do
+                    for slot = 1, 4 do
+                        if remDrop then 
+                            pcall(function() remDrop:FireServer(slot) end)
+                            pcall(function() remDrop:FireServer(tostring(slot)) end)
+                        end
+                        task.wait(0.1)
+                    end
+                    task.wait(0.5)
+
+                    -- 1. Intentar recoger objetivo (Irá al slot 1 virtual vacío)
+                    if remPickup then 
+                        pcall(function() remPickup:FireServer(target) end)
+                        pcall(function() remPickup:FireServer(target.Name) end)
+                    end
+                    task.wait(0.8)
+                    
+                    -- 2. Forzar al servidor a materializar simulando selección de todos los posibles slots
+                    for slot = 1, 4 do
                         if remChange then 
                             pcall(function() remChange:FireServer(slot) end)
                             pcall(function() remChange:FireServer(tostring(slot)) end)
                         end
-                        task.wait(0.4)
-                        if remDrop then pcall(function() remDrop:FireServer() end) end
                         task.wait(0.2)
                     end
-
-                    -- 1. Intentar recoger objetivo (Irá al slot 1 virtual porque los vaciamos todos)
-                    if remPickup then pcall(function() remPickup:FireServer(target) end) end
-                    task.wait(0.8)
+                    task.wait(0.4)
                     
-                    -- 2. Forzar al servidor a fabricar el objeto en nuestra mano (Simular tecla '1')
-                    if remChange then 
-                        pcall(function() remChange:FireServer(1) end)
-                        pcall(function() remChange:FireServer("1") end)
-                    end
-                    task.wait(0.6)
-                    
-                    -- 3. Buscar la herramienta física que el servidor nos acaba de soldar al personaje
+                    -- 3. Buscar la herramienta física generada en el personaje (Ignorar "Journal")
                     local itemFalso = nil
                     if LP.Character then
                         for _, v in pairs(LP.Character:GetChildren()) do
-                            if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
-                                itemFalso = v
-                                break
-                            end
-                            if v:IsA("Model") and not v:FindFirstChild("Humanoid") then
-                                itemFalso = v
+                            local n = string.lower(v.Name)
+                            if not string.find(n, "journal") and not string.find(n, "handbook") then
+                                if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
+                                    itemFalso = v
+                                    break
+                                end
+                                if v:IsA("Model") and not v:FindFirstChild("Humanoid") then
+                                    itemFalso = v
+                                    break
+                                end
                             end
                         end
                     end
                     
                     if itemFalso then
-                        AddLog("   └─> ¡RECOLECTADO! Archivo Físico: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
+                        AddLog("   └─> ¡RECOLECTADO! Analizando Físico: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
                         
-                        -- Usar Remote Oficiales extra por si el anticheat los pide
-                        if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
-                        task.wait(0.2)
-                        
-                        -- Encender y generar evidencia
+                        -- Generar evidencia
                         if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
-                        task.wait(2.5) -- Pausa Crítica de Servidor
+                        task.wait(2.5) -- Pausa Crítica
                         
-                        -- Tirar (Fuerza Bruta de la tecla G)
+                        -- Expulsar el objeto usando índices numéricos y objeto total
                         if remDrop then 
+                            for slot = 1, 4 do
+                                pcall(function() remDrop:FireServer(slot) end)
+                                pcall(function() remDrop:FireServer(tostring(slot)) end)
+                            end
                             pcall(function() remDrop:FireServer(itemFalso) end)
                             pcall(function() remDrop:FireServer(itemFalso.Name) end) 
-                            pcall(function() remDrop:FireServer() end)
                         end
-                        
                         task.wait(0.5)
+                        
+                        -- Forzar desaparición local
                         pcall(function() itemFalso:Destroy() end)
                     else
-                        AddLog("   └─> Fallo al materializar. Servidor bloqueado.", Color3.fromRGB(150, 150, 150))
+                        AddLog("   └─> Carga fallida. Slot bloqueado por inventario duro.", Color3.fromRGB(150, 150, 150))
                     end
                     
                     -- Pausa anticheat
