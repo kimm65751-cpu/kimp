@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️eeeeeUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -191,7 +191,8 @@ end
 local BtnESP       = CreateUIBtn(10,  "👁️ ESP FANTASMA", Color3.fromRGB(60, 10, 20))
 local BtnItems     = CreateUIBtn(60,  "💎 ESP HUESO Y MALDITOS", Color3.fromRGB(60, 40, 10))
 local BtnEvidence  = CreateUIBtn(110, "📖 SCAN DE EVIDENCIAS", Color3.fromRGB(10, 40, 60))
-local BtnPing      = CreateUIBtn(160, "📡 PING DE SERVIDOR (V6)", Color3.fromRGB(150, 40, 0))
+local BtnPing      = CreateUIBtn(160, "📡 PING GHOST & AUTO-LAB", Color3.fromRGB(150, 40, 0))
+local BtnDump      = CreateUIBtn(210, "🕵️ HACKEAR MÓDULOS DE ITEMS", Color3.fromRGB(80, 0, 150))
 
 -- Pizarra de Evidencias (Derecha)
 local BoardBG = Instance.new("Frame")
@@ -483,101 +484,26 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
-                -- FILTRO NEGATIVO: En vez de adivinar el nombre de la herramienta, descartamos la basura del mapa
-                -- Así atraparemos el ítem sin importar qué nombre raro tenga internamente
-                local NOT_TOOLS = {"door", "switch", "fuse", "candle", "drawer", "cabinet", "locker", "closet", "key", "bone", "skull", "coin", "tv", "bed", "hide", "generator", "lightswitch", "hiding", "radio", "truck", "van", "camper", "car"}
-                
-                local function EsHerramientaValida(nombre)
-                    local nl = string.lower(nombre)
-                    if tonumber(nl) then return false end
-                    
-                    for _, bad in pairs(NOT_TOOLS) do
-                        if string.find(nl, bad) then return false end
-                    end
-                    return true
-                end
-                
-                -- Escanear la camioneta/mapa por objetos físicos interactivos válidos
-                local tomables = {}
-                local procesados = {}
+                AddLog("━━━ DIAGNÓSTICO DE OBJETOS INTERACTIVOS ━━━", Color3.fromRGB(255, 100, 255))
+                local propCount = 0
                 for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:FindFirstChildWhichIsA("ProximityPrompt") or obj:FindFirstChildWhichIsA("ClickDetector") then
-                        local realObj = obj
-                        if obj.Parent and obj.Parent:IsA("Model") and obj.Parent ~= Workspace then realObj = obj.Parent end
-                        
-                        if not procesados[realObj] and EsHerramientaValida(realObj.Name) then
-                            procesados[realObj] = true
-                            table.insert(tomables, realObj)
+                    if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                        propCount = propCount + 1
+                        -- Print extreme details for the first 15 objects to avoid lag
+                        if propCount <= 15 then
+                            AddLog("📌 " .. obj.ClassName .. ": " .. obj.Parent.Name, Color3.fromRGB(200, 200, 200))
                         end
                     end
                 end
+                AddLog("Se hallaron " .. propCount .. " objetos interactivos totales.", Color3.fromRGB(255, 150, 255))
                 
-                -- FALLBACK: Si las herramientas no están en Workspace, buscar en ReplicatedStorage
-                if #tomables == 0 then
-                    for _, folder in pairs(game.ReplicatedStorage:GetChildren()) do
-                        if folder:IsA("Folder") and (string.find(string.lower(folder.Name), "item") or string.find(string.lower(folder.Name), "tool")) then
-                            for _, obj in pairs(folder:GetChildren()) do
-                                if EsHerramientaValida(obj.Name) then
-                                    table.insert(tomables, obj)
-                                end
-                            end
+                -- También buscar en PlayerGui por si las tools se agarran por UI en pantalla
+                for _, ui in pairs(LP.PlayerGui:GetDescendants()) do
+                    if ui:IsA("TextButton") or ui:IsA("ImageButton") then
+                        if string.find(string.lower(ui.Name), "equip") or string.find(string.lower(ui.Name), "item") then
+                            AddLog("📱 Botón UI Localizado: " .. ui:GetFullName(), Color3.fromRGB(100, 200, 255))
                         end
                     end
-                end
-                
-                if #tomables == 0 then
-                    AddLog("⚠️ No se detectaron Herramientas en el camión. Revisa la lista o hazlo manual.", Color3.fromRGB(255,100,0))
-                else
-                    AddLog("━━━ AUTO-LAB V8.2: " .. #tomables .. " Herramientas Encontradas ━━━", Color3.fromRGB(255, 165, 0))
-                end
-                
-                AddLog("━━━ AUTO-LABORATORIO INICIADO ━━━", Color3.fromRGB(255, 165, 0))
-                
-                for i, vObj in ipairs(tomables) do
-                    if not pingActivo then break end
-                    AddLog("🔧 ["..i.."] Extrayendo: " .. vObj.Name, Color3.fromRGB(200, 200, 0))
-                    
-                    -- 1. Agarrar del tablero
-                    if remPickup then pcall(function() remPickup:FireServer(vObj) end) end
-                    task.wait(0.8) -- Dar tiempo a que llegue al Backpack
-                    
-                    -- 2. Buscar LA COPIA (El Tool real) dentro del Backpack del jugador
-                    local realTool = nil
-                    if LP:FindFirstChild("Backpack") then
-                        for _, t in pairs(LP.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and (string.find(string.lower(t.Name), string.lower(vObj.Name)) or EsHerramientaValida(t.Name)) then
-                                realTool = t
-                                break
-                            end
-                        end
-                    end
-                    
-                    -- Si ya la tenía en la mano
-                    if not realTool and LP.Character then
-                        realTool = LP.Character:FindFirstChildWhichIsA("Tool")
-                    end
-                    
-                    if realTool then
-                        AddLog("   └─> Probando en el cuarto...", Color3.fromRGB(150, 255, 150))
-                        -- Equipar
-                        pcall(function() LP.Character.Humanoid:EquipTool(realTool) end)
-                        if remEquip then pcall(function() remEquip:FireServer(realTool) end) end
-                        task.wait(0.5)
-                        
-                        -- Encender
-                        if remToggle then pcall(function() remToggle:FireServer(realTool, true) end) end
-                        task.wait(2.5) -- Esperar que el servidor procese si hay evidencia
-                        
-                        -- Tirarla al piso (Para vaciar inventario)
-                        if remDrop then pcall(function() remDrop:FireServer(realTool) end) end
-                        task.wait(0.5)
-                    else
-                        AddLog("   └─> Falló al entrar a la mochila.", Color3.fromRGB(255, 100, 100))
-                    end
-                    
-                    -- Pausa cada 3 ítems no es tan necesaria si los soltamos exitosamente,
-                    -- pero por seguridad de lag del servidor:
-                    if i % 3 == 0 then task.wait(1) end
                 end
                 
                 -- Spirit Box por chat + comandos secretos Wiki
@@ -781,5 +707,86 @@ BtnEvidence.MouseButton1Click:Connect(function()
         BtnEvidence.Text = "📖 SCAN DE EVIDENCIAS"
         BtnEvidence.BackgroundColor3 = Color3.fromRGB(10, 40, 60)
         AddLog("[STOP] Escáner Apagado.", Color3.fromRGB(150, 150, 150))
+    end
+end)
+
+BtnDump.MouseButton1Click:Connect(function()
+    AddLog("━━━ MOTOR DE INGENIERÍA INVERSA V8.7 ━━━", Color3.fromRGB(200, 100, 255))
+    local txt = "[DEMONOLOGY V8.7 - ANALISIS DE MODULOS E INVENTARIO]\n\n"
+    
+    -- 1. Escanear Módulos
+    txt = txt .. "=== MODULOS REPLICADOS ===\n"
+    local count = 0
+    for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+            local n = string.lower(obj.Name)
+            if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") or string.find(n, "evid") or string.find(n, "shop") then
+                count = count + 1
+                local nameStr = "Módulo ORO: " .. obj:GetFullName()
+                AddLog("📦 " .. nameStr, Color3.fromRGB(255, 255, 100))
+                txt = txt .. nameStr .. "\n"
+                
+                -- Extraer llaves
+                pcall(function()
+                    local data = require(obj)
+                    if type(data) == "table" then
+                        txt = txt .. "  [LLAVES]: "
+                        for k, v in pairs(data) do txt = txt .. tostring(k) .. ", " end
+                        txt = txt .. "\n"
+                    end
+                end)
+                
+                -- Decompilar si es posible
+                if type(decompile) == "function" then
+                    pcall(function()
+                        local code = decompile(obj)
+                        if code then
+                            for line in string.gmatch(code, "[^\r\n]+") do
+                                if string.find(line, "FireServer") or string.find(line, "InvokeServer") then
+                                    txt = txt .. "  [REMOTE HOOKED]: " .. string.trim(line) .. "\n"
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+    
+    -- 2. Escanear PlayerGui
+    txt = txt .. "\n=== SCRIPTS DE INTERFAZ LOCAL ===\n"
+    for _, ui in pairs(LP.PlayerGui:GetDescendants()) do
+        if ui:IsA("LocalScript") then
+            local n = string.lower(ui.Name)
+            if string.find(n, "invent") or string.find(n, "item") or string.find(n, "equip") or string.find(n, "interact") then
+                txt = txt .. "Script UI: " .. ui:GetFullName() .. "\n"
+                AddLog("🖥️ Script Local UI: " .. ui.Name, Color3.fromRGB(150, 255, 100))
+            end
+        elseif ui:IsA("ProximityPrompt") then
+            txt = txt .. "Prompt Oculto: " .. ui:GetFullName() .. "\n"
+        elseif ui:IsA("RemoteEvent") or ui:IsA("RemoteFunction") then
+            txt = txt .. "Remoto Local: " .. ui:GetFullName() .. "\n"
+        end
+    end
+    
+    -- 3. Workspace
+    txt = txt .. "\n=== INTERACTUABLES EN WORKSPACE ===\n"
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+            txt = txt .. obj.ClassName .. " en: " .. obj:GetFullName() .. "\n"
+        end
+    end
+    
+    -- 4. Guardar archivo
+    if type(writefile) == "function" then
+        local ok, err = pcall(writefile, "Demonology_Dump.txt", txt)
+        if ok then
+            AddLog("✅ Reporte guardado: 'workspace/Demonology_Dump.txt'", Color3.fromRGB(50, 255, 100))
+        else
+            AddLog("❌ Error guardando texto: " .. tostring(err), Color3.fromRGB(255, 50, 50))
+        end
+    else
+        AddLog("Tu ejecutor no soporta writefile(), mira la consola(F9).", Color3.fromRGB(255, 200, 50))
+        print(txt)
     end
 end)
