@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V41 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -166,6 +166,22 @@ local GHOST_DB = {
 
 local EvidenciasEncontradas = {}
 
+local function AddLog(msg, color)
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(1, -4, 0, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = ">> " .. msg
+    txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    txt.Font = Enum.Font.Code; txt.TextSize = 12
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextWrapped = true
+    txt.Parent = LogScroll
+    
+    local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, 9999))
+    txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
+    LogScroll.CanvasPosition = Vector2.new(0, 999999)
+end
+
 local function ActualizarPizarraResolucion()
     for _, v in pairs(LogScroll:GetChildren()) do
         if v:IsA("TextLabel") then v:Destroy() end
@@ -204,21 +220,7 @@ local function ActualizarPizarraResolucion()
     end
 end
 
-local function AddLog(msg, color)
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -4, 0, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = ">> " .. msg
-    txt.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    txt.Font = Enum.Font.Code; txt.TextSize = 12
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.TextWrapped = true
-    txt.Parent = LogScroll
-    
-    local ts = game:GetService("TextService"):GetTextSize(txt.Text, txt.TextSize, txt.Font, Vector2.new(LogScroll.AbsoluteSize.X - 15, 9999))
-    txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
-    LogScroll.CanvasPosition = Vector2.new(0, 999999)
-end
+-- Función AddLog fue movida hacia arriba para prevenir el error de 'nil call'
 
 AddLog("Sistema Speedrun Activo.", Color3.fromRGB(0, 255, 100))
 AddLog("Busca las evidencias en el mapa...", Color3.fromRGB(200, 200, 200))
@@ -299,12 +301,12 @@ BtnItems.MouseButton1Click:Connect(function()
                 for _, obj in pairs(Workspace:GetDescendants()) do
                     if obj:IsA("Model") or obj:IsA("BasePart") then
                         local nl = string.lower(obj.Name)
-                        -- Huesos
-                        if string.find(nl, "bone") or string.find(nl, "hueso") then
+                        -- Huesos (Exactos)
+                        if nl == "bone" or nl == "hueso" or string.find(nl, "spine") or string.find(nl, "ribcage") then
                             ApplyESPTag(obj, "🦴 HUESO", Color3.fromRGB(255, 255, 0), false)
                         end
-                        -- Objetos Malditos (Tarot, Ouija, Espejo, Voodoo, Musica)
-                        if string.find(nl, "tarot") or string.find(nl, "board") or string.find(nl, "ouija") or string.find(nl, "voodoo") or string.find(nl, "mirror") or string.find(nl, "music") then
+                        -- Objetos Malditos (Nombres exactos o con ProximityPrompt interactivo)
+                        if nl == "tarotcards" or nl == "tarot cards" or nl == "ouija board" or nl == "ouijaboard" or nl == "haunted mirror" or nl == "hauntedmirror" or nl == "voodoo doll" or nl == "voodoodoll" or nl == "music box" or nl == "musicbox" or nl == "summoning circle" then
                             ApplyESPTag(obj, "🔮 MALDITO: " .. obj.Name, Color3.fromRGB(150, 0, 255), false)
                         end
                         -- Caja de Braker (Electricidad)
