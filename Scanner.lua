@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLeeeee & ESP "
+Title.Text = " ⏱️ DEt "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -797,40 +797,50 @@ BtnEvidence.MouseButton1Click:Connect(function()
 end)
 
 BtnDump.MouseButton1Click:Connect(function()
-    AddLog("━━━ MOTOR DE INGENIERÍA INVERSA V8.9 ━━━", Color3.fromRGB(200, 100, 255))
-    local txt = "[DEMONOLOGY V8.9 - REPORTE MASIVO]\n\n"
+    AddLog("━━━ INCURSIÓN DE DATOS UI V8.17 ━━━", Color3.fromRGB(200, 100, 255))
+    if not decompile then 
+        AddLog("❌ Tu ejecutor actual no soporta la función decompile()", Color3.fromRGB(255, 0, 0))
+        return 
+    end
     
-    txt = txt .. "=== EVENTOS REMOTOS DEL SERVIDOR ===\n"
+    local txt = "=== EVENTOS REMOTOS DEL SERVIDOR ===\n"
     for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
             txt = txt .. obj.ClassName .. ": " .. obj:GetFullName() .. "\n"
         end
     end
     
-    txt = txt .. "\n=== CODIGO FUENTE (DECOMPILED) ===\n"
+    txt = txt .. "\n=== CODIGO FUENTE (DECOMPILED UI) ===\n"
     local count = 0
-    for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("ModuleScript") then
-            local n = string.lower(obj.Name)
-            if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") then
-                count = count + 1
-                txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
-                
-                -- Decompilar puro
-                if type(decompile) == "function" then
+    
+    local LP = game.Players.LocalPlayer
+    if LP and LP:FindFirstChild("PlayerGui") then
+        AddLog("⏳ Decompilando scripts de Interfaz...", Color3.fromRGB(200, 200, 0))
+        for _, s in pairs(LP.PlayerGui:GetDescendants()) do
+            if s:IsA("LocalScript") then
+                pcall(function()
+                    local src = decompile(s)
+                    if src and (string.find(src, "RequestItemDrop") or string.find(src, "ChangeSelectedItem") or string.find(src, "RequestItemEquip")) then
+                        count = count + 1
+                        txt = txt .. "\n--- LocalScript: " .. s:GetFullName() .. " ---\n"
+                        txt = txt .. src
+                    end
+                end)
+            end
+        end
+    end
+    
+    if count == 0 then
+        txt = txt .. "No se encontraron scripts de UI con 'RequestItemDrop', buscando en ReplicatedStorage...\n"
+        for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("ModuleScript") then
+                local n = string.lower(obj.Name)
+                if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") then
                     pcall(function()
-                        local code = decompile(obj)
-                        if code then
-                            local lineas = {}
-                            for line in string.gmatch(code, "[^\r\n]+") do
-                                table.insert(lineas, line)
-                            end
-                            -- Guardar solo las primeras 30 líneas para no romper el txt
-                            for i=1, math.min(30, #lineas) do
-                                txt = txt .. lineas[i] .. "\n"
-                            end
-                        else
-                            txt = txt .. "-- Fallo decompile() --\n"
+                        local source = decompile(obj)
+                        if source and (string.find(source, "RequestItemDrop") or string.find(source, "ChangeSelectedItem")) then
+                            txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
+                            txt = txt .. source
                         end
                     end)
                 end
@@ -839,14 +849,14 @@ BtnDump.MouseButton1Click:Connect(function()
     end
     
     if type(writefile) == "function" then
-        local ok, err = pcall(writefile, "Demonology_Dump.txt", txt)
+        local ok, err = pcall(writefile, "Demonology_UI_Drop.txt", txt)
         if ok then
-            AddLog("✅ Reporte V8.9 guardado: 'workspace/Demonology_Dump.txt'", Color3.fromRGB(50, 255, 100))
+            AddLog("✅ Crack guardado: 'workspace/Demonology_UI_Drop.txt'", Color3.fromRGB(50, 255, 100))
         else
             AddLog("❌ Error: " .. tostring(err), Color3.fromRGB(255, 50, 50))
         end
     else
-        AddLog("No hay writefile(), revisa F9.", Color3.fromRGB(255, 200, 50))
+        AddLog("No hay writefile(), revisa tu consola.", Color3.fromRGB(255, 200, 50))
         print(txt)
     end
 end)
