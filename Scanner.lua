@@ -41,7 +41,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " 🕯️ DEMONOLOGY V2.0 | EXPERTO EN REDES "
+Title.Text = " 🕯️ DEMONOLOGY V2.01 | EXPERTO EN REDES "
 Title.TextColor3 = Color3.fromRGB(255, 100, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -117,8 +117,8 @@ Linea.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 Linea.Parent = Sidebar
 
 local BtnCopy    = CreateUIBtn(150, "📋 COPIAR LOGS", Color3.fromRGB(60, 60, 20))
-local BtnSave    = CreateUIBtn(190, "💾 GUARDAR EN .TXT", Color3.fromRGB(20, 60, 20))
-local BtnClear   = CreateUIBtn(230, "🗑️ LIMPIAR CONSOLA", Color3.fromRGB(60, 20, 20))
+local BtnObj     = CreateUIBtn(190, "💰 AUTO OBJETIVOS ($$)", Color3.fromRGB(80, 20, 20))
+local BtnLeave   = CreateUIBtn(230, "🏃 FORZAR ESCAPE", Color3.fromRGB(20, 60, 20))
 
 -- Zona "Pantalla Negra" de Consola (Derecha)
 local ConsoleBG = Instance.new("Frame")
@@ -181,14 +181,7 @@ end
 
 RegistrarLog("SYS", "Consola Segura Iniciada. Prevención de Congelamientos: ON", Color3.fromRGB(0, 255, 100))
 
-BtnClear.MouseButton1Click:Connect(function()
-    InternalLogs = {}
-    for _, v in pairs(LogScroll:GetChildren()) do
-        if v:IsA("TextLabel") then v:Destroy() end
-    end
-    LogCount = 0
-    RegistrarLog("SYS", "Consola Limpiada.", Color3.fromRGB(0, 255, 100))
-end)
+-- Limpiar removido de la UI pero mantenido internamente si es necesario
 
 BtnCopy.MouseButton1Click:Connect(function()
     if setclipboard then
@@ -200,16 +193,30 @@ BtnCopy.MouseButton1Click:Connect(function()
     end
 end)
 
-BtnSave.MouseButton1Click:Connect(function()
-    if writefile then
-        local texto = table.concat(InternalLogs, "\n")
-        local nombreArchivo = "Demonology_Analisis_" .. os.date("%H%M%S") .. ".txt"
-        pcall(function()
-            writefile(nombreArchivo, texto)
-        end)
-        RegistrarLog("AVISO", "Guardado físico como: " .. nombreArchivo .. " (Revisa carpeta 'workspace' de Delta)", Color3.fromRGB(0, 255, 255))
+BtnObj.MouseButton1Click:Connect(function()
+    RegistrarLog("HACK", "Explotando ObjectiveCompleted... Forzando recompensas máximas.", Color3.fromRGB(255, 0, 0))
+    local remote = ReplicatedStorage:FindFirstChild("ObjectiveCompleted", true)
+    if remote and remote:IsA("RemoteEvent") then
+        for i = 1, 10 do
+            -- Los objetivos en estos juegos suelen ser del 1 al 4 o nombres.
+            remote:FireServer(i)
+            remote:FireServer(tostring(i))
+            remote:FireServer("Objective"..tostring(i))
+            task.wait(0.1)
+        end
+        RegistrarLog("HACK", "Carga de objetivos falsos inyectada a la red.", Color3.fromRGB(0, 255, 0))
     else
-        RegistrarLog("ERROR", "Tu Ejecutor no soporta 'writefile'.", Color3.fromRGB(255, 50, 50))
+        RegistrarLog("ERROR", "No se encontró el puerto ObjectiveCompleted.", Color3.fromRGB(255, 50, 50))
+    end
+end)
+
+BtnLeave.MouseButton1Click:Connect(function()
+    RegistrarLog("HACK", "Llamando a RequestReturnToLobby. Escapando de inmediato...", Color3.fromRGB(255, 255, 0))
+    local remote = ReplicatedStorage:FindFirstChild("RequestReturnToLobby", true)
+    if remote and remote:IsA("RemoteEvent") then
+        remote:FireServer()
+    else
+        RegistrarLog("ERROR", "No se puede escapar forzosamente.", Color3.fromRGB(255, 50, 50))
     end
 end)
 
