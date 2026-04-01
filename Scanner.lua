@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEt "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -814,36 +814,46 @@ BtnDump.MouseButton1Click:Connect(function()
     local count = 0
     
     local LP = game.Players.LocalPlayer
-    if LP and LP:FindFirstChild("PlayerGui") then
-        AddLog("⏳ Decompilando scripts de Interfaz...", Color3.fromRGB(200, 200, 0))
-        for _, s in pairs(LP.PlayerGui:GetDescendants()) do
+    
+    local function scanScripts(container)
+        if not container then return end
+        for _, s in pairs(container:GetDescendants()) do
             if s:IsA("LocalScript") then
                 pcall(function()
                     local src = decompile(s)
-                    if src and (string.find(src, "RequestItemDrop") or string.find(src, "ChangeSelectedItem") or string.find(src, "RequestItemEquip")) then
+                    if src and (string.find(src, "RequestItemDrop") or string.find(src, "ChangeSelectedItem") or string.find(src, "RequestItemEquip") or string.find(src, "ToggleItemState")) then
                         count = count + 1
                         txt = txt .. "\n--- LocalScript: " .. s:GetFullName() .. " ---\n"
-                        txt = txt .. src
+                        txt = txt .. string.sub(src, 1, 3000) .. "\n"
                     end
                 end)
             end
         end
     end
     
+    if LP then
+        AddLog("⏳ Decompilando PlayerGui...", Color3.fromRGB(200, 200, 0))
+        scanScripts(LP:FindFirstChild("PlayerGui"))
+        
+        AddLog("⏳ Decompilando PlayerScripts...", Color3.fromRGB(200, 200, 0))
+        scanScripts(LP:FindFirstChild("PlayerScripts"))
+        
+        AddLog("⏳ Decompilando Character...", Color3.fromRGB(200, 200, 0))
+        scanScripts(LP.Character)
+    end
+    
     if count == 0 then
-        txt = txt .. "No se encontraron scripts de UI con 'RequestItemDrop', buscando en ReplicatedStorage...\n"
+        txt = txt .. "No se encontraron scripts locales con 'RequestItemDrop', buscando exhaustivamente en ReplicatedStorage...\n"
+        AddLog("⏳ Decompilando TODO ReplicatedStorage...", Color3.fromRGB(200, 200, 0))
         for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
             if obj:IsA("ModuleScript") then
-                local n = string.lower(obj.Name)
-                if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") then
-                    pcall(function()
-                        local source = decompile(obj)
-                        if source and (string.find(source, "RequestItemDrop") or string.find(source, "ChangeSelectedItem")) then
-                            txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
-                            txt = txt .. source
-                        end
-                    end)
-                end
+                pcall(function()
+                    local source = decompile(obj)
+                    if source and (string.find(source, "RequestItemDrop") or string.find(source, "ChangeSelectedItem") or string.find(source, "RequestItemEquip")) then
+                        txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
+                        txt = txt .. string.sub(source, 1, 2000) .. "\n"
+                    end
+                end)
             end
         end
     end
