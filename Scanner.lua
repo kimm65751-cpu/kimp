@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGrrrrr SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -490,20 +490,21 @@ BtnPing.MouseButton1Click:Connect(function()
                 -- Buscar todas las herramientas existentes en el juego etiquetadas internamente por el desarrollador
                 local todasHerramientas = CS:GetTagged("Item")
                 local tomables = {}
-                
                 for _, obj in ipairs(todasHerramientas) do
-                    -- Si la herramienta está en el mapa físico o en los assets base (no la tiene otro jugador)
+                    -- Filtrar monedas (como "100") y objetos que ya tiene alguien
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
-                        table.insert(tomables, obj)
+                        if obj.Name ~= "100" and not string.find(string.lower(obj.Name), "coin") then
+                            table.insert(tomables, obj)
+                        end
                     end
                 end
                 
-                -- Fallback si el juego los borró y los carga por nombre (Inyección de Strings V2)
+                -- Fallback (Inyección de Strings V2) por si el CS falla
                 if #tomables == 0 then
-                    tomables = {"EMFLevel5", "SpiritBox", "FreezingTemperatures", "Handprints", "GhostOrb", "GhostWriting", "LaserProjector", "Wither", "Thermometer", "UV", "Camera", "Lidar"}
+                    tomables = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
                 end
                 
-                AddLog("━━━ ATAQUE COLLECTION SERVICE V8.10: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
+                AddLog("━━━ DEMONOLOGY ZERO-DAY V8.11: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
                 
                 for i, target in ipairs(tomables) do
                     if not pingActivo then break end
@@ -515,49 +516,57 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                     task.wait(0.6)
                     
-                    -- Buscar usando la misma lógica que el desarrollador (decompile: HasTag("Item"))
+                    -- Las herramientas se guardan en la mochila con el mismo nombre o como números
                     local itemFalso = nil
                     
-                    -- Buscar en Mochila (o Inventory oculto)
                     if LP:FindFirstChild("Backpack") then
-                        for _, v in pairs(LP.Backpack:GetChildren()) do
-                            if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
-                                itemFalso = v
-                                break
+                        itemFalso = LP.Backpack:FindFirstChild(n)
+                        if not itemFalso then
+                            -- Buscar cualquier cosa que sea un número (herramienta) y no el Journal
+                            for _, v in pairs(LP.Backpack:GetChildren()) do
+                                if tonumber(v.Name) and v.Name ~= "100" then
+                                    itemFalso = v
+                                    break
+                                end
                             end
                         end
                     end
                     
-                    -- Buscar en Personaje
                     if not itemFalso and LP.Character then
-                        for _, v in pairs(LP.Character:GetChildren()) do
-                            if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then
-                                itemFalso = v
-                                break
+                        itemFalso = LP.Character:FindFirstChild(n)
+                        if not itemFalso then
+                            for _, v in pairs(LP.Character:GetChildren()) do
+                                if tonumber(v.Name) and v.Name ~= "100" then itemFalso = v break end
                             end
                         end
                     end
                     
                     if itemFalso then
-                        AddLog("   └─> ¡BURLADO! En Mano: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
+                        AddLog("   └─> ¡RECOLECTADO! Procesando: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
                         
-                        -- Equipar usando el Remote Oficial
                         if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
-                        task.wait(0.3)
+                        task.wait(0.4)
                         
-                        -- Encender usando el Remote Oficial
                         if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
-                        task.wait(2.5) -- Pausa crítica para que el servidor genere la evidencia
+                        task.wait(2.5) -- Pausa crítica para generar la evidencia
                         
-                        -- Tirarla al piso / Desequipar
+                        -- Usar el remoto oficial para soltar
                         if remDrop then pcall(function() remDrop:FireServer(itemFalso) end) end
-                        task.wait(0.5)
+                        task.wait(0.6)
+                        
+                        -- Si sigue atascado, forzar tirar el hijo (por seguridad)
+                        if LP.Character and LP.Character:FindFirstChild(itemFalso.Name) then
+                            itemFalso.Parent = Workspace
+                        end
                     else
-                        AddLog("   └─> Fallo de carga de memoria.", Color3.fromRGB(150, 150, 150))
+                        AddLog("   └─> Bloqueado por inventario o lag.", Color3.fromRGB(150, 150, 150))
                     end
                     
-                    -- Evitar Kicks de red
-                    if i % 3 == 0 then task.wait(1.5) end
+                    -- Pausa anticheat
+                    if i % 3 == 0 then 
+                        AddLog("⏳ Pausando para resetear inventario...", Color3.fromRGB(150, 150, 150))
+                        task.wait(2) 
+                    end
                 end
                 
                 -- Spirit Box por chat + comandos secretos Wiki
