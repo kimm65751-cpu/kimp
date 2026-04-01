@@ -41,23 +41,22 @@ if hookmetamethod then
     local oldNamecall
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
-        if method == "FireServer" then
+        if method == "FireServer" or method == "InvokeServer" then
             local n = string.lower(tostring(self.Name))
             local args = {...}
             
-            -- Detectar manipulación de herramientas (NUEVO: Ingeniería inversa de inventario)
-            if string.find(n, "equip") or string.find(n, "pickup") or string.find(n, "drop") or string.find(n, "toggleitem") then
+            -- OMNI-SPY: Atrapar y mostrar TODOS LOS PAQUETES DE RED (ignorando ruido)
+            if not string.find(n, "move") and not string.find(n, "mouse") and not string.find(n, "sound") and not string.find(n, "cam") and not string.find(n, "step") then
                 pcall(function()
                     local msg = ""
                     for i, a in pairs(args) do
-                        if typeof(a) == "Instance" then
-                            msg = msg .. "[Instancia: " .. a.ClassName .. " (" .. a.Name .. ")] "
-                        else
-                            msg = msg .. "[" .. typeof(a) .. ": " .. tostring(a) .. "] "
-                        end
+                        if typeof(a) == "Instance" then msg = msg .. "[Inst: " .. a.Name .. "] "
+                        else msg = msg .. "[" .. type(a) .. ": " .. tostring(a) .. "] " end
                     end
-                    -- Imprimir en pizarra la receta exacta de la herramienta
-                    AddLog("🕵️ [ESPIONAJE] " .. self.Name .. " -> " .. msg, Color3.fromRGB(200, 100, 255))
+                    -- No repetir spam de chat
+                    if not string.find(n, "chat") then
+                        AddLog("🕵️ [C->S] " .. self.Name .. " -> " .. msg, Color3.fromRGB(150, 100, 255))
+                    end
                 end)
             end
             
@@ -126,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️eeee SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
