@@ -48,17 +48,40 @@ Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TitleBar
 
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 35, 0, 30)
+MinBtn.Position = UDim2.new(1, -70, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 14
+MinBtn.Parent = TitleBar
+
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 35, 0, 30)
 CloseBtn.Position = UDim2.new(1, -35, 0, 0)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
 CloseBtn.Text = "X"
-CloseBtn.DrawsBackground = true
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.Code
 CloseBtn.TextSize = 14
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function() SG:Destroy() end)
+
+local minimizado = false
+MinBtn.MouseButton1Click:Connect(function()
+    minimizado = not minimizado
+    if minimizado then
+        Panel.Size = UDim2.new(0, 500, 0, 30)
+        Sidebar.Visible = false
+        ConsoleBG.Visible = false
+    else
+        Panel.Size = UDim2.new(0, 500, 0, 450)
+        Sidebar.Visible = true
+        ConsoleBG.Visible = true
+    end
+end)
 
 -- Zona de Botones (Izquierda)
 local Sidebar = Instance.new("Frame")
