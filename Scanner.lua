@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ D1111P "
+Title.Text = " ⏱️3& ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -597,16 +597,46 @@ BtnPing.MouseButton1Click:Connect(function()
                             if itemFalso then
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
                                 
-                                -- Generar evidencia on
-                                if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
-                                task.wait(2.5) -- Pausa Crítica
+                                -- Generar evidencia (El clic derecho es simplemente ToggleItemState sin booleanos extra)
+                                if remToggle then pcall(function() remToggle:FireServer(itemFalso) end) end
+                                task.wait(1.5) -- Pausa corta de encendido
+                                
+                                -- Buscar ubicación del fantasma en el mapa
+                                local ghostPos = nil
+                                for _, obj in pairs(workspace:GetDescendants()) do
+                                    if obj:IsA("Model") and (obj:GetAttribute("IsGhost") == true or string.find(string.lower(obj.Name), "ghost")) then
+                                        local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
+                                        if part then ghostPos = part.Position; break end
+                                    end
+                                end
                                 
                                 -- Desechar oficial
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
                                 task.wait(0.5)
-                                pcall(function() itemFalso:Destroy() end)
+                                
+                                -- Rehubicación Táctica: Enviar el equipo droppeado al cuarto del fantasma
+                                if ghostPos then
+                                    pcall(function()
+                                        local itemsFolder = workspace:FindFirstChild("Items")
+                                        if itemsFolder then
+                                            for _, dropped in pairs(itemsFolder:GetChildren()) do
+                                                if dropped:GetAttribute("ItemName") == capturedItemName then
+                                                    if dropped.PrimaryPart then
+                                                        dropped:PivotTo(CFrame.new(ghostPos + Vector3.new(math.random(-1,1), 1, math.random(-1,1))))
+                                                    else
+                                                        local p = dropped:FindFirstChildWhichIsA("BasePart")
+                                                        if p then p.CFrame = CFrame.new(ghostPos + Vector3.new(0, 1, 0)) end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end)
+                                    AddLog("       📍 Objeto plantado en cuarto del fantasma.", Color3.fromRGB(200, 200, 255))
+                                end
+                                
+                                -- NO destruir localmente para no desvincular el ID
                             else
-                                AddLog("   └─> Confirmado en base de datos, pero sin modelo 3D local.", Color3.fromRGB(150, 150, 150))
+                                AddLog("   └─> Confirmado en DB, pero sin modelo 3D.", Color3.fromRGB(150, 150, 150))
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
                             end
                         else
