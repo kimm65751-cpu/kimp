@@ -137,7 +137,72 @@ LogScroll.ScrollBarThickness = 5
 LogScroll.Parent = BoardBG
 Instance.new("UIListLayout", LogScroll).Padding = UDim.new(0, 4)
 
+-- Base de Datos Oficial (Wiki de Demonology 2026)
+local GHOST_DB = {
+    ["Aswang"] = {"Marchitar", "Nivel EMF 5", "Escritura de fantasmas"},
+    ["Banshee"] = {"Orbe Fantasma", "Huellas Dactilares", "Temperaturas Heladas"},
+    ["Demon"] = {"Nivel EMF 5", "Huellas Dactilares", "Temperaturas Heladas"},
+    ["Dullahan"] = {"Marchitar", "Proyector láser", "Temperaturas Heladas"},
+    ["Dybbuk"] = {"Marchitar", "Huellas Dactilares", "Temperaturas Heladas"},
+    ["Entity"] = {"Caja de Espíritus", "Huellas Dactilares", "Proyector láser"},
+    ["Ghoul"] = {"Caja de Espíritus", "Temperaturas Heladas", "Orbe Fantasma"},
+    ["Keres"] = {"Marchitar", "Huellas Dactilares", "Caja de Espíritus"},
+    ["Leviathan"] = {"Orbe Fantasma", "Huellas Dactilares", "Escritura de fantasmas"},
+    ["Nightmare"] = {"Nivel EMF 5", "Caja de Espíritus", "Orbe Fantasma"},
+    ["Oni"] = {"Proyector láser", "Caja de Espíritus", "Temperaturas Heladas"},
+    ["Phantom"] = {"Nivel EMF 5", "Huellas Dactilares", "Orbe Fantasma"},
+    ["Revenant"] = {"Escritura de fantasmas", "Nivel EMF 5", "Temperaturas Heladas"},
+    ["Siren"] = {"Marchitar", "Caja de Espíritus", "Nivel EMF 5"},
+    ["Shadow"] = {"Nivel EMF 5", "Escritura de fantasmas", "Proyector láser"},
+    ["Skinwalker"] = {"Temperaturas Heladas", "Escritura de fantasmas", "Caja de Espíritus"},
+    ["Specter"] = {"Nivel EMF 5", "Temperaturas Heladas", "Proyector láser"},
+    ["Spirit"] = {"Huellas Dactilares", "Escritura de fantasmas", "Caja de Espíritus"},
+    ["The Wisp"] = {"Marchitar", "Proyector láser", "Orbe Fantasma"},
+    ["Umbra"] = {"Orbe Fantasma", "Proyector láser", "Huellas Dactilares"},
+    ["Vex"] = {"Marchitar", "Orbe Fantasma", "Temperaturas Heladas"},
+    ["Wendigo"] = {"Orbe Fantasma", "Escritura de fantasmas", "Proyector láser"},
+    ["Wraith"] = {"Nivel EMF 5", "Caja de Espíritus", "Proyector láser"}
+}
+
 local EvidenciasEncontradas = {}
+
+local function ActualizarPizarraResolucion()
+    for _, v in pairs(LogScroll:GetChildren()) do
+        if v:IsA("TextLabel") then v:Destroy() end
+    end
+    
+    local foundList = {}
+    for ev, _ in pairs(EvidenciasEncontradas) do table.insert(foundList, ev) end
+    
+    AddLog("🔍 EVIDENCIAS DETECTADAS ("..#foundList.."/3)", Color3.fromRGB(255, 255, 0))
+    for _, ev in ipairs(foundList) do AddLog("- " .. ev, Color3.fromRGB(255, 150, 0)) end
+    
+    AddLog("--------------------------------", Color3.fromRGB(100, 100, 100))
+    AddLog("👻 FANTASMAS POSIBLES:", Color3.fromRGB(255, 0, 0))
+    
+    local posibles = 0
+    for gName, gEvs in pairs(GHOST_DB) do
+        local coincide = true
+        for _, miEv in ipairs(foundList) do
+            local tieneEsta = false
+            for _, suEv in ipairs(gEvs) do
+                if miEv == suEv then tieneEsta = true; break end
+            end
+            if not tieneEsta then coincide = false; break end
+        end
+        if coincide then
+            posibles = posibles + 1
+            AddLog(">> " .. gName, Color3.fromRGB(100, 255, 100))
+        end
+    end
+    if posibles == 1 then
+        BoardTitle.Text = " 🏆 ¡FANTASMA DESCUBIERTO! "
+        BoardTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+    else
+        BoardTitle.Text = " 📜 RESOLVIENDO CASO... "
+        BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end
 
 local function AddLog(msg, color)
     local txt = Instance.new("TextLabel")
@@ -302,8 +367,8 @@ BtnEvidence.MouseButton1Click:Connect(function()
                     
                     if isEvi and not EvidenciasEncontradas[evName] then
                         EvidenciasEncontradas[evName] = true
-                        AddLog("✅ EVIDENCIA FÍSICA DETECTADA: " .. evName, Color3.fromRGB(255, 255, 50))
                         ApplyESPTag(obj, "🔴 " .. evName, Color3.fromRGB(255, 100, 0), true)
+                        ActualizarPizarraResolucion()
                     end
                 end
                 task.wait(2)
