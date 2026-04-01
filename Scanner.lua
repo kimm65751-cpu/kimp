@@ -16,14 +16,14 @@ local LP = Players.LocalPlayer
 -- Basdado en el orden exacto del diario visto en el juego
 -- ============================================================
 local EVI_MAP_IDX = {
-    [1] = "Nivel EMF 5",
-    [2] = "Huellas Dactilares",
-    [3] = "Caja de Espíritus",
-    [4] = "Orbe Fantasma",
-    [5] = "Temperaturas Heladas",
-    [6] = "Escritura de fantasmas",
-    [7] = "Proyector láser",
-    [8] = "Marchitar"
+    [1] = "Nivel EMF 5",           -- EMFLevel5 = 1
+    [2] = "Caja de Espíritus",     -- SpiritBox = 2
+    [3] = "Escritura de fantasmas",-- GhostWriting = 3
+    [4] = "Temperaturas Heladas",  -- FreezingTemperatures = 4
+    [5] = "Orbe Fantasma",         -- GhostOrb = 5
+    [6] = "Huellas Dactilares",    -- Handprints = 6
+    [7] = "Proyector láser",       -- LaserProjector = 7
+    [8] = "Marchitar"              -- Wither = 8
 }
 
 -- Tabla con evidencias; se llena aquí SIN necesitar GUI lista
@@ -636,86 +636,11 @@ BtnPing.MouseButton1Click:Connect(function()
                             
                             if itemFalso then
                                 AddLog("   └─> ¡MATERIALIZADO Y ACTIVO!: " .. capturedItemName, Color3.fromRGB(150, 255, 150))
-                                task.wait(0.5) -- Esperar a que el motor local amarre la heramienta a la mano
-                                
-                                -- Encendido Inteligente de Red (Basado en el Código Fuente Robado)
-                                pcall(function()
-                                    if itemFalso:GetAttribute("Enabled") ~= true then
-                                        if remToggle then remToggle:FireServer(itemFalso) end
-                                        if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_POWERED_ON (NetHack): " .. capturedItemName .. "\n") end
-                                    else
-                                        if appendfile then appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_ALREADY_ON: " .. capturedItemName .. "\n") end
-                                    end
-                                end)
                                 task.wait(0.5)
                                 
-                                -- ========================================================
-                                -- 🔥 ZERO-DAY: Spoofing de LIDAR Instantáneo (V8.37)
-                                -- ========================================================
-                                pcall(function()
-                                    if string.find(string.lower(capturedItemName), "lidar") then
-                                        local lidarSpoof = game.ReplicatedStorage.Events:FindFirstChild("DetectedGhostWithLIDAR")
-                                        if lidarSpoof then
-                                            lidarSpoof:FireServer()
-                                            AddLog("⭐ EVIDENCIA OBTENIDA: Marchitar (LIDAR Spoofeado)", Color3.fromRGB(0, 255, 255))
-                                            EvidenciasEncontradas["Marchitar"] = true
-                                            pcall(ActualizarPizarraResolucion)
-                                        end
-                                    end
-                                end)
-                                
-                                -- ========================================================
-                                -- 📸 ZERO-DAY: Fraude Fotográfico para Dinero (V8.40)
-                                -- ========================================================
-                                pcall(function()
-                                    if string.find(string.lower(capturedItemName), "photo camera") then
-                                        local photoSpoof = game.ReplicatedStorage.Events:FindFirstChild("TakePhotoWithCamera")
-                                        if photoSpoof then
-                                            AddLog("📸 Generando 5 Fotos 3-Estrellas (Fraude Perfecto)", Color3.fromRGB(200, 255, 100))
-                                            for fotoIdx = 1, 5 do
-                                                local fakePhoto = {
-                                                    ["Object"] = workspace:FindFirstChild("Ghost") or LP.Character,
-                                                    ["Type"] = "Ghost",
-                                                    ["Reward"] = 24,
-                                                    ["Stars"] = 3,
-                                                    ["Percentage"] = 100
-                                                }
-                                                photoSpoof:FireServer(workspace.CurrentCamera.CFrame, fakePhoto)
-                                                task.wait(0.3)
-                                            end
-                                        end
-                                    end
-                                end)
-                                
-                                -- ========================================================
-                                -- 🔦 ZERO-DAY: Spoofing de Blacklight/UV (V8.41)
-                                -- ========================================================
-                                pcall(function()
-                                    if string.find(string.lower(capturedItemName), "blacklight") or string.find(string.lower(capturedItemName), "uv") then
-                                        -- workspace.Handprints contiene las huellas UV (descubierto en Photo Camera source)
-                                        local handprints = workspace:FindFirstChild("Handprints")
-                                        if handprints then
-                                            for _, hp in pairs(handprints:GetChildren()) do
-                                                local sg = hp:FindFirstChildOfClass("SurfaceGui")
-                                                if sg then
-                                                    local img = sg:FindFirstChildOfClass("ImageLabel")
-                                                    if img and img.ImageTransparency < 1 then
-                                                        -- Forzar detección de huella
-                                                        local blHover = game.ReplicatedStorage.Events:FindFirstChild("BlacklightHoveredPrint")
-                                                        if blHover then blHover:FireServer(hp) end
-                                                        AddLog("⭐ EVIDENCIA OBTENIDA: Huellas UV (Blacklight Spoofeado)", Color3.fromRGB(0, 255, 255))
-                                                        EvidenciasEncontradas["Huellas Dactilares"] = true
-                                                        pcall(ActualizarPizarraResolucion)
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end)
-                                
-                                task.wait(1)
-                                
-                                -- Buscar centro de masa del fantasma
+                                -- ==========================================================
+                                -- 🚀 V8.43: TELETRANSPORTE PRIMERO, LUEGO ENCENDER, LUEGO SOLTAR
+                                -- ==========================================================
                                 local ghostPos = nil
                                 for _, g_obj in pairs(workspace:GetDescendants()) do
                                     if g_obj:IsA("Model") and (g_obj:GetAttribute("IsGhost") == true or string.find(string.lower(g_obj.Name), "ghost")) then
@@ -724,31 +649,127 @@ BtnPing.MouseButton1Click:Connect(function()
                                     end
                                 end
                                 
-                                -- Desechar Oficial
-                                if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
-                                task.wait(1)
+                                local posOriginal = LP.Character and LP.Character.PrimaryPart and LP.Character.PrimaryPart.CFrame or nil
                                 
-                                -- Rehubicación Táctica de Nueva Instancia (Volumétrica)
+                                -- 1. Teletransportar al cuarto del fantasma
                                 if ghostPos and LP.Character and LP.Character.PrimaryPart then
-                                    pcall(function()
-                                        local miPos = LP.Character.PrimaryPart.Position
-                                        -- El servidor destruye el obj y spawnea uno nuevo en tus pies al droppear. El ping no es instantáneo.
-                                        task.wait(2) -- Retardo incrementado para asegurar que la réplica de red reviva en nuestra cara
-                                        for _, v in pairs(game:GetService("CollectionService"):GetTagged("Item")) do
-                                            local pt = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart", true)
-                                            if not pt then
-                                                for _, ch in pairs(v:GetDescendants()) do if ch:IsA("BasePart") then pt = ch; break end end
-                                            end
-                                            -- Si está aplastado a nuestros pies (recién soltado en el camión), lo pateamos al cuarto
-                                            if pt and (pt.Position - miPos).Magnitude < 15 then
-                                                v:PivotTo(CFrame.new(ghostPos + Vector3.new(math.random(-2,2), 1, math.random(-2,2))))
-                                            end
-                                        end
-                                    end)
-                                    AddLog("       📍 Objeto plantado (Drone Tracking activado).", Color3.fromRGB(200, 200, 255))
+                                    LP.Character.PrimaryPart.CFrame = CFrame.new(ghostPos + Vector3.new(math.random(-3,3), 0, math.random(-3,3)))
+                                    task.wait(0.3)
                                 end
                                 
-                                -- NO destruir localmente para no desvincular el ID
+                                -- ==========================================================
+                                -- ⚡ V8.43: ENCENDIDO ESPECÍFICO POR HERRAMIENTA
+                                -- Basado en el código fuente descompilado de cada LocalScript
+                                -- ==========================================================
+                                local itemNameLower = string.lower(capturedItemName)
+                                pcall(function()
+                                    if string.find(itemNameLower, "video camera") then
+                                        -- Video Camera: usa EnableVideoCamera (NO ToggleItemState)
+                                        local camEvent = game.ReplicatedStorage.Events:FindFirstChild("EnableVideoCamera")
+                                        if camEvent then camEvent:FireServer(itemFalso) end
+                                        AddLog("       📹 Video Camera ENCENDIDA (EnableVideoCamera)", Color3.fromRGB(0, 255, 150))
+                                        
+                                    elseif string.find(itemNameLower, "salt") then
+                                        -- Salt Canister: usa LaySaltPile para soltar trampa de sal
+                                        local saltEvent = game.ReplicatedStorage.Events:FindFirstChild("LaySaltPile")
+                                        if saltEvent then saltEvent:FireServer() end
+                                        AddLog("       🧂 Sal derramada (LaySaltPile)", Color3.fromRGB(200, 200, 200))
+                                    
+                                    elseif string.find(itemNameLower, "photo camera") then
+                                        -- Photo Camera: NO se enciende, se usa para tomar fotos
+                                        -- Fraude Fotográfico
+                                        local photoSpoof = game.ReplicatedStorage.Events:FindFirstChild("TakePhotoWithCamera")
+                                        if photoSpoof then
+                                            AddLog("       📸 Generando 5 Fotos 3-Estrellas...", Color3.fromRGB(200, 255, 100))
+                                            for fotoIdx = 1, 5 do
+                                                photoSpoof:FireServer(workspace.CurrentCamera.CFrame, {
+                                                    ["Object"] = workspace:FindFirstChild("Ghost") or LP.Character,
+                                                    ["Type"] = "Ghost", ["Reward"] = 24,
+                                                    ["Stars"] = 3, ["Percentage"] = 100
+                                                })
+                                                task.wait(0.3)
+                                            end
+                                        end
+                                        
+                                    elseif string.find(itemNameLower, "lidar") then
+                                        -- LIDAR: ToggleItemState + Spoofear detección instantánea
+                                        if remToggle then remToggle:FireServer(itemFalso) end
+                                        task.wait(0.3)
+                                        local lidarSpoof = game.ReplicatedStorage.Events:FindFirstChild("DetectedGhostWithLIDAR")
+                                        if lidarSpoof then
+                                            lidarSpoof:FireServer()
+                                            AddLog("       ⭐ LIDAR Spoofeado (Marchitar instantáneo)", Color3.fromRGB(0, 255, 255))
+                                            EvidenciasEncontradas["Marchitar"] = true
+                                            pcall(ActualizarPizarraResolucion)
+                                        end
+                                        
+                                    elseif string.find(itemNameLower, "blacklight") or string.find(itemNameLower, "uv") then
+                                        -- Blacklight: ToggleItemState + buscar huellas
+                                        if remToggle then remToggle:FireServer(itemFalso) end
+                                        task.wait(0.3)
+                                        local handprints = workspace:FindFirstChild("Handprints")
+                                        if handprints then
+                                            for _, hp in pairs(handprints:GetChildren()) do
+                                                pcall(function()
+                                                    local sg = hp:FindFirstChildOfClass("SurfaceGui")
+                                                    if sg then
+                                                        local img = sg:FindFirstChildOfClass("ImageLabel")
+                                                        if img and img.ImageTransparency < 1 then
+                                                            local blHover = game.ReplicatedStorage.Events:FindFirstChild("BlacklightHoveredPrint")
+                                                            if blHover then blHover:FireServer(hp) end
+                                                            AddLog("       ⭐ Huellas UV detectadas!", Color3.fromRGB(0, 255, 255))
+                                                            EvidenciasEncontradas["Huellas Dactilares"] = true
+                                                            pcall(ActualizarPizarraResolucion)
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        end
+                                    
+                                    elseif string.find(itemNameLower, "lantern") then
+                                        -- Lantern: usa ToggleLantern (NO ToggleItemState)
+                                        local lanternEvent = game.ReplicatedStorage.Events:FindFirstChild("ToggleLantern")
+                                        if lanternEvent then lanternEvent:FireServer() end
+                                        AddLog("       🏮 Lantern encendida (ToggleLantern)", Color3.fromRGB(255, 200, 50))
+                                    
+                                    elseif string.find(itemNameLower, "lighter") then
+                                        -- Lighter: usa UseLighter
+                                        local lighterEvent = game.ReplicatedStorage.Events:FindFirstChild("UseLighter")
+                                        if lighterEvent then lighterEvent:FireServer() end
+                                        AddLog("       🔥 Lighter activado (UseLighter)", Color3.fromRGB(255, 150, 0))
+                                    
+                                    elseif string.find(itemNameLower, "music box") then
+                                        -- Music Box: usa PlayMusicBox (objeto maldito, provoca cacería)
+                                        local musicEvent = game.ReplicatedStorage.Events:FindFirstChild("PlayMusicBox")
+                                        if musicEvent then musicEvent:FireServer() end
+                                        AddLog("       🎵 Music Box activada (PlayMusicBox)", Color3.fromRGB(200, 100, 255))
+                                    
+                                    else
+                                        -- EMF, Thermometer, Laser Projector, Spirit Box, Flashlight:
+                                        -- Todos usan ToggleItemState:FireServer(instancia)
+                                        if itemFalso:GetAttribute("Enabled") ~= true then
+                                            if remToggle then remToggle:FireServer(itemFalso) end
+                                            AddLog("       🔋 Herramienta encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
+                                        end
+                                    end
+                                    
+                                    if appendfile then 
+                                        appendfile("OjoDeDios_DeepLog.txt", "["..os.date("%X").."] TOOL_ACTIVATED: " .. capturedItemName .. "\n") 
+                                    end
+                                end)
+                                task.wait(0.5)
+                                
+                                -- 3. Soltar la herramienta (ya encendida, cae en el cuarto del fantasma)
+                                if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                                task.wait(0.5)
+                                
+                                AddLog("       📍 Herramienta plantada EN el cuarto del fantasma.", Color3.fromRGB(200, 200, 255))
+                                
+                                -- 4. Regresar al jugador a su posición original
+                                if posOriginal and LP.Character and LP.Character.PrimaryPart then
+                                    LP.Character.PrimaryPart.CFrame = posOriginal
+                                end
+                                
                             else
                                 AddLog("   └─> Confirmado en DB, pero sin modelo 3D.", Color3.fromRGB(150, 150, 150))
                                 if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
@@ -768,33 +789,155 @@ BtnPing.MouseButton1Click:Connect(function()
                     end
                 end
                 
-                -- Spirit Box por chat + comandos secretos Wiki (Extraídos del Código Fuente)
-                AddLog("[CHAT] Enviando Protocolo de Interrogatorio al Spirit Box...", Color3.fromRGB(255, 150, 0))
-                local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
-                if askSpirit then 
-                    pcall(function() askSpirit:FireServer("Where are you?") end)
-                    task.wait(1)
-                    pcall(function() askSpirit:FireServer("What do you want?") end) 
+                -- ========================================================
+                -- 📖 MONITOR DE LIBRO: Detectar escritura en tiempo real
+                -- ========================================================
+                if not _G.LibroMonitoreado then
+                    _G.LibroMonitoreado = true
+                    pcall(function()
+                        local CS = game:GetService("CollectionService")
+                        for _, item in ipairs(CS:GetTagged("Item")) do
+                            local itemName = string.lower(tostring(item:GetAttribute("ItemName") or item.Name))
+                            if string.find(itemName, "book") or string.find(itemName, "journal") or string.find(itemName, "writing") then
+                                item:GetAttributeChangedSignal("Written"):Connect(function()
+                                    if item:GetAttribute("Written") == true and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                        EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                        AddLog("⭐ EVIDENCIA OBTENIDA: Escritura de fantasmas (Libro Escrito en Vivo!)", Color3.fromRGB(255, 255, 0))
+                                        pcall(ActualizarPizarraResolucion)
+                                    end
+                                end)
+                                -- Vigilar también nuevos hijos (Decals de tinta apareciendo)
+                                item.DescendantAdded:Connect(function(desc)
+                                    if (desc:IsA("Decal") or desc:IsA("Texture")) and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                        local dn = string.lower(desc.Name)
+                                        if string.find(dn, "writ") or string.find(dn, "ink") or string.find(dn, "text") or string.find(dn, "mess") or string.find(dn, "scrib") or string.find(dn, "draw") then
+                                            EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                            AddLog("⭐ EVIDENCIA OBTENIDA: Escritura de fantasmas (Tinta Detectada en Vivo!)", Color3.fromRGB(255, 255, 0))
+                                            pcall(ActualizarPizarraResolucion)
+                                        end
+                                    end
+                                end)
+                            end
+                        end
+                    end)
                 end
                 
+                -- ========================================================
+                -- 🌸 MONITOR DE FLORES: Detectar Marchitar (Wither)
+                -- ========================================================
+                if not _G.FloresMonitoreadas then
+                    _G.FloresMonitoreadas = true
+                    pcall(function()
+                        -- Buscar flores, plantas y objetos que marchitan en el mapa
+                        for _, obj in pairs(workspace:GetDescendants()) do
+                            local nl = string.lower(obj.Name)
+                            if (string.find(nl, "flower") or string.find(nl, "plant") or string.find(nl, "vase") or string.find(nl, "wilt") or string.find(nl, "wither")) then
+                                if obj:IsA("Model") or obj:IsA("BasePart") then
+                                    -- Vigilar cambio de color/transparencia (marchitarse = cambio visual)
+                                    if obj:IsA("BasePart") then
+                                        obj:GetPropertyChangedSignal("Color"):Connect(function()
+                                            if not EvidenciasEncontradas["Marchitar"] then
+                                                EvidenciasEncontradas["Marchitar"] = true
+                                                AddLog("⭐ EVIDENCIA OBTENIDA: Marchitar (Flor cambió de color!)", Color3.fromRGB(0, 255, 255))
+                                                pcall(ActualizarPizarraResolucion)
+                                            end
+                                        end)
+                                    end
+                                    -- Vigilar atributo "Withered" o "Dead"
+                                    pcall(function()
+                                        obj:GetAttributeChangedSignal("Withered"):Connect(function()
+                                            if obj:GetAttribute("Withered") == true and not EvidenciasEncontradas["Marchitar"] then
+                                                EvidenciasEncontradas["Marchitar"] = true
+                                                AddLog("⭐ EVIDENCIA OBTENIDA: Marchitar (Atributo 'Withered' Activado!)", Color3.fromRGB(0, 255, 255))
+                                                pcall(ActualizarPizarraResolucion)
+                                            end
+                                        end)
+                                    end)
+                                end
+                            end
+                        end
+                    end)
+                end
+                
+                -- Spirit Box por chat (Preguntas del Código Fuente)
+                AddLog("[CHAT] Interrogatorio al Spirit Box...", Color3.fromRGB(255, 150, 0))
+                pcall(function()
+                    local askSpirit = game.ReplicatedStorage.Events:FindFirstChild("AskSpiritBoxFromUI")
+                    if askSpirit then 
+                        askSpirit:FireServer("Where are you?")
+                        task.wait(1.5)
+                        askSpirit:FireServer("What do you want?")
+                        task.wait(1.5)
+                        askSpirit:FireServer("How long ago did you die?")
+                    end
+                end)
                 pcall(function()
                     local tcs = game:GetService("TextChatService")
                     if tcs.ChatVersion == Enum.ChatVersion.TextChatService then
                         tcs.TextChannels.RBXGeneral:SendAsync("Where are you?")
-                        task.wait(1)
-                        tcs.TextChannels.RBXGeneral:SendAsync("What do you want?")
-                        task.wait(1)
-                        tcs.TextChannels.RBXGeneral:SendAsync("How long ago did you die?")
                     else
                         local req = game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
                         req:FireServer("Where are you?", "All")
-                        task.wait(1)
-                        req:FireServer("What do you want?", "All")
                     end
                 end)
                 
-                AddLog("━━━ CICLO COMPLETO - Esperando 20s ━━━", Color3.fromRGB(100, 100, 100))
-                for i = 1, 20 do
+                -- ========================================================
+                -- 🎯 V8.44: LECTOR DE OBJETIVOS + AUTO-COMPLETADOR
+                -- ========================================================
+                if not _G.ObjetivosHookeados then
+                    _G.ObjetivosHookeados = true
+                    -- Hook para saber cuándo se completa un objetivo
+                    pcall(function()
+                        local objCompleted = game.ReplicatedStorage.Events:FindFirstChild("ObjectiveCompleted")
+                        if objCompleted then
+                            objCompleted.OnClientEvent:Connect(function(idx)
+                                AddLog("🎯 ¡OBJETIVO #" .. tostring(idx) .. " COMPLETADO! (+25$)", Color3.fromRGB(0, 255, 0))
+                            end)
+                        end
+                    end)
+                end
+                
+                -- Leer objetivos desde la GUI del teléfono
+                pcall(function()
+                    local phoneScreen = LP:WaitForChild("PlayerGui"):FindFirstChild("PhoneScreen")
+                    if phoneScreen then
+                        local container = phoneScreen:FindFirstChild("Container")
+                        if container then
+                            local screen = container:FindFirstChild("Screen")
+                            if screen then
+                                -- Buscar TextLabels que contengan descripciones de objetivos
+                                for _, desc in pairs(screen:GetDescendants()) do
+                                    if desc:IsA("TextLabel") and desc.Text and #desc.Text > 20 then
+                                        local t = string.lower(desc.Text)
+                                        -- Auto-completar lo que podemos
+                                        if string.find(t, "photo") and string.find(t, "ghost") then
+                                            AddLog("🎯 Objetivo detectado: FOTO DEL FANTASMA → Fraude fotográfico activo", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "emf") then
+                                            AddLog("🎯 Objetivo detectado: EMF READER → Herramienta plantada", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "lidar") then
+                                            AddLog("🎯 Objetivo detectado: LIDAR SCANNER → Spoof activo", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "energy") and string.find(t, "25") then
+                                            AddLog("🎯 Objetivo detectado: ENERGÍA <25% → Se cumple solo con el tiempo", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "ghost event") or string.find(t, "experience") then
+                                            AddLog("🎯 Objetivo detectado: EVENTO FANTASMA → Quédate en su cuarto", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "escape") and string.find(t, "hunt") then
+                                            AddLog("🎯 Objetivo detectado: SOBREVIVIR CACERÍA → Escóndete cuando cace", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "cross") then
+                                            AddLog("🎯 Objetivo detectado: QUEMAR CRUCIFIJO → Deja un Cross en el cuarto", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "cursed") then
+                                            AddLog("🎯 Objetivo detectado: PROVOCAR CACERÍA MALDITA → Usa Music Box/Ouija", Color3.fromRGB(255, 200, 0))
+                                        elseif string.find(t, "candle") then
+                                            AddLog("🎯 Objetivo detectado: VELA APAGADA → Deja un Lighter+Vela en el cuarto", Color3.fromRGB(255, 200, 0))
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+                
+                AddLog("━━━ CICLO COMPLETO - Esperando 15s ━━━", Color3.fromRGB(100, 100, 100))
+                for waitIdx = 1, 15 do
                     if not pingActivo then break end
                     task.wait(1)
                 end
