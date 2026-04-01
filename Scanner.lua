@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V41 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V20 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -106,7 +106,7 @@ end
 local BtnESP       = CreateUIBtn(10,  "👁️ ESP FANTASMA", Color3.fromRGB(60, 10, 20))
 local BtnItems     = CreateUIBtn(60,  "💎 ESP HUESO Y MALDITOS", Color3.fromRGB(60, 40, 10))
 local BtnEvidence  = CreateUIBtn(110, "📖 SCAN DE EVIDENCIAS", Color3.fromRGB(10, 40, 60))
-local BtnClearTags = CreateUIBtn(160, "🧹 LIMPIAR ESP", Color3.fromRGB(30, 30, 30))
+local BtnPing      = CreateUIBtn(160, "📡 PING DE SERVIDOR (V6)", Color3.fromRGB(150, 40, 0))
 
 -- Pizarra de Evidencias (Derecha)
 local BoardBG = Instance.new("Frame")
@@ -197,6 +197,8 @@ local function ActualizarPizarraResolucion()
     AddLog("👻 FANTASMAS POSIBLES:", Color3.fromRGB(255, 0, 0))
     
     local posibles = 0
+    local faltantes = {}
+    
     for gName, gEvs in pairs(GHOST_DB) do
         local coincide = true
         for _, miEv in ipairs(foundList) do
@@ -209,14 +211,44 @@ local function ActualizarPizarraResolucion()
         if coincide then
             posibles = posibles + 1
             AddLog(">> " .. gName, Color3.fromRGB(100, 255, 100))
+            
+            -- Recopilar evidencias que nos faltan buscar
+            for _, suEv in ipairs(gEvs) do
+                local yaLaTengo = false
+                for _, miEv in ipairs(foundList) do
+                    if miEv == suEv then yaLaTengo = true; break end
+                end
+                if not yaLaTengo then faltantes[suEv] = true end
+            end
         end
     end
+    
     if posibles == 1 then
         BoardTitle.Text = " 🏆 ¡FANTASMA DESCUBIERTO! "
         BoardTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
     else
         BoardTitle.Text = " 📜 RESOLVIENDO CASO... "
         BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        -- Sugerir herramientas
+        AddLog("--------------------------------", Color3.fromRGB(100, 100, 100))
+        AddLog("🛠️ VE AL CAMIÓN Y TRAE ESTO A: " .. (Workspace:FindFirstChild("Ghost") and Workspace.Ghost:GetAttribute("FavoriteRoom") or "Su Cuarto"), Color3.fromRGB(0, 255, 255))
+        
+        local tools = {
+            ["Nivel EMF 5"] = "Lector EMF",
+            ["Caja de Espíritus"] = "Spirit Box (Apaga la luz)",
+            ["Escritura de fantasmas"] = "Libro (Déjalo en el piso)",
+            ["Huellas Dactilares"] = "Linterna UV (Luz negra en puertas)",
+            ["Temperaturas Heladas"] = "Termómetro",
+            ["Proyector láser"] = "Proyector Láser D.O.T.S",
+            ["Orbe Fantasma"] = "Cámara de Video (Modo Nocturno)",
+            ["Marchitar"] = "Escáner LIDAR / Observar entorno"
+        }
+        
+        for evFaltante, _ in pairs(faltantes) do
+            local herramienta = tools[evFaltante] or evFaltante
+            AddLog("☐ " .. herramienta, Color3.fromRGB(200, 200, 255))
+        end
     end
 end
 
@@ -256,9 +288,60 @@ local function ApplyESPTag(obj, text, color, isEvidence)
     end
 end
 
-BtnClearTags.MouseButton1Click:Connect(function()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "_SR_Tag" or v.Name == "_SR_Text" then v:Destroy() end
+local pingActivo = false
+BtnPing.MouseButton1Click:Connect(function()
+    pingActivo = not pingActivo
+    if pingActivo then
+        BtnPing.Text = "📡 PING: ON (DETECTANDO)"
+        BtnPing.BackgroundColor3 = Color3.fromRGB(200, 50, 0)
+        AddLog("[V6] INICIANDO INTERROGATORIO AL SERVIDOR...", Color3.fromRGB(255, 100, 0))
+        
+        -- Hook de respuestas del Servidor al Cliente (S -> C)
+        for _, rem in pairs(game.ReplicatedStorage:GetDescendants()) do
+            if rem:IsA("RemoteEvent") then
+                rem.OnClientEvent:Connect(function(...)
+                    if pingActivo then
+                        local n = string.lower(rem.Name)
+                        -- Filtramos ruidos constantes
+                        if not string.find(n, "move") and not string.find(n, "mouse") and not string.find(n, "sound") then
+                            local args = {...}
+                            local msg = ""
+                            for _, arg in pairs(args) do msg = msg .. tostring(arg) .. " " end
+                            
+                            -- Resaltar evidencias interceptadas del servidor
+                            if string.find(n, "spirit") or string.find(n, "chat") or string.find(n, "lidar") or string.find(n, "thermometer") or string.find(n, "emf") then
+                                AddLog("🚨 RESPUESTA SERVIDOR ["..rem.Name.."]: " .. msg, Color3.fromRGB(255, 0, 0))
+                            else
+                                AddLog(">> [S->C] " .. rem.Name .. ": " .. string.sub(msg, 1, 50), Color3.fromRGB(50, 150, 255))
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+        
+        -- Inyectando engaños a los aparatos a distancia
+        task.spawn(function()
+            task.wait(1)
+            local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
+            if askSpirit then
+                AddLog("[HACK] Forzando Spirit Box desde la Vanesa...", Color3.fromRGB(255, 255, 0))
+                -- Intentar adivinar argumentos (Player, Pregunta, etc.)
+                pcall(function() askSpirit:FireServer("Are you here?") end)
+                pcall(function() askSpirit:FireServer("Show yourself") end)
+            end
+            
+            local askLidar = game.ReplicatedStorage:FindFirstChild("DetectedGhostWithLIDAR", true)
+            if askLidar then
+                AddLog("[HACK] Disparando Lidar Láser Fantasma...", Color3.fromRGB(255, 255, 0))
+                pcall(function() askLidar:FireServer() end)
+            end
+        end)
+        
+    else
+        BtnPing.Text = "📡 PING DE SERVIDOR (V6)"
+        BtnPing.BackgroundColor3 = Color3.fromRGB(150, 40, 0)
+        AddLog("[STOP] Interrogatorio Cancelado.", Color3.fromRGB(150, 150, 150))
     end
 end)
 
