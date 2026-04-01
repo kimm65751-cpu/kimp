@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEeeqwewqewqeO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -750,41 +750,40 @@ BtnEvidence.MouseButton1Click:Connect(function()
 end)
 
 BtnDump.MouseButton1Click:Connect(function()
-    AddLog("━━━ MOTOR DE INGENIERÍA INVERSA V8.7 ━━━", Color3.fromRGB(200, 100, 255))
-    local txt = "[DEMONOLOGY V8.7 - ANALISIS DE MODULOS E INVENTARIO]\n\n"
+    AddLog("━━━ MOTOR DE INGENIERÍA INVERSA V8.9 ━━━", Color3.fromRGB(200, 100, 255))
+    local txt = "[DEMONOLOGY V8.9 - REPORTE MASIVO]\n\n"
     
-    -- 1. Escanear Módulos
-    txt = txt .. "=== MODULOS REPLICADOS ===\n"
+    txt = txt .. "=== EVENTOS REMOTOS DEL SERVIDOR ===\n"
+    for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            txt = txt .. obj.ClassName .. ": " .. obj:GetFullName() .. "\n"
+        end
+    end
+    
+    txt = txt .. "\n=== CODIGO FUENTE (DECOMPILED) ===\n"
     local count = 0
     for _, obj in pairs(game.ReplicatedStorage:GetDescendants()) do
         if obj:IsA("ModuleScript") then
             local n = string.lower(obj.Name)
-            if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") or string.find(n, "evid") or string.find(n, "shop") then
+            if string.find(n, "item") or string.find(n, "tool") or string.find(n, "equip") or string.find(n, "invent") then
                 count = count + 1
-                local nameStr = "Módulo ORO: " .. obj:GetFullName()
-                AddLog("📦 " .. nameStr, Color3.fromRGB(255, 255, 100))
-                txt = txt .. nameStr .. "\n"
+                txt = txt .. "\n--- Modulo: " .. obj:GetFullName() .. " ---\n"
                 
-                -- Extraer llaves
-                pcall(function()
-                    local data = require(obj)
-                    if type(data) == "table" then
-                        txt = txt .. "  [LLAVES]: "
-                        for k, v in pairs(data) do txt = txt .. tostring(k) .. ", " end
-                        txt = txt .. "\n"
-                    end
-                end)
-                
-                -- Decompilar si es posible
+                -- Decompilar puro
                 if type(decompile) == "function" then
                     pcall(function()
                         local code = decompile(obj)
                         if code then
+                            local lineas = {}
                             for line in string.gmatch(code, "[^\r\n]+") do
-                                if string.find(line, "FireServer") or string.find(line, "InvokeServer") then
-                                    txt = txt .. "  [REMOTE HOOKED]: " .. string.trim(line) .. "\n"
-                                end
+                                table.insert(lineas, line)
                             end
+                            -- Guardar solo las primeras 30 líneas para no romper el txt
+                            for i=1, math.min(30, #lineas) do
+                                txt = txt .. lineas[i] .. "\n"
+                            end
+                        else
+                            txt = txt .. "-- Fallo decompile() --\n"
                         end
                     end)
                 end
@@ -792,40 +791,15 @@ BtnDump.MouseButton1Click:Connect(function()
         end
     end
     
-    -- 2. Escanear PlayerGui
-    txt = txt .. "\n=== SCRIPTS DE INTERFAZ LOCAL ===\n"
-    for _, ui in pairs(LP.PlayerGui:GetDescendants()) do
-        if ui:IsA("LocalScript") then
-            local n = string.lower(ui.Name)
-            if string.find(n, "invent") or string.find(n, "item") or string.find(n, "equip") or string.find(n, "interact") then
-                txt = txt .. "Script UI: " .. ui:GetFullName() .. "\n"
-                AddLog("🖥️ Script Local UI: " .. ui.Name, Color3.fromRGB(150, 255, 100))
-            end
-        elseif ui:IsA("ProximityPrompt") then
-            txt = txt .. "Prompt Oculto: " .. ui:GetFullName() .. "\n"
-        elseif ui:IsA("RemoteEvent") or ui:IsA("RemoteFunction") then
-            txt = txt .. "Remoto Local: " .. ui:GetFullName() .. "\n"
-        end
-    end
-    
-    -- 3. Workspace
-    txt = txt .. "\n=== INTERACTUABLES EN WORKSPACE ===\n"
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
-            txt = txt .. obj.ClassName .. " en: " .. obj:GetFullName() .. "\n"
-        end
-    end
-    
-    -- 4. Guardar archivo
     if type(writefile) == "function" then
         local ok, err = pcall(writefile, "Demonology_Dump.txt", txt)
         if ok then
-            AddLog("✅ Reporte guardado: 'workspace/Demonology_Dump.txt'", Color3.fromRGB(50, 255, 100))
+            AddLog("✅ Reporte V8.9 guardado: 'workspace/Demonology_Dump.txt'", Color3.fromRGB(50, 255, 100))
         else
-            AddLog("❌ Error guardando texto: " .. tostring(err), Color3.fromRGB(255, 50, 50))
+            AddLog("❌ Error: " .. tostring(err), Color3.fromRGB(255, 50, 50))
         end
     else
-        AddLog("Tu ejecutor no soporta writefile(), mira la consola(F9).", Color3.fromRGB(255, 200, 50))
+        AddLog("No hay writefile(), revisa F9.", Color3.fromRGB(255, 200, 50))
         print(txt)
     end
 end)
