@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLeeeOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -511,74 +511,85 @@ BtnPing.MouseButton1Click:Connect(function()
                     local n = type(target) == "string" and target or target.Name
                     AddLog("💀 ["..i.."] Secuestrando: " .. n, Color3.fromRGB(200, 100, 0))
                     
-                    if remPickup then 
-                        pcall(function() remPickup:FireServer(target) end)
+                    local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
+                    
+                    -- ==========================================
+                    -- 0. VACIAR INVENTARIO PREVIO (Fuerza Bruta)
+                    -- ==========================================
+                    local toClean = {}
+                    if LP:FindFirstChild("Backpack") then
+                        for _, v in pairs(LP.Backpack:GetChildren()) do table.insert(toClean, v) end
                     end
-                    task.wait(0.6)
-                    
-                    local itemFalso = nil
-                    
-                    -- El juego renombra el objeto a su slot (1, 2 o 3)
-                    for _, slot in pairs({"1", "2", "3"}) do
-                        if LP.Character and LP.Character:FindFirstChild(slot) then
-                            itemFalso = LP.Character:FindFirstChild(slot)
-                            break
-                        end
-                        if LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild(slot) then
-                            itemFalso = LP.Backpack:FindFirstChild(slot)
-                            break
+                    if LP.Character then
+                        for _, v in pairs(LP.Character:GetChildren()) do
+                            if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then table.insert(toClean, v) end
+                            if v:IsA("Tool") then table.insert(toClean, v) end
                         end
                     end
                     
-                    if itemFalso then
-                        AddLog("   └─> ¡RECOLECTADO! Slot Ocupado: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
-                        
-                        if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
-                        task.wait(0.5)
-                        
-                        -- Si el objeto sigue en mochila forzar movimiento a Mano para poder tirarlo (como presionar G)
-                        if itemFalso.Parent == LP.Backpack and LP.Character then
-                            pcall(function() LP.Character.Humanoid:EquipTool(itemFalso) end)
+                    for _, basura in ipairs(toClean) do
+                        local bn = string.lower(basura.Name)
+                        if not string.find(bn, "journal") and not string.find(bn, "handbook") then
+                            if remEquip then pcall(function() remEquip:FireServer(basura) end) end
                             task.wait(0.2)
-                        end
-                        
-                        -- Encender
-                        if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
-                        task.wait(2.5) -- Pausa crítica para generar la evidencia
-                        
-                        -- =====================================
-                        -- FUERZA BRUTA DE DESCARGA (TECLA G)
-                        -- =====================================
-                        local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
-                        local remUnequip = game.ReplicatedStorage:FindFirstChild("RequestItemUnequip", true)
-                        
-                        if remDrop then 
-                            pcall(function() remDrop:FireServer(itemFalso) end)
-                            pcall(function() remDrop:FireServer(itemFalso.Name) end) 
-                            pcall(function() remDrop:FireServer() end)
-                        end
-                        
-                        task.wait(0.5)
-                        
-                        -- Limpieza forzada loca
-                        if LP.Character and LP.Character:FindFirstChild(itemFalso.Name) then
-                            pcall(function() itemFalso.Parent = Workspace end)
-                        end
-                        if LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild(itemFalso.Name) then
-                            pcall(function() itemFalso.Parent = Workspace end)
-                        end
-                    else
-                        AddLog("   └─> Bloqueado por inventario lleno.", Color3.fromRGB(150, 150, 150))
-                        
-                        -- SI ESTÁ LLENO, VACIARLO A LA FUERZA PARA EL PRÓXIMO CICLO
-                        local remDrop = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
-                        for _, slot in pairs({"1", "2", "3"}) do
-                            local traba = (LP.Character and LP.Character:FindFirstChild(slot)) or (LP.Backpack and LP.Backpack:FindFirstChild(slot))
-                            if traba and remDrop then
-                                pcall(function() remDrop:FireServer(traba) end)
-                                pcall(function() traba.Parent = Workspace end)
+                            if remDrop then 
+                                pcall(function() remDrop:FireServer(basura) end) 
+                                pcall(function() remDrop:FireServer(basura.Name) end) 
+                                pcall(function() remDrop:FireServer() end)
                             end
+                            pcall(function() basura:Destroy() end)
                         end
+                    end
+                    task.wait(0.5)
+
+                    -- 1. Intentar recoger objetivo
+                    if remPickup then pcall(function() remPickup:FireServer(target) end) end
+                    task.wait(0.8)
+                    
+                    -- 2. Procesar TODO lo que quede en la mochila (que debe ser lo que acabamos de recoger)
+                    local toProcess = {}
+                    if LP:FindFirstChild("Backpack") then
+                        for _, v in pairs(LP.Backpack:GetChildren()) do table.insert(toProcess, v) end
+                    end
+                    if LP.Character then
+                        for _, v in pairs(LP.Character:GetChildren()) do
+                            if pcall(function() return v:HasTag("Item") end) and v:HasTag("Item") then table.insert(toProcess, v) end
+                            if v:IsA("Tool") then table.insert(toProcess, v) end
+                        end
+                    end
+                    
+                    local seEncontroAlgo = false
+                    
+                    for _, itemFalso in ipairs(toProcess) do
+                        local inn = string.lower(itemFalso.Name)
+                        if not string.find(inn, "journal") and not string.find(inn, "handbook") then
+                            seEncontroAlgo = true
+                            AddLog("   └─> ¡RECOLECTADO! Analizando: " .. itemFalso.Name, Color3.fromRGB(150, 255, 150))
+                            
+                            -- Ponerlo en la Mano (Equipar)
+                            if remEquip then pcall(function() remEquip:FireServer(itemFalso) end) end
+                            if LP.Character then pcall(function() LP.Character.Humanoid:EquipTool(itemFalso) end) end
+                            task.wait(0.5)
+                            
+                            -- Prender (Toggle)
+                            if remToggle then pcall(function() remToggle:FireServer(itemFalso, true) end) end
+                            task.wait(2.5) -- Pausa Crítica de Servidor
+                            
+                            -- Tirar con la G (Drop)
+                            if remDrop then 
+                                pcall(function() remDrop:FireServer(itemFalso) end)
+                                pcall(function() remDrop:FireServer(itemFalso.Name) end) 
+                                pcall(function() remDrop:FireServer() end)
+                            end
+                            task.wait(0.6)
+                            
+                            -- Limpiarlo visualmente
+                            pcall(function() itemFalso:Destroy() end)
+                        end
+                    end
+                    
+                    if not seEncontroAlgo then
+                        AddLog("   └─> Bloqueado por inventario o lag del servidor.", Color3.fromRGB(150, 150, 150))
                     end
                     
                     -- Pausa anticheat
