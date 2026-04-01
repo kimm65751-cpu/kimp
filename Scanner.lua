@@ -125,7 +125,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️epoooooP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -473,6 +473,7 @@ BtnPing.MouseButton1Click:Connect(function()
                         else
                             AddLog(">> [S->C] " .. rem.Name .. ": " .. string.sub(msg, 1, 60), Color3.fromRGB(50, 150, 255))
                         end
+                    end
                     end
                 end)
             end
