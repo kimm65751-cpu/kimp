@@ -40,7 +40,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V41 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V6 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -119,13 +119,24 @@ BoardBG.Parent = Panel
 Instance.new("UICorner", BoardBG).CornerRadius = UDim.new(0, 4)
 
 local BoardTitle = Instance.new("TextLabel")
-BoardTitle.Size = UDim2.new(1, 0, 0, 25)
+BoardTitle.Size = UDim2.new(1, -70, 0, 25)
+BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS CONFIRMADAS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
 BoardTitle.Parent = BoardBG
+
+local BtnCopy = Instance.new("TextButton")
+BtnCopy.Size = UDim2.new(0, 70, 0, 20)
+BtnCopy.Position = UDim2.new(1, -75, 0, 2)
+BtnCopy.BackgroundColor3 = Color3.fromRGB(30, 80, 150)
+BtnCopy.Text = "📋 Copiar"
+BtnCopy.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnCopy.Font = Enum.Font.Code; BtnCopy.TextSize = 12
+BtnCopy.Parent = BoardBG
+Instance.new("UICorner", BtnCopy).CornerRadius = UDim.new(0, 4)
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Size = UDim2.new(1, -10, 1, -30)
@@ -181,6 +192,22 @@ local function AddLog(msg, color)
     txt.Size = UDim2.new(1, -4, 0, ts.Y + 4)
     LogScroll.CanvasPosition = Vector2.new(0, 999999)
 end
+
+BtnCopy.MouseButton1Click:Connect(function()
+    local fullText = ""
+    for _, v in ipairs(LogScroll:GetChildren()) do
+        if v:IsA("TextLabel") then
+            fullText = fullText .. v.Text .. "\n"
+        end
+    end
+    if setclipboard then
+        pcall(function() setclipboard(fullText) end)
+        BtnCopy.Text = "¡Copiado!"
+    else
+        BtnCopy.Text = "Sin setclip"
+    end
+    task.delay(2, function() BtnCopy.Text = "📋 Copiar" end)
+end)
 
 local function ActualizarPizarraResolucion()
     for _, v in pairs(LogScroll:GetChildren()) do
@@ -320,21 +347,40 @@ BtnPing.MouseButton1Click:Connect(function()
             end
         end
         
-        -- Inyectando engaños a los aparatos a distancia
+        -- Inyectando engaños a los aparatos a distancia de forma contínua y fuerza bruta
         task.spawn(function()
-            task.wait(1)
-            local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
-            if askSpirit then
-                AddLog("[HACK] Forzando Spirit Box desde la Vanesa...", Color3.fromRGB(255, 255, 0))
-                -- Intentar adivinar argumentos (Player, Pregunta, etc.)
-                pcall(function() askSpirit:FireServer("Are you here?") end)
-                pcall(function() askSpirit:FireServer("Show yourself") end)
-            end
-            
-            local askLidar = game.ReplicatedStorage:FindFirstChild("DetectedGhostWithLIDAR", true)
-            if askLidar then
-                AddLog("[HACK] Disparando Lidar Láser Fantasma...", Color3.fromRGB(255, 255, 0))
-                pcall(function() askLidar:FireServer() end)
+            while pingActivo do
+                task.wait(3)
+                if not pingActivo then break end
+                
+                local askSpirit = game.ReplicatedStorage:FindFirstChild("AskSpiritBoxFromUI", true)
+                if askSpirit then
+                    AddLog("[ATAQUE] Forzando Spirit Box invisiblemente...", Color3.fromRGB(255, 255, 0))
+                    pcall(function() askSpirit:FireServer("Are you here?") end)
+                end
+                
+                local askLidar = game.ReplicatedStorage:FindFirstChild("DetectedGhostWithLIDAR", true)
+                if askLidar then
+                    pcall(function() askLidar:FireServer() end)
+                end
+                
+                -- PROVOCACIÓN AVANZADA (Wiki Secret Commands):
+                -- Forzar escritura de fantasma, EMF y apariciones en chat.
+                pcall(function()
+                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Can you write in the book", "All")
+                end)
+                task.wait(1)
+                pcall(function()
+                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("Give me a sign", "All")
+                end)
+                
+                AddLog("[ATAQUE] Comandos de Provocación de chat enviados al Servidor.", Color3.fromRGB(255, 100, 0))
+                
+                -- Se espera 20 segundos por el cooldown oficial revelado en la wiki
+                for i = 1, 20 do
+                    if not pingActivo then break end
+                    task.wait(1)
+                end
             end
         end)
         
