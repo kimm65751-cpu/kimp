@@ -319,7 +319,29 @@ BtnCopy.MouseButton1Click:Connect(function()
     task.delay(2, function() BtnCopy.Text = "📋 Copiar" end)
 end)
 
+local _G_EvidenciasYaMarcadasEnDiario = _G._EvidenciasYaMarcadasEnDiario or {}
+_G._EvidenciasYaMarcadasEnDiario = _G_EvidenciasYaMarcadasEnDiario
+
 local function ActualizarPizarraResolucion()
+    -- 📝 V8.80: AUTO-MARCADO DEL DIARIO EN TIEMPO REAL
+    -- Cada vez que se llama esta función (26+ lugares), revisamos qué evidencias son nuevas y las mandamos al servidor.
+    pcall(function()
+        local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+        if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
+            for ev, _ in pairs(EvidenciasEncontradas) do
+                if not _G_EvidenciasYaMarcadasEnDiario[ev] then
+                    local evCodename = MapEvs[ev]
+                    if evCodename then
+                        rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
+                        _G_EvidenciasYaMarcadasEnDiario[ev] = true
+                        AddLog("📓 [DIARIO] Evidencia marcada: " .. ev .. " → " .. evCodename, Color3.fromRGB(255, 215, 0))
+                        task.wait(0.15)
+                    end
+                end
+            end
+        end
+    end)
+    
     for _, v in pairs(LogScroll:GetChildren()) do
         if v:IsA("TextLabel") then v:Destroy() end
     end
@@ -572,6 +594,31 @@ BtnPing.MouseButton1Click:Connect(function()
                     continue
                 end
                 
+                -- 🚪 V8.80: AUTO-APERTURA DE TODAS LAS PUERTAS AL INICIO DEL CICLO
+                if not _G.DoorsOpened then
+                    pcall(function()
+                        local CS2 = game:GetService("CollectionService")
+                        local rsEv = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+                        if rsEv and rsEv:FindFirstChild("ClientChangeDoorState") then
+                            local allDoors = CS2:GetTagged("Door")
+                            local puertasAbiertas = 0
+                            for _, door in ipairs(allDoors) do
+                                pcall(function()
+                                    local parentModel = door.Parent
+                                    if parentModel and parentModel:GetAttribute("DoorClosed") == true then
+                                        rsEv.ClientChangeDoorState:FireServer(door)
+                                        puertasAbiertas = puertasAbiertas + 1
+                                    end
+                                end)
+                            end
+                            if puertasAbiertas > 0 then
+                                AddLog("🔓 " .. puertasAbiertas .. " puertas hackeadas y abiertas (I.A. Despierta)", Color3.fromRGB(150, 255, 150))
+                                _G.DoorsOpened = true
+                            end
+                        end
+                    end)
+                end
+                
                 -- === AUTO-LABORATORIO V8.25: DRONE-TRACKING (Mover si el fantasma huye) ===
                 local CS = game:GetService("CollectionService")
                 
@@ -601,8 +648,9 @@ BtnPing.MouseButton1Click:Connect(function()
                         AddLog("🔄 [NUEVA PARTIDA DETECTADA] Limpiando memoria caché de partida anterior...", Color3.fromRGB(0, 255, 255))
                         _G.CurrentMatchGhostID = currentGhostDebugId
                         _G.MatchCompletado = false
+                        _G.DoorsOpened = false
                         _G.BookSpyData = {}
-                        -- Purgamos las referencias en lugar de reasignar para no romper los upvalues referenciados
+                        for k in pairs(_G_EvidenciasYaMarcadasEnDiario) do _G_EvidenciasYaMarcadasEnDiario[k] = nil end
                         for k in pairs(EvidenciasEncontradas) do EvidenciasEncontradas[k] = nil end
                         pcall(ActualizarPizarraResolucion)
                     end
@@ -837,11 +885,15 @@ BtnPing.MouseButton1Click:Connect(function()
                                     pcall(function() hrp.Velocity = Vector3.new(0,0,0) end)
                                     pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0,0,0) end)
                                     
-                                    -- Nos ponemos directamente SOBRE la cabeza del fantasma para evitar glitch de LookVector
+                                    -- V8.80: Nos ponemos al LADO del fantasma (offset lateral) para no atravesar paredes
                                     local ghostPos = ghostPart.Position
-                                    local standPos = ghostPos + Vector3.new(0, 3.5, 0)
+                                    -- Buscar dirección lateral (perpendicular a donde mira el fantasma)
+                                    local rightVector = ghostPart.CFrame.RightVector
+                                    local standPos = ghostPos + (rightVector * 4)
+                                    standPos = Vector3.new(standPos.X, ghostPos.Y, standPos.Z)
+                                    
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
-                                    AddLog("       🎯 Auto-Aim: Cenital (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
+                                    AddLog("       🎯 Auto-Aim: Lateral (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
                                     
                                     -- 🚪 V8.75: AUTO-APERTURA DE TODAS LAS PUERTAS
                                     -- Así encendemos la IA del Fantasma y no necesitamos buscar las llaves ni la puerta principal.
@@ -1005,8 +1057,14 @@ BtnPing.MouseButton1Click:Connect(function()
                                         AddLog("       🎵 Music Box activada", Color3.fromRGB(200, 100, 255))
                                     
                                     else
-                                        if remToggle then remToggle:FireServer(itemFalso) end
-                                        AddLog("       🔋 " .. tostring(realItemName) .. " encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
+                                        -- V8.80: Toggle INTELIGENTE - Solo prender si está apagado
+                                        local yaEncendido = itemFalso:GetAttribute("Enabled") == true
+                                        if not yaEncendido and remToggle then 
+                                            remToggle:FireServer(itemFalso)
+                                            AddLog("       🔋 " .. tostring(realItemName) .. " encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
+                                        elseif yaEncendido then
+                                            AddLog("       ✅ " .. tostring(realItemName) .. " ya estaba encendida. No se tocó.", Color3.fromRGB(150, 255, 150))
+                                        end
                                     end
                                     
                                     if appendfile then 
@@ -1022,6 +1080,23 @@ BtnPing.MouseButton1Click:Connect(function()
                                 end
                                 
                                 AddLog("       📍 " .. tostring(realItemName) .. " plantada EN el cuarto.", Color3.fromRGB(200, 200, 255))
+                                
+                                -- 📡 V8.81: AUDITORÍA DE ESTADO DE RED PARA EL USUARIO
+                                pcall(function()
+                                    if itemFalso then
+                                        local isEnabled = itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true
+                                        local isElectronic = string.find(itemNameLower, "emf") or string.find(itemNameLower, "thermo") or string.find(itemNameLower, "laser") or string.find(itemNameLower, "camera") or string.find(itemNameLower, "box") or string.find(itemNameLower, "lidar") or string.find(itemNameLower, "blacklight")
+                                        if isElectronic then
+                                            if isEnabled then
+                                                AddLog("       📡 Teleremotría: [EN LÍNEA] Transmitiendo datos correctamente.", Color3.fromRGB(0, 255, 100))
+                                            else
+                                                AddLog("       ⚠️ ERROR DE HOST: La herramienta reporta estar [APAGADA]. El servidor la rechazó o tiene delay.", Color3.fromRGB(255, 100, 100))
+                                            end
+                                        else
+                                            AddLog("       🔘 Estado Analógico: Lista para interacción física.", Color3.fromRGB(200, 200, 200))
+                                        end
+                                    end
+                                end)
                                 
                                 -- 4. Regresar
                                 if posOriginal and LP.Character and LP.Character.PrimaryPart then
