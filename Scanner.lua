@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 eeeee LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -591,7 +591,8 @@ BtnPing.MouseButton1Click:Connect(function()
                                     end
                                 end
                                 
-                                if p and (p.Position - ghostPos).Magnitude <= 35 then
+                                -- V8.70: Reducido de 35 a 18 studs para que no se solape con el camión si el fantasma está cerca de la puerta (Ej. Garage)
+                                if p and (p.Position - ghostPos).Magnitude <= 18 then
                                     isPlanted = true
                                 end
                             end
