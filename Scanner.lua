@@ -28,9 +28,32 @@ local EVI_MAP_IDX = {
 
 -- Tabla con evidencias; se llena aquí SIN necesitar GUI lista
 local EvidenciasEncontradas = {}
+local MapEvs = {
+    ["Nivel EMF 5"] = "EMFLevel5",
+    ["Caja de Espíritus"] = "SpiritBox",
+    ["Escritura de fantasmas"] = "GhostWriting",
+    ["Temperaturas Heladas"] = "FreezingTemperatures",
+    ["Orbe Fantasma"] = "GhostOrb",
+    ["Huellas Dactilares"] = "Handprints",
+    ["Proyector láser"] = "LaserProjector",
+    ["Marchitar"] = "Wither"
+}
+
 local function RegistrarEvidencia(nombre)
     if nombre and not EvidenciasEncontradas[nombre] then
         EvidenciasEncontradas[nombre] = true
+        
+        -- AUTO-MARCADO EN TIEMPO REAL
+        pcall(function()
+            local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+            if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
+                local evCodename = MapEvs[nombre]
+                if evCodename then
+                    rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
+                end
+            end
+        end)
+        
         -- ActualizarPizarraResolucion se llama después de que la GUI esté lista
         pcall(ActualizarPizarraResolucion)
     end
@@ -814,13 +837,11 @@ BtnPing.MouseButton1Click:Connect(function()
                                     pcall(function() hrp.Velocity = Vector3.new(0,0,0) end)
                                     pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0,0,0) end)
                                     
-                                    -- Nos ponemos exactamente a 3.5 studs EN FRENTE de hacia donde esté mirando el fantasma
+                                    -- Nos ponemos directamente SOBRE la cabeza del fantasma para evitar glitch de LookVector
                                     local ghostPos = ghostPart.Position
-                                    local standPos = ghostPos + (ghostPart.CFrame.LookVector * 3.5)
-                                    standPos = Vector3.new(standPos.X, ghostPos.Y, standPos.Z) -- Emparejar altura Y
-                                    
+                                    local standPos = ghostPos + Vector3.new(0, 3.5, 0)
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
-                                    AddLog("       🎯 Auto-Aim: Cara a cara (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
+                                    AddLog("       🎯 Auto-Aim: Cenital (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
                                     
                                     -- 🚪 V8.75: AUTO-APERTURA DE TODAS LAS PUERTAS
                                     -- Así encendemos la IA del Fantasma y no necesitamos buscar las llaves ni la puerta principal.
@@ -862,18 +883,14 @@ BtnPing.MouseButton1Click:Connect(function()
                                 
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
-                                        -- ═══ V8.65: ENCENDIDO REAL (Ingeniería Inversa del Código Fuente) ═══
-                                        -- El juego usa: MouseButton2 → PlayerScripts.Events.UseItem:Fire() → ToggleLaser()/ToggleVideoCamera()
-                                        -- Luego se tira al piso con: KeyCode.G → RequestItemDrop:FireServer("InvSlotX")
-                                        
-                                        -- 1. Encender usando el evento interno del juego (UseItem BindableEvent)
                                         pcall(function()
+                                            if itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true then return end
+                                            
                                             local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
                                             if psEvents and psEvents:FindFirstChild("UseItem") then
                                                 psEvents.UseItem:Fire()
                                                 AddLog("       🔌 Encendido por UseItem (Evento Interno)", Color3.fromRGB(0, 255, 200))
                                             else
-                                                -- Fallback: encender por red directa
                                                 if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
                                                 AddLog("       🔌 Encendido por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
                                             end
@@ -902,10 +919,9 @@ BtnPing.MouseButton1Click:Connect(function()
                                         AddLog("       ✅ " .. realItemName .. " ENCENDIDO y plantado en el cuarto", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "thermometer") then
-                                        -- ═══ V8.68: TERMÓMETRO (Ingeniería Inversa) ═══
-                                        -- El termómetro se enciende con UseItem:Fire() → ToggleThermometer()
-                                        -- El servidor envía la temperatura automáticamente por UpdateThermometerDisplay
                                         pcall(function()
+                                            if itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true then return end
+                                            
                                             local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
                                             if psEvents and psEvents:FindFirstChild("UseItem") then
                                                 psEvents.UseItem:Fire()
