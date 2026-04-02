@@ -764,6 +764,120 @@ local function InitializeTargetDiag()
     end)
 end
 
+local function AutoLabShouldIgnoreItemName(itemNameLower)
+    return itemNameLower == "100"
+        or string.find(itemNameLower, "coin")
+        or string.find(itemNameLower, "ticket")
+        or string.find(itemNameLower, "tarot")
+        or string.find(itemNameLower, "ouija")
+        or string.find(itemNameLower, "umbra")
+        or string.find(itemNameLower, "bone")
+        or string.find(itemNameLower, "music box")
+        or string.find(itemNameLower, "haunted mirror")
+        or string.find(itemNameLower, "plushie")
+        or string.find(itemNameLower, "fortune")
+        or string.find(itemNameLower, "defibrillator")
+        or string.find(itemNameLower, "holy oil")
+        or string.find(itemNameLower, "shotgun")
+        or string.find(itemNameLower, "lighter")
+        or string.find(itemNameLower, "salt")
+        or string.find(itemNameLower, "flower")
+        or string.find(itemNameLower, "plant")
+        or string.find(itemNameLower, "vase")
+        or string.find(itemNameLower, "wilt")
+        or string.find(itemNameLower, "wither")
+end
+
+local function ItemReportsEnabled(item)
+    return item and (item:GetAttribute("Enabled") == true or item:GetAttribute("Power") == true) or false
+end
+
+local function WaitForToolReady(item, timeoutSeconds)
+    local deadline = os.clock() + (timeoutSeconds or 1.5)
+    repeat
+        if ItemReportsEnabled(item) then
+            return true
+        end
+        task.wait(0.1)
+    until os.clock() >= deadline
+    return ItemReportsEnabled(item)
+end
+
+local function FindInventorySlotByObjectId(objectId)
+    if not objectId or objectId == "" then
+        return nil
+    end
+    for _, slotName in ipairs({"InvSlot1", "InvSlot2", "InvSlot3", "InvSlot4"}) do
+        if LP:GetAttribute(slotName) == objectId then
+            return slotName
+        end
+    end
+    return nil
+end
+
+local function DropCurrentlyEquippedItem(remDrop)
+    if not remDrop then
+        return nil
+    end
+    local equippedObj = LP:GetAttribute("EquippedObject")
+    local slotName = FindInventorySlotByObjectId(equippedObj)
+    if slotName then
+        remDrop:FireServer(slotName)
+    end
+    return slotName
+end
+
+local function ResolveObservableToolInstance(itemRef, realItemName)
+    if itemRef and itemRef.Parent then
+        return itemRef
+    end
+    local itemsFolder = Workspace:FindFirstChild("Items")
+    if not itemsFolder then
+        return nil
+    end
+    for _, candidate in ipairs(itemsFolder:GetChildren()) do
+        local candidateName = tostring(candidate:GetAttribute("ItemName") or candidate:GetAttribute("DisplayName") or candidate.Name)
+        if candidateName == realItemName then
+            return candidate
+        end
+    end
+    return nil
+end
+
+local function ReportPlacedToolState(realItemName, itemNameLower, itemRef)
+    local observed = ResolveObservableToolInstance(itemRef, realItemName)
+    if string.find(itemNameLower, "video camera") then
+        local feed = observed and observed:FindFirstChildWhichIsA("SurfaceGui", true)
+        if feed and feed.Enabled then
+            AddLog("       📡 Video Camera lista: feed local activo en el mundo.", Color3.fromRGB(0, 255, 100))
+        elseif feed then
+            AddLog("       ⚠️ Video Camera colocada, pero el feed local aún no confirmó estado.", Color3.fromRGB(255, 180, 100))
+        else
+            AddLog("       📡 Video Camera colocada. Este item no usa la misma auditoría Enabled que Laser/Thermometer.", Color3.fromRGB(200, 200, 200))
+        end
+        return
+    end
+    local isElectronic = string.find(itemNameLower, "emf")
+        or string.find(itemNameLower, "thermo")
+        or string.find(itemNameLower, "laser")
+        or string.find(itemNameLower, "box")
+        or string.find(itemNameLower, "lidar")
+        or string.find(itemNameLower, "blacklight")
+    if not isElectronic then
+        AddLog("       🔘 Estado Analógico: Lista para interacción física.", Color3.fromRGB(200, 200, 200))
+        return
+    end
+    if not observed then
+        AddLog("       ⚠️ Estado remoto no verificable todavía: el objeto cambió de instancia o sigue replicando.", Color3.fromRGB(255, 180, 100))
+        return
+    end
+    if ItemReportsEnabled(observed) then
+        AddLog("       📡 Teleremotría: [EN LÍNEA] Transmitiendo datos correctamente.", Color3.fromRGB(0, 255, 100))
+    else
+        AddLog("       ⚠️ La herramienta quedó plantada, pero aún reporta [APAGADA]. Revisando ciclo real del juego...", Color3.fromRGB(255, 100, 100))
+    end
+end
+
 BtnCopy.MouseButton1Click:Connect(function()
     local fullText = ""
     for _, v in ipairs(LogScroll:GetChildren()) do
@@ -1403,7 +1517,7 @@ BtnPing.MouseButton1Click:Connect(function()
                     -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
                         local n = string.lower(obj:GetAttribute("ItemName") or obj:GetAttribute("DisplayName") or obj.Name)
-                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "umbra") and not string.find(n, "bone") and not string.find(n, "music box") and not string.find(n, "haunted mirror") and not string.find(n, "plushie") and not string.find(n, "fortune") and not string.find(n, "defibrillator") and not string.find(n, "holy oil") and not string.find(n, "shotgun") and not string.find(n, "lighter") and not string.find(n, "salt") then
+                        if not AutoLabShouldIgnoreItemName(n) then
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
@@ -1606,63 +1720,63 @@ BtnPing.MouseButton1Click:Connect(function()
                                 local skipDrop = false -- Flag para trípodes que se plantan con clic
                                 
                                 pcall(function()
-                                    if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
-                                        pcall(function()
-                                            if itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true then return end
-                                            
-                                            local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
-                                            if psEvents and psEvents:FindFirstChild("UseItem") then
-                                                psEvents.UseItem:Fire()
-                                                AddLog("       🔌 Overlay local encendido (UseItem)", Color3.fromRGB(0, 255, 200))
-                                            end
-                                            -- 🚀 V8.88: Separación de Lógica (Laser vs Cámara)
-                                            -- El juego sí notifica al host cuando encendemos el Laser con UseItem, así que no necesitamos forzarlo.
-                                            -- PERO la cámara no, así que el forzado extra SOLO debe ir a la cámara de video.
-                                            if string.find(itemNameLower, "video camera") then
-                                                if typeof(remToggle) == "Instance" then 
-                                                    remToggle:FireServer(itemFalso) 
-                                                    AddLog("       🔌 Lente activado en Host (ToggleItemState Especial)", Color3.fromRGB(200, 200, 100))
-                                                end
-                                            end
-                                        end)
-                                        task.wait(0.8)
+                                    local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
+                                    local useItemEvent = psEvents and psEvents:FindFirstChild("UseItem")
+                                    
+                                    if string.find(itemNameLower, "video camera") then
+                                        local slotName = DropCurrentlyEquippedItem(remDrop)
+                                        if slotName then
+                                            AddLog("       📍 Soltado al piso usando slot: " .. slotName, Color3.fromRGB(150, 200, 255))
+                                            skipDrop = true
+                                        end
+                                        AddLog("       📹 Video Camera plantada mirando al cuarto. El feed/orbe se confirma al mirar la cámara, no por attr Enabled.", Color3.fromRGB(0, 255, 150))
                                         
-                                        -- 2. Soltar al piso con el nombre del Slot correcto (InvSlot1-InvSlot4)
-                                        pcall(function()
-                                            local equippedObj = LP:GetAttribute("EquippedObject")
-                                            if equippedObj then
-                                                local slotName = nil
-                                                for _, sn in ipairs({"InvSlot1","InvSlot2","InvSlot3","InvSlot4"}) do
-                                                    if LP:GetAttribute(sn) == equippedObj then
-                                                        slotName = sn
-                                                        break
-                                                    end
-                                                end
-                                                if slotName and remDrop then
-                                                    remDrop:FireServer(slotName)
-                                                    AddLog("       📍 Soltado al piso usando slot: " .. slotName, Color3.fromRGB(150, 200, 255))
-                                                end
+                                    elseif string.find(itemNameLower, "laser") then
+                                        if not ItemReportsEnabled(itemFalso) then
+                                            if useItemEvent then
+                                                useItemEvent:Fire()
+                                                AddLog("       🔌 Laser Projector activado por UseItem", Color3.fromRGB(0, 255, 200))
+                                            elseif typeof(remToggle) == "Instance" then
+                                                remToggle:FireServer(itemFalso)
+                                                AddLog("       🔌 Laser Projector activado por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
                                             end
-                                        end)
-                                        skipDrop = true -- Ya lo soltamos aquí arriba
-                                        
-                                        AddLog("       ✅ " .. realItemName .. " ENCENDIDO y plantado en el cuarto", Color3.fromRGB(0, 255, 150))
+                                        end
+                                        local laserReady = WaitForToolReady(itemFalso, 1.5)
+                                        task.wait(0.2)
+                                        local slotName = DropCurrentlyEquippedItem(remDrop)
+                                        if slotName then
+                                            AddLog("       📍 Soltado al piso usando slot: " .. slotName, Color3.fromRGB(150, 200, 255))
+                                            skipDrop = true
+                                        end
+                                        if laserReady then
+                                            AddLog("       ✅ Laser Projector confirmado antes de plantarlo", Color3.fromRGB(0, 255, 150))
+                                        else
+                                            AddLog("       ⚠️ Laser Projector no confirmó Enabled antes de soltarse", Color3.fromRGB(255, 180, 100))
+                                        end
                                         
                                     elseif string.find(itemNameLower, "thermometer") then
-                                        pcall(function()
-                                            if itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true then return end
-                                            
-                                            local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
-                                            if psEvents and psEvents:FindFirstChild("UseItem") then
-                                                psEvents.UseItem:Fire()
-                                                AddLog("       🌡️ Termómetro ENCENDIDO por UseItem", Color3.fromRGB(200, 200, 100))
-                                            else
-                                                if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                                AddLog("       🌡️ Termómetro ENCENDIDO por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
+                                        if not ItemReportsEnabled(itemFalso) then
+                                            if useItemEvent then
+                                                useItemEvent:Fire()
+                                                AddLog("       🌡️ Termómetro activado por UseItem", Color3.fromRGB(200, 200, 100))
+                                            elseif typeof(remToggle) == "Instance" then
+                                                remToggle:FireServer(itemFalso)
+                                                AddLog("       🌡️ Termómetro activado por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
                                             end
-                                        end)
-                                        -- Esperar 10s para que el servidor procese varias lecturas de temperatura
-                                        AddLog("       🌡️ Esperando lectura de temperatura (10s)...", Color3.fromRGB(200, 200, 100))
+                                        end
+                                        local thermometerReady = WaitForToolReady(itemFalso, 1.5)
+                                        task.wait(0.2)
+                                        local slotName = DropCurrentlyEquippedItem(remDrop)
+                                        if slotName then
+                                            AddLog("       📍 Soltado al piso usando slot: " .. slotName, Color3.fromRGB(150, 200, 255))
+                                            skipDrop = true
+                                        end
+                                        if thermometerReady then
+                                            AddLog("       ✅ Termómetro confirmado antes de plantarlo", Color3.fromRGB(0, 255, 150))
+                                        else
+                                            AddLog("       ⚠️ Termómetro no confirmó Enabled antes de soltarse", Color3.fromRGB(255, 180, 100))
+                                        end
+                                        AddLog("       🌡️ Esperando lectura remota de temperatura (10s)...", Color3.fromRGB(200, 200, 100))
                                         task.wait(10)
                                         AddLog("       🌡️ Termómetro escaneado completamente", Color3.fromRGB(0, 255, 150))
                                         
@@ -1695,7 +1809,17 @@ BtnPing.MouseButton1Click:Connect(function()
                                         end
                                         
                                     elseif string.find(itemNameLower, "blacklight") or string.find(itemNameLower, "uv light") then
-                                        if remToggle then remToggle:FireServer(itemFalso) end
+                                        if not ItemReportsEnabled(itemFalso) then
+                                            if useItemEvent then
+                                                useItemEvent:Fire()
+                                                AddLog("       💡 Blacklight activada por UseItem", Color3.fromRGB(200, 200, 100))
+                                            elseif typeof(remToggle) == "Instance" then
+                                                itemFalso:SetAttribute("Enabled", not itemFalso:GetAttribute("Enabled"))
+                                                remToggle:FireServer(itemFalso)
+                                                AddLog("       💡 Blacklight activada por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
+                                            end
+                                        end
+                                        WaitForToolReady(itemFalso, 1.2)
                                         task.wait(0.3)
                                         pcall(function()
                                             local handprints = workspace:FindFirstChild("Handprints")
@@ -1734,7 +1858,7 @@ BtnPing.MouseButton1Click:Connect(function()
                                     
                                     else
                                         -- V8.80: Toggle INTELIGENTE - Solo prender si está apagado
-                                        local yaEncendido = itemFalso:GetAttribute("Enabled") == true
+                                        local yaEncendido = ItemReportsEnabled(itemFalso)
                                         if not yaEncendido and remToggle then 
                                             remToggle:FireServer(itemFalso)
                                             AddLog("       🔋 " .. tostring(realItemName) .. " encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
@@ -1760,17 +1884,7 @@ BtnPing.MouseButton1Click:Connect(function()
                                 -- 📡 V8.81: AUDITORÍA DE ESTADO DE RED PARA EL USUARIO
                                 pcall(function()
                                     if itemFalso then
-                                        local isEnabled = itemFalso:GetAttribute("Enabled") == true or itemFalso:GetAttribute("Power") == true
-                                        local isElectronic = string.find(itemNameLower, "emf") or string.find(itemNameLower, "thermo") or string.find(itemNameLower, "laser") or string.find(itemNameLower, "camera") or string.find(itemNameLower, "box") or string.find(itemNameLower, "lidar") or string.find(itemNameLower, "blacklight")
-                                        if isElectronic then
-                                            if isEnabled then
-                                                AddLog("       📡 Teleremotría: [EN LÍNEA] Transmitiendo datos correctamente.", Color3.fromRGB(0, 255, 100))
-                                            else
-                                                AddLog("       ⚠️ ERROR DE HOST: La herramienta reporta estar [APAGADA]. El servidor la rechazó o tiene delay.", Color3.fromRGB(255, 100, 100))
-                                            end
-                                        else
-                                            AddLog("       🔘 Estado Analógico: Lista para interacción física.", Color3.fromRGB(200, 200, 200))
-                                        end
+                                        ReportPlacedToolState(realItemName, itemNameLower, itemFalso)
                                     end
                                 end)
                                 
