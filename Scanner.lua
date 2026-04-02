@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDErrrrrrrNCIAS / LOGS "
+BoardTitle.Text = " 📜 eeeee LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -564,6 +564,15 @@ BtnPing.MouseButton1Click:Connect(function()
                             _G.BookSpyData[objId] = { Y = currentY, Texture = currentTexture, Attrs = obj:GetAttributes() }
                         end
                     end
+                end
+                
+                -- === 🚀 V8.69: DETECCIÓN INSTANTÁNEA DE ORBES FANTASMAS ===
+                -- El juego carga físicamente un modelo llamado "GhostOrb" en el workspace si la evidencia existe.
+                -- No necesitamos interactuar con cámaras, solo verificar si existe en la memoria del cliente.
+                if workspace:FindFirstChild("GhostOrb") and not EvidenciasEncontradas["Orbe Fantasma"] then
+                    EvidenciasEncontradas["Orbe Fantasma"] = true
+                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Orbe Fantasma (Obj Detectado en Workspace)", Color3.fromRGB(0, 255, 255))
+                    pcall(ActualizarPizarraResolucion)
                 end
                 
                 local tomables = {}
@@ -1540,11 +1549,12 @@ BtnEvidence.MouseButton1Click:Connect(function()
                             if msg then
                                 local t = string.lower(tostring(msg))
                                 AddLog("🎤 [ESPÍRITU RESPONDIÓ]: " .. tostring(msg), Color3.fromRGB(200, 150, 255))
-                                if string.find(t, "behind") or string.find(t, "away") or string.find(t, "close") or string.find(t, "here") or string.find(t, "old") then
+                                -- El servidor solo envía ShowSubtitle para respuestas fuertes del fantasma
+                                if string.len(t) > 1 then
                                     if not EvidenciasEncontradas["Caja de Espíritus"] then
                                         EvidenciasEncontradas["Caja de Espíritus"] = true
                                         ActualizarPizarraResolucion()
-                                        AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus", Color3.fromRGB(0, 255, 0))
+                                        AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus (Respuesta interceptada)", Color3.fromRGB(0, 255, 0))
                                     end
                                 end
                             end
