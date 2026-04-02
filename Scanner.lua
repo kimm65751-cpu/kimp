@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLO"
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -764,11 +764,21 @@ BtnPing.MouseButton1Click:Connect(function()
                 if currentGhostInstance then
                     local currentGhostDebugId = currentGhostInstance:GetDebugId()
                     if _G.CurrentMatchGhostID ~= currentGhostDebugId then
-                        AddLog("🔄 [NUEVA PARTIDA DETECTADA] Limpiando memoria caché de partida anterior...", Color3.fromRGB(0, 255, 255))
+                        AddLog("🔄 [NUEVA PARTIDA DETECTADA] Limpiando memoria caché e inyectores...", Color3.fromRGB(0, 255, 255))
                         _G.CurrentMatchGhostID = currentGhostDebugId
                         _G.MatchCompletado = false
                         _G.DoorsOpened = false
                         _G.BookSpyData = {}
+                        
+                        -- V8.99C: Limpiar flags de inyectores para que se vuelvan a instalar en el nuevo mapa
+                        _G.FloresMonitoreadas = false
+                        _G.LibroMonitoreado = false
+                        _G.ObjetivosHookeados = false
+                        _G.ConductaHookeada = false
+                        _G.HuntMonitorActivo = false
+                        _G.SpiritBoxInterceptado = false
+                        _G.SpiritBoxAudioInterceptado = false
+                        
                         for k in pairs(_G_EvidenciasYaMarcadasEnDiario) do _G_EvidenciasYaMarcadasEnDiario[k] = nil end
                         for k in pairs(EvidenciasEncontradas) do EvidenciasEncontradas[k] = nil end
                         pcall(ActualizarPizarraResolucion)
@@ -1231,7 +1241,23 @@ BtnPing.MouseButton1Click:Connect(function()
                                 
                                 -- 3. Soltar (SOLO si no fue plantado con sistema de trípode nativo)
                                 if not skipDrop then
-                                    if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                                    if remDrop then 
+                                        pcall(function() 
+                                            local slotName = nil
+                                            for _, child in pairs(LP:WaitForChild("Inventory", 2):GetChildren()) do
+                                                if child.Value == realItemName then
+                                                    slotName = child.Name
+                                                    break
+                                                end
+                                            end
+                                            if slotName then
+                                                remDrop:FireServer(slotName)
+                                            else
+                                                -- Fallback por si la estructura cambia
+                                                remDrop:FireServer("InvSlot" .. tostring(filledSlot))
+                                            end
+                                        end) 
+                                    end
                                     task.wait(0.5)
                                 end
                                 
