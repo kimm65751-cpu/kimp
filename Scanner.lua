@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️E "
+Title.Text = "AAAAP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -995,13 +995,14 @@ BtnPing.MouseButton1Click:Connect(function()
                                                 psEvents.UseItem:Fire()
                                                 AddLog("       🔌 Overlay local encendido (UseItem)", Color3.fromRGB(0, 255, 200))
                                             end
-                                            
-                                            -- 🚀 V8.85: Forzar el encendido SÍ O SÍ a nivel de servidor.
-                                            -- El juego (ToggleVideoCamera) no le avisa al servidor que prendimos la cámara, solo cambia la UI.
-                                            -- Debemos enviar la señal de red explícitamente para que la cámara cobre vida antes de soltarla.
-                                            if typeof(remToggle) == "Instance" then 
-                                                remToggle:FireServer(itemFalso) 
-                                                AddLog("       🔌 Lente activado en Host (ToggleItemState)", Color3.fromRGB(200, 200, 100))
+                                            -- 🚀 V8.88: Separación de Lógica (Laser vs Cámara)
+                                            -- El juego sí notifica al host cuando encendemos el Laser con UseItem, así que no necesitamos forzarlo.
+                                            -- PERO la cámara no, así que el forzado extra SOLO debe ir a la cámara de video.
+                                            if string.find(itemNameLower, "video camera") then
+                                                if typeof(remToggle) == "Instance" then 
+                                                    remToggle:FireServer(itemFalso) 
+                                                    AddLog("       🔌 Lente activado en Host (ToggleItemState Especial)", Color3.fromRGB(200, 200, 100))
+                                                end
                                             end
                                         end)
                                         task.wait(0.8)
