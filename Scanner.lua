@@ -444,10 +444,11 @@ local function ActualizarPizarraResolucion()
                 -- Interceptar GetSelectedGhost ANTES de todo. Si el servidor pregunta qué
                 -- fantasma elegimos, SIEMPRE devolverá nuestro cálculo perfecto.
                 local hookActivo = false
+                local hookFn = function()
+                    return networkName
+                end
                 if rsEvents:FindFirstChild("GetSelectedGhost") then
-                    rsEvents.GetSelectedGhost.OnClientInvoke = function()
-                        return networkName
-                    end
+                    rsEvents.GetSelectedGhost.OnClientInvoke = hookFn
                     hookActivo = true
                     AddLog("       🎯 Hook GetSelectedGhost activo: Servidor recibirá [" .. networkName .. "]", Color3.fromRGB(0, 255, 150))
                 end
@@ -508,17 +509,13 @@ local function ActualizarPizarraResolucion()
                 end
                 
                 -- ═══ PASO 5: VERIFICACIÓN FINAL ANTES DE ESCAPAR ═══
-                -- El hook es la garantía real. Verificamos que está activo.
+                -- Verificamos que el hook devuelve el nombre correcto.
                 local verificacionOK = false
                 if hookActivo then
-                    -- Probar que el hook devuelve el nombre correcto
-                    local testResult = pcall(function()
-                        local r = rsEvents.GetSelectedGhost.OnClientInvoke()
-                        if r == networkName then
-                            verificacionOK = true
-                        end
-                    end)
-                    if not testResult then verificacionOK = false end
+                    local ok, result = pcall(hookFn)
+                    if ok and result == networkName then
+                        verificacionOK = true
+                    end
                 end
                 
                 if not verificacionOK then
