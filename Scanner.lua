@@ -1863,23 +1863,68 @@ BtnEvidence.MouseButton1Click:Connect(function()
                     end
                 end)
                 
-                -- V8.26: Interceptor Radiactivo del Spirit Box (ShowSubtitle Event)
+                -- V8.26b: Interceptor Radiactivo del Spirit Box Total (ShowSubtitle Event local y de red)
                 pcall(function()
                     local RS = game:GetService("ReplicatedStorage")
                     if RS:FindFirstChild("Events") and RS.Events:FindFirstChild("ShowSubtitle") and not _G.SpiritBoxInterceptado then
                         _G.SpiritBoxInterceptado = true
-                        RS.Events.ShowSubtitle.OnClientEvent:Connect(function(msg)
+                        local function OnSubtitle(msg)
                             if msg then
                                 local t = string.lower(tostring(msg))
-                                AddLog("🎤 [ESPÍRITU RESPONDIÓ]: " .. tostring(msg), Color3.fromRGB(200, 150, 255))
-                                -- El servidor solo envía ShowSubtitle para respuestas fuertes del fantasma
-                                if string.len(t) > 1 then
+                                -- El Spirit Box responde con palabras cortas normalmente como "E E", "here", "leave", o el fantasma hace ruidos de respiración, etc.
+                                -- Si atrapamos esto durante un interrogatorio, es fuerte evidencia.
+                                if string.find(t, "where") or string.find(t, "near") or string.find(t, "here") or string.find(t, "old") or string.find(t, "die") or string.find(t, "alive") or string.find(t, "behind") or string.find(t, "kill") or string.find(t, "leave") or string.find(t, "hate") then
+                                    AddLog("🎤 [ESPÍRITU RESPONDIÓ (SUBTÍTULO)]: " .. tostring(msg), Color3.fromRGB(200, 150, 255))
                                     if not EvidenciasEncontradas["Caja de Espíritus"] then
                                         EvidenciasEncontradas["Caja de Espíritus"] = true
-                                        ActualizarPizarraResolucion()
-                                        AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus (Respuesta interceptada)", Color3.fromRGB(0, 255, 0))
+                                        pcall(ActualizarPizarraResolucion)
+                                        AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus (Respuesta)", Color3.fromRGB(0, 255, 0))
                                     end
                                 end
+                            end
+                        end
+                        -- Atacar ambos (RemoteEvent y BindableEvent) porque no sabemos dónde lo envían exactamente.
+                        if RS.Events.ShowSubtitle:IsA("RemoteEvent") then
+                            RS.Events.ShowSubtitle.OnClientEvent:Connect(OnSubtitle)
+                        elseif RS.Events.ShowSubtitle:IsA("BindableEvent") then
+                            RS.Events.ShowSubtitle.Event:Connect(OnSubtitle)
+                        end
+                    end
+                end)
+                
+                -- V8.97: Hook de Fuerza Bruta sobre el AUDIO del Spirit Box.
+                pcall(function()
+                    if not _G.SpiritBoxAudioInterceptado then
+                        _G.SpiritBoxAudioInterceptado = true
+                        -- Buscar todas las Spirit Boxes en el juego e interceptar el sonido 'Tone'
+                        local function InyectarBox(box)
+                            pcall(function()
+                                local t = box:WaitForChild("Handle", 2):WaitForChild("Tone", 2)
+                                if t then
+                                    t:GetPropertyChangedSignal("SoundId"):Connect(function()
+                                        if string.len(t.SoundId) > 5 then
+                                            AddLog("🎤 [ESPÍRITU RESPONDIÓ (AUDIO)]: " .. tostring(t.SoundId), Color3.fromRGB(200, 150, 255))
+                                            if not EvidenciasEncontradas["Caja de Espíritus"] then
+                                                EvidenciasEncontradas["Caja de Espíritus"] = true
+                                                pcall(ActualizarPizarraResolucion)
+                                                AddLog("⭐ EVIDENCIA OBTENIDA: Caja de Espíritus (Audio detectado)", Color3.fromRGB(0, 255, 0))
+                                            end
+                                        end
+                                    end)
+                                end
+                            end)
+                        end
+                        
+                        -- Inyectar en los existentes
+                        for _, obj in pairs(workspace:GetDescendants()) do
+                            if obj:IsA("Model") and obj:GetAttribute("ItemName") == "Spirit Box" then
+                                InyectarBox(obj)
+                            end
+                        end
+                        -- Inyectar en los nuevos
+                        workspace.DescendantAdded:Connect(function(obj)
+                            if obj:IsA("Model") and obj:GetAttribute("ItemName") == "Spirit Box" then
+                                InyectarBox(obj)
                             end
                         end)
                     end
