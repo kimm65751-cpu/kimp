@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️bbbbbb "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -232,7 +232,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVeeeeeeeeeIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -435,13 +435,16 @@ local function ActualizarPizarraResolucion()
                                 
                                 task.wait(0.3)
                                 local parentFrame = btn.Parent
-                                local textLbl = parentFrame:FindFirstChild("TextLabel")
-                                if (textLbl and textLbl.TextTransparency < 0.5) or (parentFrame:FindFirstChild("Circle") and parentFrame.Circle.Visible) then
+                                local circle = parentFrame:FindFirstChild("Circle")
+                                local tl = parentFrame:FindFirstChild("TextLabel") or parentFrame:FindFirstChild("ButtonLabel")
+                                
+                                local isVisuallyMarked = false
+                                if circle and circle.Visible then isVisuallyMarked = true end
+                                if tl and tl:IsA("TextLabel") and tl.TextTransparency < 0.5 then isVisuallyMarked = true end
+                                
+                                if isVisuallyMarked then
                                     seguroSeleccionado = true
                                     AddLog("       ✅ Verificado ABSOLUTO: Fantasma marcado en UI local (Intento " .. intento .. ")", Color3.fromRGB(0, 255, 100))
-                                else
-                                    -- Si no encontramos una marca física pero disparamos todo, asumimos verdadero por seguridad
-                                    seguroSeleccionado = true 
                                 end
                             end
                         end
