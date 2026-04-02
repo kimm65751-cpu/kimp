@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIeIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -540,18 +540,15 @@ BtnPing.MouseButton1Click:Connect(function()
                                 _G.BookSpyData[objId].Y = currentY
                             end
                             
-                            -- Detectar Escritura (la textura de la página cambió = el fantasma dibujó garabatos)
-                            local oldTexture = _G.BookSpyData[objId].Texture
-                            if currentTexture ~= oldTexture and currentTexture ~= "" then
-                                AddLog("🔍 [SPY-BOOK] ¡TEXTURA CAMBIÓ! Los garabatos del fantasma aparecieron: " .. currentTexture, Color3.fromRGB(255, 200, 0))
-                                _G.BookSpyData[objId].Texture = currentTexture
-                                
-                                -- ¡ESTO ES ESCRITURA DE FANTASMA CONFIRMADA!
-                                if not EvidenciasEncontradas["Escritura de fantasmas"] then
-                                    EvidenciasEncontradas["Escritura de fantasmas"] = true
-                                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Escritura de Fantasmas (Tinta Activa)", Color3.fromRGB(255, 255, 0))
-                                    pcall(ActualizarPizarraResolucion)
-                                end
+                            -- Detectar Escritura por ATRIBUTOS REALES del servidor (V8.67)
+                            -- El servidor pone PhotoRewardType = "GhostWriting" y Disabled = true cuando el fantasma escribe
+                            local photoRewardType = obj:GetAttribute("PhotoRewardType")
+                            local isDisabled = obj:GetAttribute("Disabled")
+                            
+                            if (photoRewardType == "GhostWriting" or isDisabled == true) and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Escritura de Fantasmas (El servidor confirmó: PhotoRewardType=" .. tostring(photoRewardType) .. ", Disabled=" .. tostring(isDisabled) .. ")", Color3.fromRGB(255, 255, 0))
+                                pcall(ActualizarPizarraResolucion)
                             end
                             
                             -- Monitorear TODOS los atributos para debugging
