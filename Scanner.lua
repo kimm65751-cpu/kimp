@@ -323,20 +323,36 @@ local _G_EvidenciasYaMarcadasEnDiario = _G._EvidenciasYaMarcadasEnDiario or {}
 _G._EvidenciasYaMarcadasEnDiario = _G_EvidenciasYaMarcadasEnDiario
 
 local function ActualizarPizarraResolucion()
-    -- 📝 V8.80: AUTO-MARCADO DEL DIARIO EN TIEMPO REAL
-    -- Cada vez que se llama esta función (26+ lugares), revisamos qué evidencias son nuevas y las mandamos al servidor.
+    -- 📝 V8.82: AUTO-MARCADO DEL DIARIO EN TIEMPO REAL (UI + SERVER)
     pcall(function()
+        local LP = game:GetService("Players").LocalPlayer
         local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
-        if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-            for ev, _ in pairs(EvidenciasEncontradas) do
-                if not _G_EvidenciasYaMarcadasEnDiario[ev] then
-                    local evCodename = MapEvs[ev]
-                    if evCodename then
+        
+        for ev, _ in pairs(EvidenciasEncontradas) do
+            if not _G_EvidenciasYaMarcadasEnDiario[ev] then
+                local evCodename = MapEvs[ev]
+                if evCodename then
+                    -- 1. Forzar UI Local (Visuales y lógica del cliente)
+                    pcall(function()
+                        local evTypes = LP.PlayerGui:FindFirstChild("EvidenceTypes", true)
+                        if evTypes and evTypes:FindFirstChild(evCodename) then
+                            local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
+                            if btn and getconnections then
+                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                                    conn:Fire()
+                                end
+                            end
+                        end
+                    end)
+                    
+                    -- 2. Asegurar Servidor (Por si la UI falla)
+                    if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
                         rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
-                        _G_EvidenciasYaMarcadasEnDiario[ev] = true
-                        AddLog("📓 [DIARIO] Evidencia marcada: " .. ev .. " → " .. evCodename, Color3.fromRGB(255, 215, 0))
-                        task.wait(0.15)
                     end
+                    
+                    _G_EvidenciasYaMarcadasEnDiario[ev] = true
+                    AddLog("📓 [DIARIO] Evidencia marcada y UI actualizada: " .. ev, Color3.fromRGB(255, 215, 0))
+                    task.wait(0.15)
                 end
             end
         end
@@ -396,31 +412,29 @@ local function ActualizarPizarraResolucion()
             
             local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
             if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-                -- Mapa de traducción (Español -> English Enum de Evidencias)
-                local MapEvs = {
-                    ["Nivel EMF 5"] = "EMFLevel5",
-                    ["Caja de Espíritus"] = "SpiritBox",
-                    ["Escritura de fantasmas"] = "GhostWriting",
-                    ["Temperaturas Heladas"] = "FreezingTemperatures",
-                    ["Orbe Fantasma"] = "GhostOrb",
-                    ["Huellas Dactilares"] = "Handprints",
-                    ["Proyector láser"] = "LaserProjector",
-                    ["Marchitar"] = "Wither"
-                }
-                
-                -- Marcar las evidencias confirmadas
-                for _, miEv in ipairs(foundList) do
-                    local evCodename = MapEvs[miEv]
-                    if evCodename then
-                        rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
-                        task.wait(0.1)
+                -- 1. Marcar el Fantasma en la UI (Simular Clic)
+                pcall(function()
+                    local LP = game:GetService("Players").LocalPlayer
+                    local gTypes = LP.PlayerGui:FindFirstChild("GhostTypes", true)
+                    if gTypes and gTypes:FindFirstChild(finalGhostName) then
+                        local btn = gTypes[finalGhostName]:FindFirstChild("Detection", true)
+                        if btn and getconnections then
+                            for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                                conn:Fire()
+                            end
+                        end
                     end
+                end)
+                
+                -- 2. Asegurar en el servidor que elegimos ese fantasma (Fallback)
+                if rsEvents and rsEvents:FindFirstChild("GhostSelectedInJournal") then
+                    rsEvents.GhostSelectedInJournal:FireServer(finalGhostName)
+                elseif rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
+                    rsEvents.EvidenceMarkedInJournal:FireServer(finalGhostName)
                 end
                 
-                -- Marcar el Fantasma y Cerrar el Diario
-                rsEvents.EvidenceMarkedInJournal:FireServer(finalGhostName)
                 task.wait(0.5)
-                if rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
+                if rsEvents and rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
             end
             
             AddLog("🚚 [ESCAPE MÁXIMO] ¡Trabajo hecho! Teletransportando al camión...", Color3.fromRGB(0, 255, 255))
