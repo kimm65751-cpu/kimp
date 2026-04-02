@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4e MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAeeeeeS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -507,8 +507,8 @@ BtnPing.MouseButton1Click:Connect(function()
                 for _, obj in ipairs(todasHerramientas) do
                     -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
-                        local n = string.lower(obj.Name)
-                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") then
+                        local n = string.lower(obj:GetAttribute("ItemName") or obj:GetAttribute("DisplayName") or obj.Name)
+                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "bone") then
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
@@ -838,8 +838,6 @@ BtnPing.MouseButton1Click:Connect(function()
                             -- Método 2: Vigilar CUALQUIER cambio de atributo del libro
                             item.AttributeChanged:Connect(function(attrName)
                                 if not EvidenciasEncontradas["Escritura de fantasmas"] then
-                                    AddLog("📖 Spirit Book atributo cambió: " .. attrName .. " = " .. tostring(item:GetAttribute(attrName)), Color3.fromRGB(255, 200, 100))
-                                    -- Si el atributo indica escritura
                                     local an = string.lower(attrName)
                                     if string.find(an, "writ") or string.find(an, "drawn") or string.find(an, "used") or string.find(an, "active") then
                                         EvidenciasEncontradas["Escritura de fantasmas"] = true
@@ -1074,21 +1072,31 @@ BtnESP.MouseButton1Click:Connect(function()
                                 end
                                 
                                 -- =======================================================
-                                -- 🧠 V8.46: PERFILADO PSICOLÓGICO Y ANATÓMICO CORREGIDO
+                                -- 🧠 V8.51: PERFILADO BIOLÓGICO Y ANATÓMICO ABSOLUTO
                                 -- =======================================================
-                                local tieneCabeza = false
-                                -- Usamos GetDescendants porque algunos modelos (como Rattle) tienen el MeshPart profundamente anidado
-                                for _, c in pairs(obj:GetDescendants()) do
-                                    if c:IsA("BasePart") or c:IsA("MeshPart") then
-                                        local n = string.lower(c.Name)
-                                        if string.find(n, "head") and c.Transparency < 1 then
-                                            tieneCabeza = true
-                                            break
+                                local esDullahan = false
+                                
+                                -- 1. Dar prioridad Suprema al Atributo del Motor si existe (Es la verdad absoluta)
+                                local atrHeadless = obj:GetAttribute("Headless")
+                                if atrHeadless ~= nil then
+                                    esDullahan = atrHeadless
+                                else
+                                    -- Si el atributo fue borrado, usar respaldo analizando la física 3D
+                                    local tieneCabeza = false
+                                    for _, c in pairs(obj:GetDescendants()) do
+                                        if c:IsA("BasePart") or c:IsA("MeshPart") then
+                                            local n = string.lower(c.Name)
+                                            if string.find(n, "head") and c.Transparency < 1 then
+                                                tieneCabeza = true
+                                                break
+                                            end
                                         end
                                     end
+                                    esDullahan = not tieneCabeza
                                 end
-                                if not tieneCabeza then
-                                    AddLog("⚠️ ALERTA ANATÓMICA: ¡El Fantasma no tiene cabeza!", Color3.fromRGB(255, 0, 0))
+                                
+                                if esDullahan then
+                                    AddLog("⚠️ ALERTA ANATÓMICA: ¡Atrofia biológica detectada (Sin Cabeza)!", Color3.fromRGB(255, 0, 0))
                                     AddLog("   └─> CULPABLE CASI SEGURO: DULLAHAN", Color3.fromRGB(255, 50, 50))
                                 end
                                 
