@@ -129,19 +129,23 @@ pcall(function()
         local method = getnamecallmethod()
         local args = {...}
         
-        -- Ignoramos las llamadas nativas del Executor (checkcaller), solo queremos las que envía el juego
         if not checkcaller() then
             if method == "FireServer" or method == "InvokeServer" then
                 local objName = tostring(self.Name)
                 
-                -- Filtrar ruido de red normal (Sistemas de movimiento o mouse aburridos)
+                -- Filtrar ruido de red
                 if not string.find(string.lower(objName), "move") and not string.find(string.lower(objName), "mouse") and not string.find(objName, "Update") then
-                    local argStr = ""
-                    for i, v in ipairs(args) do
-                        argStr = argStr .. tostring(v) .. " | "
-                    end
-                    if argStr == "" then argStr = "[Ningún Flag]" end
-                    AddLog("📡 [TÓXICO] Mando evento al Servidor: [" .. objName .. "] Datos: " .. argStr, Color3.fromRGB(255, 150, 0))
+                    -- No bloquear el Thread principal del juego al escribir o renderizar UI
+                    task.spawn(function()
+                        local argStr = ""
+                        for i, v in ipairs(args) do
+                            argStr = argStr .. tostring(v) .. " | "
+                        end
+                        if argStr == "" then argStr = "[Ningún Flag]" end
+                        pcall(function()
+                            AddLog("📡 [TÓXICO] Mando evento al Servidor: [" .. objName .. "] Datos: " .. argStr, Color3.fromRGB(255, 150, 0))
+                        end)
+                    end)
                 end
             end
         end
