@@ -974,10 +974,15 @@ BtnPing.MouseButton1Click:Connect(function()
                                             local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
                                             if psEvents and psEvents:FindFirstChild("UseItem") then
                                                 psEvents.UseItem:Fire()
-                                                AddLog("       🔌 Encendido por UseItem (Evento Interno)", Color3.fromRGB(0, 255, 200))
-                                            else
-                                                if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                                AddLog("       🔌 Encendido por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
+                                                AddLog("       🔌 Overlay local encendido (UseItem)", Color3.fromRGB(0, 255, 200))
+                                            end
+                                            
+                                            -- 🚀 V8.85: Forzar el encendido SÍ O SÍ a nivel de servidor.
+                                            -- El juego (ToggleVideoCamera) no le avisa al servidor que prendimos la cámara, solo cambia la UI.
+                                            -- Debemos enviar la señal de red explícitamente para que la cámara cobre vida antes de soltarla.
+                                            if typeof(remToggle) == "Instance" then 
+                                                remToggle:FireServer(itemFalso) 
+                                                AddLog("       🔌 Lente activado en Host (ToggleItemState)", Color3.fromRGB(200, 200, 100))
                                             end
                                         end)
                                         task.wait(0.8)
