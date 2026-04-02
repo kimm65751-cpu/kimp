@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGYeeeeeEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -729,9 +729,14 @@ BtnPing.MouseButton1Click:Connect(function()
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
                                         -- Si es láser, HAY QUE ENCENDERLO explícitamente!
-                                        if string.find(itemNameLower, "laser") and typeof(remToggle) == "Instance" then
-                                            remToggle:FireServer(itemFalso)
-                                            -- 🚀 V8.55: Esperar confirmación de red antes de montarlo en el trípode
+                                        if string.find(itemNameLower, "laser") then
+                                            -- Simular clic izquierdo (Mouse 1)
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
+                                            task.wait(0.1)
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
+                                            
+                                            if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
+                                            -- 🚀 V8.60: Esperar confirmación visual del cliente antes de montarlo en el trípode
                                             task.wait(0.6)
                                         end
                                         
@@ -1189,6 +1194,14 @@ BtnESP.MouseButton1Click:Connect(function()
                                             end
                                         elseif string.find(an, "visible") or string.find(an, "reveal") then
                                             AddLog("👁️ EL FANTASMA ES VISIBLE AHORA MISMO: " .. tostring(obj:GetAttribute(attr)), Color3.fromRGB(255, 150, 0))
+                                            
+                                        -- 🚀 V8.60: SENSOR DE LÁSER INYECTADO AL ATRIBUTO BIOLÓGICO DEL ENTE
+                                        elseif string.find(an, "laservisible") or string.find(an, "inlaser") then
+                                            if obj:GetAttribute(attr) == true and not EvidenciasEncontradas["Proyector láser"] then
+                                                EvidenciasEncontradas["Proyector láser"] = true
+                                                AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Proyector Láser (El Motor del Servidor confesó la interacción láser!)", Color3.fromRGB(255, 255, 0))
+                                                pcall(ActualizarPizarraResolucion)
+                                            end
                                         end
                                     end)
                                     
