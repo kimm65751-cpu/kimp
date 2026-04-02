@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️bbbbbb "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -341,8 +341,9 @@ local function ActualizarPizarraResolucion()
                         if evTypes and evTypes:FindFirstChild(evCodename) then
                             local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
                             if btn and getconnections then
-                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
-                                    conn:Fire() 
+                                local conns = getconnections(btn.MouseButton1Click)
+                                if conns and conns[1] then
+                                    conns[1]:Fire() -- En Evidencias, [1] es suficiente y evita la X Roja de Doble-Estado
                                 end
                             end
                         end
