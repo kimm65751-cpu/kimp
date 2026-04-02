@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGYeeeeeEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -510,6 +510,41 @@ BtnPing.MouseButton1Click:Connect(function()
                 end
 
                 local todasHerramientas = CS:GetTagged("Item")
+                
+                -- === 🚀 V8.57/V8.59: POLLEO Y SPY DE ESTADO DEL LIBRO ===
+                if not _G.BookSpyData then _G.BookSpyData = {} end
+                for _, obj in ipairs(todasHerramientas) do
+                    if obj:GetAttribute("ItemName") == "Spirit Book" then
+                        local currentY = obj.PrimaryPart and obj.PrimaryPart.Position.Y or 0
+                        local objId = tostring(obj:GetDebugId())
+                        
+                        -- SPY: Detectar Levitación del Libro o Telekinesis
+                        if _G.BookSpyData[objId] then
+                            local oldY = _G.BookSpyData[objId].Y
+                            if math.abs(currentY - oldY) > 1 then
+                                AddLog("🔍 [SPY-BOOK] ¡El fantasma está LEVITANDO el libro! Altura cambió " .. string.format("%.1f", currentY - oldY) .. " studs.", Color3.fromRGB(200, 150, 255))
+                                _G.BookSpyData[objId].Y = currentY
+                            end
+                            
+                            local oldEnabled = _G.BookSpyData[objId].Enabled
+                            local newEnabled = obj:GetAttribute("Enabled")
+                            if oldEnabled ~= newEnabled then
+                                AddLog("🔍 [SPY-BOOK] El atributo 'Enabled' del Servidor pasó de " .. tostring(oldEnabled) .. " a " .. tostring(newEnabled), Color3.fromRGB(200, 150, 255))
+                                _G.BookSpyData[objId].Enabled = newEnabled
+                            end
+                        else
+                            _G.BookSpyData[objId] = { Y = currentY, Enabled = obj:GetAttribute("Enabled") }
+                        end
+                        
+                        -- REVISIÓN DE EVIDENCIA (Escritura)
+                        if obj:GetAttribute("Enabled") == false and not EvidenciasEncontradas["Escritura de fantasmas"] then
+                            EvidenciasEncontradas["Escritura de fantasmas"] = true
+                            AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Escritura de Fantasmas (Tinta Activa)", Color3.fromRGB(255, 255, 0))
+                            pcall(ActualizarPizarraResolucion)
+                        end
+                    end
+                end
+                
                 local tomables = {}
                 for _, obj in ipairs(todasHerramientas) do
                     -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
@@ -696,6 +731,8 @@ BtnPing.MouseButton1Click:Connect(function()
                                         -- Si es láser, HAY QUE ENCENDERLO explícitamente!
                                         if string.find(itemNameLower, "laser") and typeof(remToggle) == "Instance" then
                                             remToggle:FireServer(itemFalso)
+                                            -- 🚀 V8.55: Esperar confirmación de red antes de montarlo en el trípode
+                                            task.wait(0.6)
                                         end
                                         
                                         -- Clic derecho para entrar en modo trípode/soporte
@@ -1232,6 +1269,7 @@ BtnESP.MouseButton1Click:Connect(function()
                                                 end
                                             end
                                             
+                                            -- Eliminado el monitoreo ciego de Decals del Libro para evitar Falsos Positivos cuando se suelta al piso con texturas de portada.
                                         end)
                                     end)
                                 end
