@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOeeee "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -340,15 +340,32 @@ local function ActualizarPizarraResolucion()
                         local evTypes = LP.PlayerGui:FindFirstChild("EvidenceTypes", true)
                         if evTypes and evTypes:FindFirstChild(evCodename) then
                             local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
-                            local parentFr = btn and btn.Parent
-                            if parentFr and getconnections then
+                            local container = btn and btn.Parent
+                            if container and getconnections then
+                                local highlight = container:FindFirstChild("Highlight")
+                                local crossOut = container:FindFirstChild("CrossOut")
                                 local conns = getconnections(btn.MouseButton1Click)
                                 if conns and conns[1] then
-                                    for clickBypass = 1, 3 do
-                                        local circle = parentFr:FindFirstChild("Circle")
-                                        if circle and circle.Visible then break end -- Ya es verde/seleccionado
+                                    -- V8.96: Usar los elementos REALES del juego (Highlight/CrossOut)
+                                    -- Ciclo de estados del juego: nil→true(Highlight)→false(CrossOut)→0(nada)→true...
+                                    if highlight and highlight.Visible then
+                                        -- Ya marcado correctamente, no tocar
+                                    elseif crossOut and crossOut.Visible then
+                                        -- Estado X (false) → 2 clics: false→0→true
                                         conns[1]:Fire()
-                                        task.wait(0.1)
+                                        task.wait(0.15)
+                                        conns[1]:Fire()
+                                        task.wait(0.15)
+                                    else
+                                        -- Estado neutro (nil/0) → 1 clic: nil→true
+                                        conns[1]:Fire()
+                                        task.wait(0.15)
+                                    end
+                                    -- Verificación final
+                                    task.wait(0.1)
+                                    if highlight and not highlight.Visible then
+                                        AddLog("⚠️ [DIARIO] Evidencia '" .. ev .. "' NO se verificó en UI. Reintentando próximo ciclo.", Color3.fromRGB(255, 100, 0))
+                                        _G_EvidenciasYaMarcadasEnDiario[ev] = nil -- Permitir reintento
                                     end
                                 end
                             end
@@ -421,65 +438,98 @@ local function ActualizarPizarraResolucion()
             
             local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
             if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-                local seguroSeleccionado = false
-                local internalGhostName = finalGhostName
-                if internalGhostName == "The Wisp" then internalGhostName = "Wisp" end
-                
-                -- Bucle de comprobación y reintento máximo de 5 segundos
-                for intento = 1, 5 do
-                    pcall(function()
-                        local LP = game:GetService("Players").LocalPlayer
-                        local gTypes = LP.PlayerGui:FindFirstChild("GhostTypes", true)
-                        
-                        if gTypes and gTypes:FindFirstChild(internalGhostName) then
-                            local btn = gTypes[internalGhostName]:FindFirstChild("Detection", true)
-                            local parentFrame = btn and btn.Parent
-                            if parentFrame and getconnections then
-                                local circle = parentFrame:FindFirstChild("Circle") or parentFrame:FindFirstChild("Selection")
-                                
-                                -- Ciclo sanador para Forzar Selección Visual
-                                for clickBypass = 1, 4 do
-                                    if circle and circle.Visible then 
-                                        seguroSeleccionado = true 
-                                        break 
-                                    end
-                                    for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
-                                    task.wait(0.2)
-                                end
-                                
-                                if seguroSeleccionado then
-                                    AddLog("       ✅ Verificado ABSOLUTO: Fantasma marcado con Círculo en UI Local", Color3.fromRGB(0, 255, 100))
-                                end
-                            end
-                        end
-                    end)
-                    if seguroSeleccionado then break end
-                    task.wait(1)
-                end
-                
-                if not seguroSeleccionado then
-                    AddLog("⚠️ FATAL: No se pudo verificar la selección del Fantasma. ¡ABORTO DE ESCAPE!", Color3.fromRGB(255, 50, 50))
-                    return -- Salir de la función y NO teletransportarse para que el humano pueda hacerlo a mano
-                end
-                
-                -- Fallbacks Network (Garantizar Selección Perfecta en el Servidor)
                 local networkName = finalGhostName == "The Wisp" and "Wisp" or finalGhostName
                 
-                if rsEvents and rsEvents:FindFirstChild("GetSelectedGhost") then
-                    -- 🎯 [HOOOOK MAESTRO]: Si el servidor nos pide qué fantasma elegimos al irnos,
-                    -- interceptamos la llamada e inyectamos nuestro cálculo final.
+                -- ═══ PASO 1: HOOK DE RED (GARANTÍA ABSOLUTA) ═══
+                -- Interceptar GetSelectedGhost ANTES de todo. Si el servidor pregunta qué
+                -- fantasma elegimos, SIEMPRE devolverá nuestro cálculo perfecto.
+                local hookActivo = false
+                if rsEvents:FindFirstChild("GetSelectedGhost") then
                     rsEvents.GetSelectedGhost.OnClientInvoke = function()
                         return networkName
                     end
-                    AddLog("       🎯 Hook de Red Activo: Servidor recibirá [" .. networkName .. "] obligatoriamente.", Color3.fromRGB(0, 255, 150))
+                    hookActivo = true
+                    AddLog("       🎯 Hook GetSelectedGhost activo: Servidor recibirá [" .. networkName .. "]", Color3.fromRGB(0, 255, 150))
                 end
                 
-                if rsEvents and rsEvents:FindFirstChild("GhostSelectedInJournal") then
-                    rsEvents.GhostSelectedInJournal:FireServer(networkName)
+                -- ═══ PASO 2: DISPARO AL SERVIDOR (NOTIFICACIÓN DIRECTA) ═══
+                rsEvents.EvidenceMarkedInJournal:FireServer(networkName)
+                AddLog("       📡 Servidor notificado: EvidenceMarkedInJournal(" .. networkName .. ")", Color3.fromRGB(0, 200, 255))
+                task.wait(0.3)
+                
+                -- ═══ PASO 3: CLIC UI DEL FANTASMA (VISUAL LOCAL) ═══
+                -- Intentar clickear el botón del fantasma en el diario para consistencia visual.
+                -- El ghost type usa estado: nil→true(seleccionado)→false→nil→true...
+                -- Un solo clic desde nil pone true. SOLO disparamos conns[1] para evitar doble-clic.
+                pcall(function()
+                    local LP = game:GetService("Players").LocalPlayer
+                    local gTypes = LP.PlayerGui:FindFirstChild("GhostTypes", true)
+                    if gTypes and gTypes:FindFirstChild(networkName) then
+                        local btn = gTypes[networkName]:FindFirstChild("Detection", true)
+                        if btn and getconnections then
+                            local conns = getconnections(btn.MouseButton1Click)
+                            if conns and conns[1] then
+                                conns[1]:Fire() -- UN solo clic: nil→true
+                                AddLog("       🖱️ Clic UI enviado a GhostTypes[" .. networkName .. "]", Color3.fromRGB(200, 200, 100))
+                            end
+                        end
+                    end
+                end)
+                task.wait(0.5)
+                
+                -- ═══ PASO 4: VERIFICACIÓN DE EVIDENCIAS EN DIARIO ═══
+                -- Comprobar que las 3 evidencias están marcadas (Highlight visible)
+                local evidenciasFaltantes = {}
+                pcall(function()
+                    local LP = game:GetService("Players").LocalPlayer
+                    local evTypes = LP.PlayerGui:FindFirstChild("EvidenceTypes", true)
+                    if evTypes then
+                        for ev, _ in pairs(EvidenciasEncontradas) do
+                            local codename = MapEvs[ev]
+                            if codename and evTypes:FindFirstChild(codename) then
+                                local container = evTypes[codename]:FindFirstChild("Container", true) or evTypes[codename]
+                                local highlight = container:FindFirstChild("Highlight")
+                                if not highlight or not highlight.Visible then
+                                    table.insert(evidenciasFaltantes, ev)
+                                end
+                            end
+                        end
+                    end
+                end)
+                
+                -- Si hay evidencias sin marcar en UI, reintentar
+                if #evidenciasFaltantes > 0 then
+                    AddLog("⚠️ [VERIFICACIÓN] " .. #evidenciasFaltantes .. " evidencias sin marcar en UI. Reintentando...", Color3.fromRGB(255, 150, 0))
+                    for _, evFaltante in ipairs(evidenciasFaltantes) do
+                        _G_EvidenciasYaMarcadasEnDiario[evFaltante] = nil
+                    end
+                    pcall(ActualizarPizarraResolucion)
+                    task.wait(0.5)
                 end
                 
-                task.wait(1.0) -- Dar tiempo firme a que el LocalScript guarde la variable antes de intentar escaparnos
-                if rsEvents and rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
+                -- ═══ PASO 5: VERIFICACIÓN FINAL ANTES DE ESCAPAR ═══
+                -- El hook es la garantía real. Verificamos que está activo.
+                local verificacionOK = false
+                if hookActivo then
+                    -- Probar que el hook devuelve el nombre correcto
+                    local testResult = pcall(function()
+                        local r = rsEvents.GetSelectedGhost.OnClientInvoke()
+                        if r == networkName then
+                            verificacionOK = true
+                        end
+                    end)
+                    if not testResult then verificacionOK = false end
+                end
+                
+                if not verificacionOK then
+                    AddLog("⚠️ FATAL: Hook de GetSelectedGhost NO devolvió [" .. networkName .. "]. ¡ABORTO DE ESCAPE!", Color3.fromRGB(255, 50, 50))
+                    AddLog("⚠️ El Bot se detendrá. Marca el fantasma manualmente y sal al camión.", Color3.fromRGB(255, 50, 50))
+                    return
+                end
+                
+                AddLog("       ✅ VERIFICACIÓN COMPLETA: Hook confirmado → [" .. networkName .. "]", Color3.fromRGB(0, 255, 100))
+                task.wait(0.5)
+                if rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
             end
             
             AddLog("🚚 [ESCAPE MÁXIMO] ¡Trabajo hecho! Teletransportando al camión...", Color3.fromRGB(0, 255, 255))
