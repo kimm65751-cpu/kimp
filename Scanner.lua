@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOeeee "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -232,7 +232,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVeeeeeeeeeIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -340,10 +340,16 @@ local function ActualizarPizarraResolucion()
                         local evTypes = LP.PlayerGui:FindFirstChild("EvidenceTypes", true)
                         if evTypes and evTypes:FindFirstChild(evCodename) then
                             local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
-                            if btn and getconnections then
+                            local parentFr = btn and btn.Parent
+                            if parentFr and getconnections then
                                 local conns = getconnections(btn.MouseButton1Click)
                                 if conns and conns[1] then
-                                    conns[1]:Fire() -- En Evidencias, [1] es suficiente y evita la X Roja de Doble-Estado
+                                    for clickBypass = 1, 3 do
+                                        local circle = parentFr:FindFirstChild("Circle")
+                                        if circle and circle.Visible then break end -- Ya es verde/seleccionado
+                                        conns[1]:Fire()
+                                        task.wait(0.1)
+                                    end
                                 end
                             end
                         end
@@ -427,24 +433,22 @@ local function ActualizarPizarraResolucion()
                         
                         if gTypes and gTypes:FindFirstChild(internalGhostName) then
                             local btn = gTypes[internalGhostName]:FindFirstChild("Detection", true)
-                            if btn and getconnections then
-                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
-                                    conn:Fire()
-                                    task.wait(0.05)
+                            local parentFrame = btn and btn.Parent
+                            if parentFrame and getconnections then
+                                local circle = parentFrame:FindFirstChild("Circle") or parentFrame:FindFirstChild("Selection")
+                                
+                                -- Ciclo sanador para Forzar Selección Visual
+                                for clickBypass = 1, 4 do
+                                    if circle and circle.Visible then 
+                                        seguroSeleccionado = true 
+                                        break 
+                                    end
+                                    for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+                                    task.wait(0.2)
                                 end
                                 
-                                task.wait(0.3)
-                                local parentFrame = btn.Parent
-                                local circle = parentFrame:FindFirstChild("Circle")
-                                local tl = parentFrame:FindFirstChild("TextLabel") or parentFrame:FindFirstChild("ButtonLabel")
-                                
-                                local isVisuallyMarked = false
-                                if circle and circle.Visible then isVisuallyMarked = true end
-                                if tl and tl:IsA("TextLabel") and tl.TextTransparency < 0.5 then isVisuallyMarked = true end
-                                
-                                if isVisuallyMarked then
-                                    seguroSeleccionado = true
-                                    AddLog("       ✅ Verificado ABSOLUTO: Fantasma marcado en UI local (Intento " .. intento .. ")", Color3.fromRGB(0, 255, 100))
+                                if seguroSeleccionado then
+                                    AddLog("       ✅ Verificado ABSOLUTO: Fantasma marcado con Círculo en UI Local", Color3.fromRGB(0, 255, 100))
                                 end
                             end
                         end
@@ -458,14 +462,20 @@ local function ActualizarPizarraResolucion()
                     return -- Salir de la función y NO teletransportarse para que el humano pueda hacerlo a mano
                 end
                 
-                -- Fallbacks Network
+                -- Fallbacks Network (Garantizar Selección Perfecta en el Servidor)
                 local networkName = finalGhostName == "The Wisp" and "Wisp" or finalGhostName
                 
-                -- 2. Asegurar en el servidor que elegimos ese fantasma (Fallback)
+                if rsEvents and rsEvents:FindFirstChild("GetSelectedGhost") then
+                    -- 🎯 [HOOOOK MAESTRO]: Si el servidor nos pide qué fantasma elegimos al irnos,
+                    -- interceptamos la llamada e inyectamos nuestro cálculo final.
+                    rsEvents.GetSelectedGhost.OnClientInvoke = function()
+                        return networkName
+                    end
+                    AddLog("       🎯 Hook de Red Activo: Servidor recibirá [" .. networkName .. "] obligatoriamente.", Color3.fromRGB(0, 255, 150))
+                end
+                
                 if rsEvents and rsEvents:FindFirstChild("GhostSelectedInJournal") then
                     rsEvents.GhostSelectedInJournal:FireServer(networkName)
-                elseif rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-                    rsEvents.EvidenceMarkedInJournal:FireServer(networkName)
                 end
                 
                 task.wait(1.0) -- Dar tiempo firme a que el LocalScript guarde la variable antes de intentar escaparnos
