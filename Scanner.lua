@@ -554,15 +554,34 @@ BtnPing.MouseButton1Click:Connect(function()
                 
                 -- 🚀 V8.50: FILTRO ESTRICTO DE ORIGEN BIOLÓGICO PARA LA ZONA SEGURA (isPlanted)
                 local ghostPos = nil
+                local currentGhostInstance = nil
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") and obj ~= LP.Character then
                         local n = string.lower(obj.Name)
                         if n == "ghost" or n == "entity" or n == "demon" or obj:GetAttribute("IsGhost") == true then
                             if not string.find(n, "orb") and not string.find(n, "book") then
                                 local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("ZoneCheckPart") or obj.PrimaryPart
-                                if part then ghostPos = part.Position; break end
+                                if part then 
+                                    ghostPos = part.Position
+                                    currentGhostInstance = obj
+                                    break 
+                                end
                             end
                         end
+                    end
+                end
+                
+                -- === 🧼 AUTO-LABORATORIO V8.74: ANTI-STALE EVIDENCE WIPE ===
+                if currentGhostInstance then
+                    local currentGhostDebugId = currentGhostInstance:GetDebugId()
+                    if _G.CurrentMatchGhostID ~= currentGhostDebugId then
+                        AddLog("🔄 [NUEVA PARTIDA DETECTADA] Limpiando memoria caché de partida anterior...", Color3.fromRGB(0, 255, 255))
+                        _G.CurrentMatchGhostID = currentGhostDebugId
+                        _G.MatchCompletado = false
+                        _G.BookSpyData = {}
+                        -- Purgamos las referencias en lugar de reasignar para no romper los upvalues referenciados
+                        for k in pairs(EvidenciasEncontradas) do EvidenciasEncontradas[k] = nil end
+                        pcall(ActualizarPizarraResolucion)
                     end
                 end
 
