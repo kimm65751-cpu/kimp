@@ -637,7 +637,7 @@ BtnPing.MouseButton1Click:Connect(function()
                     -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
                         local n = string.lower(obj:GetAttribute("ItemName") or obj:GetAttribute("DisplayName") or obj.Name)
-                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "bone") and not string.find(n, "music box") and not string.find(n, "haunted mirror") and not string.find(n, "plushie") and not string.find(n, "fortune") and not string.find(n, "defibrillator") and not string.find(n, "holy oil") and not string.find(n, "shotgun") and not string.find(n, "lighter") then
+                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "bone") and not string.find(n, "music box") and not string.find(n, "haunted mirror") and not string.find(n, "plushie") and not string.find(n, "fortune") and not string.find(n, "defibrillator") and not string.find(n, "holy oil") and not string.find(n, "shotgun") and not string.find(n, "lighter") and not string.find(n, "salt") then
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
