@@ -413,29 +413,48 @@ local function ActualizarPizarraResolucion()
             
             local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
             if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-                -- 1. Marcar el Fantasma en la UI (Simular Clic)
-                pcall(function()
-                    local LP = game:GetService("Players").LocalPlayer
-                    local gTypes = LP.PlayerGui:FindFirstChild("GhostTypes", true)
-                    if gTypes and gTypes:FindFirstChild(finalGhostName) then
-                        local btn = gTypes[finalGhostName]:FindFirstChild("Detection", true)
-                        if btn and getconnections then
-                            local conns = getconnections(btn.MouseButton1Click)
-                            if conns and conns[1] then
-                                conns[1]:Fire()
+                local seguroSeleccionado = false
+                local internalGhostName = finalGhostName
+                if internalGhostName == "The Wisp" then internalGhostName = "Wisp" end
+                
+                -- Bucle de comprobación y reintento máximo de 5 segundos
+                for intento = 1, 5 do
+                    pcall(function()
+                        local LP = game:GetService("Players").LocalPlayer
+                        local gTypes = LP.PlayerGui:FindFirstChild("GhostTypes", true)
+                        
+                        if gTypes and gTypes:FindFirstChild(internalGhostName) then
+                            local btn = gTypes[internalGhostName]:FindFirstChild("Detection", true)
+                            if btn and getconnections then
+                                local conns = getconnections(btn.MouseButton1Click)
+                                if conns and conns[1] then
+                                    conns[1]:Fire()
+                                    seguroSeleccionado = true
+                                    AddLog("       ✅ Verificado: Fantasma marcado en UI local (Intento " .. intento .. ")", Color3.fromRGB(0, 255, 100))
+                                end
                             end
                         end
-                    end
-                end)
+                    end)
+                    if seguroSeleccionado then break end
+                    task.wait(1)
+                end
+                
+                if not seguroSeleccionado then
+                    AddLog("⚠️ FATAL: No se pudo verificar la selección del Fantasma. ¡ABORTO DE ESCAPE!", Color3.fromRGB(255, 50, 50))
+                    return -- Salir de la función y NO teletransportarse para que el humano pueda hacerlo a mano
+                end
+                
+                -- Fallbacks Network
+                local networkName = finalGhostName == "The Wisp" and "Wisp" or finalGhostName
                 
                 -- 2. Asegurar en el servidor que elegimos ese fantasma (Fallback)
                 if rsEvents and rsEvents:FindFirstChild("GhostSelectedInJournal") then
-                    rsEvents.GhostSelectedInJournal:FireServer(finalGhostName)
+                    rsEvents.GhostSelectedInJournal:FireServer(networkName)
                 elseif rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
-                    rsEvents.EvidenceMarkedInJournal:FireServer(finalGhostName)
+                    rsEvents.EvidenceMarkedInJournal:FireServer(networkName)
                 end
                 
-                task.wait(0.5)
+                task.wait(1.0) -- Dar tiempo firme a que el LocalScript guarde la variable antes de intentar escaparnos
                 if rsEvents and rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
             end
             
