@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EeLOGS "
+BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -729,14 +729,9 @@ BtnPing.MouseButton1Click:Connect(function()
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
                                         -- Si es láser, HAY QUE ENCENDERLO explícitamente!
-                                        if string.find(itemNameLower, "laser") then
-                                            -- Simular clic izquierdo (Mouse 1)
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
-                                            task.wait(0.1)
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
-                                            
-                                            if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                            -- 🚀 V8.60: Esperar confirmación visual del cliente antes de montarlo en el trípode
+                                        if string.find(itemNameLower, "laser") and typeof(remToggle) == "Instance" then
+                                            remToggle:FireServer(itemFalso)
+                                            -- 🚀 V8.62: Restaurado encendido estable por Red, el Clic Izquierdo anterior lo estaba apagando por ToggleDoble
                                             task.wait(0.6)
                                         end
                                         
