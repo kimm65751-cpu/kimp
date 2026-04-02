@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLeN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -736,19 +736,40 @@ BtnPing.MouseButton1Click:Connect(function()
                                         if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
                                         task.wait(0.5)
                                         
-                                        -- 2. Clic Derecho → Entrar en "Modo Colocación" (aparece holograma del trípode)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                        task.wait(0.1)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
-                                        task.wait(0.5)
+                                        -- 2. Calcular centro de pantalla (donde está la mirilla del jugador)
+                                        local vpSize = workspace.CurrentCamera.ViewportSize
+                                        local cx, cy = vpSize.X / 2, vpSize.Y / 2
                                         
-                                        -- 3. Clic Izquierdo → Confirmar plantado (queda de pie, encendido, permanente)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
-                                        task.wait(0.1)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
+                                        -- 3. Apuntar la cámara al PISO delante del jugador (para que la previsualización del trípode aterrice)
+                                        pcall(function()
+                                            local hrpPos = LP.Character.PrimaryPart.Position
+                                            local floorTarget = hrpPos + LP.Character.PrimaryPart.CFrame.LookVector * 3 - Vector3.new(0, 3, 0)
+                                            workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, floorTarget)
+                                        end)
+                                        task.wait(0.2)
+                                        
+                                        -- 4. Clic Derecho al CENTRO → Entrar en "Modo Colocación" (aparece holograma del trípode)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 1, true, game, 1)
+                                        task.wait(0.15)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 1, false, game, 1)
+                                        task.wait(0.8)
+                                        
+                                        -- 5. Clic Izquierdo al CENTRO → Confirmar plantado (queda de pie, encendido, permanente)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                                        task.wait(0.15)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                                        task.wait(0.3)
+                                        
+                                        -- 6. Verificar si se plantó (si sigue equipado, usar Drop como fallback)
+                                        local sigueEquipado = LP:GetAttribute("EquippedItem") ~= nil
+                                        if sigueEquipado then
+                                            AddLog("       ⚠️ Trípode NO se plantó con clic, usando Drop como respaldo...", Color3.fromRGB(255, 200, 100))
+                                            if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                                        else
+                                            skipDrop = true
+                                        end
                                         
                                         AddLog("       ✅ " .. realItemName .. " plantado DE PIE con Trípode Oficial", Color3.fromRGB(0, 255, 150))
-                                        skipDrop = true -- NO usar Drop, ya se colocó con el sistema nativo
                                         
                                     elseif string.find(itemNameLower, "thermometer") then
                                         -- ═══ TERMÓMETRO: Escaneo prolongado ═══
