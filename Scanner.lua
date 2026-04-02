@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLO"
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -1253,8 +1253,12 @@ BtnPing.MouseButton1Click:Connect(function()
                                             if slotName then
                                                 remDrop:FireServer(slotName)
                                             else
-                                                -- Fallback por si la estructura cambia
-                                                remDrop:FireServer("InvSlot" .. tostring(filledSlot))
+                                                -- V8.99D: FIX CRÍTICO DE DOBLE STRING ("InvSlotInvSlotX")
+                                                local fbSlot = tostring(filledSlot)
+                                                if not string.find(fbSlot, "InvSlot") then
+                                                    fbSlot = "InvSlot" .. fbSlot
+                                                end
+                                                remDrop:FireServer(fbSlot)
                                             end
                                         end) 
                                     end
