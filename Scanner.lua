@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY eee4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -656,7 +656,7 @@ BtnPing.MouseButton1Click:Connect(function()
                     -- Ignorar monedas, tickets de lotería o herramientas humanas ocupadas
                     if not obj:IsDescendantOf(game.Players) and (not obj.Parent or not obj.Parent:FindFirstChild("Humanoid")) then
                         local n = string.lower(obj:GetAttribute("ItemName") or obj:GetAttribute("DisplayName") or obj.Name)
-                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "bone") and not string.find(n, "music box") and not string.find(n, "haunted mirror") and not string.find(n, "plushie") and not string.find(n, "fortune") and not string.find(n, "defibrillator") and not string.find(n, "holy oil") and not string.find(n, "shotgun") and not string.find(n, "lighter") and not string.find(n, "salt") then
+                        if n ~= "100" and not string.find(n, "coin") and not string.find(n, "ticket") and not string.find(n, "tarot") and not string.find(n, "ouija") and not string.find(n, "umbra") and not string.find(n, "bone") and not string.find(n, "music box") and not string.find(n, "haunted mirror") and not string.find(n, "plushie") and not string.find(n, "fortune") and not string.find(n, "defibrillator") and not string.find(n, "holy oil") and not string.find(n, "shotgun") and not string.find(n, "lighter") and not string.find(n, "salt") then
                             -- Confirmar si la trampa ya está bien plantada cerca del monstruo
                             local isPlanted = false
                             if ghostPos then
@@ -685,13 +685,6 @@ BtnPing.MouseButton1Click:Connect(function()
                     AddLog("━━━ ZONA TÁCTICA ASEGURADA. Bot durmiendo... ━━━", Color3.fromRGB(150, 255, 150))
                     task.wait(3)
                     -- No forzar fallback de inyección
-                else
-                    -- V8.66: Limitar a 4 objetivos máx (solo hay 4 slots de inventario)
-                    if #tomables > 3 then
-                        local limitado = {}
-                        for li = 1, 3 do limitado[li] = tomables[li] end
-                        tomables = limitado
-                    end
                     AddLog("━━━ DEMONOLOGY ZERO-DAY V8.25: " .. #tomables .. " OBJETIVOS ━━━", Color3.fromRGB(230, 255, 0))
                 end
                 
@@ -824,6 +817,27 @@ BtnPing.MouseButton1Click:Connect(function()
                                     
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
                                     AddLog("       🎯 Auto-Aim: Cara a cara (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
+                                    
+                                    -- 🚪 V8.75: AUTO-APERTURA DE TODAS LAS PUERTAS
+                                    -- Así encendemos la IA del Fantasma y no necesitamos buscar las llaves ni la puerta principal.
+                                    pcall(function()
+                                        local CS = game:GetService("CollectionService")
+                                        local rsEv = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+                                        if rsEv and rsEv:FindFirstChild("ClientChangeDoorState") then
+                                            local allDoors = CS:GetTagged("Door")
+                                            local puertasAbiertas = 0
+                                            for _, door in ipairs(allDoors) do
+                                                if door:GetAttribute("DoorClosed") == true then
+                                                    rsEv.ClientChangeDoorState:FireServer(door)
+                                                    puertasAbiertas = puertasAbiertas + 1
+                                                end
+                                            end
+                                            if puertasAbiertas > 0 then
+                                                AddLog("       🔓 " .. puertasAbiertas .. " puertas hackeadas y abiertas (I.A. Despierta)", Color3.fromRGB(150, 255, 150))
+                                            end
+                                        end
+                                    end)
+                                    
                                     -- 🚀 V8.53: FORZA A LA CÁMARA (Ojos del jugador) A MIRAR AL FANTASMA
                                     -- Ya que los trípodes toman la rotación de CurrentCamera al hacer clic derecho
                                     pcall(function() workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, ghostPos) end)
@@ -897,9 +911,9 @@ BtnPing.MouseButton1Click:Connect(function()
                                                 AddLog("       🌡️ Termómetro ENCENDIDO por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
                                             end
                                         end)
-                                        -- Esperar 3s para que el servidor procese varias lecturas de temperatura
-                                        AddLog("       🌡️ Esperando lectura de temperatura (3s)...", Color3.fromRGB(200, 200, 100))
-                                        task.wait(3)
+                                        -- Esperar 10s para que el servidor procese varias lecturas de temperatura
+                                        AddLog("       🌡️ Esperando lectura de temperatura (10s)...", Color3.fromRGB(200, 200, 100))
+                                        task.wait(10)
                                         AddLog("       🌡️ Termómetro escaneado completamente", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "salt") then
@@ -993,6 +1007,9 @@ BtnPing.MouseButton1Click:Connect(function()
                                 if posOriginal and LP.Character and LP.Character.PrimaryPart then
                                     LP.Character.PrimaryPart.CFrame = posOriginal
                                 end
+                                
+                                AddLog("⏳ Pausando por seguridad anti-spam de red...", Color3.fromRGB(100, 100, 100))
+                                task.wait(1.5)
                                 
                             else
                                 AddLog("   └─> Confirmado en DB, pero sin modelo 3D.", Color3.fromRGB(150, 150, 150))
