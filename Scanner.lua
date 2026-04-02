@@ -313,6 +313,7 @@ local function ActualizarPizarraResolucion()
     local posibles = 0
     local faltantes = {}
     
+    local finalGhostName = ""
     for gName, gEvs in pairs(GHOST_DB) do
         local coincide = true
         for _, miEv in ipairs(foundList) do
@@ -324,6 +325,7 @@ local function ActualizarPizarraResolucion()
         end
         if coincide then
             posibles = posibles + 1
+            finalGhostName = gName
             AddLog(">> " .. gName, Color3.fromRGB(100, 255, 100))
             
             -- Recopilar evidencias que nos faltan buscar
@@ -337,9 +339,64 @@ local function ActualizarPizarraResolucion()
         end
     end
     
-    if posibles == 1 then
+    if posibles == 1 and not _G.MatchCompletado then
+        _G.MatchCompletado = true
         BoardTitle.Text = " 🏆 ¡FANTASMA DESCUBIERTO! "
         BoardTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+        
+        -- Ejecución del Final del Juego
+        coroutine.wrap(function()
+            AddLog("--------------------------------", Color3.fromRGB(100, 100, 100))
+            AddLog("💡 [SPEEDRUN] ¡EVIDENCIA COMPLETA! Rellenando el Diario y seleccionando " .. finalGhostName .. "...", Color3.fromRGB(0, 255, 150))
+            
+            local rsEvents = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+            if rsEvents and rsEvents:FindFirstChild("EvidenceMarkedInJournal") then
+                -- Mapa de traducción (Español -> English Enum de Evidencias)
+                local MapEvs = {
+                    ["Nivel EMF 5"] = "EMFLevel5",
+                    ["Caja de Espíritus"] = "SpiritBox",
+                    ["Escritura de fantasmas"] = "GhostWriting",
+                    ["Temperaturas Heladas"] = "FreezingTemperatures",
+                    ["Orbe Fantasma"] = "GhostOrb",
+                    ["Huellas Dactilares"] = "Handprints",
+                    ["Proyector láser"] = "LaserProjector",
+                    ["Marchitar"] = "Wither"
+                }
+                
+                -- Marcar las evidencias confirmadas
+                for _, miEv in ipairs(foundList) do
+                    local evCodename = MapEvs[miEv]
+                    if evCodename then
+                        rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
+                        task.wait(0.1)
+                    end
+                end
+                
+                -- Marcar el Fantasma y Cerrar el Diario
+                rsEvents.EvidenceMarkedInJournal:FireServer(finalGhostName)
+                task.wait(0.5)
+                if rsEvents:FindFirstChild("ToggleJournal") then rsEvents.ToggleJournal:FireServer() end
+            end
+            
+            AddLog("🚚 [ESCAPE MÁXIMO] ¡Trabajo hecho! Teletransportando al camión...", Color3.fromRGB(0, 255, 255))
+            -- Teletransportar al camión/base para escapar
+            pcall(function()
+                local LP = game:GetService("Players").LocalPlayer
+                local cb = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Rooms") and workspace.Map.Rooms:FindFirstChild("Base Camp")
+                if cb and cb:FindFirstChild("Truck") and cb.Truck.PrimaryPart then
+                    LP.Character.HumanoidRootPart.CFrame = cb.Truck.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
+                elseif workspace:FindFirstChild("Items") and workspace.Items.PrimaryPart then
+                    LP.Character.HumanoidRootPart.CFrame = workspace.Items.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
+                end
+            end)
+            
+            task.wait(2)
+            -- Cobrar el premio y salir! (Finish Job event)
+            if rsEvents and rsEvents:FindFirstChild("RequestReturnToLobby") then
+                AddLog("💰 ¡MARCANDO FINISH JOB! Ganando dinero y regresando al lobby...", Color3.fromRGB(255, 215, 0))
+                rsEvents.RequestReturnToLobby:FireServer()
+            end
+        end)()
     else
         BoardTitle.Text = " 📜 RESOLVIENDO CASO... "
         BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -1496,12 +1553,12 @@ BtnEvidence.MouseButton1Click:Connect(function()
                         
                         -- Hackear frecuencias del Lector EMF
                         if string.find(n, "emf") or string.find(attr, "emf") then
-                            if item:GetAttribute("EMFLevel") then
-                                local lvl = tonumber(item:GetAttribute("EMFLevel"))
+                            if item:GetAttribute("ReadingLevel") or item:GetAttribute("EMFLevel") then
+                                local lvl = tonumber(item:GetAttribute("ReadingLevel") or item:GetAttribute("EMFLevel"))
                                 if lvl and lvl >= 5 and not EvidenciasEncontradas["Nivel EMF 5"] then
                                     EvidenciasEncontradas["Nivel EMF 5"] = true
                                     ActualizarPizarraResolucion()
-                                    AddLog("⭐ EVIDENCIA OBTENIDA: Nivel EMF 5 (Datos de Placa Base Leídos)", Color3.fromRGB(255, 0, 0))
+                                    AddLog("⭐ EVIDENCIA OBTENIDA: Nivel EMF 5 (Atributo 'ReadingLevel' en Placa Base)", Color3.fromRGB(255, 0, 0))
                                 end
                             end
                             for _, desc in pairs(item:GetDescendants()) do
