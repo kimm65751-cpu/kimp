@@ -728,24 +728,28 @@ BtnPing.MouseButton1Click:Connect(function()
                                 local itemNameLower = string.lower(tostring(realItemName))
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
-                                        -- Si es láser, HAY QUE ENCENDERLO explícitamente!
-                                        if string.find(itemNameLower, "laser") and typeof(remToggle) == "Instance" then
-                                            remToggle:FireServer(itemFalso)
-                                            -- 🚀 V8.62: Restaurado encendido estable por Red, el Clic Izquierdo anterior lo estaba apagando por ToggleDoble
-                                            task.wait(0.6)
-                                        end
-                                        
-                                        -- Clic derecho para entrar en modo trípode/soporte
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                        task.wait(0.2)
-                                        -- FireServer de la cámara si la tiene
-                                        if string.find(itemNameLower, "video camera") then
-                                            local camEvent = game.ReplicatedStorage.Events:FindFirstChild("EnableVideoCamera")
-                                            if camEvent then camEvent:FireServer(itemFalso) end
-                                        end
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
-                                        AddLog("       ✅ Herramienta Apuntada y Encendida (Tripod Mode)", Color3.fromRGB(0, 255, 150))
-                                    elseif string.find(itemNameLower, "thermometer") then
+                                        if string.find(itemNameLower, "laser") or string.find(itemNameLower, "video camera") then
+                                            -- 1. Encender en la mano por red (Garantiza estado ON antes de colocar)
+                                            if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
+                                            task.wait(0.5)
+                                            
+                                            -- 2. Clic Derecho (Mouse 1) para entrar en "Modo Colocación" (Holograma de Trípode/Parado)
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
+                                            task.wait(0.1)
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
+                                            task.wait(0.5)
+                                            
+                                            -- 3. Clic Izquierdo (Mouse 0) para "Confirmar Plantado" en el cuartro, quedará de pie permanentemente.
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
+                                            task.wait(0.1)
+                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
+                                            
+                                            AddLog("       ✅ " .. realItemName .. " plantado de pie con Trípode Oficial", Color3.fromRGB(0, 255, 150))
+                                            
+                                            -- 4. Marcar que se plantó oficialmente con clic para que el bot NO presione Drop(G) y lo tumbe
+                                            item:SetAttribute("PlantedByClick", true)
+
+                                        elseif string.find(itemNameLower, "thermometer") then
                                         -- 🚀 V8.61: El termómetro debe escanear prolongadamente la cara del ente
                                         if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
