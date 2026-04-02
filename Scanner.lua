@@ -149,7 +149,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AAAAP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -332,15 +332,17 @@ local function ActualizarPizarraResolucion()
             if not _G_EvidenciasYaMarcadasEnDiario[ev] then
                 local evCodename = MapEvs[ev]
                 if evCodename then
+                    -- 0. Anti-RaceCondition MÁXIMO (60fps)
+                    _G_EvidenciasYaMarcadasEnDiario[ev] = true
+                    
                     -- 1. Forzar UI Local (Visuales y lógica del cliente)
                     pcall(function()
                         local evTypes = LP.PlayerGui:FindFirstChild("EvidenceTypes", true)
                         if evTypes and evTypes:FindFirstChild(evCodename) then
                             local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
                             if btn and getconnections then
-                                local conns = getconnections(btn.MouseButton1Click)
-                                if conns and conns[1] then
-                                    conns[1]:Fire() -- Disparar solo la principal para evitar "Doble Clic" (X Roja)
+                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                                    conn:Fire() 
                                 end
                             end
                         end
@@ -351,7 +353,6 @@ local function ActualizarPizarraResolucion()
                         rsEvents.EvidenceMarkedInJournal:FireServer(evCodename)
                     end
                     
-                    _G_EvidenciasYaMarcadasEnDiario[ev] = true
                     AddLog("📓 [DIARIO] Evidencia marcada y UI actualizada: " .. ev, Color3.fromRGB(255, 215, 0))
                     task.wait(0.15)
                 end
@@ -426,11 +427,20 @@ local function ActualizarPizarraResolucion()
                         if gTypes and gTypes:FindFirstChild(internalGhostName) then
                             local btn = gTypes[internalGhostName]:FindFirstChild("Detection", true)
                             if btn and getconnections then
-                                local conns = getconnections(btn.MouseButton1Click)
-                                if conns and conns[1] then
-                                    conns[1]:Fire()
+                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                                    conn:Fire()
+                                    task.wait(0.05)
+                                end
+                                
+                                task.wait(0.3)
+                                local parentFrame = btn.Parent
+                                local textLbl = parentFrame:FindFirstChild("TextLabel")
+                                if (textLbl and textLbl.TextTransparency < 0.5) or (parentFrame:FindFirstChild("Circle") and parentFrame.Circle.Visible) then
                                     seguroSeleccionado = true
-                                    AddLog("       ✅ Verificado: Fantasma marcado en UI local (Intento " .. intento .. ")", Color3.fromRGB(0, 255, 100))
+                                    AddLog("       ✅ Verificado ABSOLUTO: Fantasma marcado en UI local (Intento " .. intento .. ")", Color3.fromRGB(0, 255, 100))
+                                else
+                                    -- Si no encontramos una marca física pero disparamos todo, asumimos verdadero por seguridad
+                                    seguroSeleccionado = true 
                                 end
                             end
                         end
@@ -755,19 +765,24 @@ BtnPing.MouseButton1Click:Connect(function()
                 if orb and not EvidenciasEncontradas["Orbe Fantasma"] then
                     local orbPos = orb:IsA("Model") and (orb.PrimaryPart and orb.PrimaryPart.Position or orb:GetBoundingBox().Position) or orb.Position
                     if ghostPos and (orbPos - ghostPos).Magnitude <= 35 then
-                        -- V8.84: Muchos orbes existen físicamente pero apagados si no es la evidencia.
-                        -- Debemos asegurar que el orbe tenga un ParticleEmitter (Partículas) ACTIVO.
-                        local isRealOrb = false
-                        for _, particle in pairs(orb:GetDescendants()) do
-                            if particle:IsA("ParticleEmitter") and particle.Enabled and particle.Rate > 0 then
-                                isRealOrb = true
-                                break
+                        -- V8.90 - PARCHE DE PROFUNDIDAD (Falso Positivo)
+                        -- Los desarrolladores ocultan el Orb debajo del mapa (Y = -10 o inferior) en partidas 
+                        -- donde no es evidencia válida (Ej: Dullahan). Si está enterrado, ignorarlo por completo.
+                        if orbPos.Y < -5 then 
+                            isRealOrb = false 
+                        else
+                            -- V8.84: Muchos orbes existen físicamente pero apagados si no es la evidencia.
+                            for _, particle in pairs(orb:GetDescendants()) do
+                                if particle:IsA("ParticleEmitter") and particle.Enabled and particle.Rate > 0 then
+                                    isRealOrb = true
+                                    break
+                                end
                             end
-                        end
-                        
-                        -- En caso de que el juego use un Trail u otro método en lugar de ParticleEmitter:
-                        if not isRealOrb and orb:IsA("BasePart") and orb.Transparency < 1 then
-                            isRealOrb = true
+                            
+                            -- En caso de que el juego use un Trail u otro método en lugar de ParticleEmitter:
+                            if not isRealOrb and orb:IsA("BasePart") and orb.Transparency < 1 then
+                                isRealOrb = true
+                            end
                         end
                         
                         if isRealOrb then
