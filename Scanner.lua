@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY eee4.0 | MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -644,11 +644,15 @@ BtnPing.MouseButton1Click:Connect(function()
                 
                 -- === 🚀 V8.69: DETECCIÓN INSTANTÁNEA DE ORBES FANTASMAS ===
                 -- El juego carga físicamente un modelo llamado "GhostOrb" en el workspace si la evidencia existe.
-                -- No necesitamos interactuar con cámaras, solo verificar si existe en la memoria del cliente.
-                if workspace:FindFirstChild("GhostOrb") and not EvidenciasEncontradas["Orbe Fantasma"] then
-                    EvidenciasEncontradas["Orbe Fantasma"] = true
-                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Orbe Fantasma (Obj Detectado en Workspace)", Color3.fromRGB(0, 255, 255))
-                    pcall(ActualizarPizarraResolucion)
+                -- V8.78: Muchos mapas cargan un Orbe oculto debajo del mapa. Debemos verificar si orbita al fantasma.
+                local orb = workspace:FindFirstChild("GhostOrb")
+                if orb and not EvidenciasEncontradas["Orbe Fantasma"] then
+                    local orbPos = orb:IsA("Model") and (orb.PrimaryPart and orb.PrimaryPart.Position or orb:GetBoundingBox().Position) or orb.Position
+                    if ghostPos and (orbPos - ghostPos).Magnitude <= 35 then
+                        EvidenciasEncontradas["Orbe Fantasma"] = true
+                        AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Orbe Fantasma (Orbitando Entidad)", Color3.fromRGB(0, 255, 255))
+                        pcall(ActualizarPizarraResolucion)
+                    end
                 end
                 
                 local tomables = {}
