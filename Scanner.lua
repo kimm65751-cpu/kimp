@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLOGY V4e MODO SPEEDRUN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -485,6 +485,13 @@ BtnPing.MouseButton1Click:Connect(function()
                 local remDrop   = game.ReplicatedStorage:FindFirstChild("RequestItemDrop", true)
                 local remPickup = game.ReplicatedStorage:FindFirstChild("RequestItemPickup", true)
                 
+                -- === 🛡️ AUTO-LABORATORIO V8.54: LOCKDOWN DE CACERÍA ===
+                if _G.IsHunting == true then
+                    -- Nos congelamos en el subciclo para no morir teletransportandonos enfrente del Fantasma Cazando
+                    task.wait(2)
+                    continue
+                end
+                
                 -- === AUTO-LABORATORIO V8.25: DRONE-TRACKING (Mover si el fantasma huye) ===
                 local CS = game:GetService("CollectionService")
                 
@@ -669,8 +676,12 @@ BtnPing.MouseButton1Click:Connect(function()
                                     
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos)
                                     AddLog("       🎯 Auto-Aim: Cara a cara (" .. string.format("%.1f", (hrp.Position - ghostPos).Magnitude) .. " studs)", Color3.fromRGB(200, 200, 255))
+                                    -- 🚀 V8.53: FORZA A LA CÁMARA (Ojos del jugador) A MIRAR AL FANTASMA
+                                    -- Ya que los trípodes toman la rotación de CurrentCamera al hacer clic derecho
+                                    pcall(function() workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, ghostPos) end)
                                     task.wait(1.5)
                                     hrp.CFrame = CFrame.lookAt(standPos, ghostPos) -- Re-confirmar rotación
+                                    pcall(function() workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, ghostPos) end)
                                     task.wait(0.3)
                                 else
                                     AddLog("       ⚠️ ghostPos NO encontrado, soltando aquí.", Color3.fromRGB(255, 100, 100))
@@ -682,6 +693,11 @@ BtnPing.MouseButton1Click:Connect(function()
                                 local itemNameLower = string.lower(tostring(realItemName))
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
+                                        -- Si es láser, HAY QUE ENCENDERLO explícitamente!
+                                        if string.find(itemNameLower, "laser") and typeof(remToggle) == "Instance" then
+                                            remToggle:FireServer(itemFalso)
+                                        end
+                                        
                                         -- Clic derecho para entrar en modo trípode/soporte
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
                                         task.wait(0.2)
@@ -1113,23 +1129,27 @@ BtnESP.MouseButton1Click:Connect(function()
                                     _G.HuntMonitorActivo = true
                                     obj.AttributeChanged:Connect(function(attr)
                                         local an = string.lower(attr)
-                                        if string.find(an, "hunt") and obj:GetAttribute(attr) == true then
-                                            AddLog("💀 ¡¡ALERTA MÁXIMA!! ¡EL FANTASMA ENTRÓ EN MODO CACERÍA!", Color3.fromRGB(255, 0, 0))
-                                            
-                                            -- 🚀 AUTO-EVASIÓN INMEDIATA 🚀
-                                            pcall(function()
-                                                local hrp = LP.Character and LP.Character.PrimaryPart
-                                                if hrp then
-                                                    local safeSpot = nil
-                                                    for _, v in pairs(workspace:GetDescendants()) do
-                                                        if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                        if string.find(an, "hunt") then
+                                            _G.IsHunting = obj:GetAttribute(attr)
+                                            if _G.IsHunting == true then
+                                                AddLog("💀 ¡¡ALERTA MÁXIMA!! ¡EL FANTASMA ENTRÓ EN MODO CACERÍA!", Color3.fromRGB(255, 0, 0))
+                                                
+                                                -- 🚀 AUTO-EVASIÓN INMEDIATA 🚀
+                                                pcall(function()
+                                                    local hrp = LP.Character and LP.Character.PrimaryPart
+                                                    if hrp then
+                                                        local safeSpot = nil
+                                                        for _, v in pairs(workspace:GetDescendants()) do
+                                                            if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                                        end
+                                                        if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
+                                                        hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
+                                                        AddLog("   └─> ¡AUTO-EVASIÓN ACTIVADA! Huyendo al Camión.", Color3.fromRGB(0, 255, 0))
                                                     end
-                                                    if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
-                                                    hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
-                                                    AddLog("   └─> ¡AUTO-EVASIÓN ACTIVADA! Huyendo al Camión.", Color3.fromRGB(0, 255, 0))
-                                                end
-                                            end)
-                                            
+                                                end)
+                                            else
+                                                AddLog("✅ CACERÍA FINALIZADA. Puedes salir del Camión.", Color3.fromRGB(150, 255, 150))
+                                            end
                                         elseif string.find(an, "visible") or string.find(an, "reveal") then
                                             AddLog("👁️ EL FANTASMA ES VISIBLE AHORA MISMO: " .. tostring(obj:GetAttribute(attr)), Color3.fromRGB(255, 150, 0))
                                         end
@@ -1138,20 +1158,23 @@ BtnESP.MouseButton1Click:Connect(function()
                                     -- Chequear si la partida entera (workspace) entra en hunt
                                     workspace.AttributeChanged:Connect(function(attr)
                                         local an = string.lower(attr)
-                                        if string.find(an, "hunt") and workspace:GetAttribute(attr) == true then
-                                            AddLog("💀 ¡¡ALERTA GLOBAL!! ¡INICIO DE CACERÍA (Workspace)!", Color3.fromRGB(255, 0, 0))
-                                            pcall(function()
-                                                local hrp = LP.Character and LP.Character.PrimaryPart
-                                                if hrp then
-                                                    local safeSpot = nil
-                                                    for _, v in pairs(workspace:GetDescendants()) do
-                                                        if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                        if string.find(an, "hunt") then
+                                            _G.IsHunting = workspace:GetAttribute(attr)
+                                            if _G.IsHunting == true then
+                                                AddLog("💀 ¡¡ALERTA GLOBAL!! ¡INICIO DE CACERÍA (Workspace)!", Color3.fromRGB(255, 0, 0))
+                                                pcall(function()
+                                                    local hrp = LP.Character and LP.Character.PrimaryPart
+                                                    if hrp then
+                                                        local safeSpot = nil
+                                                        for _, v in pairs(workspace:GetDescendants()) do
+                                                            if v:IsA("SpawnLocation") then safeSpot = v.Position; break end
+                                                        end
+                                                        if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
+                                                        hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
+                                                        AddLog("   └─> ¡AUTO-EVASIÓN GLOBAL ACTIVADA!", Color3.fromRGB(0, 255, 0))
                                                     end
-                                                    if not safeSpot then safeSpot = Vector3.new(0, 500, 0) end
-                                                    hrp.CFrame = CFrame.new(safeSpot + Vector3.new(0, 3, 0))
-                                                    AddLog("   └─> ¡AUTO-EVASIÓN GLOBAR ACTIVADA!", Color3.fromRGB(0, 255, 0))
-                                                end
-                                            end)
+                                                end)
+                                            end
                                         end
                                     end)
                                 end
