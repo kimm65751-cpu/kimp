@@ -726,37 +726,39 @@ BtnPing.MouseButton1Click:Connect(function()
                                 -- ⚡ V8.47: ENCENDIDO Y USO AUTÓNOMO CON AUTO-AIM (MOUSE2)
                                 -- ==========================================================
                                 local itemNameLower = string.lower(tostring(realItemName))
+                                -- === 🚀 V8.63: SISTEMA UNIFICADO DE PLANTADO ===
+                                local skipDrop = false -- Flag para trípodes que se plantan con clic
+                                
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
-                                        if string.find(itemNameLower, "laser") or string.find(itemNameLower, "video camera") then
-                                            -- 1. Encender en la mano por red (Garantiza estado ON antes de colocar)
-                                            if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                            task.wait(0.5)
-                                            
-                                            -- 2. Clic Derecho (Mouse 1) para entrar en "Modo Colocación" (Holograma de Trípode/Parado)
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                            task.wait(0.1)
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
-                                            task.wait(0.5)
-                                            
-                                            -- 3. Clic Izquierdo (Mouse 0) para "Confirmar Plantado" en el cuartro, quedará de pie permanentemente.
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
-                                            task.wait(0.1)
-                                            game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
-                                            
-                                            AddLog("       ✅ " .. realItemName .. " plantado de pie con Trípode Oficial", Color3.fromRGB(0, 255, 150))
-                                            
-                                            -- 4. Marcar que se plantó oficialmente con clic para que el bot NO presione Drop(G) y lo tumbe
-                                            item:SetAttribute("PlantedByClick", true)
-
-                                        elseif string.find(itemNameLower, "thermometer") then
-                                        -- 🚀 V8.61: El termómetro debe escanear prolongadamente la cara del ente
+                                        -- ═══ TRÍPODES: Secuencia nativa del juego ═══
+                                        -- 1. Encender en la mano por red
+                                        if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
+                                        task.wait(0.5)
+                                        
+                                        -- 2. Clic Derecho → Entrar en "Modo Colocación" (aparece holograma del trípode)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
+                                        task.wait(0.1)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
+                                        task.wait(0.5)
+                                        
+                                        -- 3. Clic Izquierdo → Confirmar plantado (queda de pie, encendido, permanente)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, true, game, 1)
+                                        task.wait(0.1)
+                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 0, false, game, 1)
+                                        
+                                        AddLog("       ✅ " .. realItemName .. " plantado DE PIE con Trípode Oficial", Color3.fromRGB(0, 255, 150))
+                                        skipDrop = true -- NO usar Drop, ya se colocó con el sistema nativo
+                                        
+                                    elseif string.find(itemNameLower, "thermometer") then
+                                        -- ═══ TERMÓMETRO: Escaneo prolongado ═══
                                         if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                        AddLog("       🌡️ Escaneando Temperatura térmicamente (Esperando 3.5s)...", Color3.fromRGB(200, 200, 100))
+                                        AddLog("       🌡️ Escaneando Temperatura (3.5s apuntando al fantasma)...", Color3.fromRGB(200, 200, 100))
                                         task.wait(3.5)
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
                                         AddLog("       🌡️ Termómetro escaneado completamente", Color3.fromRGB(0, 255, 150))
+                                        
                                     elseif string.find(itemNameLower, "salt") then
                                         local saltEvent = game.ReplicatedStorage.Events:FindFirstChild("LaySaltPile")
                                         if saltEvent then saltEvent:FireServer() end
@@ -826,7 +828,6 @@ BtnPing.MouseButton1Click:Connect(function()
                                         AddLog("       🎵 Music Box activada", Color3.fromRGB(200, 100, 255))
                                     
                                     else
-                                        -- EMF, Thermometer, Laser Projector, Spirit Box, Flashlight
                                         if remToggle then remToggle:FireServer(itemFalso) end
                                         AddLog("       🔋 " .. tostring(realItemName) .. " encendida (ToggleItemState)", Color3.fromRGB(100, 255, 100))
                                     end
@@ -837,9 +838,11 @@ BtnPing.MouseButton1Click:Connect(function()
                                 end)
                                 task.wait(0.5)
                                 
-                                -- 3. Soltar (ya estamos en el cuarto del fantasma)
-                                if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
-                                task.wait(0.5)
+                                -- 3. Soltar (SOLO si no fue plantado con sistema de trípode nativo)
+                                if not skipDrop then
+                                    if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
+                                    task.wait(0.5)
+                                end
                                 
                                 AddLog("       📍 " .. tostring(realItemName) .. " plantada EN el cuarto.", Color3.fromRGB(200, 200, 255))
                                 
