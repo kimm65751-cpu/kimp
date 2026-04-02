@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIeIAS / LOGS "
+BoardTitle.Text = " 📜 EVIDErrrrrrrNCIAS / LOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -798,12 +798,22 @@ BtnPing.MouseButton1Click:Connect(function()
                                         AddLog("       ✅ " .. realItemName .. " ENCENDIDO y plantado en el cuarto", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "thermometer") then
-                                        -- ═══ TERMÓMETRO: Escaneo prolongado ═══
-                                        if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                        AddLog("       🌡️ Escaneando Temperatura (3.5s apuntando al fantasma)...", Color3.fromRGB(200, 200, 100))
-                                        task.wait(3.5)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
+                                        -- ═══ V8.68: TERMÓMETRO (Ingeniería Inversa) ═══
+                                        -- El termómetro se enciende con UseItem:Fire() → ToggleThermometer()
+                                        -- El servidor envía la temperatura automáticamente por UpdateThermometerDisplay
+                                        pcall(function()
+                                            local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
+                                            if psEvents and psEvents:FindFirstChild("UseItem") then
+                                                psEvents.UseItem:Fire()
+                                                AddLog("       🌡️ Termómetro ENCENDIDO por UseItem", Color3.fromRGB(200, 200, 100))
+                                            else
+                                                if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
+                                                AddLog("       🌡️ Termómetro ENCENDIDO por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
+                                            end
+                                        end)
+                                        -- Esperar 3s para que el servidor procese varias lecturas de temperatura
+                                        AddLog("       🌡️ Esperando lectura de temperatura (3s)...", Color3.fromRGB(200, 200, 100))
+                                        task.wait(3)
                                         AddLog("       🌡️ Termómetro escaneado completamente", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "salt") then
