@@ -338,8 +338,9 @@ local function ActualizarPizarraResolucion()
                         if evTypes and evTypes:FindFirstChild(evCodename) then
                             local btn = evTypes[evCodename]:FindFirstChild("Detection", true)
                             if btn and getconnections then
-                                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
-                                    conn:Fire()
+                                local conns = getconnections(btn.MouseButton1Click)
+                                if conns and conns[1] then
+                                    conns[1]:Fire() -- Disparar solo la principal para evitar "Doble Clic" (X Roja)
                                 end
                             end
                         end
@@ -419,8 +420,9 @@ local function ActualizarPizarraResolucion()
                     if gTypes and gTypes:FindFirstChild(finalGhostName) then
                         local btn = gTypes[finalGhostName]:FindFirstChild("Detection", true)
                         if btn and getconnections then
-                            for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
-                                conn:Fire()
+                            local conns = getconnections(btn.MouseButton1Click)
+                            if conns and conns[1] then
+                                conns[1]:Fire()
                             end
                         end
                     end
@@ -734,9 +736,26 @@ BtnPing.MouseButton1Click:Connect(function()
                 if orb and not EvidenciasEncontradas["Orbe Fantasma"] then
                     local orbPos = orb:IsA("Model") and (orb.PrimaryPart and orb.PrimaryPart.Position or orb:GetBoundingBox().Position) or orb.Position
                     if ghostPos and (orbPos - ghostPos).Magnitude <= 35 then
-                        EvidenciasEncontradas["Orbe Fantasma"] = true
-                        AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Orbe Fantasma (Orbitando Entidad)", Color3.fromRGB(0, 255, 255))
-                        pcall(ActualizarPizarraResolucion)
+                        -- V8.84: Muchos orbes existen físicamente pero apagados si no es la evidencia.
+                        -- Debemos asegurar que el orbe tenga un ParticleEmitter (Partículas) ACTIVO.
+                        local isRealOrb = false
+                        for _, particle in pairs(orb:GetDescendants()) do
+                            if particle:IsA("ParticleEmitter") and particle.Enabled and particle.Rate > 0 then
+                                isRealOrb = true
+                                break
+                            end
+                        end
+                        
+                        -- En caso de que el juego use un Trail u otro método en lugar de ParticleEmitter:
+                        if not isRealOrb and orb:IsA("BasePart") and orb.Transparency < 1 then
+                            isRealOrb = true
+                        end
+                        
+                        if isRealOrb then
+                            EvidenciasEncontradas["Orbe Fantasma"] = true
+                            AddLog("⭐ EVIDENCIA OBTENIDA: Orbe Fantasma (Orbitando Entidad activamente)", Color3.fromRGB(0, 255, 255))
+                            pcall(ActualizarPizarraResolucion)
+                        end
                     end
                 end
                 
