@@ -126,7 +126,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " ⏱️ DEMONOLeN & ESP "
+Title.Text = " ⏱️ DEMONOLOGY V4.0 | MODO SPEEDRUN & ESP "
 Title.TextColor3 = Color3.fromRGB(100, 255, 100)
 Title.Font = Enum.Font.Code
 Title.TextSize = 14
@@ -511,36 +511,60 @@ BtnPing.MouseButton1Click:Connect(function()
 
                 local todasHerramientas = CS:GetTagged("Item")
                 
-                -- === 🚀 V8.57/V8.59: POLLEO Y SPY DE ESTADO DEL LIBRO ===
+                -- === 🚀 V8.65: POLLEO Y SPY DE ESTADO DEL LIBRO (REESCRITO) ===
                 if not _G.BookSpyData then _G.BookSpyData = {} end
                 for _, obj in ipairs(todasHerramientas) do
                     if obj:GetAttribute("ItemName") == "Spirit Book" then
                         local currentY = obj.PrimaryPart and obj.PrimaryPart.Position.Y or 0
                         local objId = tostring(obj:GetDebugId())
                         
-                        -- SPY: Detectar Levitación del Libro o Telekinesis
+                        -- Buscar la textura actual de la página del libro (SurfaceGui > ImageLabel)
+                        local currentTexture = ""
+                        pcall(function()
+                            for _, part in ipairs(obj:GetDescendants()) do
+                                if part:IsA("SurfaceGui") then
+                                    local img = part:FindFirstChildOfClass("ImageLabel")
+                                    if img and img.Image and img.Image ~= "" then
+                                        currentTexture = img.Image
+                                    end
+                                end
+                            end
+                        end)
+                        
+                        -- SPY: Comparar con estado memorizado
                         if _G.BookSpyData[objId] then
+                            -- Detectar Levitación
                             local oldY = _G.BookSpyData[objId].Y
                             if math.abs(currentY - oldY) > 1 then
-                                AddLog("🔍 [SPY-BOOK] ¡El fantasma está LEVITANDO el libro! Altura cambió " .. string.format("%.1f", currentY - oldY) .. " studs.", Color3.fromRGB(200, 150, 255))
+                                AddLog("🔍 [SPY-BOOK] ¡LEVITACIÓN! Altura cambió " .. string.format("%.1f", currentY - oldY) .. " studs.", Color3.fromRGB(200, 150, 255))
                                 _G.BookSpyData[objId].Y = currentY
                             end
                             
-                            local oldEnabled = _G.BookSpyData[objId].Enabled
-                            local newEnabled = obj:GetAttribute("Enabled")
-                            if oldEnabled ~= newEnabled then
-                                AddLog("🔍 [SPY-BOOK] El atributo 'Enabled' del Servidor pasó de " .. tostring(oldEnabled) .. " a " .. tostring(newEnabled), Color3.fromRGB(200, 150, 255))
-                                _G.BookSpyData[objId].Enabled = newEnabled
+                            -- Detectar Escritura (la textura de la página cambió = el fantasma dibujó garabatos)
+                            local oldTexture = _G.BookSpyData[objId].Texture
+                            if currentTexture ~= oldTexture and currentTexture ~= "" then
+                                AddLog("🔍 [SPY-BOOK] ¡TEXTURA CAMBIÓ! Los garabatos del fantasma aparecieron: " .. currentTexture, Color3.fromRGB(255, 200, 0))
+                                _G.BookSpyData[objId].Texture = currentTexture
+                                
+                                -- ¡ESTO ES ESCRITURA DE FANTASMA CONFIRMADA!
+                                if not EvidenciasEncontradas["Escritura de fantasmas"] then
+                                    EvidenciasEncontradas["Escritura de fantasmas"] = true
+                                    AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Escritura de Fantasmas (Tinta Activa)", Color3.fromRGB(255, 255, 0))
+                                    pcall(ActualizarPizarraResolucion)
+                                end
+                            end
+                            
+                            -- Monitorear TODOS los atributos para debugging
+                            for attrName, attrVal in pairs(obj:GetAttributes()) do
+                                local oldAttrs = _G.BookSpyData[objId].Attrs or {}
+                                if oldAttrs[attrName] ~= attrVal then
+                                    AddLog("🔍 [SPY-BOOK] Atributo '" .. attrName .. "' cambió: " .. tostring(oldAttrs[attrName]) .. " → " .. tostring(attrVal), Color3.fromRGB(200, 150, 255))
+                                    if not _G.BookSpyData[objId].Attrs then _G.BookSpyData[objId].Attrs = {} end
+                                    _G.BookSpyData[objId].Attrs[attrName] = attrVal
+                                end
                             end
                         else
-                            _G.BookSpyData[objId] = { Y = currentY, Enabled = obj:GetAttribute("Enabled") }
-                        end
-                        
-                        -- REVISIÓN DE EVIDENCIA (Escritura)
-                        if obj:GetAttribute("Enabled") == false and not EvidenciasEncontradas["Escritura de fantasmas"] then
-                            EvidenciasEncontradas["Escritura de fantasmas"] = true
-                            AddLog("⭐ EVIDENCIA OBTENIDA AUTOMÁTICAMENTE: Escritura de Fantasmas (Tinta Activa)", Color3.fromRGB(255, 255, 0))
-                            pcall(ActualizarPizarraResolucion)
+                            _G.BookSpyData[objId] = { Y = currentY, Texture = currentTexture, Attrs = obj:GetAttributes() }
                         end
                     end
                 end
@@ -731,45 +755,44 @@ BtnPing.MouseButton1Click:Connect(function()
                                 
                                 pcall(function()
                                     if string.find(itemNameLower, "video camera") or string.find(itemNameLower, "laser") then
-                                        -- ═══ TRÍPODES: Secuencia nativa del juego ═══
-                                        -- 1. Encender en la mano por red
-                                        if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
-                                        task.wait(0.5)
+                                        -- ═══ V8.65: ENCENDIDO REAL (Ingeniería Inversa del Código Fuente) ═══
+                                        -- El juego usa: MouseButton2 → PlayerScripts.Events.UseItem:Fire() → ToggleLaser()/ToggleVideoCamera()
+                                        -- Luego se tira al piso con: KeyCode.G → RequestItemDrop:FireServer("InvSlotX")
                                         
-                                        -- 2. Calcular centro de pantalla (donde está la mirilla del jugador)
-                                        local vpSize = workspace.CurrentCamera.ViewportSize
-                                        local cx, cy = vpSize.X / 2, vpSize.Y / 2
-                                        
-                                        -- 3. Apuntar la cámara al PISO delante del jugador (para que la previsualización del trípode aterrice)
+                                        -- 1. Encender usando el evento interno del juego (UseItem BindableEvent)
                                         pcall(function()
-                                            local hrpPos = LP.Character.PrimaryPart.Position
-                                            local floorTarget = hrpPos + LP.Character.PrimaryPart.CFrame.LookVector * 3 - Vector3.new(0, 3, 0)
-                                            workspace.CurrentCamera.CFrame = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, floorTarget)
+                                            local psEvents = LP:FindFirstChild("PlayerScripts") and LP.PlayerScripts:FindFirstChild("Events")
+                                            if psEvents and psEvents:FindFirstChild("UseItem") then
+                                                psEvents.UseItem:Fire()
+                                                AddLog("       🔌 Encendido por UseItem (Evento Interno)", Color3.fromRGB(0, 255, 200))
+                                            else
+                                                -- Fallback: encender por red directa
+                                                if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
+                                                AddLog("       🔌 Encendido por ToggleItemState (Fallback)", Color3.fromRGB(200, 200, 100))
+                                            end
                                         end)
-                                        task.wait(0.2)
-                                        
-                                        -- 4. Clic Derecho al CENTRO → Entrar en "Modo Colocación" (aparece holograma del trípode)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 1, true, game, 1)
-                                        task.wait(0.15)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 1, false, game, 1)
                                         task.wait(0.8)
                                         
-                                        -- 5. Clic Izquierdo al CENTRO → Confirmar plantado (queda de pie, encendido, permanente)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                                        task.wait(0.15)
-                                        game:GetService("VirtualInputManager"):SendMouseButtonEvent(cx, cy, 0, false, game, 1)
-                                        task.wait(0.3)
+                                        -- 2. Soltar al piso con el nombre del Slot correcto (InvSlot1-InvSlot4)
+                                        pcall(function()
+                                            local equippedObj = LP:GetAttribute("EquippedObject")
+                                            if equippedObj then
+                                                local slotName = nil
+                                                for _, sn in ipairs({"InvSlot1","InvSlot2","InvSlot3","InvSlot4"}) do
+                                                    if LP:GetAttribute(sn) == equippedObj then
+                                                        slotName = sn
+                                                        break
+                                                    end
+                                                end
+                                                if slotName and remDrop then
+                                                    remDrop:FireServer(slotName)
+                                                    AddLog("       📍 Soltado al piso usando slot: " .. slotName, Color3.fromRGB(150, 200, 255))
+                                                end
+                                            end
+                                        end)
+                                        skipDrop = true -- Ya lo soltamos aquí arriba
                                         
-                                        -- 6. Verificar si se plantó (si sigue equipado, usar Drop como fallback)
-                                        local sigueEquipado = LP:GetAttribute("EquippedItem") ~= nil
-                                        if sigueEquipado then
-                                            AddLog("       ⚠️ Trípode NO se plantó con clic, usando Drop como respaldo...", Color3.fromRGB(255, 200, 100))
-                                            if remDrop then pcall(function() remDrop:FireServer(filledSlot) end) end
-                                        else
-                                            skipDrop = true
-                                        end
-                                        
-                                        AddLog("       ✅ " .. realItemName .. " plantado DE PIE con Trípode Oficial", Color3.fromRGB(0, 255, 150))
+                                        AddLog("       ✅ " .. realItemName .. " ENCENDIDO y plantado en el cuarto", Color3.fromRGB(0, 255, 150))
                                         
                                     elseif string.find(itemNameLower, "thermometer") then
                                         -- ═══ TERMÓMETRO: Escaneo prolongado ═══
