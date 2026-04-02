@@ -209,7 +209,7 @@ local BoardTitle = Instance.new("TextLabel")
 BoardTitle.Size = UDim2.new(1, -70, 0, 25)
 BoardTitle.Position = UDim2.new(0, 0, 0, 0)
 BoardTitle.BackgroundTransparency = 1
-BoardTitle.Text = " 📜 EVIDENCIAS / LOGS "
+BoardTitle.Text = " 📜 EeLOGS "
 BoardTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
 BoardTitle.Font = Enum.Font.Code; BoardTitle.TextSize = 13
 BoardTitle.TextXAlignment = Enum.TextXAlignment.Center
@@ -749,12 +749,15 @@ BtnPing.MouseButton1Click:Connect(function()
                                             if camEvent then camEvent:FireServer(itemFalso) end
                                         end
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
-                                        AddLog("       ✅ Herramienta Apuntada (Clic Derecho Simulado)", Color3.fromRGB(0, 255, 150))
+                                        AddLog("       ✅ Herramienta Apuntada y Encendida (Tripod Mode)", Color3.fromRGB(0, 255, 150))
                                     elseif string.find(itemNameLower, "thermometer") then
+                                        -- 🚀 V8.61: El termómetro debe escanear prolongadamente la cara del ente
+                                        if typeof(remToggle) == "Instance" then remToggle:FireServer(itemFalso) end
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, true, game, 1)
-                                        task.wait(0.5)
+                                        AddLog("       🌡️ Escaneando Temperatura térmicamente (Esperando 3.5s)...", Color3.fromRGB(200, 200, 100))
+                                        task.wait(3.5)
                                         game:GetService("VirtualInputManager"):SendMouseButtonEvent(0,0, 1, false, game, 1)
-                                        AddLog("       🌡️ Termómetro escaneado manualmente", Color3.fromRGB(0, 255, 150))
+                                        AddLog("       🌡️ Termómetro escaneado completamente", Color3.fromRGB(0, 255, 150))
                                     elseif string.find(itemNameLower, "salt") then
                                         local saltEvent = game.ReplicatedStorage.Events:FindFirstChild("LaySaltPile")
                                         if saltEvent then saltEvent:FireServer() end
