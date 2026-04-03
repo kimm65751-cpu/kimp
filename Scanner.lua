@@ -18,8 +18,8 @@ SG.ResetOnSpawn = false
 SG.Parent = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 460, 0, 340)
-MF.Position = UDim2.new(0.5, 0, 0.3, 0)
+MF.Size = UDim2.new(0, 460, 0, 380)
+MF.Position = UDim2.new(0.5, 0, 0.25, 0)
 MF.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 MF.BorderSizePixel = 2
 MF.BorderColor3 = Color3.fromRGB(200, 0, 255)
@@ -45,12 +45,14 @@ LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Instance.new("UIListLayout", LogFrame).SortOrder = Enum.SortOrder.LayoutOrder
 
 local lc = 0
+local logBuffer = {} -- Para exportar
 local function Log(t, c)
     lc = lc + 1
+    table.insert(logBuffer, "["..os.date("%X").."] "..t)
     local m = Instance.new("TextLabel", LogFrame)
     m.Size = UDim2.new(1, 0, 0, 15)
     m.BackgroundTransparency = 1
-    m.Text = "["..os.date("%X").."] "..t
+    m.Text = logBuffer[#logBuffer]
     m.TextXAlignment = Enum.TextXAlignment.Left
     m.TextColor3 = c or Color3.fromRGB(170, 170, 170)
     m.Font = Enum.Font.Code; m.TextSize = 10
@@ -75,6 +77,7 @@ local btnScan    = MkBtn("🔍 ESCANEAR MEMORIA (getgc)", 206)
 local btnBoost   = MkBtn("⚡ BOOST x100 ATK (One-Shot Mobs)", 240)
 local btnFarm    = MkBtn("⚔️ AUTO-FARM (Click + Auto-Catch)", 274)
 local btnHP      = MkBtn("❤️ BOOST HP x100 (Tanque Infinito)", 308)
+local btnExport  = MkBtn("💾 EXPORTAR LOG A ARCHIVO .txt", 342)
 
 -- ==========================================================
 -- 1. ESCÁNER PROFUNDO DE getgc()
@@ -125,6 +128,57 @@ btnScan.MouseButton1Click:Connect(function()
     end)
     
     Log("✅ Escaneo completo: "..count.." tablas con stats encontradas", Color3.fromRGB(0, 255, 0))
+end)
+
+-- ==========================================================
+-- EXPORTAR TODO EL LOG A ARCHIVO
+-- ==========================================================
+btnExport.MouseButton1Click:Connect(function()
+    local fileName = "CAM_MemScan_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
+    local ok, err = pcall(function()
+        -- Además del log, hacer un dump completo de TODAS las tablas con stats
+        local dump = {}
+        table.insert(dump, "============================================")
+        table.insert(dump, "CAM MEMORY SCANNER DUMP")
+        table.insert(dump, "Date: " .. os.date())
+        table.insert(dump, "============================================")
+        table.insert(dump, "")
+        table.insert(dump, "=== GUI LOG ===")
+        for _, line in ipairs(logBuffer) do
+            table.insert(dump, line)
+        end
+        table.insert(dump, "")
+        table.insert(dump, "=== FULL GC STAT DUMP ===")
+        local tblCount = 0
+        for _, v in pairs(getgc(true)) do
+            if type(v) == "table" then
+                local hits = {}
+                for key, val in pairs(v) do
+                    if type(key) == "string" and statSet[key] then
+                        table.insert(hits, key .. "=" .. tostring(val))
+                    end
+                end
+                if #hits > 0 then
+                    tblCount = tblCount + 1
+                    table.insert(dump, "TABLE #" .. tblCount .. ": " .. table.concat(hits, " | "))
+                    -- Dump ALL keys of interesting tables
+                    for k2, v2 in pairs(v) do
+                        if type(k2) == "string" then
+                            table.insert(dump, "  -> " .. tostring(k2) .. " = " .. tostring(v2))
+                        end
+                    end
+                    table.insert(dump, "")
+                end
+            end
+        end
+        writefile(fileName, table.concat(dump, "\n"))
+    end)
+    if ok then
+        Log("💾 Exportado a: " .. fileName, Color3.fromRGB(0, 255, 200))
+        Log("Búscalo en la carpeta de tu executor (workspace/)", Color3.fromRGB(0, 255, 200))
+    else
+        Log("ERROR al exportar: " .. tostring(err), Color3.fromRGB(255, 0, 0))
+    end
 end)
 
 -- ==========================================================
