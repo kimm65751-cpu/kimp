@@ -1,338 +1,204 @@
-local success_load, err_load = pcall(function()
 -- ==============================================================================
--- 🧠 OMNI-SCANNER PRO V2.1 - FALLAS ATENUADAS (ANTI-CRASH) Y PORTAPAPELES
+-- ⚔️ OMNI-AUTO FARMER V1.0 - [AURA KILL + HOVER NOCLIP]
+-- Diseñado para explotar: ReplicatedStorage.CombatSystem.Remotes.RequestHit
 -- ==============================================================================
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
 local LP = Players.LocalPlayer
+local AutoFarm = false
+local HoverHeight = 15 -- Altura segura por encima del mob (Flotando)
+
+-- Endpoints Críticos (Sacados del Scanner)
+local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
+local NPCsFolder = Workspace:WaitForChild("NPCs")
 
 -- ==============================================================================
--- Utilidades Base
+-- GUI
 -- ==============================================================================
-local function getNextFileName(base)
-    local i = 1
-    while true do
-        local name = base .. "_" .. i .. ".txt"
-        local exists = false
-        pcall(function() exists = isfile and isfile(name) end)
-        if not exists then return name end
-        i = i + 1
-    end
-end
-
-local logs = {}
-local function log(text, indent)
-    local prefix = string.rep("  ", indent or 0)
-    table.insert(logs, prefix .. text)
-end
-
--- Exportador con fallbacks (Clipboard si writefile falla)
-local function export(baseName)
-    local fn = getNextFileName(baseName)
-    local content = table.concat(logs, "\n")
-    
-    local fileSaved = false
-    pcall(function()
-        if writefile then
-            writefile(fn, content)
-            fileSaved = true
-        end
-    end)
-    
-    -- Si no pudo crear archivo, al menos lo pega en el portapapeles
-    if not fileSaved then
-        pcall(function()
-            if setclipboard then
-                setclipboard(content)
-            end
-        end)
-    end
-    
-    logs = {}
-    return fn, fileSaved
-end
-
--- ==============================================================================
--- GUI Ultra Segura (Mismo sistema que V9.4)
--- ==============================================================================
-local TargetGui = LP:WaitForChild("PlayerGui", 5)
-
-for _, v in pairs(TargetGui:GetChildren()) do 
-    if v.Name == "OmniScannerPro" then pcall(function() v:Destroy() end) end 
-end
+local TargetGui = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
+for _, v in pairs(TargetGui:GetChildren()) do if v.Name == "OmniAutoFarm" then pcall(function() v:Destroy() end) end end
 
 local SG = Instance.new("ScreenGui")
-SG.Name = "OmniScannerPro"
+SG.Name = "OmniAutoFarm"
 SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 500, 0, 480)
-MF.Position = UDim2.new(0.35, 0, 0.15, 0)
+MF.Size = UDim2.new(0, 300, 0, 200)
+MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
-MF.BorderColor3 = Color3.fromRGB(0, 255, 120)
+MF.BorderColor3 = Color3.fromRGB(255, 0, 100)
 MF.Active = true
 MF.Draggable = true
 
 local Title = Instance.new("TextLabel", MF)
-Title.Size = UDim2.new(1, 0, 0, 26)
-Title.BackgroundColor3 = Color3.fromRGB(10, 50, 30)
-Title.Text = " 🧠 OMNI-SCANNER PRO V2.1 (ANTI-CRASH)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 200)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
+Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
+Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextSize = 14
 
-local LogFrame = Instance.new("ScrollingFrame", MF)
-LogFrame.Size = UDim2.new(1, -10, 0, 260)
-LogFrame.Position = UDim2.new(0, 5, 0, 30)
-LogFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogFrame.ScrollBarThickness = 4
-LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", LogFrame).SortOrder = Enum.SortOrder.LayoutOrder
+local StatusLabel = Instance.new("TextLabel", MF)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0, 0, 0, 35)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Status: INACTIVO"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.Font = Enum.Font.Gotham
 
-local lc = 0
-local function guiLog(t, c)
-    pcall(function()
-        lc = lc + 1
-        local m = Instance.new("TextLabel", LogFrame)
-        m.Size = UDim2.new(1, 0, 0, 14)
-        m.BackgroundTransparency = 1
-        m.Text = "["..os.date("%X").."] "..t
-        m.TextXAlignment = Enum.TextXAlignment.Left
-        m.TextColor3 = c or Color3.fromRGB(200, 200, 200)
-        m.Font = Enum.Font.Code
-        m.TextSize = 11
-        m.TextWrapped = true
-        m.AutomaticSize = Enum.AutomaticSize.Y
-        m.LayoutOrder = lc
-        LogFrame.CanvasPosition = Vector2.new(0, 99999)
-    end)
-end
+local BtnToggle = Instance.new("TextButton", MF)
+BtnToggle.Size = UDim2.new(0.9, 0, 0, 40)
+BtnToggle.Position = UDim2.new(0.05, 0, 0, 70)
+BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
+BtnToggle.TextColor3 = Color3.new(1,1,1)
+BtnToggle.Font = Enum.Font.GothamBold
+BtnToggle.TextSize = 16
+BtnToggle.Text = "► INICIAR AUTO-FARM"
 
-local function MkBtn(txt, py)
-    local b = Instance.new("TextButton", MF)
-    b.Size = UDim2.new(0.92, 0, 0, 30)
-    b.Position = UDim2.new(0.04, 0, 0, py)
-    b.BackgroundColor3 = Color3.fromRGB(35, 45, 40)
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.GothamSemibold
-    b.TextSize = 11
-    b.Text = txt
-    return b
-end
-
-local btnConfigs = MkBtn("📦 1. EXTRAER CONFIGURACIONES (Armas, Mobs, Islas...)", 300)
-local btnMindMap = MkBtn("🕸️ 2. MAPA MENTAL JERÁRQUICO (Rutas de Conexión)", 340)
-local btnDecomp  = MkBtn("⚙️ 3. MAPEAR FUNCIONES INTERNAS DEL JUEGO", 380)
+local BtnHeight = Instance.new("TextButton", MF)
+BtnHeight.Size = UDim2.new(0.9, 0, 0, 30)
+BtnHeight.Position = UDim2.new(0.05, 0, 0, 120)
+BtnHeight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+BtnHeight.TextColor3 = Color3.new(1,1,1)
+BtnHeight.Font = Enum.Font.Gotham
+BtnHeight.TextSize = 12
+BtnHeight.Text = "Altura Flotador: " .. HoverHeight .. " Studs"
 
 -- ==============================================================================
--- MOTOR DE EXTRACCIÓN PROFUNDA ENCAPSULADO
+-- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
 -- ==============================================================================
-local function DeepDumpTable(tbl, name, maxDepth, currentDepth, visited)
-    currentDepth = currentDepth or 0
-    visited = visited or {}
-    
-    if currentDepth > maxDepth then return end
-    if type(tbl) ~= "table" then return end
-    if visited[tbl] then return end
-    visited[tbl] = true
 
-    for k, v in pairs(tbl) do
-        local displayKey = tostring(k)
-        local valType = type(v)
-        
-        if valType == "table" then
-            log("[" .. displayKey .. "] (Table) {", currentDepth)
-            pcall(function() DeepDumpTable(v, displayKey, maxDepth, currentDepth + 1, visited) end)
-            log("}", currentDepth)
-        elseif valType == "string" then
-            log("[" .. displayKey .. "] = '" .. v .. "'", currentDepth)
-        elseif valType == "number" or valType == "boolean" then
-            log("[" .. displayKey .. "] = " .. tostring(v), currentDepth)
-        else
-            log("[" .. displayKey .. "] = " .. valType, currentDepth)
+local function GetNearestMob()
+    local nearestDist = math.huge
+    local nearestMob = nil
+    local char = LP.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local hrp = char.HumanoidRootPart
+
+    for _, mob in pairs(NPCsFolder:GetChildren()) do
+        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+            -- Solo enfocarse en mobs vivos
+            if mob.Humanoid.Health > 0 then
+                local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestMob = mob
+                end
+            end
         end
     end
+    return nearestMob
 end
 
--- ==============================================================================
--- ACCIONES (Con control de agotamiento de script "Anti-Lag")
--- ==============================================================================
-btnConfigs.MouseButton1Click:Connect(function()
-    guiLog("Iniciando Extractor de Módulos... Esto tardará unos segundos.", Color3.fromRGB(0, 255, 255))
-    
-    task.spawn(function()
-        local ok_scan, err_scan = pcall(function()
-            log("--- REPORTE DE CONFIGURACIONES (RPG) ---")
-            local modulesFound, dataFound = 0, 0
-            local rpgKeys = {
-                "mob", "boss", "weapon", "config", "data", "pet", "quest", "level", "npc", "city", 
-                "map", "skill", "item", "gem", "race", "setting", "stat", "event", "island", "isla", 
-                "fly", "vuelo", "speed", "jump", "salto", "reroll", "roll", "gacha", "fragment", 
-                "shard", "money", "coin", "sword", "accessory", "melee", "key", "llave", "seal", 
-                "drop", "moon slayer", "moon", "slayer", "power"
-            }
-
-            for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-                if obj:IsA("ModuleScript") then
-                    modulesFound = modulesFound + 1
-                    local isImportant = false
-                    local lName = obj.Name:lower()
-                    
-                    for _, k in ipairs(rpgKeys) do
-                        if lName:find(k) then isImportant = true; break end
-                    end
-                    
-                    if isImportant then
-                        local ok_req, result = pcall(function() return require(obj) end)
-                        if ok_req and type(result) == "table" then
-                            log("\n[📌] DATOS EN MÓDULO PÚBLICO: " .. obj:GetFullName())
-                            DeepDumpTable(result, obj.Name, 3) 
-                            dataFound = dataFound + 1
-                        end
-                    end
-                    if modulesFound % 25 == 0 then task.wait(0.05) end -- ANTICRASH VITAl
-                end
+-- Anti Caídas y NoClip: Para volar libremente y atravesar paredes
+RunService.Stepped:Connect(function()
+    if AutoFarm and LP.Character then
+        -- 1. Noclip: Apagar CanCollide para atravesar todo
+        for _, part in pairs(LP.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
-            
-            -- Física local también
-            log("\n--- LÍMITES FÍSICOS ---")
-            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                local hum = LP.Character.Humanoid
-                log("WalkSpeed: " .. tostring(hum.WalkSpeed))
-                log("JumpPower: " .. tostring(hum.JumpPower))
-            else
-                log("Avatar no encontrado al momento del escaneo.")
-            end
-
-            local fn, saved = export("OmniConfigData")
-            
-            if saved then
-                guiLog("✅ Datos extraídos! Creado archivo: " .. fn, Color3.fromRGB(0, 255, 0))
-            else
-                guiLog("⚠️ Escaneo ok, pero NO SE PUDO CREAR EL .TXT. Se copió todo a tu portapapeles (CONTROL+V)", Color3.fromRGB(255, 200, 0))
-            end
-        end)
+        end
         
-        if not ok_scan then
-            guiLog("❌ Error durante el escaneo: " .. tostring(err_scan), Color3.fromRGB(255, 0, 0))
+        -- 2. Anti Gravedad: Para que no caigas al suelo mientras estás flotando arriba del mob
+        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.new(0,0,0)
         end
-    end)
+    end
 end)
 
-btnMindMap.MouseButton1Click:Connect(function()
-    guiLog("Mapeando el universo del juego... (Evitando crash)", Color3.fromRGB(200, 100, 255))
-    task.spawn(function()
-        local function mapHierarchy(parent, depth)
-            if depth > 4 then return end
-            local count = 0
-            for _, v in pairs(parent:GetChildren()) do
-                if v:IsA("Folder") or v:IsA("ModuleScript") or v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                    log((v:IsA("Folder") and "📂" or (v:IsA("ModuleScript") and "⚙️" or "📡")) .. " " .. v.Name, depth)
-                    pcall(function() mapHierarchy(v, depth + 1) end)
-                    
-                    count = count + 1
-                    if count % 20 == 0 then task.wait(0.01) end
+-- Motor de ataque y persecución
+task.spawn(function()
+    while task.wait() do
+        if AutoFarm then
+            local char = LP.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                -- Check si el jugador murió para reiniciar
+                if char.Humanoid.Health <= 0 then
+                    StatusLabel.Text = "Status: Reviviendo..."
+                    task.wait(2)
+                    continue
                 end
-            end
-        end
 
-        local ok_map, err_map = pcall(function()
-            log("--- ENDPOINTS DISPONIBLES ---")
-            for _, rem in pairs(ReplicatedStorage:GetDescendants()) do
-                if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") then
-                    log("📡 " .. rem:GetFullName())
-                    if rem.Parent and rem.Parent:IsA("ModuleScript") then
-                        log("  ╰─🔗 Modulo Vinculado: " .. rem.Parent.Name)
+                -- Equipar espada/arma si la tenemos
+                local tool = char:FindFirstChildOfClass("Tool")
+                if not tool then
+                    tool = LP.Backpack:FindFirstChildOfClass("Tool")
+                    if tool then char.Humanoid:EquipTool(tool) end
+                end
+
+                local mob = GetNearestMob()
+                if mob then
+                    StatusLabel.Text = "Cazando: " .. mob.Name
+                    local hrp = char.HumanoidRootPart
+                    local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
+
+                    if mobHrp then
+                        -- ==========================================
+                        -- HOVER FLY NOCLIP (Teleport arriba de su cabeza)
+                        -- Nos posicionamos exactamente en el eje X,Z del mob, pero en la altura le sumamos "HoverHeight"
+                        -- Usamos CFrame para evitar que se bugee con AntiTeleports.
+                        hrp.CFrame = CFrame.new(mobHrp.Position + Vector3.new(0, HoverHeight, 0), mobHrp.Position)
+                        
+                        -- ==========================================
+                        -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hitt)
+                        pcall(function()
+                            -- Según el escaneo, no pide argumentos, pero asume que tienes el arma equipada.
+                            CombatRemote:FireServer()
+                            
+                            -- Algunos juegos animan la espada, disparamos click también para que el server lo procese
+                            if tool then tool:Activate() end
+                        end)
                     end
+                else
+                    StatusLabel.Text = "Buscando Mobs vivos..."
                 end
-            end
-
-            log("\n--- ÁRBOL DE COMPONENTES ---")
-            mapHierarchy(ReplicatedStorage, 0)
-            
-            local fn, saved = export("OmniMindMap")
-            if saved then
-                guiLog("✅ Mapa mental absoluto creado: " .. fn, Color3.fromRGB(0, 255, 0))
             else
-                guiLog("⚠️ Guardado en Portapapeles. 'writefile' no habilitado.", Color3.fromRGB(255, 200, 0))
+                StatusLabel.Text = "Esperando al Personaje..."
             end
-        end)
-
-        if not ok_map then
-            guiLog("❌ Error en Mapa Mental: " .. tostring(err_map), Color3.fromRGB(255, 0, 0))
         end
-    end)
+    end
 end)
 
-btnDecomp.MouseButton1Click:Connect(function()
-    guiLog("Analizando código fuente disponible...", Color3.fromRGB(255, 100, 100))
-    task.spawn(function()
-        local ok_dc, err_dc = pcall(function()
-            local analyzedCount = 0
-            for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-                if obj:IsA("ModuleScript") or obj:IsA("LocalScript") then
-                    log("\n[+] SCRIPT/MÓDULO: " .. obj:GetFullName())
-                    
-                    -- Intento estricto de descompilacion si está permitida
-                    local sourceObtained = false
-                    if type(decompile) == "function" then
-                        local ok_d, src = pcall(function() return decompile(obj) end)
-                        if ok_d and type(src) == "string" and #src > 10 then
-                            log("<< INICIO CÓDIGO >>")
-                            log(src)
-                            log("<< FIN CÓDIGO >>")
-                            sourceObtained = true
-                        end
-                    end
-                    
-                    if not sourceObtained then
-                        local ok_req, res = pcall(function() return require(obj) end)
-                        if ok_req and type(res) == "table" then
-                            for k, func in pairs(res) do
-                                if type(func) == "function" then
-                                    log("  ╰─ Función localizada: " .. tostring(k))
-                                end
-                            end
-                        else
-                            log("  ╰─ Código protegido (Sin acceso).")
-                        end
-                    end
-                    
-                    analyzedCount = analyzedCount + 1
-                    if analyzedCount % 10 == 0 then task.wait(0.05) end
-                end
-            end
-            
-            local fn, saved = export("OmniDecompiledCode")
-            if saved then
-                guiLog("✅ Rutinas del juego volcadas a: " .. fn, Color3.fromRGB(0, 255, 0))
-            else
-                guiLog("⚠️ Archivo no creado, pero se COPIÓ TODO al portapapeles.", Color3.fromRGB(255, 200, 0))
-            end
-        end)
-        if not ok_dc then
-            guiLog("❌ Error en Extractor de Código: " .. tostring(err_dc), Color3.fromRGB(255, 0, 0))
+-- ==============================================================================
+-- CONEXIONES GUI
+-- ==============================================================================
+BtnToggle.MouseButton1Click:Connect(function()
+    AutoFarm = not AutoFarm
+    if AutoFarm then
+        BtnToggle.Text = "◼ DETENER AUTO-FARM"
+        BtnToggle.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+        StatusLabel.Text = "Status: BUSCANDO OBJETIVOS"
+        
+        -- Si inicias o revives, asegura que no te caigas reseteando cosas raras
+        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
+            hrp:FindFirstChildOfClass("BodyVelocity"):Destroy()
         end
-    end)
+    else
+        BtnToggle.Text = "► INICIAR AUTO-FARM"
+        BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
+        StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        StatusLabel.Text = "Status: INACTIVO"
+    end
 end)
 
-guiLog("🧠 V2.1 Cargado — Todo encapsulado con Anti-Crash.", Color3.fromRGB(0, 255, 0))
-guiLog("OJO: Si 'writefile' no existe, usará tu portapapeles.", Color3.fromRGB(200, 200, 0))
-
-end) -- FIN PCALL MAESTRO
-if not success_load then
-    local sg = Instance.new("ScreenGui")
-    sg.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    local tl = Instance.new("TextLabel", sg)
-    tl.Size = UDim2.new(1,0,1,0)
-    tl.BackgroundColor3 = Color3.new(0.5, 0, 0)
-    tl.TextColor3 = Color3.new(1,1,1)
-    tl.Font = Enum.Font.Code
-    tl.TextScaled = true
-    tl.Text = "ERROR CRÍTICO AL CARGAR OMNISCANNER:\n" .. tostring(err_load)
-end
+BtnHeight.MouseButton1Click:Connect(function()
+    if HoverHeight == 15 then
+        HoverHeight = 25
+    elseif HoverHeight == 25 then
+        HoverHeight = 5
+    else
+        HoverHeight = 15
+    end
+    BtnHeight.Text = "Altura Flotador: " .. HoverHeight .. " Studs"
+end)
