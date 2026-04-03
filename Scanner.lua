@@ -1,1135 +1,925 @@
--- ==============================================================================
--- 🔬 DIAGNÓSTICO TOTAL V1.0 — DETECTOR DE FALLOS EN GUI Y LUA
--- Ejecuta ANTES que cualquier otro script para saber exactamente:
--- ✅ Qué APIs funcionan en tu ejecutor/entorno
--- ❌ Dónde se corta tu código y por qué
--- 📊 Versión del servidor, seguridad, plugins, scripts
--- ==============================================================================
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 0: MOTOR DE LOGGING SEGURO (NO USA GUI AÚN)  ║
--- ╚══════════════════════════════════════════════════════╝
-
-local DiagLog = {}    -- Tabla de resultados: {emoji, categoria, mensaje, detalle}
-local ErrorCount = 0
-local WarnCount = 0
-local PassCount = 0
-
-local function LogPass(cat, msg, detail)
-    PassCount = PassCount + 1
-    table.insert(DiagLog, {"PASS", cat, msg, detail or ""})
+local existing = rawget(_G, "CatchAMonsterAnalyzer")
+if existing and existing.stop then
+    pcall(function()
+        existing.stop("Replaced")
+    end)
 end
 
-local function LogFail(cat, msg, detail)
-    ErrorCount = ErrorCount + 1
-    table.insert(DiagLog, {"FAIL", cat, msg, detail or ""})
-end
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
 
-local function LogWarn(cat, msg, detail)
-    WarnCount = WarnCount + 1
-    table.insert(DiagLog, {"WARN", cat, msg, detail or ""})
-end
+local LP = Players.LocalPlayer
 
-local function LogInfo(cat, msg, detail)
-    table.insert(DiagLog, {"INFO", cat, msg, detail or ""})
-end
+local FILE_PREFIX = "CatchAMonster_Analyzer_"
+local FILE_EXT = ".txt"
+local SNAPSHOT_INTERVAL = 2
+local MAX_ENTITY_ROWS = 12
 
-local function LogSection(title)
-    table.insert(DiagLog, {"HEAD", "---", title, ""})
-end
-
--- Función segura para ejecutar una prueba
-local function Test(category, description, testFn)
-    local ok, result = pcall(testFn)
-    if ok then
-        if result == false then
-            LogFail(category, description, "Retornó false")
-        elseif type(result) == "string" and string.sub(result, 1, 5) == "WARN:" then
-            LogWarn(category, description, string.sub(result, 6))
-        else
-            LogPass(category, description, tostring(result or "OK"))
-        end
-    else
-        LogFail(category, description, tostring(result))
-    end
-end
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 1: ANÁLISIS DEL ENTORNO DE EJECUCIÓN          ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 1: ENTORNO DE EJECUCION Y VERSIÓN")
-
--- 1.1 Versión de Lua / Luau
-Test("ENTORNO", "Version de Lua/Luau", function()
-    local v = _VERSION or "Desconocida"
-    return v
-end)
-
--- 1.2 Identidad del ejecutor
-Test("ENTORNO", "Identlevel (getidentity/getthreadidentity)", function()
-    local id = nil
-    if getidentity then id = getidentity()
-    elseif getthreadidentity then id = getthreadidentity()
-    elseif getthreadcontext then id = getthreadcontext()
-    end
-    if id then return "Identity Level: " .. tostring(id) end
-    return "WARN: No se encontro getidentity/getthreadidentity/getthreadcontext"
-end)
-
--- 1.3 Nombre del ejecutor
-Test("ENTORNO", "Nombre del Ejecutor (identifyexecutor)", function()
-    if identifyexecutor then
-        local name, ver = identifyexecutor()
-        return tostring(name) .. " " .. tostring(ver or "")
-    elseif getexecutorname then
-        return tostring(getexecutorname())
-    end
-    return "WARN: No se detecta nombre de ejecutor (puede ser Roblox Studio)"
-end)
-
--- 1.4 Plataforma
-Test("ENTORNO", "Deteccion de Plataforma", function()
-    local UserInputService = game:GetService("UserInputService")
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    local isPC = UserInputService.KeyboardEnabled
-    local isConsole = UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled
-    if isMobile then return "MOBILE (Android/iOS) - Touch"
-    elseif isPC then return "PC/DESKTOP - Teclado+Raton"
-    elseif isConsole then return "CONSOLA - Gamepad"
-    else return "Desconocido" end
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 2: SERVICIOS DE ROBLOX (¿Cuáles cargan?)     ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 2: ACCESO A SERVICIOS CLAVE")
-
-local ServiciosRequeridos = {
-    "Players", "Workspace", "ReplicatedStorage", "ReplicatedFirst",
-    "StarterGui", "StarterPack", "StarterPlayer",
-    "Lighting", "SoundService", "RunService",
-    "UserInputService", "TweenService", "HttpService",
-    "MarketplaceService", "Chat", "Teams",
-    "ServerStorage", "ServerScriptService",
-    "CoreGui", "VirtualUser", "ScriptContext",
-    "NetworkClient", "ContentProvider"
+local Analyzer = {
+    active = false,
+    session = tostring(os.time()) .. "-" .. tostring(math.floor(os.clock() * 1000) % 100000),
+    file = nil,
+    ui = {},
+    hooksInstalled = false,
+    seen = {},
+    remotesHooked = {},
+    connections = {},
+    lastSnapshotAt = 0,
+    recentActivity = {},
+    targetScripts = {
+        "ClientStarter",
+        "PlayerAttack",
+        "HookButtonClick",
+        "AvatarAbilitiesInterface",
+        "TeleportClient",
+        "NameTagMonitor"
+    }
 }
 
-local ServiciosOK = {}
-for _, sName in ipairs(ServiciosRequeridos) do
-    Test("SERVICIOS", "game:GetService('" .. sName .. "')", function()
-        local svc = game:GetService(sName)
-        ServiciosOK[sName] = svc
-        return svc.ClassName .. " (accesible)"
+_G.CatchAMonsterAnalyzer = Analyzer
+
+local function getGuiParent()
+    local ok = pcall(function()
+        return CoreGui.Name
     end)
-end
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 3: PLAYER Y PERSONAJE                         ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 3: JUGADOR LOCAL Y PERSONAJE")
-
-local LP = nil
-Test("PLAYER", "Players.LocalPlayer existe", function()
-    LP = game:GetService("Players").LocalPlayer
-    if LP then return LP.Name else return false end
-end)
-
-Test("PLAYER", "LocalPlayer.Character cargado", function()
-    if not LP then return false end
-    local char = LP.Character
-    if char then return char.Name .. " (cargado)" 
-    else return "WARN: Character es nil (puede estar respawneando)" end
-end)
-
-Test("PLAYER", "HumanoidRootPart accesible", function()
-    if not LP or not LP.Character then return "WARN: Sin personaje" end
-    local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then return "Posicion: " .. tostring(hrp.Position) else return false end
-end)
-
-Test("PLAYER", "PlayerGui accesible", function()
-    if not LP then return false end
-    local pg = LP:FindFirstChild("PlayerGui") or LP:WaitForChild("PlayerGui", 3)
-    if pg then return "PlayerGui OK (" .. tostring(#pg:GetChildren()) .. " hijos)" else return false end
-end)
-
-Test("PLAYER", "Backpack accesible", function()
-    if not LP then return false end
-    local bp = LP:FindFirstChild("Backpack")
-    if bp then
-        local tools = bp:GetChildren()
-        return #tools .. " tools en Backpack"
-    end
-    return "WARN: Sin Backpack visible"
-end)
-
-Test("PLAYER", "leaderstats", function()
-    if not LP then return false end
-    local ls = LP:FindFirstChild("leaderstats")
-    if ls then
-        local names = {}
-        for _, v in ipairs(ls:GetChildren()) do
-            table.insert(names, v.Name .. "=" .. tostring(v.Value))
-        end
-        return table.concat(names, ", ")
-    end
-    return "WARN: Sin leaderstats (puede usar Attributes o ProfileService)"
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 4: PRUEBAS DE GUI (DONDE PROBABLEMENTE FALLA)║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 4: PRUEBAS DE GUI PASO A PASO")
-
--- 4.1 CoreGui vs PlayerGui
-local GUIParent = nil
-Test("GUI", "Acceso a CoreGui como padre de GUI", function()
-    local cg = game:GetService("CoreGui")
-    -- Intentar leer .Name como prueba mínima
-    local n = cg.Name
-    -- Intentar crear un ScreenGui ahí
-    local testSG = Instance.new("ScreenGui")
-    testSG.Name = "__DiagTest_CoreGui"
-    testSG.Parent = cg
-    if testSG.Parent == cg then
-        testSG:Destroy()
-        GUIParent = cg
-        return "CoreGui FUNCIONAL como padre de GUI"
-    else
-        testSG:Destroy()
-        return false
-    end
-end)
-
-if not GUIParent then
-    Test("GUI", "Fallback a PlayerGui", function()
-        if not LP then return false end
-        local pg = LP:FindFirstChild("PlayerGui") or LP:WaitForChild("PlayerGui", 5)
-        if pg then
-            local testSG = Instance.new("ScreenGui")
-            testSG.Name = "__DiagTest_PlayerGui"
-            testSG.Parent = pg
-            if testSG.Parent == pg then
-                testSG:Destroy()
-                GUIParent = pg
-                return "PlayerGui FUNCIONAL como padre"
-            else
-                testSG:Destroy()
-                return false
-            end
-        end
-        return false
-    end)
-end
-
-if not GUIParent then
-    LogFail("GUI", "NO HAY PADRE VALIDO PARA GUI", "Ni CoreGui ni PlayerGui aceptan hijos. La GUI nunca cargara.")
-end
-
--- 4.2 ScreenGui básico
-local TestScreenGui = nil
-Test("GUI", "Crear ScreenGui basico", function()
-    if not GUIParent then return false end
-    TestScreenGui = Instance.new("ScreenGui")
-    TestScreenGui.Name = "__Diagnostico_GUI"
-    TestScreenGui.ResetOnSpawn = false
-    TestScreenGui.Parent = GUIParent
-    return "ScreenGui creado en " .. GUIParent.Name
-end)
-
--- 4.3 Frame
-local TestFrame = nil
-Test("GUI", "Crear Frame con propiedades", function()
-    if not TestScreenGui then return false end
-    TestFrame = Instance.new("Frame")
-    TestFrame.Size = UDim2.new(0, 300, 0, 200)
-    TestFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-    TestFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    TestFrame.BorderSizePixel = 2
-    TestFrame.Parent = TestScreenGui
-    return "Frame creado OK"
-end)
-
--- 4.4 Frame.Draggable (DEPRECIADO)
-Test("GUI", "Frame.Draggable (DEPRECIADO en Roblox moderno)", function()
-    if not TestFrame then return false end
-    TestFrame.Active = true
-    TestFrame.Draggable = true
-    return "Draggable aceptado (pero puede estar depreciado)"
-end)
-
--- 4.5 TextLabel
-Test("GUI", "Crear TextLabel", function()
-    if not TestFrame then return false end
-    local tl = Instance.new("TextLabel")
-    tl.Size = UDim2.new(1, 0, 0, 30)
-    tl.Text = "Test Label"
-    tl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tl.Font = Enum.Font.Code
-    tl.TextSize = 14
-    tl.Parent = TestFrame
-    return "TextLabel OK"
-end)
-
--- 4.6 TextButton
-Test("GUI", "Crear TextButton", function()
-    if not TestFrame then return false end
-    local tb = Instance.new("TextButton")
-    tb.Size = UDim2.new(0, 100, 0, 30)
-    tb.Position = UDim2.new(0, 5, 0, 35)
-    tb.Text = "Boton Test"
-    tb.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tb.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    tb.Parent = TestFrame
-    return "TextButton OK"
-end)
-
--- 4.7 TextBox
-Test("GUI", "Crear TextBox (para Reporte)", function()
-    if not TestFrame then return false end
-    local txb = Instance.new("TextBox")
-    txb.Size = UDim2.new(1, 0, 0, 50)
-    txb.Position = UDim2.new(0, 0, 0, 70)
-    txb.Text = "Test TextBox"
-    txb.ClearTextOnFocus = false
-    txb.TextEditable = false
-    txb.MultiLine = true
-    txb.Parent = TestFrame
-    return "TextBox OK"
-end)
-
--- 4.8 ScrollingFrame
-Test("GUI", "Crear ScrollingFrame", function()
-    if not TestFrame then return false end
-    local sf = Instance.new("ScrollingFrame")
-    sf.Size = UDim2.new(1, 0, 0, 50)
-    sf.Position = UDim2.new(0, 0, 0, 125)
-    sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    sf.ScrollBarThickness = 6
-    sf.Parent = TestFrame
-    return "ScrollingFrame OK"
-end)
-
--- 4.9 ImageButton
-Test("GUI", "Crear ImageButton", function()
-    if not TestFrame then return false end
-    local ib = Instance.new("ImageButton")
-    ib.Size = UDim2.new(0, 40, 0, 40)
-    ib.Image = "rbxassetid://10886105073"
-    ib.Parent = TestFrame
-    return "ImageButton OK"
-end)
-
--- 4.10 UICorner
-Test("GUI", "UICorner (esquinas redondeadas)", function()
-    if not TestFrame then return false end
-    local uc = Instance.new("UICorner")
-    uc.CornerRadius = UDim.new(0, 8)
-    uc.Parent = TestFrame
-    return "UICorner OK"
-end)
-
--- 4.11 Emojis en texto
-Test("GUI", "Soporte de Emojis en TextLabel", function()
-    if not TestFrame then return false end
-    local tl = Instance.new("TextLabel")
-    tl.Size = UDim2.new(1, 0, 0, 20)
-    tl.Text = "🗡️ ⛏️ 🛡️ 👻 💎 🧟 📡 🔗"
-    tl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tl.Font = Enum.Font.Code
-    tl.TextSize = 12
-    tl.Parent = TestFrame
-    -- No hay forma de detectar si renderiza bien, pero si no crasheó es buena señal
-    return "No crasheo al insertar emojis"
-end)
-
--- Limpiar GUI de prueba
-pcall(function()
-    if TestScreenGui then TestScreenGui:Destroy() end
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 5: APIs DE EXPLOIT / FUNCIONALIDAD AVANZADA   ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 5: APIs AVANZADAS (EXPLOIT/EXECUTOR)")
-
-Test("EXPLOIT", "setclipboard / toclipboard", function()
-    if setclipboard then return "setclipboard existe"
-    elseif toclipboard then return "toclipboard existe"
-    end
-    return "WARN: No hay funcion de portapapeles (no podras copiar reportes)"
-end)
-
-Test("EXPLOIT", "writefile", function()
-    if writefile then return "writefile existe (puedes guardar .txt)"
-    else return "WARN: writefile no disponible" end
-end)
-
-Test("EXPLOIT", "readfile", function()
-    if readfile then return "readfile existe"
-    else return "WARN: readfile no disponible" end
-end)
-
-Test("EXPLOIT", "loadstring permitido", function()
-    local fn = loadstring("return 42")
-    if fn and fn() == 42 then return "loadstring FUNCIONAL" end
-    return false
-end)
-
-Test("EXPLOIT", "game:HttpGet / HttpGetAsync", function()
-    local url = "https://raw.githubusercontent.com/kimm65751-cpu/kimp/refs/heads/main/Scanner.lua"
-    local ok, data = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if ok and data and #data > 10 then 
-        return "HttpGet OK (" .. tostring(#data) .. " chars descargados)"
-    elseif ok then 
-        return "WARN: HttpGet devolvió datos vacios o cortos"
-    else
-        return false
-    end
-end)
-
-Test("EXPLOIT", "hookmetamethod / hookfunction", function()
-    if hookmetamethod then return "hookmetamethod existe"
-    elseif hookfunction then return "hookfunction existe"
-    end
-    return "WARN: Sin hooks disponibles"
-end)
-
-Test("EXPLOIT", "getgenv / getrenv", function()
-    local items = {}
-    if getgenv then table.insert(items, "getgenv") end
-    if getrenv then table.insert(items, "getrenv") end
-    if getsenv then table.insert(items, "getsenv") end
-    if getfenv then table.insert(items, "getfenv") end
-    if #items > 0 then return table.concat(items, ", ")
-    else return "WARN: Sin funciones de entorno" end
-end)
-
-Test("EXPLOIT", "firesignal / fireproximityprompt", function()
-    local items = {}
-    if firesignal then table.insert(items, "firesignal") end
-    if fireproximityprompt then table.insert(items, "fireproximityprompt") end
-    if fireclickdetector then table.insert(items, "fireclickdetector") end
-    if firetouchinterest then table.insert(items, "firetouchinterest") end
-    if #items > 0 then return table.concat(items, ", ")
-    else return "WARN: Sin funciones de simulacion de eventos" end
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 6: FUNCIONES LUA CRÍTICAS                     ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 6: FUNCIONES LUA CRITICAS")
-
-Test("LUA", "task.spawn", function()
-    local ran = false
-    task.spawn(function() ran = true end)
-    task.wait(0.05)
-    if ran then return "task.spawn OK" else return false end
-end)
-
-Test("LUA", "task.wait", function()
-    local t1 = tick()
-    task.wait(0.05)
-    local elapsed = tick() - t1
-    return "task.wait OK (esperó " .. string.format("%.3f", elapsed) .. "s)"
-end)
-
-Test("LUA", "task.delay", function()
-    if task.delay then return "task.delay disponible" end
-    return false
-end)
-
-Test("LUA", "task.cancel", function()
-    if task.cancel then return "task.cancel disponible" end
-    return "WARN: task.cancel no existe"
-end)
-
-Test("LUA", "pcall funcional", function()
-    local ok, err = pcall(function() error("test error") end)
-    if not ok and string.find(tostring(err), "test error") then
-        return "pcall captura errores correctamente"
-    end
-    return false
-end)
-
-Test("LUA", "typeof funcional", function()
-    local t = typeof(Vector3.new(0,0,0))
-    if t == "Vector3" then return "typeof OK" end
-    return false
-end)
-
-Test("LUA", "string.find / string.match", function()
-    local r1 = string.find("hello_world", "world")
-    local r2 = string.match("[Lvl. 42]", "%[Lvl%.%s*(%d+)%]")
-    if r1 and r2 == "42" then return "Pattern matching OK" end
-    return false
-end)
-
-Test("LUA", "Instance.new funcional", function()
-    local p = Instance.new("Part")
-    if p and p:IsA("Part") then
-        p:Destroy()
-        return "Instance.new OK"
-    end
-    return false
-end)
-
-Test("LUA", "tick() funcional", function()
-    local t = tick()
-    if t > 0 then return "tick() = " .. string.format("%.2f", t)
-    else return false end
-end)
-
-Test("LUA", "os.time() funcional", function()
-    local t = os.time()
-    if t > 0 then return "os.time() = " .. tostring(t)
-    else return false end
-end)
-
-Test("LUA", "os.clock() funcional", function()
-    local t = os.clock()
-    if t >= 0 then return "os.clock() = " .. string.format("%.4f", t)
-    else return false end
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 7: ANÁLISIS DEL JUEGO (SERVIDOR/CONTENIDO)    ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 7: ANALISIS DEL JUEGO ACTUAL")
-
-Test("JUEGO", "Nombre del juego (PlaceId)", function()
-    return "PlaceId: " .. tostring(game.PlaceId) .. " | GameId: " .. tostring(game.GameId)
-end)
-
-Test("JUEGO", "Nombre del lugar", function()
-    local mps = game:GetService("MarketplaceService")
-    local ok, info = pcall(function()
-        return mps:GetProductInfo(game.PlaceId)
-    end)
-    if ok and info then
-        return "'" .. tostring(info.Name) .. "' por " .. tostring(info.Creator.Name)
-    end
-    return "WARN: No se pudo obtener info del marketplace"
-end)
-
-Test("JUEGO", "JobId (Servidor)", function()
-    return game.JobId ~= "" and ("JobId: " .. game.JobId) or "Studio/Sin servidor"
-end)
-
-Test("JUEGO", "Jugadores conectados", function()
-    local players = game:GetService("Players"):GetPlayers()
-    local names = {}
-    for _, p in ipairs(players) do table.insert(names, p.Name) end
-    return #names .. " jugadores: " .. table.concat(names, ", ")
-end)
-
--- Contar objetos en Workspace
-Test("JUEGO", "Descendientes en Workspace", function()
-    local d = game:GetService("Workspace"):GetDescendants()
-    return tostring(#d) .. " objetos totales en Workspace"
-end)
-
--- Contar en ReplicatedStorage
-Test("JUEGO", "Hijos en ReplicatedStorage", function()
-    local rs = game:GetService("ReplicatedStorage")
-    local d = rs:GetDescendants()
-    return tostring(#d) .. " objetos en ReplicatedStorage"
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 8: REMOTES Y ESTRUCTURA DE RED                 ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 8: REMOTES DETECTADOS (RED C/S)")
-
-Test("RED", "RemoteEvents en ReplicatedStorage", function()
-    local count = 0
-    local names = {}
-    for _, obj in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            count = count + 1
-            if count <= 15 then table.insert(names, obj:GetFullName()) end
-        end
-    end
-    return tostring(count) .. " RemoteEvents. Primeros: " .. table.concat(names, " | ")
-end)
-
-Test("RED", "RemoteFunctions en ReplicatedStorage", function()
-    local count = 0
-    local names = {}
-    for _, obj in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        if obj:IsA("RemoteFunction") then
-            count = count + 1
-            if count <= 15 then table.insert(names, obj:GetFullName()) end
-        end
-    end
-    return tostring(count) .. " RemoteFunctions. Primeros: " .. table.concat(names, " | ")
-end)
-
--- Detectar frameworks comunes
-Test("RED", "Framework detectado (Knit/AeroGameFramework/Etc)", function()
-    local frameworks = {}
-    local rs = game:GetService("ReplicatedStorage")
-    -- Knit
-    pcall(function()
-        local knit = rs:FindFirstChild("Shared")
-        if knit and knit:FindFirstChild("Packages") then
-            local knitPkg = knit.Packages:FindFirstChild("Knit")
-            if knitPkg then table.insert(frameworks, "KNIT detectado en RS.Shared.Packages.Knit") end
-        end
-    end)
-    -- Aero
-    pcall(function()
-        if rs:FindFirstChild("Aero") then table.insert(frameworks, "AeroGameFramework") end
-    end)
-    -- Rojo/Wally
-    pcall(function()
-        if rs:FindFirstChild("Packages") then table.insert(frameworks, "Wally Packages") end
-    end)
-    if #frameworks > 0 then return table.concat(frameworks, " | ") end
-    return "WARN: No se detecto framework especifico"
-end)
-
--- Referencia especifica del Omni-Farm V2.0 (Knit ToolService)
-Test("RED", "Knit ToolService.RF.ToolActivated (ref. tu script)", function()
-    local ok, rf = pcall(function()
-        return game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
-    end)
-    if ok and rf then
-        return "EXISTE: " .. rf:GetFullName() .. " (" .. rf.ClassName .. ")"
-    end
-    return "WARN: La ruta RS.Shared.Packages.Knit.Services.ToolService.RF.ToolActivated NO EXISTE. Tu script crasheará en linea 18."
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 9: SCRIPTS Y SEGURIDAD DEL SERVIDOR            ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 9: SCRIPTS Y SEGURIDAD")
-
-Test("SEGURIDAD", "LocalScripts en PlayerScripts", function()
-    if not LP then return false end
-    local ps = LP:FindFirstChild("PlayerScripts")
-    if ps then
-        local scripts = {}
-        for _, s in ipairs(ps:GetDescendants()) do
-            if s:IsA("LocalScript") or s:IsA("ModuleScript") then
-                table.insert(scripts, s.Name .. " (" .. s.ClassName .. ")")
-            end
-        end
-        return #scripts .. " scripts: " .. table.concat(scripts, ", ")
-    end
-    return "WARN: Sin PlayerScripts visible"
-end)
-
-Test("SEGURIDAD", "Anti-Cheat posibles (busqueda heuristica)", function()
-    local suspects = {}
-    local searchTerms = {"anticheat", "anti_cheat", "exploit", "ban", "kick", "detect", "integrity", "security", "guard", "byfron"}
-    for _, obj in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        local n = string.lower(obj.Name)
-        for _, term in ipairs(searchTerms) do
-            if string.find(n, term) then
-                table.insert(suspects, obj.Name .. " (" .. obj.ClassName .. ") en " .. obj.Parent.Name)
-                break
-            end
-        end
-    end
-    -- También buscar en Workspace
-    for _, obj in ipairs(game:GetService("Workspace"):GetChildren()) do
-        local n = string.lower(obj.Name)
-        for _, term in ipairs(searchTerms) do
-            if string.find(n, term) then
-                table.insert(suspects, obj.Name .. " (" .. obj.ClassName .. ") en Workspace")
-                break
-            end
-        end
-    end
-    if #suspects > 0 then
-        return "DETECTADOS " .. #suspects .. ": " .. table.concat(suspects, " | ")
-    end
-    return "No se encontraron nombres sospechosos de Anti-Cheat"
-end)
-
-Test("SEGURIDAD", "Scripts anti-idle/AFK", function()
-    local ok, vuser = pcall(function() return game:GetService("VirtualUser") end)
-    if ok and vuser then return "VirtualUser accesible (anti-AFK posible)" end
-    return "WARN: VirtualUser no accesible"
-end)
-
--- ╔══════════════════════════════════════════════════════╗
--- ║  FASE 10: DIAGNÓSTICO ESPECÍFICO DEL SCANNER V23     ║
--- ╚══════════════════════════════════════════════════════╝
-
-LogSection("FASE 10: DIAGNOSTICO DE TU SCRIPT (LINEAS PROBLEMATICAS)")
-
--- Simular cada paso critico del script OmniFarm V2.0 / Scanner V23
-
-Test("TU_SCRIPT", "Linea 11: game:GetService('CoreGui')", function()
-    local ok, cg = pcall(function() return game:GetService("CoreGui") end)
-    if ok and cg then return "CoreGui accesible" end
-    return "WARN: CoreGui NO accesible — tu GUI necesita fallback a PlayerGui"
-end)
-
-Test("TU_SCRIPT", "Linea 18: ToolService.RF.ToolActivated (RUTA HARDCODED)", function()
-    local ok, result = pcall(function()
-        return game:GetService("ReplicatedStorage").Shared.Packages.Knit.Services.ToolService.RF.ToolActivated
-    end)
-    if ok and result then return "Ruta OK: " .. result:GetFullName() end
-    -- Intentar encontrar paso a paso dónde se corta
-    local path = {"ReplicatedStorage", "Shared", "Packages", "Knit", "Services", "ToolService", "RF", "ToolActivated"}
-    local current = game:GetService("ReplicatedStorage")
-    local lastGood = "ReplicatedStorage"
-    for i = 2, #path do
-        local next_ok, next_obj = pcall(function() return current:FindFirstChild(path[i]) end)
-        if next_ok and next_obj then
-            current = next_obj
-            lastGood = table.concat(path, ".", 1, i)
-        else
-            return "FALLA EN LINEA 18: La ruta se corta en '" .. path[i] .. "'. Ultimo valido: " .. lastGood .. ". Esto CRASHEA tu script antes de crear la GUI."
-        end
-    end
-    return "Ruta completa OK"
-end)
-
-Test("TU_SCRIPT", "Linea 96: pcall(CoreGui.Name) como test", function()
-    local parentUI = pcall(function() return game:GetService("CoreGui").Name end)
-    if parentUI then
-        return "pcall(CoreGui.Name) = true, usará CoreGui"
-    else
-        return "WARN: pcall(CoreGui.Name) = false, usará PlayerGui"
-    end
-end)
-
-Test("TU_SCRIPT", "Linea 107: Frame.Draggable", function()
-    local f = Instance.new("Frame")
-    local ok, err = pcall(function() f.Draggable = true end)
-    f:Destroy()
-    if ok then return "Draggable aceptado" end
-    return "Draggable DEPRECIADO/ELIMINADO: " .. tostring(err) .. ". Usar UDrag o InputBegan custom."
-end)
-
-Test("TU_SCRIPT", "Linea 250: VirtualUser (Anti-AFK)", function()
-    local ok, vu = pcall(function() return game:GetService("VirtualUser") end)
-    if ok and vu then
-        local ok2, _ = pcall(function() vu:CaptureController() end)
-        if ok2 then return "VirtualUser:CaptureController() OK"
-        else return "WARN: VirtualUser existe pero CaptureController fallo" end
-    end
-    return "WARN: VirtualUser no accesible"
-end)
-
-Test("TU_SCRIPT", "Linea 154: rbxassetid://10886105073 (ImageButton)", function()
-    local ib = Instance.new("ImageButton")
-    local ok, err = pcall(function()
-        ib.Image = "rbxassetid://10886105073"
-    end)
-    ib:Destroy()
-    if ok then return "Asset ID aceptado" else return "WARN: " .. tostring(err) end
-end)
-
--- Verificar si GetDescendants funciona sin crasheo
-Test("TU_SCRIPT", "GetDescendants en Workspace (scan pesado)", function()
-    local t1 = tick()
-    local count = 0
-    local ok, err = pcall(function()
-        for _, obj in ipairs(game:GetService("Workspace"):GetDescendants()) do
-            count = count + 1
-        end
-    end)
-    local elapsed = tick() - t1
     if ok then
-        return count .. " objetos escaneados en " .. string.format("%.3f", elapsed) .. "s"
+        return CoreGui
     end
-    return "FALLA: " .. tostring(err)
-end)
-
--- ╔══════════════════════════════════════════════════════════════╗
--- ║  FASE 11: RESUMEN Y CREACIÓN DE LA GUI DE RESULTADOS       ║
--- ╚══════════════════════════════════════════════════════════════╝
-
-LogSection("RESUMEN FINAL")
-LogInfo("RESUMEN", "Total Tests", PassCount + ErrorCount + WarnCount .. " pruebas ejecutadas")
-LogInfo("RESUMEN", "Resultados", "PASS=" .. PassCount .. " | FAIL=" .. ErrorCount .. " | WARN=" .. WarnCount)
-
--- Construir texto del reporte
-local FullText = ""
-FullText = FullText .. "============================================================\n"
-FullText = FullText .. "  DIAGNOSTICO TOTAL V1.0 — REPORTE DE EJECUCION\n"
-FullText = FullText .. "  Fecha: " .. tostring(os.date and os.date("%Y-%m-%d %H:%M:%S") or "N/A") .. "\n"
-FullText = FullText .. "  PASS=" .. PassCount .. " | FAIL=" .. ErrorCount .. " | WARN=" .. WarnCount .. "\n"
-FullText = FullText .. "============================================================\n\n"
-
-for _, entry in ipairs(DiagLog) do
-    local status = entry[1]
-    local cat = entry[2]
-    local msg = entry[3]
-    local detail = entry[4]
-    
-    if status == "HEAD" then
-        FullText = FullText .. "\n" .. string.rep("=", 60) .. "\n"
-        FullText = FullText .. "  " .. msg .. "\n"
-        FullText = FullText .. string.rep("=", 60) .. "\n"
-    elseif status == "PASS" then
-        FullText = FullText .. " [OK]   " .. cat .. " > " .. msg .. "\n"
-        if detail ~= "" then FullText = FullText .. "         -> " .. detail .. "\n" end
-    elseif status == "FAIL" then
-        FullText = FullText .. " [FAIL] " .. cat .. " > " .. msg .. "\n"
-        if detail ~= "" then FullText = FullText .. "         -> ERROR: " .. detail .. "\n" end
-    elseif status == "WARN" then
-        FullText = FullText .. " [WARN] " .. cat .. " > " .. msg .. "\n"
-        if detail ~= "" then FullText = FullText .. "         -> " .. detail .. "\n" end
-    elseif status == "INFO" then
-        FullText = FullText .. " [INFO] " .. cat .. " > " .. msg .. "\n"
-        if detail ~= "" then FullText = FullText .. "         -> " .. detail .. "\n" end
-    end
+    return LP:WaitForChild("PlayerGui")
 end
 
-FullText = FullText .. "\n============================================================\n"
-FullText = FullText .. "  FIN DEL DIAGNOSTICO\n"
-FullText = FullText .. "============================================================\n"
+local function nextFileName()
+    if not (isfile and writefile) then
+        return nil
+    end
+    local idx = 1
+    while isfile(FILE_PREFIX .. idx .. FILE_EXT) do
+        idx = idx + 1
+    end
+    return FILE_PREFIX .. idx .. FILE_EXT
+end
 
--- También hacer output a consola por si la GUI no carga
-pcall(function()
-    for _, line in ipairs(string.split(FullText, "\n")) do
-        if string.find(line, "%[FAIL%]") then
-            warn("[DIAG] " .. line)
-        else
-            print("[DIAG] " .. line)
+local function safeTostring(value)
+    local kind = typeof(value)
+    if kind == "Instance" then
+        return value:GetFullName()
+    end
+    if kind == "Vector3" then
+        return string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
+    end
+    if kind == "CFrame" then
+        local p = value.Position
+        return string.format("%.2f, %.2f, %.2f", p.X, p.Y, p.Z)
+    end
+    if kind == "Color3" then
+        return string.format("%.3f, %.3f, %.3f", value.R, value.G, value.B)
+    end
+    if kind == "table" then
+        local parts = {}
+        local count = 0
+        for k, v in pairs(value) do
+            count = count + 1
+            if count > 10 then
+                table.insert(parts, "...")
+                break
+            end
+            table.insert(parts, tostring(k) .. "=" .. safeTostring(v))
+        end
+        table.sort(parts)
+        return "{" .. table.concat(parts, " | ") .. "}"
+    end
+    return tostring(value)
+end
+
+local function writeLine(topic, action, payload)
+    local chunks = {
+        "[" .. os.date("%X") .. "]",
+        "[" .. Analyzer.session .. "]",
+        "[" .. topic .. "]",
+        action
+    }
+    if payload then
+        local payloadParts = {}
+        for key, value in pairs(payload) do
+            if value ~= nil and value ~= "" then
+                table.insert(payloadParts, tostring(key) .. "=" .. safeTostring(value))
+            end
+        end
+        table.sort(payloadParts)
+        if #payloadParts > 0 then
+            table.insert(chunks, table.concat(payloadParts, " | "))
         end
     end
-end)
-
--- ╔══════════════════════════════════════════════════════════════╗
--- ║  GUI ULTRA-SEGURA DE RESULTADOS (CONSTRUIDA EN MÍNIMO)     ║
--- ╚══════════════════════════════════════════════════════════════╝
--- Esta GUI se construye con el MÍNIMO de features posibles.
--- Si algo falla, usará fallbacks progresivos.
-
-local function BuildResultGUI()
-    -- Determinar padre de GUI
-    local guiParent = nil
-    pcall(function()
-        local cg = game:GetService("CoreGui")
-        local _ = cg.Name
-        guiParent = cg
-    end)
-    if not guiParent then
+    local line = table.concat(chunks, " ")
+    print(line)
+    if Analyzer.file and appendfile then
         pcall(function()
-            guiParent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
+            appendfile(Analyzer.file, line .. "\n")
         end)
     end
-    
-    if not guiParent then
-        warn("[DIAGNOSTICO] NO SE PUEDE CREAR GUI. Lee el reporte en la consola Output (F9).")
+end
+
+local function addConnection(conn)
+    table.insert(Analyzer.connections, conn)
+    return conn
+end
+
+local function rememberActivity(kind, name, details)
+    local entry = {
+        t = os.clock(),
+        kind = kind,
+        name = name,
+        details = details
+    }
+    table.insert(Analyzer.recentActivity, entry)
+    while #Analyzer.recentActivity > 20 do
+        table.remove(Analyzer.recentActivity, 1)
+    end
+end
+
+local function getRecentActivitySummary(maxAgeSeconds, maxItems)
+    local now = os.clock()
+    local items = {}
+    for i = #Analyzer.recentActivity, 1, -1 do
+        local row = Analyzer.recentActivity[i]
+        if now - row.t <= maxAgeSeconds then
+            table.insert(items, 1, string.format("%s:%s", tostring(row.kind), tostring(row.name)))
+            if #items >= maxItems then
+                break
+            end
+        end
+    end
+    return table.concat(items, " <- ")
+end
+
+local function disconnectAll()
+    for _, conn in ipairs(Analyzer.connections) do
+        pcall(function()
+            conn:Disconnect()
+        end)
+    end
+    Analyzer.connections = {}
+end
+
+local function markSeen(instance, tag)
+    local key = tostring(instance:GetDebugId()) .. "::" .. tag
+    if Analyzer.seen[key] then
+        return true
+    end
+    Analyzer.seen[key] = true
+    return false
+end
+
+local function summarizeArgs(args)
+    local parts = {}
+    for i = 1, math.min(#args, 6) do
+        table.insert(parts, "arg" .. i .. "=" .. safeTostring(args[i]))
+    end
+    if #args > 6 then
+        table.insert(parts, "more=" .. tostring(#args - 6))
+    end
+    return table.concat(parts, " | ")
+end
+
+local function isSpawnAnnouncement(text)
+    local value = string.lower(tostring(text or ""))
+    return string.find(value, " appear ")
+        or string.find(value, " appear at ")
+        or string.find(value, " aparea ")
+        or string.find(value, " aparece ")
+        or string.find(value, " aparecio ")
+        or string.find(value, " apareci")
+        or string.find(value, " monster")
+        or string.find(value, " pet")
+        or string.find(value, " mascota")
+        or string.find(value, " companion")
+        or string.find(value, " volc")
+        or string.find(value, " isla")
+        or string.find(value, " bosque")
+        or string.find(value, " tierra")
+end
+
+local function isPlayerCharacter(model)
+    return model and model:IsA("Model") and Players:GetPlayerFromCharacter(model) ~= nil
+end
+
+local function getPrimaryPart(model)
+    if not model then
+        return nil
+    end
+    return model.PrimaryPart
+        or model:FindFirstChild("HumanoidRootPart")
+        or model:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function getDistanceFromPlayer(part)
+    local char = LP.Character
+    local root = char and (char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart)
+    if not root or not part then
+        return nil
+    end
+    return (root.Position - part.Position).Magnitude
+end
+
+local function isEntityCandidate(model)
+    if not model or not model:IsA("Model") or isPlayerCharacter(model) then
+        return false
+    end
+    if model.Parent == nil then
+        return false
+    end
+
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    local controller = model:FindFirstChildOfClass("AnimationController")
+    local name = string.lower(model.Name)
+
+    if humanoid or controller then
+        return true
+    end
+    if string.find(name, "mob") or string.find(name, "monster") or string.find(name, "pet") or string.find(name, "boss") then
+        return true
+    end
+    if model:GetAttribute("OwnerUserId") ~= nil or model:GetAttribute("MonsterId") ~= nil or model:GetAttribute("NpcId") ~= nil then
+        return true
+    end
+    return false
+end
+
+local function collectEntityRows()
+    local rows = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and isEntityCandidate(obj) then
+            local part = getPrimaryPart(obj)
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            local dist = getDistanceFromPlayer(part)
+            table.insert(rows, {
+                model = obj,
+                name = obj.Name,
+                path = obj:GetFullName(),
+                dist = dist or 999999,
+                pos = part and part.Position or nil,
+                health = hum and hum.Health or nil,
+                maxHealth = hum and hum.MaxHealth or nil,
+                owner = obj:GetAttribute("OwnerUserId"),
+                monsterId = obj:GetAttribute("MonsterId"),
+                npcId = obj:GetAttribute("NpcId"),
+                level = obj:GetAttribute("Level"),
+                rarity = obj:GetAttribute("Rarity")
+            })
+        end
+    end
+
+    table.sort(rows, function(a, b)
+        return (a.dist or 999999) < (b.dist or 999999)
+    end)
+
+    local out = {}
+    for i = 1, math.min(#rows, MAX_ENTITY_ROWS) do
+        local row = rows[i]
+        out["entity" .. i] = string.format(
+            "%s | dist=%s | hp=%s/%s | pos=%s | owner=%s | monsterId=%s | npcId=%s | level=%s | rarity=%s",
+            row.name,
+            row.dist and string.format("%.1f", row.dist) or "n/a",
+            tostring(row.health),
+            tostring(row.maxHealth),
+            safeTostring(row.pos),
+            tostring(row.owner),
+            tostring(row.monsterId),
+            tostring(row.npcId),
+            tostring(row.level),
+            tostring(row.rarity)
+        )
+    end
+    out.entityCount = #rows
+    return out
+end
+
+local function collectInventoryState()
+    local payload = {
+        backpackCount = LP:FindFirstChild("Backpack") and #LP.Backpack:GetChildren() or 0,
+        equippedObject = LP:GetAttribute("EquippedObject"),
+        placeId = game.PlaceId,
+        gameId = game.GameId,
+        jobId = game.JobId
+    }
+
+    local leaderstats = LP:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, child in ipairs(leaderstats:GetChildren()) do
+            if child:IsA("IntValue") or child:IsA("NumberValue") or child:IsA("StringValue") then
+                payload["leader_" .. child.Name] = child.Value
+            end
+        end
+    end
+
+    local backpack = LP:FindFirstChild("Backpack")
+    if backpack then
+        local idx = 0
+        for _, child in ipairs(backpack:GetChildren()) do
+            if child:IsA("Tool") or child:IsA("Model") then
+                idx = idx + 1
+                payload["backpack" .. idx] = child.Name
+                if idx >= 12 then
+                    break
+                end
+            end
+        end
+    end
+
+    local char = LP.Character
+    if char then
+        local idx = 0
+        for _, child in ipairs(char:GetChildren()) do
+            if child:IsA("Tool") or child:IsA("Model") then
+                idx = idx + 1
+                payload["character" .. idx] = child.Name
+                if idx >= 8 then
+                    break
+                end
+            end
+        end
+    end
+
+    return payload
+end
+
+local function findTargetScripts()
+    local results = {}
+    local playerScripts = LP:FindFirstChild("PlayerScripts")
+    if not playerScripts then
+        return results
+    end
+
+    for _, targetName in ipairs(Analyzer.targetScripts) do
+        local found = playerScripts:FindFirstChild(targetName, true)
+        if found then
+            local payload = {
+                path = found:GetFullName(),
+                class = found.ClassName,
+                enabled = found:IsA("LocalScript") and found.Enabled or nil,
+                running = nil
+            }
+            if getsenv and found:IsA("LocalScript") then
+                local ok, env = pcall(getsenv, found)
+                if ok and type(env) == "table" then
+                    local envCount = 0
+                    for _ in pairs(env) do
+                        envCount = envCount + 1
+                    end
+                    payload.running = true
+                    payload.envKeys = envCount
+                end
+            end
+            results[targetName] = payload
+        end
+    end
+    return results
+end
+
+local function logTargetScripts()
+    local scripts = findTargetScripts()
+    for name, payload in pairs(scripts) do
+        writeLine("SCRIPT", "Found", {
+            name = name,
+            path = payload.path,
+            class = payload.class,
+            enabled = payload.enabled,
+            running = payload.running,
+            envKeys = payload.envKeys
+        })
+    end
+end
+
+local function dumpRemoteTree()
+    local roots = {
+        ReplicatedStorage:FindFirstChild("CommonLibrary"),
+        ReplicatedStorage:FindFirstChild("Commander Remotes")
+    }
+
+    for _, root in ipairs(roots) do
+        if root then
+            local events = 0
+            local funcs = 0
+            for _, obj in ipairs(root:GetDescendants()) do
+                if obj:IsA("RemoteEvent") then
+                    events = events + 1
+                    writeLine("REMOTE_TREE", "RemoteEvent", {
+                        path = obj:GetFullName()
+                    })
+                elseif obj:IsA("RemoteFunction") then
+                    funcs = funcs + 1
+                    writeLine("REMOTE_TREE", "RemoteFunction", {
+                        path = obj:GetFullName()
+                    })
+                end
+            end
+            writeLine("REMOTE_TREE", "Summary", {
+                root = root:GetFullName(),
+                remoteEvents = events,
+                remoteFunctions = funcs
+            })
+        end
+    end
+end
+
+local function hookIncomingRemotes()
+    local roots = {
+        ReplicatedStorage:FindFirstChild("CommonLibrary"),
+        ReplicatedStorage:FindFirstChild("Commander Remotes")
+    }
+
+    for _, root in ipairs(roots) do
+        if root then
+            for _, obj in ipairs(root:GetDescendants()) do
+                if obj:IsA("RemoteEvent") and not Analyzer.remotesHooked[obj] then
+                    Analyzer.remotesHooked[obj] = true
+                    addConnection(obj.OnClientEvent:Connect(function(...)
+                        if not Analyzer.active then
+                            return
+                        end
+                        local args = { ... }
+                        local argsText = summarizeArgs(args)
+                        rememberActivity("IN", obj.Name, argsText)
+                        writeLine("REMOTE_IN", "OnClientEvent", {
+                            remote = obj:GetFullName(),
+                            argc = #args,
+                            args = argsText
+                        })
+                        local lowerRemote = string.lower(obj.Name)
+                        if string.find(lowerRemote, "message") or string.find(lowerRemote, "notify") or string.find(lowerRemote, "chat") then
+                            for i = 1, #args do
+                                local arg = args[i]
+                                if typeof(arg) == "string" and isSpawnAnnouncement(arg) then
+                                    writeLine("CHAT_TRIGGER", "RemoteCandidate", {
+                                        remote = obj:GetFullName(),
+                                        text = arg,
+                                        recent = getRecentActivitySummary(6, 6)
+                                    })
+                                end
+                            end
+                        end
+                    end))
+                elseif obj:IsA("RemoteFunction") and not Analyzer.remotesHooked[obj] then
+                    Analyzer.remotesHooked[obj] = true
+                    writeLine("REMOTE_IN", "RemoteFunctionSeen", {
+                        remote = obj:GetFullName()
+                    })
+                end
+            end
+        end
+    end
+end
+
+local function installNamecallHook()
+    if Analyzer.hooksInstalled or not (hookmetamethod and getnamecallmethod) then
         return
     end
 
-    -- Limpiar GUI anterior
-    pcall(function()
-        for _, v in ipairs(guiParent:GetChildren()) do
-            if v.Name == "_DiagnosticoResultUI" then v:Destroy() end
-        end
-    end)
+    Analyzer.hooksInstalled = true
+    local old
+    old = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = { ... }
 
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "_DiagnosticoResultUI"
-    sg.ResetOnSpawn = false
-    sg.Parent = guiParent
-
-    -- Frame principal - SIN Draggable por si está depreciado
-    local main = Instance.new("Frame")
-    main.Name = "MainFrame"
-    main.Size = UDim2.new(0, 620, 0, 480)
-    main.Position = UDim2.new(0.5, -310, 0.5, -240)
-    main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-    main.BorderSizePixel = 2
-    main.BorderColor3 = Color3.fromRGB(80, 200, 255)
-    main.Active = true
-    main.Parent = sg
-
-    -- Drag manual (reemplaza .Draggable depreciado)
-    local dragging = false
-    local dragStart, startPos
-    
-    main.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+        if Analyzer.active and typeof(self) == "Instance" then
+            if method == "FireServer" or method == "InvokeServer" then
+                local fullName = self.GetFullName and self:GetFullName() or tostring(self)
+                local lower = string.lower(fullName)
+                if string.find(lower, "commonlibrary") or string.find(lower, "commander remotes") or string.find(lower, "postie") then
+                    local argsText = summarizeArgs(args)
+                    rememberActivity("OUT", self.Name, argsText)
+                    writeLine("REMOTE_OUT", method, {
+                        remote = fullName,
+                        argc = #args,
+                        args = argsText
+                    })
                 end
-            end)
-        end
-    end)
-
-    main.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    -- Barra superior
-    local topbar = Instance.new("Frame")
-    topbar.Size = UDim2.new(1, 0, 0, 32)
-    topbar.BackgroundColor3 = Color3.fromRGB(20, 60, 100)
-    topbar.BorderSizePixel = 0
-    topbar.Parent = main
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -70, 1, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "  DIAGNOSTICO V1.0 | PASS=" .. PassCount .. " | FAIL=" .. ErrorCount .. " | WARN=" .. WarnCount
-    title.TextColor3 = Color3.fromRGB(150, 240, 255)
-    title.Font = Enum.Font.Code
-    title.TextSize = 12
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = topbar
-
-    -- Color de la barra según resultados
-    if ErrorCount > 0 then
-        topbar.BackgroundColor3 = Color3.fromRGB(140, 30, 30)
-        title.TextColor3 = Color3.fromRGB(255, 200, 200)
-    elseif WarnCount > 0 then
-        topbar.BackgroundColor3 = Color3.fromRGB(120, 100, 20)
-        title.TextColor3 = Color3.fromRGB(255, 255, 200)
-    else
-        topbar.BackgroundColor3 = Color3.fromRGB(20, 100, 40)
-        title.TextColor3 = Color3.fromRGB(200, 255, 200)
-    end
-
-    -- Botón cerrar
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 32, 0, 32)
-    closeBtn.Position = UDim2.new(1, -32, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Font = Enum.Font.Code
-    closeBtn.TextSize = 14
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Parent = topbar
-    closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-
-    -- Pestañas: Todos / Solo Errores / Solo Warnings
-    local tabFrame = Instance.new("Frame")
-    tabFrame.Size = UDim2.new(1, 0, 0, 28)
-    tabFrame.Position = UDim2.new(0, 0, 0, 32)
-    tabFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
-    tabFrame.BorderSizePixel = 0
-    tabFrame.Parent = main
-
-    local currentFilter = "ALL"
-
-    local function MakeTab(text, filter, xPos, color)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 130, 0, 24)
-        btn.Position = UDim2.new(0, xPos, 0, 2)
-        btn.BackgroundColor3 = color
-        btn.Text = text
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font = Enum.Font.Code
-        btn.TextSize = 11
-        btn.BorderSizePixel = 0
-        btn.Parent = tabFrame
-        return btn, filter
-    end
-
-    local tabAll, _ = MakeTab("TODOS (" .. #DiagLog .. ")", "ALL", 4, Color3.fromRGB(50, 50, 80))
-    local tabFail, _ = MakeTab("ERRORES (" .. ErrorCount .. ")", "FAIL", 138, Color3.fromRGB(120, 30, 30))
-    local tabWarn, _ = MakeTab("AVISOS (" .. WarnCount .. ")", "WARN", 272, Color3.fromRGB(120, 100, 20))
-    local tabPass, _ = MakeTab("OK (" .. PassCount .. ")", "PASS", 406, Color3.fromRGB(20, 100, 40))
-
-    -- Scroll con resultados
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -8, 1, -108)
-    scroll.Position = UDim2.new(0, 4, 0, 62)
-    scroll.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.ScrollBarThickness = 8
-    scroll.BorderSizePixel = 1
-    scroll.BorderColor3 = Color3.fromRGB(40, 40, 60)
-    scroll.Parent = main
-
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 2)
-    listLayout.Parent = scroll
-
-    -- Función para poblar la lista
-    local function PopulateList(filter)
-        -- Limpiar items anteriores
-        for _, c in ipairs(scroll:GetChildren()) do
-            if c:IsA("Frame") then c:Destroy() end
-        end
-
-        for i, entry in ipairs(DiagLog) do
-            local status = entry[1]
-            local cat = entry[2]
-            local msg = entry[3]
-            local detail = entry[4]
-
-            -- Filtrar
-            if filter ~= "ALL" then
-                if filter == "FAIL" and status ~= "FAIL" then continue end
-                if filter == "WARN" and status ~= "WARN" then continue end
-                if filter == "PASS" and status ~= "PASS" then continue end
-            end
-
-            local row = Instance.new("Frame")
-            row.Name = "Row_" .. tostring(i)
-            row.Size = UDim2.new(1, -10, 0, 0) -- auto height
-            row.AutomaticSize = Enum.AutomaticSize.Y
-            row.BackgroundColor3 = Color3.fromRGB(14, 14, 22)
-            row.BorderSizePixel = 0
-            row.Parent = scroll
-
-            if status == "HEAD" then
-                row.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
-                local headLabel = Instance.new("TextLabel")
-                headLabel.Size = UDim2.new(1, 0, 0, 28)
-                headLabel.BackgroundTransparency = 1
-                headLabel.Text = "  " .. msg
-                headLabel.TextColor3 = Color3.fromRGB(120, 200, 255)
-                headLabel.Font = Enum.Font.Code
-                headLabel.TextSize = 13
-                headLabel.TextXAlignment = Enum.TextXAlignment.Left
-                headLabel.Parent = row
-            else
-                -- Indicador de color
-                local indicator = Instance.new("Frame")
-                indicator.Size = UDim2.new(0, 4, 1, 0)
-                indicator.BorderSizePixel = 0
-                indicator.Parent = row
-
-                if status == "PASS" then indicator.BackgroundColor3 = Color3.fromRGB(40, 200, 80)
-                elseif status == "FAIL" then indicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                elseif status == "WARN" then indicator.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-                else indicator.BackgroundColor3 = Color3.fromRGB(100, 150, 255) end
-
-                local icon = status == "PASS" and "[OK]" or status == "FAIL" and "[FAIL]" or status == "WARN" and "[!]" or "[i]"
-                
-                local contentText = icon .. " " .. cat .. " > " .. msg
-                if detail ~= "" then
-                    contentText = contentText .. "\n     -> " .. detail
+            elseif method == "SetCore" and self == StarterGui then
+                local key = tostring(args[1] or "")
+                if key == "ChatMakeSystemMessage" then
+                    local messageData = args[2]
+                    local text = type(messageData) == "table" and (messageData.Text or messageData.text) or safeTostring(messageData)
+                    writeLine("CHAT_TRIGGER", "SetCoreSystemMessage", {
+                        key = key,
+                        text = text,
+                        payload = safeTostring(messageData),
+                        recent = getRecentActivitySummary(6, 6)
+                    })
                 end
-
-                local label = Instance.new("TextLabel")
-                label.Size = UDim2.new(1, -8, 0, 0)
-                label.AutomaticSize = Enum.AutomaticSize.Y
-                label.Position = UDim2.new(0, 8, 0, 0)
-                label.BackgroundTransparency = 1
-                label.Text = contentText
-                label.TextColor3 = status == "FAIL" and Color3.fromRGB(255, 130, 130) or
-                                   status == "WARN" and Color3.fromRGB(255, 230, 130) or
-                                   status == "PASS" and Color3.fromRGB(150, 255, 150) or
-                                   Color3.fromRGB(200, 200, 200)
-                label.Font = Enum.Font.Code
-                label.TextSize = 11
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.TextYAlignment = Enum.TextYAlignment.Top
-                label.TextWrapped = true
-                label.Parent = row
+            elseif method == "DisplaySystemMessage" then
+                local text = tostring(args[1] or "")
+                writeLine("CHAT_TRIGGER", "DisplaySystemMessage", {
+                    channel = self:GetFullName(),
+                    text = text,
+                    recent = getRecentActivitySummary(6, 6)
+                })
             end
         end
-    end
 
-    tabAll.MouseButton1Click:Connect(function() PopulateList("ALL") end)
-    tabFail.MouseButton1Click:Connect(function() PopulateList("FAIL") end)
-    tabWarn.MouseButton1Click:Connect(function() PopulateList("WARN") end)
-    tabPass.MouseButton1Click:Connect(function() PopulateList("PASS") end)
-
-    -- Botones inferiores
-    local bottomFrame = Instance.new("Frame")
-    bottomFrame.Size = UDim2.new(1, 0, 0, 44)
-    bottomFrame.Position = UDim2.new(0, 0, 1, -44)
-    bottomFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
-    bottomFrame.BorderSizePixel = 0
-    bottomFrame.Parent = main
-
-    -- Botón: Guardar archivo
-    local saveBtn = Instance.new("TextButton")
-    saveBtn.Size = UDim2.new(0.48, 0, 0, 36)
-    saveBtn.Position = UDim2.new(0, 4, 0, 4)
-    saveBtn.BackgroundColor3 = Color3.fromRGB(0, 90, 180)
-    saveBtn.Text = "GUARDAR DIAGNOSTICO .TXT"
-    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    saveBtn.Font = Enum.Font.Code
-    saveBtn.TextSize = 11
-    saveBtn.BorderSizePixel = 0
-    saveBtn.Parent = bottomFrame
-
-    saveBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            if writefile then
-                writefile("Diagnostico_Resultado.txt", FullText)
-                saveBtn.Text = "GUARDADO EN WORKSPACE!"
-                saveBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            else
-                saveBtn.Text = "writefile NO DISPONIBLE"
-                saveBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
-            end
-            task.delay(3, function()
-                pcall(function()
-                    saveBtn.Text = "GUARDAR DIAGNOSTICO .TXT"
-                    saveBtn.BackgroundColor3 = Color3.fromRGB(0, 90, 180)
-                end)
-            end)
-        end)
+        return old(self, ...)
     end)
-
-    -- Botón: Copiar a portapapeles
-    local copyBtn = Instance.new("TextButton")
-    copyBtn.Size = UDim2.new(0.48, 0, 0, 36)
-    copyBtn.Position = UDim2.new(0.5, 4, 0, 4)
-    copyBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 160)
-    copyBtn.Text = "COPIAR AL PORTAPAPELES"
-    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    copyBtn.Font = Enum.Font.Code
-    copyBtn.TextSize = 11
-    copyBtn.BorderSizePixel = 0
-    copyBtn.Parent = bottomFrame
-
-    copyBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            if setclipboard then
-                setclipboard(FullText)
-                copyBtn.Text = "COPIADO!"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            elseif toclipboard then
-                toclipboard(FullText)
-                copyBtn.Text = "COPIADO!"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            else
-                copyBtn.Text = "CLIPBOARD NO DISPONIBLE"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
-            end
-            task.delay(3, function()
-                pcall(function()
-                    copyBtn.Text = "COPIAR AL PORTAPAPELES"
-                    copyBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 160)
-                end)
-            end)
-        end)
-    end)
-
-    -- Poblar lista inicial con todos
-    PopulateList("ALL")
 end
 
--- Ejecutar la GUI de resultados
-pcall(BuildResultGUI)
+local function watchChatSystems()
+    pcall(function()
+        if TextChatService.MessageReceived then
+            addConnection(TextChatService.MessageReceived:Connect(function(message)
+                local text = message and message.Text or ""
+                local payload = {
+                    text = text,
+                    prefix = message and message.PrefixText or nil,
+                    metadata = message and message.Metadata or nil,
+                    status = message and message.Status or nil,
+                    recent = getRecentActivitySummary(6, 6)
+                }
+                writeLine("CHAT", "TextChatService", payload)
+                if isSpawnAnnouncement(text) then
+                    writeLine("CHAT_TRIGGER", "SpawnAnnouncementSeen", payload)
+                end
+            end))
+        end
+    end)
 
--- Fallback: si la GUI falla, al menos el reporte está en la consola
-print("[DIAGNOSTICO] Reporte completo impreso arriba en Output (F9). Total: PASS=" .. PassCount .. " FAIL=" .. ErrorCount .. " WARN=" .. WarnCount)
+    pcall(function()
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        if channels then
+            for _, channel in ipairs(channels:GetChildren()) do
+                if channel:IsA("TextChannel") and channel.MessageReceived then
+                    addConnection(channel.MessageReceived:Connect(function(message)
+                        local text = message and message.Text or ""
+                        local payload = {
+                            channel = channel.Name,
+                            text = text,
+                            prefix = message and message.PrefixText or nil,
+                            recent = getRecentActivitySummary(6, 6)
+                        }
+                        writeLine("CHAT", "ChannelMessage", payload)
+                        if isSpawnAnnouncement(text) then
+                            writeLine("CHAT_TRIGGER", "ChannelSpawnAnnouncement", payload)
+                        end
+                    end))
+                end
+            end
+        end
+    end)
+
+    pcall(function()
+        local legacy = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if legacy then
+            local filtered = legacy:FindFirstChild("OnMessageDoneFiltering")
+            if filtered and filtered:IsA("RemoteEvent") then
+                addConnection(filtered.OnClientEvent:Connect(function(messageData)
+                    local text = ""
+                    local from = ""
+                    if type(messageData) == "table" then
+                        text = tostring(messageData.Message or messageData.message or "")
+                        from = tostring(messageData.FromSpeaker or messageData.fromSpeaker or "")
+                    else
+                        text = safeTostring(messageData)
+                    end
+                    local payload = {
+                        from = from,
+                        text = text,
+                        raw = safeTostring(messageData),
+                        recent = getRecentActivitySummary(6, 6)
+                    }
+                    writeLine("CHAT", "LegacyFiltered", payload)
+                    if isSpawnAnnouncement(text) then
+                        writeLine("CHAT_TRIGGER", "LegacySpawnAnnouncement", payload)
+                    end
+                end))
+            end
+        end
+    end)
+end
+
+local function probeRemoteFunction(path)
+    local current = ReplicatedStorage
+    for chunk in string.gmatch(path, "[^/]+") do
+        current = current and current:FindFirstChild(chunk)
+    end
+    if not current or not current:IsA("RemoteFunction") then
+        writeLine("PROBE", "Missing", { path = path })
+        return
+    end
+
+    local ok, result = pcall(function()
+        return current:InvokeServer()
+    end)
+
+    if ok then
+        writeLine("PROBE", "InvokeSuccess", {
+            path = current:GetFullName(),
+            result = safeTostring(result)
+        })
+    else
+        writeLine("PROBE", "InvokeFailed", {
+            path = current:GetFullName(),
+            error = tostring(result)
+        })
+    end
+end
+
+local function probeDataFunctions()
+    probeRemoteFunction("CommonLibrary/Tool/RemoteManager/Funcs/DataPullFunc")
+    probeRemoteFunction("CommonLibrary/Tool/RemoteManager/Funcs/GetGamePlayerFunc")
+end
+
+local function watchPlayerState()
+    local attrs = {
+        "EquippedObject",
+        "Dead",
+        "Energy",
+        "Level",
+        "Exp"
+    }
+
+    for _, attr in ipairs(attrs) do
+        pcall(function()
+            addConnection(LP:GetAttributeChangedSignal(attr):Connect(function()
+                writeLine("PLAYER", "AttributeChanged", {
+                    attribute = attr,
+                    value = LP:GetAttribute(attr)
+                })
+            end))
+        end)
+    end
+
+    local backpack = LP:FindFirstChild("Backpack")
+    if backpack then
+        addConnection(backpack.ChildAdded:Connect(function(child)
+            writeLine("INVENTORY", "BackpackAdded", {
+                child = child.Name,
+                class = child.ClassName
+            })
+        end))
+        addConnection(backpack.ChildRemoved:Connect(function(child)
+            writeLine("INVENTORY", "BackpackRemoved", {
+                child = child.Name,
+                class = child.ClassName
+            })
+        end))
+    end
+end
+
+local function watchWorkspaceEntities()
+    addConnection(Workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Model") and isEntityCandidate(obj) and not markSeen(obj, "Entity") then
+            local part = getPrimaryPart(obj)
+            writeLine("ENTITY", "Added", {
+                name = obj.Name,
+                path = obj:GetFullName(),
+                pos = part and part.Position or nil,
+                distance = getDistanceFromPlayer(part),
+                owner = obj:GetAttribute("OwnerUserId"),
+                monsterId = obj:GetAttribute("MonsterId"),
+                npcId = obj:GetAttribute("NpcId"),
+                level = obj:GetAttribute("Level")
+            })
+        end
+    end))
+
+    addConnection(Workspace.DescendantRemoving:Connect(function(obj)
+        if obj:IsA("Model") and isEntityCandidate(obj) then
+            writeLine("ENTITY", "Removing", {
+                name = obj.Name,
+                path = obj:GetFullName()
+            })
+        end
+    end))
+end
+
+local function snapshot()
+    local payload = collectInventoryState()
+    local entities = collectEntityRows()
+    for key, value in pairs(entities) do
+        payload[key] = value
+    end
+    writeLine("SNAPSHOT", "Tick", payload)
+end
+
+local function updateGui()
+    local ui = Analyzer.ui
+    if not ui.statusLabel then
+        return
+    end
+
+    local entities = collectEntityRows()
+    local inventory = collectInventoryState()
+    ui.statusLabel.Text = Analyzer.active and "Status: ACTIVE" or "Status: STOPPED"
+    ui.fileLabel.Text = "File: " .. tostring(Analyzer.file or "n/a")
+    ui.placeLabel.Text = "Place: " .. tostring(game.PlaceId) .. " | Players: " .. tostring(#Players:GetPlayers())
+    ui.inventoryLabel.Text = "Backpack: " .. tostring(inventory.backpackCount) .. " | Equipped: " .. tostring(inventory.equippedObject)
+    ui.entityLabel.Text = "Entities nearby: " .. tostring(entities.entityCount or 0)
+end
+
+local function createGui()
+    local parent = getGuiParent()
+    local old = parent:FindFirstChild("CatchAMonsterAnalyzerUI")
+    if old then
+        old:Destroy()
+    end
+
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "CatchAMonsterAnalyzerUI"
+    sg.ResetOnSpawn = false
+    sg.Parent = parent
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 340, 0, 165)
+    frame.Position = UDim2.new(1, -355, 0, 24)
+    frame.BackgroundColor3 = Color3.fromRGB(14, 18, 22)
+    frame.BorderColor3 = Color3.fromRGB(60, 170, 220)
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = sg
+
+    local function makeLabel(y)
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -16, 0, 18)
+        lbl.Position = UDim2.new(0, 8, 0, y)
+        lbl.BackgroundTransparency = 1
+        lbl.TextColor3 = Color3.fromRGB(220, 230, 240)
+        lbl.Font = Enum.Font.Code
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = frame
+        return lbl
+    end
+
+    local title = makeLabel(6)
+    title.Text = "Catch a Monster Analyzer"
+    title.TextColor3 = Color3.fromRGB(160, 230, 255)
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 22)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.Font = Enum.Font.Code
+    closeBtn.TextSize = 12
+    closeBtn.Parent = frame
+    closeBtn.MouseButton1Click:Connect(function()
+        if Analyzer.stop then
+            Analyzer.stop("GUI")
+        end
+    end)
+
+    Analyzer.ui = {
+        screenGui = sg,
+        frame = frame,
+        statusLabel = makeLabel(30),
+        fileLabel = makeLabel(50),
+        placeLabel = makeLabel(70),
+        inventoryLabel = makeLabel(90),
+        entityLabel = makeLabel(110)
+    }
+
+    local startBtn = Instance.new("TextButton")
+    startBtn.Size = UDim2.new(0, 72, 0, 24)
+    startBtn.Position = UDim2.new(0, 8, 1, -32)
+    startBtn.BackgroundColor3 = Color3.fromRGB(30, 110, 90)
+    startBtn.Text = "Restart"
+    startBtn.TextColor3 = Color3.new(1, 1, 1)
+    startBtn.Font = Enum.Font.Code
+    startBtn.TextSize = 12
+    startBtn.Parent = frame
+    startBtn.MouseButton1Click:Connect(function()
+        if Analyzer.stop then
+            Analyzer.stop("Restart")
+        end
+        task.wait(0.1)
+        if Analyzer.start then
+            Analyzer.start("GUI")
+        end
+    end)
+
+    local scanBtn = Instance.new("TextButton")
+    scanBtn.Size = UDim2.new(0, 72, 0, 24)
+    scanBtn.Position = UDim2.new(0, 86, 1, -32)
+    scanBtn.BackgroundColor3 = Color3.fromRGB(70, 90, 140)
+    scanBtn.Text = "Scan now"
+    scanBtn.TextColor3 = Color3.new(1, 1, 1)
+    scanBtn.Font = Enum.Font.Code
+    scanBtn.TextSize = 12
+    scanBtn.Parent = frame
+    scanBtn.MouseButton1Click:Connect(function()
+        snapshot()
+        logTargetScripts()
+        updateGui()
+    end)
+
+    local probeBtn = Instance.new("TextButton")
+    probeBtn.Size = UDim2.new(0, 72, 0, 24)
+    probeBtn.Position = UDim2.new(0, 164, 1, -32)
+    probeBtn.BackgroundColor3 = Color3.fromRGB(120, 90, 40)
+    probeBtn.Text = "Probe data"
+    probeBtn.TextColor3 = Color3.new(1, 1, 1)
+    probeBtn.Font = Enum.Font.Code
+    probeBtn.TextSize = 12
+    probeBtn.Parent = frame
+    probeBtn.MouseButton1Click:Connect(function()
+        probeDataFunctions()
+    end)
+
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Size = UDim2.new(0, 88, 0, 24)
+    copyBtn.Position = UDim2.new(0, 242, 1, -32)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(50, 80, 140)
+    copyBtn.Text = "Copy file"
+    copyBtn.TextColor3 = Color3.new(1, 1, 1)
+    copyBtn.Font = Enum.Font.Code
+    copyBtn.TextSize = 12
+    copyBtn.Parent = frame
+    copyBtn.MouseButton1Click:Connect(function()
+        if setclipboard and Analyzer.file then
+            pcall(function()
+                setclipboard(Analyzer.file)
+            end)
+            copyBtn.Text = "Copied"
+            task.delay(1.5, function()
+                if copyBtn.Parent then
+                    copyBtn.Text = "Copy file"
+                end
+            end)
+        end
+    end)
+
+    updateGui()
+end
+
+local function startLoops()
+    task.spawn(function()
+        while Analyzer.active do
+            if os.clock() - Analyzer.lastSnapshotAt >= SNAPSHOT_INTERVAL then
+                Analyzer.lastSnapshotAt = os.clock()
+                snapshot()
+                updateGui()
+            end
+            task.wait(0.25)
+        end
+    end)
+end
+
+function Analyzer.stop(origin)
+    if not Analyzer.active then
+        return
+    end
+    Analyzer.active = false
+    writeLine("TRACE", "Stopped", {
+        origin = origin or "unknown",
+        file = Analyzer.file
+    })
+    disconnectAll()
+    pcall(function()
+        if Analyzer.ui.screenGui then
+            Analyzer.ui.screenGui:Destroy()
+        end
+    end)
+end
+
+function Analyzer.start(origin)
+    Analyzer.active = true
+    Analyzer.session = tostring(os.time()) .. "-" .. tostring(math.floor(os.clock() * 1000) % 100000)
+    Analyzer.file = nextFileName()
+    Analyzer.seen = {}
+    Analyzer.remotesHooked = {}
+    Analyzer.recentActivity = {}
+    Analyzer.lastSnapshotAt = 0
+
+    if Analyzer.file and writefile then
+        pcall(function()
+            writefile(Analyzer.file, "[BOOT] File created | origin=" .. tostring(origin or "AutoStart") .. "\n")
+        end)
+    end
+
+    createGui()
+    dumpRemoteTree()
+    logTargetScripts()
+    hookIncomingRemotes()
+    installNamecallHook()
+    watchChatSystems()
+    watchPlayerState()
+    watchWorkspaceEntities()
+    probeDataFunctions()
+
+    writeLine("TRACE", "Started", {
+        origin = origin or "AutoStart",
+        file = Analyzer.file,
+        placeId = game.PlaceId,
+        gameId = game.GameId,
+        jobId = game.JobId,
+        player = LP and LP.Name or "n/a"
+    })
+
+    snapshot()
+    startLoops()
+end
+
+Analyzer.start("AutoStart")
