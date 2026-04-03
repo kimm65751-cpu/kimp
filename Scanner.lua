@@ -164,14 +164,18 @@ task.spawn(function()
                         -- ==========================================
                         -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
                         
-                        -- Evitar cálculo de LookAt que colapsaba la cámara
                         if FarmMode == "Arriba" then
-                            -- Se ubica arriba y copia la rotación Y del mob para estar derecho
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
+                            -- Oscilación (Yo-Yo): Pega bajando a 6 studs, sube a 16 studs para evadir
+                            -- os.clock() * 6 controla la velocidad del rebote (más rápido = más esquiva)
+                            local bounce = math.sin(os.clock() * 6) * 5 
+                            local currentY = 11 + bounce -- Fluctúa entre 6 (Abajo) y 16 (Arriba)
+                            
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, currentY, 0)
                         elseif FarmMode == "Detras" then
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
                         elseif FarmMode == "Abajo" then
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
+                            -- Subterráneo Y por la espalda (Rotación dinámica pegada)
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                         end
                         
                         -- ==========================================
@@ -243,58 +247,47 @@ BtnHeight.MouseButton1Click:Connect(function()
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
         OfsY = -8 -- 8 studs bajo tierra
-        OfsZ = 0
-        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO"
+        OfsZ = 6  -- 6 studs a la espalda
+        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
     else
         FarmMode = "Arriba"
         OfsY = 10 -- 10 studs sobre su cabeza
         OfsZ = 0
-        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA (YO-YO)"
     end
 end)
 
 -- Buscador Dinámico y Reclamador de Codigos
 BtnCodes.MouseButton1Click:Connect(function()
-    BtnCodes.Text = "⏳ Buscando remotas..."
+    BtnCodes.Text = "⏳ Validando remotas..."
     task.spawn(function()
-        local codeRemote = nil
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local lName = obj.Name:lower()
-                if lName:find("code") or lName:find("redeem") then
-                    codeRemote = obj
-                    break
-                end
-            end
-        end
+        -- RUTA EXACTA EXTRAIDA DEL CODE_ANALYZER_REPORT
+        local codeRemote = ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("CodeRedeem")
         
         if not codeRemote then
-            BtnCodes.Text = "❌ No se encontró el evento de Códigos"
+            BtnCodes.Text = "❌ No se encontró 'CodeRedeem'"
             task.wait(2)
-            BtnCodes.Text = "💎 RECLAMAR TODOS LOS CÓDIGOS"
+            BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
             return
         end
         
-        BtnCodes.Text = "⏳ Robando datos de CodesConfig..."
+        BtnCodes.Text = "⏳ Obteniendo códigos vivos..."
         local ok, conf = pcall(function() return require(ReplicatedStorage:WaitForChild("CodesConfig", 2)) end)
         
         if ok and conf and conf.Codes then
             local count = 0
-            for codeName, _ in pairs(conf.Codes) do
+            for codeName, data in pairs(conf.Codes) do
                 pcall(function()
-                    if codeRemote:IsA("RemoteEvent") then
-                        codeRemote:FireServer(codeName)
-                    else
-                        codeRemote:InvokeServer(codeName)
-                    end
+                    -- Según el reporte, CodeRedeem es un RemoteFunction
+                    codeRemote:InvokeServer(codeName)
                 end)
                 count = count + 1
-                BtnCodes.Text = "💎 Reclamando: " .. count .. " / " .. tostring(BtnCodes.Text:match("/ (%d+)") or "?")
-                task.wait(0.2)
+                BtnCodes.Text = "💎 Reclamando: [" .. codeName .. "] " .. count
+                task.wait(0.5) -- Pausa de medio segundo para no saturar 
             end
             BtnCodes.Text = "✅ " .. count .. " CÓDIGOS RECLAMADOS"
         else
-            BtnCodes.Text = "❌ Módulo CodesConfig no accesible"
+            BtnCodes.Text = "❌ No se pudieron leer los códigos"
         end
         
         task.wait(3)
