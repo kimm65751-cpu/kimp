@@ -62,7 +62,7 @@ BtnFloat.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM2 (HOVER MODE)"
+Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -155,11 +155,57 @@ BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
 BtnSpy.TextColor3 = Color3.new(1,1,1)
 BtnSpy.Font = Enum.Font.GothamBold
 BtnSpy.TextSize = 10
-BtnSpy.Text = "📡 ESCANEAR MAPA (DUMP A TXT)"
+BtnSpy.Text = "📡 INICIAR ESCANEAR CONTINUO DE MAPA"
+
+local BtnAutoTour = Instance.new("TextButton", MF)
+BtnAutoTour.Size = UDim2.new(0.9, 0, 0, 30)
+BtnAutoTour.Position = UDim2.new(0.05, 0, 0, 360)
+BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
+BtnAutoTour.TextColor3 = Color3.new(1,1,1)
+BtnAutoTour.Font = Enum.Font.GothamBold
+BtnAutoTour.TextSize = 10
+BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
+
+local LogFrame = Instance.new("Frame", SG)
+LogFrame.Size = UDim2.new(0, 300, 0, 400)
+LogFrame.Position = UDim2.new(1, -320, 0.5, -200)
+LogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+LogFrame.BorderSizePixel = 2
+LogFrame.BorderColor3 = Color3.fromRGB(120, 40, 150)
+LogFrame.Visible = false
+
+local LogTitle = Instance.new("TextLabel", LogFrame)
+LogTitle.Size = UDim2.new(1, 0, 0, 30)
+LogTitle.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
+LogTitle.Text = "📡 LOG BOT CARTÓGRAFO"
+LogTitle.TextColor3 = Color3.new(1,1,1)
+LogTitle.Font = Enum.Font.GothamBold
+
+local LogScroll = Instance.new("ScrollingFrame", LogFrame)
+LogScroll.Size = UDim2.new(1, -10, 1, -40)
+LogScroll.Position = UDim2.new(0, 5, 0, 35)
+LogScroll.BackgroundTransparency = 1
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogScroll.ScrollBarThickness = 3
+local LogLayout = Instance.new("UIListLayout", LogScroll)
+LogLayout.Padding = UDim.new(0, 3)
+
+local function AddLog(text, color)
+    local l = Instance.new("TextLabel", LogScroll)
+    l.Size = UDim2.new(1, 0, 0, 15)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = color or Color3.new(1,1,1)
+    l.TextSize = 11
+    l.Font = Enum.Font.Gotham
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Text = text
+    LogScroll.CanvasSize = UDim2.new(0, 0, 0, LogLayout.AbsoluteContentSize.Y)
+    LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
+end
 
 local PanicLabel = Instance.new("TextLabel", MF)
 PanicLabel.Size = UDim2.new(0.9, 0, 0, 15)
-PanicLabel.Position = UDim2.new(0.05, 0, 0, 360)
+PanicLabel.Position = UDim2.new(0.05, 0, 0, 400)
 PanicLabel.BackgroundTransparency = 1
 PanicLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 PanicLabel.Font = Enum.Font.GothamBold
@@ -262,15 +308,30 @@ local function SafeTravel(targetVector3, destinationName)
     end)
 end
 
-local function CreateDynamicTravelBtn(yPos, color, text, mode, vectorOrName)
+local travelList = Instance.new("UIListLayout", TScroll)
+travelList.Padding = UDim.new(0, 5)
+travelList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+travelList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function LabelTitle(text)
+    local l = Instance.new("TextLabel", TScroll)
+    l.Size = UDim2.new(1, 0, 0, 20)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = Color3.fromRGB(150, 150, 200)
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 11
+    l.Text = text
+end
+
+local function CreateDynamicTravelBtn(color, text, mode, vectorOrName)
     local btn = Instance.new("TextButton", TScroll)
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.Size = UDim2.new(0.95, 0, 0, 30)
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.new(1,1,1)
     btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 10
-    btn.Text = text
+    btn.Text = " " .. text
+    btn.TextXAlignment = Enum.TextXAlignment.Left
     
     btn.MouseButton1Click:Connect(function()
         if mode == "Vector3" then
@@ -299,57 +360,53 @@ local function CreateDynamicTravelBtn(yPos, color, text, mode, vectorOrName)
             if AutoSnipeFruit then
                 btn.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
                 btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-                btn.Text = "🍏 AUTO-RECOLECTOR: ACTIVADO"
-                StatusLabel.Text = "Status: 🍏 Cazador de Frutas Esperando Carga (Vuela por las islas...)"
+                btn.Text = " 🍏 AUTO-RECOLECTOR: ACTIVADO"
+                StatusLabel.Text = "Status: 🍏 Cazando (Vuela por las islas...)"
             else
                 btn.BackgroundColor3 = Color3.fromRGB(20, 200, 50)
                 btn.TextColor3 = Color3.new(1,1,1)
-                btn.Text = "🍏 AUTO-RECOLECTOR (SNIPER): OFF"
+                btn.Text = " 🍏 AUTO-RECOLECTOR (SNIPER): OFF"
                 StatusLabel.Text = "Status: ❌ Auto-Cazador de Frutas Apagado."
             end
         end
     end)
 end
 
--- ==============================================
--- BOTONES DE ZONAS (NOCLIP DIRECTO)
--- ==============================================
-local function LabelTitle(y, text)
-    local l = Instance.new("TextLabel", TScroll)
-    l.Size = UDim2.new(1, 0, 0, 20)
-    l.Position = UDim2.new(0, 0, 0, y)
-    l.BackgroundTransparency = 1
-    l.TextColor3 = Color3.fromRGB(150, 150, 200)
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = 11
-    l.Text = text
-end
+LabelTitle("🌍 ISLAS Y PORTALES GLOBALES")
+CreateDynamicTravelBtn(Color3.fromRGB(30,50,80), "🌀 Starter Island", "Vector3", Vector3.new(-71, -2, -299))
+CreateDynamicTravelBtn(Color3.fromRGB(80,70,30), "🏜️ Sand Island", "Vector3", Vector3.new(17, -6, -305))
+CreateDynamicTravelBtn(Color3.fromRGB(30,100,30), "🌴 Jungle Island", "Vector3", Vector3.new(-392, -2, 407))
+CreateDynamicTravelBtn(Color3.fromRGB(150,100,30), "🐫 Desert Island", "Vector3", Vector3.new(-688, -1, -287))
+CreateDynamicTravelBtn(Color3.fromRGB(150,150,200), "❄️ Snow Island", "Vector3", Vector3.new(-182, -1, -998))
+CreateDynamicTravelBtn(Color3.fromRGB(50,50,150), "⚓ Sailor Island", "Vector3", Vector3.new(182, 5, 669))
+CreateDynamicTravelBtn(Color3.fromRGB(100,30,100), "👻 Hollow Island", "Vector3", Vector3.new(-542, -1, 872))
+CreateDynamicTravelBtn(Color3.fromRGB(60,60,60), "⛩️ Shibuya Island", "Vector3", Vector3.new(1269, 13, 233))
+CreateDynamicTravelBtn(Color3.fromRGB(80,40,40), "🏙️ Shinjuku Island", "Vector3", Vector3.new(189, -1, -1643))
+CreateDynamicTravelBtn(Color3.fromRGB(100,100,30), "🏫 Academy Island", "Vector3", Vector3.new(962, -2, 1053))
+CreateDynamicTravelBtn(Color3.fromRGB(40,40,100), "🗡️ Lawless Island", "Vector3", Vector3.new(209, -4, 1673))
+CreateDynamicTravelBtn(Color3.fromRGB(10,100,100), "🧪 Portal Slime", "Vector3", Vector3.new(-982, -2, 275))
+CreateDynamicTravelBtn(Color3.fromRGB(100,20,50), "⚔️ Portal Ninja", "Vector3", Vector3.new(-1621, 10, -575))
 
-LabelTitle(5, "🌍 PORTALES E ISLAS")
-CreateDynamicTravelBtn(30, Color3.fromRGB(30,50,80), "🌀 Starter Island", "Vector3", Vector3.new(-71, -2, -299))
-CreateDynamicTravelBtn(65, Color3.fromRGB(80,70,30), "🏜️ Sand Island", "Vector3", Vector3.new(17, -6, -305))
-CreateDynamicTravelBtn(100, Color3.fromRGB(30,100,30), "🌴 Jungle Island", "Vector3", Vector3.new(-392, -2, 407))
-CreateDynamicTravelBtn(135, Color3.fromRGB(150,100,30), "🐫 Desert Island", "Vector3", Vector3.new(-688, -1, -287))
-CreateDynamicTravelBtn(170, Color3.fromRGB(150,150,200), "❄️ Snow Island", "Vector3", Vector3.new(-182, -1, -998))
-CreateDynamicTravelBtn(205, Color3.fromRGB(50,50,150), "⚓ Sailor Island", "Vector3", Vector3.new(182, 5, 669))
-CreateDynamicTravelBtn(240, Color3.fromRGB(100,30,100), "👻 Hollow Island", "Vector3", Vector3.new(-542, -1, 872))
-CreateDynamicTravelBtn(275, Color3.fromRGB(200,50,50), "👹 Boss Rush Portal", "Vector3", Vector3.new(106, 6, 840))
+LabelTitle("🔥 EVENTOS ESPECIALES Y DUNGEONS")
+CreateDynamicTravelBtn(Color3.fromRGB(200,50,50), "👹 Boss Rush Portal", "Vector3", Vector3.new(106, 6, 840))
+CreateDynamicTravelBtn(Color3.fromRGB(100,20,20), "⚖️ Portal Judgement", "Vector3", Vector3.new(-1029, -2, -989))
+CreateDynamicTravelBtn(Color3.fromRGB(150,80,20), "🗼 Infinite Tower Portal", "Vector3", Vector3.new(1276, -4, -1474))
+CreateDynamicTravelBtn(Color3.fromRGB(80,50,80), "🕳️ Dungeon Portal", "Vector3", Vector3.new(1272, 5, -897))
+CreateDynamicTravelBtn(Color3.fromRGB(250,50,50), "💀 Strongest Boss Portal", "Vector3", Vector3.new(593, -2, -1052))
 
-LabelTitle(315, "🤖 NPCs IMPORTANTES")
-CreateDynamicTravelBtn(340, Color3.fromRGB(30,80,30), "📜 Quest NPCs Starter (1,2)", "Vector3", Vector3.new(171, 16, -215))
-CreateDynamicTravelBtn(375, Color3.fromRGB(80,30,80), "👑 Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
-CreateDynamicTravelBtn(410, Color3.fromRGB(80,30,80), "🥊 Quest Haki (Nieve)", "Vector3", Vector3.new(-499, 23, -1253))
-CreateDynamicTravelBtn(445, Color3.fromRGB(80,30,80), "👑 Quest Ragna (Nieve)", "Vector3", Vector3.new(-273, -5, -1354))
+LabelTitle("🤖 MISIONES IMPORTANTES")
+CreateDynamicTravelBtn(Color3.fromRGB(30,80,30), "📜 Quest Starter (Lvl 0-249)", "Vector3", Vector3.new(171, 16, -215))
+CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "👑 Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
+CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "🥊 Quest Haki (Nieve)", "Vector3", Vector3.new(-499, 23, -1253))
+CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "👑 Quest Ragna (Nieve)", "Vector3", Vector3.new(-273, -5, -1354))
 
-LabelTitle(485, "🍎 FRUTAS Y MERCADOS")
-CreateDynamicTravelBtn(510, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
-CreateDynamicTravelBtn(545, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
-CreateDynamicTravelBtn(580, Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
+LabelTitle("🍎 FRUTAS Y MERCADOS")
+CreateDynamicTravelBtn(Color3.fromRGB(200,80,80), "💎 Vendedor (Gemas)", "FindNPC", "GemFruitDealer")
+CreateDynamicTravelBtn(Color3.fromRGB(200,80,80), "🪙 Vendedor (Monedas)", "FindNPC", "CoinFruitDealer")
+CreateDynamicTravelBtn(Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
 
-LabelTitle(620, "🚨 EMERGENCIAS")
-CreateDynamicTravelBtn(645, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
-
-
+LabelTitle("🚨 EMERGENCIAS")
+CreateDynamicTravelBtn(Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
 
 BtnTravelMenu.MouseButton1Click:Connect(function() TravelFrame.Visible = not TravelFrame.Visible end)
 TBtnClose.MouseButton1Click:Connect(function() TravelFrame.Visible = false end)
@@ -862,51 +919,163 @@ BtnSpy.MouseButton1Click:Connect(function()
             pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (MÁXIMO RENDIMIENTO) ===\n\n") end)
         end
         
-        local function ProcessEntity(obj)
-            if not ReconActive then return end
-            pcall(function()
-                local fullName = obj:GetFullName()
-                if LoggedEntities[fullName] then return end
-                
-                local n = obj.Name:lower()
-                local isPortal = n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation")
-                local isNPC = obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and (n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true))
-                
-                if isPortal then
-                    local p = "N/A"
-                    if obj:IsA("Model") and obj.PrimaryPart then p = math.floor(obj.PrimaryPart.Position.X)..","..math.floor(obj.PrimaryPart.Position.Y)..","..math.floor(obj.PrimaryPart.Position.Z)
-                    elseif obj:IsA("BasePart") then p = math.floor(obj.Position.X)..","..math.floor(obj.Position.Y)..","..math.floor(obj.Position.Z) end
-                    
-                    if p ~= "N/A" then 
-                        local txt = "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. "\n"
-                        LoggedEntities[fullName] = true
-                        print("🗺️ [RECON STREAMING] Isla/Portal Materializado: " .. obj.Name)
-                        if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
-                        elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
-                    end
-                elseif isNPC then
-                    -- Buscar nombres reales legibles para humanos si el Dev usó nombres como "QuestNPC5"
-                    local realName = obj.Name
-                    local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
-                    if prompt and prompt.ObjectText and prompt.ObjectText ~= "" then
-                        realName = realName .. " (Diálogo: '" .. prompt.ObjectText .. "')"
-                    end
-                    
-                    local p = obj.HumanoidRootPart.Position
-                    local txt = "[NPC/DEALER] -> " .. realName .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
-                    LoggedEntities[fullName] = true
-                    print("🤖 [RECON STREAMING] NPC Materializado: " .. realName)
-                    if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
-                    elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
-                end
+local TourActive = false
+local TourIslands = {
+    {Name = "Starter Island", Pos = Vector3.new(-71, -2, -299)},
+    {Name = "Sand Island", Pos = Vector3.new(17, -6, -305)},
+    {Name = "Jungle Island", Pos = Vector3.new(-392, -2, 407)},
+    {Name = "Desert Island", Pos = Vector3.new(-688, -1, -287)},
+    {Name = "Snow Island", Pos = Vector3.new(-182, -1, -998)},
+    {Name = "Sailor Island", Pos = Vector3.new(182, 5, 669)},
+    {Name = "Hollow Island", Pos = Vector3.new(-542, -1, 872)},
+    {Name = "Shibuya Island", Pos = Vector3.new(1269, 13, 233)},
+    {Name = "Shinjuku Island", Pos = Vector3.new(189, -1, -1643)},
+    {Name = "Academy Island", Pos = Vector3.new(962, -2, 1053)},
+    {Name = "Lawless Island", Pos = Vector3.new(209, -4, 1673)},
+    {Name = "Slime Island", Pos = Vector3.new(-982, -2, 275)},
+    {Name = "Ninja Island", Pos = Vector3.new(-1621, 10, -575)}
+}
+
+local function ProcessEntity(obj)
+    if not ReconActive then return end
+    pcall(function()
+        local fullName = obj:GetFullName()
+        if LoggedEntities[fullName] then return end
+        
+        local n = obj.Name:lower()
+        local isPortal = n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation")
+        local isNPC = obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and (n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true))
+        
+        if isPortal then
+            local p = "N/A"
+            if obj:IsA("Model") and obj.PrimaryPart then p = math.floor(obj.PrimaryPart.Position.X)..","..math.floor(obj.PrimaryPart.Position.Y)..","..math.floor(obj.PrimaryPart.Position.Z)
+            elseif obj:IsA("BasePart") then p = math.floor(obj.Position.X)..","..math.floor(obj.Position.Y)..","..math.floor(obj.Position.Z) end
+            
+            if p ~= "N/A" then 
+                local txt = "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. "\n"
+                LoggedEntities[fullName] = true
+                print("🗺️ [RECON STREAMING] Isla/Portal Materializado: " .. obj.Name)
+                if TourActive then AddLog("✓ " .. obj.Name, Color3.fromRGB(150, 150, 255)) end
+                if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
+                elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
+            end
+        elseif isNPC then
+            local realName = obj.Name
+            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt and prompt.ObjectText and prompt.ObjectText ~= "" then
+                realName = realName .. " ('" .. prompt.ObjectText .. "')"
+            end
+            
+            local p = obj.HumanoidRootPart.Position
+            local txt = "[NPC/DEALER] -> " .. realName .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
+            LoggedEntities[fullName] = true
+            print("🤖 [RECON STREAMING] NPC Materializado: " .. realName)
+            if TourActive then AddLog("✓ " .. realName, Color3.fromRGB(100, 255, 100)) end
+            if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
+            elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
+        end
+    end)
+end
+
+BtnAutoTour.MouseButton1Click:Connect(function()
+    TourActive = not TourActive
+    if TourActive then
+        LogFrame.Visible = true
+        BtnAutoTour.Text = "🛑 DETENER AUTO-EXPLORADOR"
+        BtnAutoTour.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+        
+        -- Verificar que ReconActive esté encendido obligatoriamente
+        if not ReconActive then
+            AddLog("⚠️ PRENDIENDO ESCÁNER AUTOMÁTICAMENTE...", Color3.fromRGB(255, 255, 50))
+            BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
+            BtnSpy.Text = "📡 RECON ACTIVO (MANEJADO POR TOUR)"
+            ReconActive = true
+            SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
+            if writefile then pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (BOT TOUR) ===\n\n") end) end
+            
+            task.spawn(function()
+                table.insert(ReconConnections, Workspace.DescendantAdded:Connect(function(descendant)
+                    if descendant:IsA("Model") then
+                        task.spawn(function() task.wait(2); ProcessEntity(descendant) end)
+                    elseif descendant:IsA("ProximityPrompt") then
+                        task.spawn(function() task.wait(0.5); local pm = descendant:FindFirstAncestorWhichIsA("Model"); if pm then ProcessEntity(pm) end end)
+                    else ProcessEntity(descendant) end
+                end))
             end)
         end
         
+        AddLog("► INICIANDO VUELO A LAS "..#TourIslands.." ISLAS...", Color3.fromRGB(50, 150, 255))
         task.spawn(function()
-            -- Un TIRON unico para leer lo que SI tienes en frente
+            for i, island in ipairs(TourIslands) do
+                if not TourActive then break end
+                AddLog("-------------------------", Color3.fromRGB(100, 100, 100))
+                AddLog("✈️ Vuelo Orbital Hacia: " .. island.Name, Color3.fromRGB(255, 200, 50))
+                
+                SafeTravel(island.Pos, "Tour: " .. island.Name)
+                
+                -- Esperar Físicamente la Llegada
+                while TourActive and IsTraveling and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") do
+                    local dist = (LP.Character.HumanoidRootPart.Position - island.Pos).Magnitude
+                    if dist < 50 then break end
+                    task.wait(0.5)
+                end
+                if not TourActive then break end
+                
+                AddLog("⬇️ " .. island.Name .. " Alcanzada. Esperando 8s a RED de Streaming...", Color3.fromRGB(100, 200, 255))
+                for tick = 1, 8 do
+                    if not TourActive then break end
+                    task.wait(1)
+                end
+                
+                if TourActive then AddLog("✅ " .. island.Name .. " Mapeada al .TXT", Color3.fromRGB(50, 255, 50)) end
+            end
+            
+            if TourActive then
+                AddLog("🎉 AUTO-TOUR COMPLETADO.", Color3.fromRGB(255, 50, 255))
+                AddLog("Revisa tu carpeta por " .. SpyFileName, Color3.new(1,1,1))
+                TourActive = false
+                BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
+                BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
+            end
+        end)
+    else
+        BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
+        BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
+        LogFrame.Visible = false
+        CancelTravel() -- Stop flight on cancel
+    end
+end)
+
+BtnSpy.MouseButton1Click:Connect(function()
+    ReconActive = not ReconActive
+    if ReconActive then
+        BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
+        BtnSpy.Text = "📡 RECON ACTIVO: ESPERANDO STREAMING..."
+        
+        SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
+        if writefile then
+            pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (MÁXIMO RENDIMIENTO) ===\n\n") end)
+        end
+        
+        task.spawn(function()
             for _, obj in pairs(Workspace:GetDescendants()) do ProcessEntity(obj) end
-            -- SIN CICLOS WHILE FALSE, USAMOS EL MOTOR DE ROBLOX PARA CAZAR EL RESTO!
-            table.insert(ReconConnections, Workspace.DescendantAdded:Connect(ProcessEntity))
+            
+            table.insert(ReconConnections, Workspace.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("Model") then
+                    task.spawn(function()
+                        task.wait(2)
+                        ProcessEntity(descendant)
+                    end)
+                elseif descendant:IsA("ProximityPrompt") then
+                    task.spawn(function()
+                        task.wait(0.5)
+                        local parentModel = descendant:FindFirstAncestorWhichIsA("Model")
+                        if parentModel then ProcessEntity(parentModel) end
+                    end)
+                else
+                    ProcessEntity(descendant)
+                end
+            end))
         end)
     else
         BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
