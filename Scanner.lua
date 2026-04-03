@@ -205,7 +205,15 @@ TBtnClose.BackgroundTransparency = 1
 TBtnClose.Text = "❌"
 TBtnClose.TextColor3 = Color3.new(1,1,1)
 
+local TScroll = Instance.new("ScrollingFrame", TravelFrame)
+TScroll.Size = UDim2.new(1, 0, 1, -30)
+TScroll.Position = UDim2.new(0, 0, 0, 30)
+TScroll.BackgroundTransparency = 1
+TScroll.ScrollBarThickness = 4
+TScroll.CanvasSize = UDim2.new(0, 0, 0, 600)
+
 local IsTraveling = false
+local AutoSnipeFruit = false
 
 local function CancelTravel()
     IsTraveling = false
@@ -255,7 +263,7 @@ local function SafeTravel(targetVector3, destinationName)
 end
 
 local function CreateDynamicTravelBtn(yPos, color, text, mode, vectorOrName)
-    local btn = Instance.new("TextButton", TravelFrame)
+    local btn = Instance.new("TextButton", TScroll)
     btn.Size = UDim2.new(0.9, 0, 0, 30)
     btn.Position = UDim2.new(0.05, 0, 0, yPos)
     btn.BackgroundColor3 = color
@@ -267,50 +275,74 @@ local function CreateDynamicTravelBtn(yPos, color, text, mode, vectorOrName)
     btn.MouseButton1Click:Connect(function()
         if mode == "Vector3" then
             SafeTravel(vectorOrName, text)
-        elseif mode == "Portal" then
-            -- MODO INYECCIÓN DE PORTAL: Vuelo Instantáneo Indetectable mediante uso del mecánico nativo
-            StatusLabel.Text = "🌀 Falsificando uso de Portal hacia: " .. vectorOrName
-            pcall(function()
-                local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents"):FindFirstChild("TeleportToPortal")
-                if Remote then Remote:FireServer(vectorOrName) end
-            end)
         elseif mode == "FindNPC" then
-            local obj = Workspace:FindFirstChild(vectorOrName, true)
-            if obj and obj:IsA("Model") and obj.PrimaryPart then
-                SafeTravel(obj.PrimaryPart.Position, text)
-            elseif obj and obj:FindFirstChild("HumanoidRootPart") then
-                SafeTravel(obj.HumanoidRootPart.Position, text)
+            local obj = nil
+            local searchName = tostring(vectorOrName):lower()
+            -- Búsqueda agresiva ignorando carpetas estructurales
+            for _, v in pairs(Workspace:GetDescendants()) do
+                if v.Name:lower():match(searchName) then
+                    if v:IsA("Model") and v.PrimaryPart then obj = v break end
+                    if v:FindFirstChild("HumanoidRootPart") then obj = v break end
+                end
+            end
+            
+            if obj then
+                local tPos = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
+                SafeTravel(tPos, text)
             else
-                StatusLabel.Text = "❌ NPC '" .. text .. "' NO EXISTE AQUÍ."
+                StatusLabel.Text = "Status: ❌ VENDEDOR NO NACE EN EL MAPA AÚN."
             end
         elseif mode == "Cancel" then
             CancelTravel()
         elseif mode == "FruitSnipe" then
-            local fruitFound = false
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if (obj.Name:lower():match("fruit") or obj.Name:lower():match("akuma")) and obj:IsA("Model") and not obj:IsDescendantOf(LP.Character) and not obj:IsDescendantOf(Workspace:FindFirstChild("ServiceNPCs") or Workspace) then
-                    local pos = obj.PrimaryPart and obj.PrimaryPart.Position or (obj:FindFirstChild("HumanoidRootPart") and obj.HumanoidRootPart.Position) or (obj:FindFirstChildWhichIsA("BasePart") and obj:FindFirstChildWhichIsA("BasePart").Position)
-                    if pos then
-                        SafeTravel(pos, "¡FRUTA CAIDA! ("..obj.Name..")")
-                        fruitFound = true
-                        break
-                    end
-                end
+            AutoSnipeFruit = not AutoSnipeFruit
+            if AutoSnipeFruit then
+                btn.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+                btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                btn.Text = "🍏 AUTO-RECOLECTOR: ACTIVADO"
+                StatusLabel.Text = "Status: 🍏 Cazador de Frutas Esperando Carga (Vuela por las islas...)"
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(20, 200, 50)
+                btn.TextColor3 = Color3.new(1,1,1)
+                btn.Text = "🍏 AUTO-RECOLECTOR (SNIPER): OFF"
+                StatusLabel.Text = "Status: ❌ Auto-Cazador de Frutas Apagado."
             end
-            if not fruitFound then StatusLabel.Text = "Status: ❌ No hay frutas silvestres ahorita." end
         end
     end)
 end
 
-CreateDynamicTravelBtn(40, Color3.fromRGB(30,50,80), "🌀 Teletransportar a Starter", "Portal", "Starter")
-CreateDynamicTravelBtn(75, Color3.fromRGB(80,70,30), "🌀 Teletransportar a Desert/Sand", "Portal", "Desert")
-CreateDynamicTravelBtn(110, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 1", "Vector3", Vector3.new(171, 16, -215))
-CreateDynamicTravelBtn(145, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 2", "Vector3", Vector3.new(-8, -3, -203))
-CreateDynamicTravelBtn(180, Color3.fromRGB(80,30,80), "👑 Volar a Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
-CreateDynamicTravelBtn(215, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
-CreateDynamicTravelBtn(250, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
-CreateDynamicTravelBtn(285, Color3.fromRGB(20,200,50), "🍏 BUSCAR FRUTA SALVAJE (SNIPER)", "FruitSnipe", "")
-CreateDynamicTravelBtn(320, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
+-- ==============================================
+-- BOTONES DE ZONAS (NOCLIP DIRECTO)
+-- ==============================================
+local sectionY = 10
+local function LabelTitle(y, text)
+    local l = Instance.new("TextLabel", TScroll)
+    l.Size = UDim2.new(1, 0, 0, 20)
+    l.Position = UDim2.new(0, 0, 0, y)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = Color3.fromRGB(150, 150, 200)
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 11
+    l.Text = text
+end
+
+LabelTitle(5, "🌍 PORTALES E ISLAS (FÍSICO)")
+CreateDynamicTravelBtn(30, Color3.fromRGB(30,50,80), "🌀 Volar a Starter Island", "Vector3", Vector3.new(-71, -2, -299))
+CreateDynamicTravelBtn(65, Color3.fromRGB(80,70,30), "🏜️ Volar a Isla de Arena", "Vector3", Vector3.new(17, -6, -305))
+
+LabelTitle(105, "🤖 NPCs IMPORTANTES")
+CreateDynamicTravelBtn(130, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 1", "Vector3", Vector3.new(171, 16, -215))
+CreateDynamicTravelBtn(165, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 2", "Vector3", Vector3.new(-8, -3, -203))
+CreateDynamicTravelBtn(200, Color3.fromRGB(80,30,80), "👑 Volar a Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
+
+LabelTitle(240, "🍎 FRUTAS Y MERCADO")
+CreateDynamicTravelBtn(265, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
+CreateDynamicTravelBtn(300, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
+CreateDynamicTravelBtn(335, Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
+
+LabelTitle(375, "🚨 EMERGENCIAS")
+CreateDynamicTravelBtn(400, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
+
 
 
 BtnTravelMenu.MouseButton1Click:Connect(function() TravelFrame.Visible = not TravelFrame.Visible end)
@@ -806,71 +838,75 @@ BtnBoss.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ==============================================
+-- OMNI-RECON : AUTO-DUMPER CONTINUO
+-- ==============================================
+local ReconActive = false
+local LoggedEntities = {}
+
 BtnSpy.MouseButton1Click:Connect(function()
-    BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 150, 20)
-    BtnSpy.Text = "⏳ ANALIZANDO MUNDO..."
-    task.wait(0.1)
-    
-    local Dump = "=== [ OMNI-RECON: DUMP DE COORDENADAS Y SISTEMAS ] ===\n\n"
-    local RS = game:GetService("ReplicatedStorage")
-    local WS = game:GetService("Workspace")
-    
-    -- 1. BUSCAR PORTALES
-    Dump = Dump .. "--- [ PORTALES E ISLAS ] ---\n"
-    for _, obj in pairs(WS:GetDescendants()) do
-        local n = obj.Name:lower()
-        if n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation") then
-            local p = "N/A"
-            if obj:IsA("Model") and obj.PrimaryPart then p = tostring(math.floor(obj.PrimaryPart.Position.X))..","..tostring(math.floor(obj.PrimaryPart.Position.Y))..","..tostring(math.floor(obj.PrimaryPart.Position.Z))
-            elseif obj:IsA("BasePart") then p = tostring(math.floor(obj.Position.X))..","..tostring(math.floor(obj.Position.Y))..","..tostring(math.floor(obj.Position.Z)) end
-            if p ~= "N/A" then Dump = Dump .. "-> " .. obj.Name .. " | Pos: " .. p .. " | Ruta: " .. obj:GetFullName() .. "\n" end
+    ReconActive = not ReconActive
+    if ReconActive then
+        BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
+        BtnSpy.Text = "📡 RECON ACTIVO: BUSCANDO NUEVAS ZONAS..."
+        
+        SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
+        if writefile then
+            pcall(function() writefile(SpyFileName, "=== BITÁCORA EN VIVO DE EXPLORACIÓN ===\n\n") end)
         end
-    end
-    
-    -- 2. BUSCAR NPCs (FRUTAS/QUESTS/VENDEDORES)
-    Dump = Dump .. "\n--- [ NPCs / DEALERS / QUESTS ] ---\n"
-    for _, obj in pairs(WS:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name then
-            local n = obj.Name:lower()
-            -- Filtra NPCs comerciales o importantes, ignora mobs normales
-            if n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or n:match("seller") or obj:FindFirstChild("ProximityPrompt", true) then
-                local p = obj.HumanoidRootPart.Position
-                Dump = Dump .. "-> " .. obj.Name .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
+        
+        task.spawn(function()
+            while ReconActive do
+                local newStuff = ""
+                
+                -- Escaneamos Portales/Islas
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    local fullName = obj:GetFullName()
+                    if not LoggedEntities[fullName] then
+                        local n = obj.Name:lower()
+                        if n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation") then
+                            local p = "N/A"
+                            if obj:IsA("Model") and obj.PrimaryPart then p = tostring(math.floor(obj.PrimaryPart.Position.X))..","..tostring(math.floor(obj.PrimaryPart.Position.Y))..","..tostring(math.floor(obj.PrimaryPart.Position.Z))
+                            elseif obj:IsA("BasePart") then p = tostring(math.floor(obj.Position.X))..","..tostring(math.floor(obj.Position.Y))..","..tostring(math.floor(obj.Position.Z)) end
+                            
+                            if p ~= "N/A" then 
+                                newStuff = newStuff .. "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. " | Ruta: " .. fullName .. "\n"
+                                LoggedEntities[fullName] = true
+                                print("🗺️ [RECON] Nueva Zona Descubierta: " .. obj.Name)
+                            end
+                        end
+                    end
+                end
+                
+                -- Escaneamos NPCs/Quests/Shops
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    local fullName = obj:GetFullName()
+                    if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and not LoggedEntities[fullName] then
+                        local n = obj.Name:lower()
+                        if n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true) then
+                            local p = obj.HumanoidRootPart.Position
+                            newStuff = newStuff .. "[NPC/DEALER] -> " .. obj.Name .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. " | Ruta: " .. fullName .. "\n"
+                            LoggedEntities[fullName] = true
+                            print("🤖 [RECON] Nuevo NPC Descubierto: " .. obj.Name)
+                        end
+                    end
+                end
+                
+                if newStuff ~= "" and appendfile then
+                    pcall(function() appendfile(SpyFileName, newStuff) end)
+                elseif newStuff ~= "" and writefile then
+                    local old = ""
+                    pcall(function() old = readfile(SpyFileName) end)
+                    pcall(function() writefile(SpyFileName, old .. newStuff) end)
+                end
+                
+                task.wait(2) -- Verificar cada 2 segundos a medida que vuelas por el mundo
             end
-        end
-    end
-    
-    -- 3. BUSCAR FRUTAS DROPEADAS O SPANWERS
-    Dump = Dump .. "\n--- [ FRUTAS EN MAPA (ACTUAL) ] ---\n"
-    local fruitCount = 0
-    for _, obj in pairs(WS:GetDescendants()) do
-        local n = obj.Name:lower()
-        if (n:match("fruit") or n:match("akuma")) and obj:IsA("Model") then
-             Dump = Dump .. "-> FRUTA ENCONTRADA: " .. obj.Name .. " | Ruta: " .. obj:GetFullName() .. "\n"
-             fruitCount = fruitCount + 1
-        end
-    end
-    if fruitCount == 0 then Dump = Dump .. "No hay frutas caídas en este servidor actualmente.\n" end
-    
-    -- 4. VOLCADO DE MÓDULOS DE CONFIGURACIÓN DE FRUTAS/ISLAS
-    Dump = Dump .. "\n--- [ MÓDULOS DEL SERVIDOR (FRUTAS Y PORTALES) ] ---\n"
-    for _, obj in pairs(RS:GetDescendants()) do
-        if obj:IsA("ModuleScript") then
-            local n = obj.Name:lower()
-            if n:match("fruit") or n:match("portal") or n:match("spawn") or n:match("island") or n:match("npc") or n:match("quest") then
-                Dump = Dump .. "-> Script: " .. obj.Name .. " | Ruta: " .. obj:GetFullName() .. "\n"
-            end
-        end
-    end
-    
-    SpyFileName = "OmniRecon_MapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-    if writefile then
-        pcall(function() writefile(SpyFileName, Dump) end)
-        BtnSpy.Text = "✅ ¡DUMPEO CREADO! (" .. SpyFileName .. ")"
+        end)
     else
-        BtnSpy.Text = "❌ ERROR: TU EJECUTOR NO SOPORTA WRITEFILE"
+        BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
+        BtnSpy.Text = "📡 INICIAR ESCANEAR CONTINUO DE MAPA"
     end
-    BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
 end)
 
 -- Sistema de interaccion Slider
@@ -949,10 +985,12 @@ task.spawn(function()
             
             -- Buscar frutas frescas en Workspace MUNDIAL
             for _, obj in pairs(Workspace:GetDescendants()) do
-                if (obj.Name:lower():match("fruit") or obj.Name:lower():match("akuma")) and obj:IsA("Model") and not obj:IsDescendantOf(LP.Character) then
-                    -- Nos aseguramos que no sea la fruta que sostiene el vendedor en la mano (Dealer)
-                    if not obj:IsDescendantOf(Workspace:FindFirstChild("ServiceNPCs") or Workspace) or not obj.Parent.Name:match("Dealer") then
-                        local pPart = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
+                local n = obj.Name:lower()
+                if (n:match("fruit") or n:match("akuma")) and not obj:IsDescendantOf(LP.Character) then
+                    -- Nos aseguramos que no sea la fruta que sostiene el vendedor ni servicios raros
+                    if not obj.Parent.Name:lower():match("dealer") and not obj.Parent.Name:lower():match("servicenpc") then
+                        -- Filtramos Modelos VAMP, Herramientas, etc...
+                        local pPart = obj:IsA("Model") and obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or (obj:IsA("BasePart") and obj) or obj:FindFirstChild("HumanoidRootPart")
                         if pPart then
                             -- Crear ESP si no está etiquetada
                             local exists = false
@@ -979,6 +1017,12 @@ task.spawn(function()
                                 
                                 -- Alerta por Chat para el Bot!
                                 print("¡ALERTA GLOBAL! EN LA ISLA ACABA DE CAER: ", obj.Name)
+                            end
+                            
+                            -- AUTO-SNIPER DISPARADOR
+                            if AutoSnipeFruit and not IsTraveling then
+                                print("🍏 [AUTO-SNIPE FRUIT] Robando Controles para recoger: " .. obj.Name)
+                                SafeTravel(pPart.Position, "¡FRUTA RECIÉN CARGADA! ("..obj.Name..")")
                             end
                         end
                     end
