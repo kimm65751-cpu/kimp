@@ -20,9 +20,12 @@ local LP = Players.LocalPlayer
 
 local FILE_PREFIX = "CatchAMonster_Analyzer_"
 local FILE_EXT = ".txt"
-local SNAPSHOT_INTERVAL = 2
-local MAX_ENTITY_ROWS = 12
-local MAX_OBJECT_ROWS = 12
+local SNAPSHOT_INTERVAL = 5
+local MAX_ENTITY_ROWS = 10
+local MAX_OBJECT_ROWS = 10
+local BUFFER_MAX_LINES = 40
+local BUFFER_FLUSH_INTERVAL = 1
+local PRINT_TO_CONSOLE = false
 
 local INTEREST_KEYWORDS = {
     "pet",
@@ -69,6 +72,37 @@ local NOISE_MODEL_NAMES = {
     shower = true
 }
 
+local NOISE_PATH_KEYWORDS = {
+    "gpartcachefolder",
+    "workspace.camera"
+}
+
+local INTEREST_INPUT_KEYS = {
+    e = true,
+    f = true,
+    q = true,
+    r = true,
+    one = true,
+    two = true,
+    three = true
+}
+
+local IMPORTANT_MESSAGE_KINDS = {
+    AreaInitComplete = true,
+    ClientAreaShowerBeforeInitedResponse = true,
+    FightLogicPlayerCreate = true,
+    FightLogicPlayerDestroy = true,
+    FightPlayerDie = true,
+    FightSkillEnd = true,
+    FightSkillStart = true,
+    ObjectPointSync = true,
+    ObjectPointSyncAdd = true,
+    ObjectPointSyncRemove = true,
+    PetHealthSync = true,
+    PetHurtInfo = true,
+    ServerSetPlayerCFrame = true
+}
+
 local VALUE_KEYWORDS = {
     hp = true,
     health = true,
@@ -106,6 +140,8 @@ local Analyzer = {
     trackedValues = {},
     trackedGui = {},
     modelSyncDefs = {},
+    logBuffer = {},
+    lastFlushAt = 0,
     targetScripts = {
         "ClientStarter",
         "PlayerAttack",
@@ -232,6 +268,32 @@ local function summarizeAttributes(instance, limit)
     return table.concat(parts, " | ")
 end
 
+local function flushBuffer(force)
+    if not Analyzer.file or not appendfile then
+        Analyzer.logBuffer = {}
+        Analyzer.lastFlushAt = os.clock()
+        return
+    end
+
+    local now = os.clock()
+    if not force and #Analyzer.logBuffer < BUFFER_MAX_LINES and (now - Analyzer.lastFlushAt) < BUFFER_FLUSH_INTERVAL then
+        return
+    end
+
+    if #Analyzer.logBuffer == 0 then
+        Analyzer.lastFlushAt = now
+        return
+    end
+
+    local blob = table.concat(Analyzer.logBuffer)
+    Analyzer.logBuffer = {}
+    Analyzer.lastFlushAt = now
+
+    pcall(function()
+        appendfile(Analyzer.file, blob)
+    end)
+end
+
 local function writeLine(topic, action, payload)
     local chunks = {
         "[" .. os.date("%X") .. "]",
@@ -252,12 +314,11 @@ local function writeLine(topic, action, payload)
         end
     end
     local line = table.concat(chunks, " ")
-    print(line)
-    if Analyzer.file and appendfile then
-        pcall(function()
-            appendfile(Analyzer.file, line .. "\n")
-        end)
+    if PRINT_TO_CONSOLE then
+        print(line)
     end
+    table.insert(Analyzer.logBuffer, line .. "\n")
+    flushBuffer(false)
 end
 
 local function addConnection(conn)
@@ -377,6 +438,53 @@ local function isNoiseModel(model)
     return false
 end
 
+local function isNoisePathString(path)
+    local lower = lowerOrEmpty(path)
+    for _, keyword in ipairs(NOISE_PATH_KEYWORDS) do
+        if string.find(lower, keyword, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function isNoiseInstance(instance)
+    if not instance then
+        return false
+    end
+    local okAttr, gpcTag = pcall(function()
+        return instance:GetAttribute("GPCTag")
+    end)
+    if okAttr and gpcTag ~= nil then
+        return true
+    end
+    local ok, fullName = pcall(function()
+        return instance:GetFullName()
+    end)
+    if not ok then
+        return false
+    end
+    return isNoisePathString(fullName)
+end
+
+local function shouldLogInput(input)
+    if not input then
+        return false, nil
+    end
+
+    local inputType = input.UserInputType
+    if inputType == Enum.UserInputType.MouseButton1 or inputType == Enum.UserInputType.MouseButton2 then
+        return true, nil
+    end
+
+    local keyName = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil
+    if not keyName then
+        return false, nil
+    end
+
+    return INTEREST_INPUT_KEYS[string.lower(keyName)] == true, keyName
+end
+
 local function getRootInterestingInstance(instance)
     local current = instance
     local candidate = instance
@@ -469,6 +577,9 @@ local function isWorldObjectCandidate(instance)
     if not instance or instance.Parent == nil then
         return false
     end
+    if isNoiseInstance(instance) then
+        return false
+    end
     if instance:IsA("Model") and isNoiseModel(instance) then
         return false
     end
@@ -486,6 +597,9 @@ local function isEntityCandidate(model)
         return false
     end
     if model.Parent == nil then
+        return false
+    end
+    if isNoiseInstance(model) then
         return false
     end
     if isNoiseModel(model) then
@@ -508,9 +622,44 @@ local function isEntityCandidate(model)
     return false
 end
 
+local function getInterestingWorkspaceRoots()
+    local roots = {}
+
+    local function push(root)
+        if root then
+            table.insert(roots, root)
+        end
+    end
+
+    push(Workspace:FindFirstChild("ClientMonsters"))
+    push(Workspace:FindFirstChild("ClientPets"))
+    push(Workspace:FindFirstChild("Monsters"))
+    push(Workspace:FindFirstChild("Pets"))
+    push(Workspace:FindFirstChild("AreaPickUp"))
+    push(Workspace:FindFirstChild("FightObjectPoint"))
+
+    local area = Workspace:FindFirstChild("Area")
+    local root = area and area:FindFirstChild("Root")
+    push(root and root:FindFirstChild("ServerZone"))
+    push(root and root:FindFirstChild("Area"))
+
+    return roots
+end
+
+local function iterInterestingDescendants()
+    local rows = {}
+    for _, root in ipairs(getInterestingWorkspaceRoots()) do
+        table.insert(rows, root)
+        for _, desc in ipairs(root:GetDescendants()) do
+            table.insert(rows, desc)
+        end
+    end
+    return rows
+end
+
 local function collectEntityRows()
     local rows = {}
-    for _, obj in ipairs(Workspace:GetDescendants()) do
+    for _, obj in ipairs(iterInterestingDescendants()) do
         if obj:IsA("Model") and isEntityCandidate(obj) then
             local part = getPrimaryPart(obj)
             local hum = obj:FindFirstChildOfClass("Humanoid")
@@ -559,7 +708,7 @@ end
 
 local function collectObjectRows()
     local rows = {}
-    for _, obj in ipairs(Workspace:GetDescendants()) do
+    for _, obj in ipairs(iterInterestingDescendants()) do
         if (obj:IsA("Model") or obj:IsA("BasePart")) and isWorldObjectCandidate(obj) then
             local root = getRootInterestingInstance(obj)
             if root == obj then
@@ -720,35 +869,73 @@ local function logTargetScripts()
     end
 end
 
-local function logRelevantAssets()
-    local roots = {
-        LP:FindFirstChild("PlayerScripts"),
-        ReplicatedStorage,
-        Workspace
-    }
+local function getRelevantAssetRoots()
+    local roots = {}
 
-    for _, root in ipairs(roots) do
+    local function push(root)
         if root then
-            local emitted = 0
-            for _, obj in ipairs(root:GetDescendants()) do
-                if obj:IsA("ModuleScript") or obj:IsA("LocalScript") or obj:IsA("Folder") or obj:IsA("Model") then
-                    local hit = containsKeyword(obj:GetFullName())
-                    if hit then
-                        emitted = emitted + 1
-                        writeLine("ASSET", "Relevant", {
-                            root = root.Name,
-                            class = obj.ClassName,
-                            name = obj.Name,
-                            path = obj:GetFullName()
-                        })
-                        if emitted >= 150 then
-                            writeLine("ASSET", "Truncated", {
-                                root = root.Name,
-                                emitted = emitted
-                            })
-                            break
-                        end
-                    end
+            table.insert(roots, root)
+        end
+    end
+
+    local playerScripts = LP:FindFirstChild("PlayerScripts")
+    local clientLogicPlayer = playerScripts and playerScripts:FindFirstChild("ClientLogic")
+    push(playerScripts and playerScripts:FindFirstChild("PlayerAttack"))
+    push(playerScripts and playerScripts:FindFirstChild("HookButtonClick"))
+    push(playerScripts and playerScripts:FindFirstChild("ClientStarter"))
+    push(clientLogicPlayer and clientLogicPlayer:FindFirstChild("Fight"))
+    push(clientLogicPlayer and clientLogicPlayer:FindFirstChild("Monster"))
+    push(clientLogicPlayer and clientLogicPlayer:FindFirstChild("Pet"))
+    push(clientLogicPlayer and clientLogicPlayer:FindFirstChild("Egg"))
+    push(clientLogicPlayer and clientLogicPlayer:FindFirstChild("BossRoom"))
+
+    local clientLogicShared = ReplicatedStorage:FindFirstChild("ClientLogic")
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Monster"))
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Pet"))
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Egg"))
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Area"))
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Item"))
+    push(clientLogicShared and clientLogicShared:FindFirstChild("Auto"))
+
+    local commonLibrary = ReplicatedStorage:FindFirstChild("CommonLibrary")
+    local tool = commonLibrary and commonLibrary:FindFirstChild("Tool")
+    push(tool and tool:FindFirstChild("RemoteManager"))
+    push(tool and tool:FindFirstChild("Postie"))
+
+    push(Workspace:FindFirstChild("AreaPickUp"))
+    push(Workspace:FindFirstChild("PickUpRewards"))
+    push(Workspace:FindFirstChild("Monsters"))
+    push(Workspace:FindFirstChild("Pets"))
+    push(Workspace:FindFirstChild("ClientMonsters"))
+    push(Workspace:FindFirstChild("ClientPets"))
+    push(Workspace:FindFirstChild("FightObjectPoint"))
+
+    return roots
+end
+
+local function logRelevantAssets()
+    for _, root in ipairs(getRelevantAssetRoots()) do
+        local emitted = 0
+        local nodes = { root }
+        for _, obj in ipairs(root:GetDescendants()) do
+            table.insert(nodes, obj)
+        end
+
+        for _, obj in ipairs(nodes) do
+            if obj:IsA("ModuleScript") or obj:IsA("LocalScript") or obj:IsA("Folder") or obj:IsA("Model") then
+                emitted = emitted + 1
+                writeLine("ASSET", "Relevant", {
+                    root = root:GetFullName(),
+                    class = obj.ClassName,
+                    name = obj.Name,
+                    path = obj:GetFullName()
+                })
+                if emitted >= 60 then
+                    writeLine("ASSET", "Truncated", {
+                        root = root:GetFullName(),
+                        emitted = emitted
+                    })
+                    break
                 end
             end
         end
@@ -948,6 +1135,19 @@ local function watchGuiObject(guiObject)
     if not guiObject or Analyzer.trackedGui[guiObject] then
         return
     end
+
+    local initialText
+    if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") or guiObject:IsA("TextBox") then
+        initialText = guiObject.Text
+    else
+        initialText = guiObject.Name
+    end
+
+    local interesting = select(1, containsKeyword(initialText)) or select(1, containsKeyword(guiObject:GetFullName()))
+    if not interesting then
+        return
+    end
+
     Analyzer.trackedGui[guiObject] = true
 
     local function emit(action)
@@ -957,19 +1157,14 @@ local function watchGuiObject(guiObject)
         else
             text = guiObject.Name
         end
-        local interesting = select(1, containsKeyword(text)) or select(1, containsKeyword(guiObject:GetFullName()))
-        if interesting then
-            writeLine("GUI_TRACE", action, {
-                class = guiObject.ClassName,
-                name = guiObject.Name,
-                path = guiObject:GetFullName(),
-                text = text,
-                visible = guiObject:IsA("GuiObject") and guiObject.Visible or nil
-            })
-        end
+        writeLine("GUI_TRACE", action, {
+            class = guiObject.ClassName,
+            name = guiObject.Name,
+            path = guiObject:GetFullName(),
+            text = text,
+            visible = guiObject:IsA("GuiObject") and guiObject.Visible or nil
+        })
     end
-
-    emit("Observed")
 
     if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") or guiObject:IsA("TextBox") then
         addConnection(guiObject:GetPropertyChangedSignal("Text"):Connect(function()
@@ -999,15 +1194,18 @@ local function hookIncomingRemotes()
                             return
                         end
                         local args = { ... }
+                        local remoteFullName = obj:GetFullName()
+                        local remoteName = obj.Name
                         local argsText = summarizeArgs(args)
-                        rememberActivity("IN", obj.Name, argsText)
-                        writeLine("REMOTE_IN", "OnClientEvent", {
-                            remote = obj:GetFullName(),
-                            argc = #args,
-                            args = argsText
-                        })
 
-                        if obj.Name == "ModelSync" and type(args[2]) == "table" then
+                        if remoteName == "Clock" then
+                            rememberActivity("IN", remoteName, argsText)
+                            return
+                        end
+
+                        rememberActivity("IN", remoteName, argsText)
+
+                        if remoteName == "ModelSync" and type(args[2]) == "table" then
                             local syncId = tostring(args[1])
                             Analyzer.modelSyncDefs[syncId] = {
                                 ModelName = args[2].ModelName,
@@ -1022,41 +1220,66 @@ local function hookIncomingRemotes()
                                 nodeCount = args[2].NodeCount,
                                 sysTag = args[2].SysTag
                             })
-                        elseif obj.Name == "Message" and typeof(args[1]) == "string" then
+                        elseif remoteName == "Message" and typeof(args[1]) == "string" then
                             local messageKind = tostring(args[1])
                             if messageKind == "StreamingAddData" or messageKind == "StreamingUpdateData" or messageKind == "StreamingRemoveData" then
                                 local syncId = args[2] ~= nil and tostring(args[2]) or nil
                                 local meta = syncId and Analyzer.modelSyncDefs[syncId] or nil
+                                local updateKind = args[3] ~= nil and tostring(args[3]) or nil
+
+                                if messageKind == "StreamingUpdateData" and updateKind == "MovePath" then
+                                    return
+                                end
+
                                 writeLine("SYNC_EVENT", messageKind, {
                                     syncId = syncId,
                                     modelName = meta and meta.ModelName or nil,
                                     modelSyncName = meta and meta.ModelSyncName or nil,
                                     sysTag = meta and meta.SysTag or nil,
-                                    updateKind = args[3],
+                                    updateKind = updateKind,
                                     payload = args[4]
                                 })
-                            elseif messageKind == "AreaInitComplete" or messageKind == "ServerSetPlayerCFrame" or messageKind == "ClientAreaShowerBeforeInitedResponse" then
-                                writeLine("AREA", messageKind, {
-                                    arg2 = args[2],
-                                    arg3 = args[3],
-                                    arg4 = args[4]
+                                return
+                            elseif IMPORTANT_MESSAGE_KINDS[messageKind] then
+                                writeLine("REMOTE_IN", "OnClientEvent", {
+                                    remote = remoteFullName,
+                                    argc = #args,
+                                    args = argsText
                                 })
+                                return
+                            else
+                                local interestingMessage = select(1, containsKeyword(messageKind)) or select(1, containsKeyword(argsText))
+                                if interestingMessage then
+                                    writeLine("REMOTE_IN", "OnClientEvent", {
+                                        remote = remoteFullName,
+                                        argc = #args,
+                                        args = argsText
+                                    })
+                                end
+                                return
                             end
-                        elseif obj.Name == "NotificationEvent" and args[1] == "ServerMessage" then
+                        elseif remoteName == "NotificationEvent" and args[1] == "ServerMessage" then
                             writeLine("ANNOUNCE", "ServerMessage", {
                                 subtype = args[2],
                                 template = args[3],
                                 payload = args[4]
                             })
+                            return
+                        else
+                            writeLine("REMOTE_IN", "OnClientEvent", {
+                                remote = remoteFullName,
+                                argc = #args,
+                                args = argsText
+                            })
                         end
 
-                        local lowerRemote = string.lower(obj.Name)
+                        local lowerRemote = string.lower(remoteName)
                         if string.find(lowerRemote, "message") or string.find(lowerRemote, "notify") or string.find(lowerRemote, "chat") then
                             for i = 1, #args do
                                 local arg = args[i]
                                 if typeof(arg) == "string" and isSpawnAnnouncement(arg) then
                                     writeLine("CHAT_TRIGGER", "RemoteCandidate", {
-                                        remote = obj:GetFullName(),
+                                        remote = remoteFullName,
                                         text = arg,
                                         recent = getRecentActivitySummary(6, 6)
                                     })
@@ -1314,9 +1537,19 @@ local function watchGuiState()
         return
     end
 
-    for _, obj in ipairs(playerGui:GetDescendants()) do
-        if obj:IsA("GuiObject") then
-            watchGuiObject(obj)
+    local guiRoots = {
+        playerGui:FindFirstChild("MainGui"),
+        playerGui:FindFirstChild("Client")
+    }
+
+    for _, root in ipairs(guiRoots) do
+        if root then
+            watchGuiObject(root)
+            for _, obj in ipairs(root:GetDescendants()) do
+                if obj:IsA("GuiObject") then
+                    watchGuiObject(obj)
+                end
+            end
         end
     end
 
@@ -1363,8 +1596,12 @@ local function watchInputState()
         if processed then
             return
         end
+        local shouldLog, keyName = shouldLogInput(input)
+        if not shouldLog then
+            return
+        end
         writeLine("INPUT", "Began", {
-            key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil,
+            key = keyName,
             userInputType = tostring(input.UserInputType),
             recent = getRecentActivitySummary(4, 6)
         })
@@ -1374,8 +1611,12 @@ local function watchInputState()
         if processed then
             return
         end
+        local shouldLog, keyName = shouldLogInput(input)
+        if not shouldLog then
+            return
+        end
         writeLine("INPUT", "Ended", {
-            key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil,
+            key = keyName,
             userInputType = tostring(input.UserInputType),
             recent = getRecentActivitySummary(4, 6)
         })
@@ -1384,6 +1625,9 @@ end
 
 local function watchWorkspaceEntities()
     addConnection(Workspace.DescendantAdded:Connect(function(obj)
+        if isNoiseInstance(obj) then
+            return
+        end
         if obj:IsA("Model") and isEntityCandidate(obj) and not markSeen(obj, "Entity") then
             local part = getPrimaryPart(obj)
             writeLine("ENTITY", "Added", {
@@ -1409,23 +1653,31 @@ local function watchWorkspaceEntities()
     end))
 
     addConnection(Workspace.DescendantRemoving:Connect(function(obj)
-        if obj:IsA("Model") and isEntityCandidate(obj) then
+        if isNoiseInstance(obj) then
+            return
+        end
+        if obj:IsA("Model") and isEntityCandidate(obj) and not markSeen(obj, "EntityRemoving") then
             writeLine("ENTITY", "Removing", {
                 name = obj.Name,
                 path = obj:GetFullName()
             })
         elseif isWorldObjectCandidate(obj) then
-            logWorldObject(obj, "Removing")
+            local root = getRootInterestingInstance(obj)
+            if root and not markSeen(root, "WorldObjectRemoving") then
+                logWorldObject(obj, "Removing")
+            end
         end
     end))
 
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and isEntityCandidate(obj) then
-            watchModelSignals(obj, "Initial")
-        elseif obj:IsA("ProximityPrompt") then
-            watchPrompt(obj)
-        elseif (obj:IsA("Model") or obj:IsA("BasePart")) and isWorldObjectCandidate(obj) and not markSeen(getRootInterestingInstance(obj), "InitialWorldObject") then
-            logWorldObject(obj, "Initial")
+    for _, obj in ipairs(iterInterestingDescendants()) do
+        if not isNoiseInstance(obj) then
+            if obj:IsA("Model") and isEntityCandidate(obj) then
+                watchModelSignals(obj, "Initial")
+            elseif obj:IsA("ProximityPrompt") then
+                watchPrompt(obj)
+            elseif (obj:IsA("Model") or obj:IsA("BasePart")) and isWorldObjectCandidate(obj) and not markSeen(getRootInterestingInstance(obj), "InitialWorldObject") then
+                logWorldObject(obj, "Initial")
+            end
         end
     end
 end
@@ -1607,8 +1859,10 @@ local function startLoops()
                 snapshot()
                 updateGui()
             end
-            task.wait(0.25)
+            flushBuffer(false)
+            task.wait(0.5)
         end
+        flushBuffer(true)
     end)
 end
 
@@ -1621,6 +1875,7 @@ function Analyzer.stop(origin)
         origin = origin or "unknown",
         file = Analyzer.file
     })
+    flushBuffer(true)
     disconnectAll()
     pcall(function()
         if Analyzer.ui.screenGui then
@@ -1642,6 +1897,8 @@ function Analyzer.start(origin)
     Analyzer.trackedValues = {}
     Analyzer.trackedGui = {}
     Analyzer.modelSyncDefs = {}
+    Analyzer.logBuffer = {}
+    Analyzer.lastFlushAt = os.clock()
 
     if Analyzer.file and writefile then
         pcall(function()
@@ -1661,7 +1918,6 @@ function Analyzer.start(origin)
     watchPromptSystems()
     watchInputState()
     watchWorkspaceEntities()
-    probeDataFunctions()
 
     writeLine("TRACE", "Started", {
         origin = origin or "AutoStart",
