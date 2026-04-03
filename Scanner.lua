@@ -359,7 +359,6 @@ task.spawn(function()
                                 VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
                             end)
                         end
-                        end
                     end
                 else
                     GlobalMagnetTarget = nil
