@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🦖 CATCH A MONSTER: AUTO-FARM V11 (GUI + HUEVOS + FLOTADOR DE MASCOTAS)
+-- 🦖 CATCH A MONSTER: AUTO-FARM V1.0 (GUI + HUEVOS + FLOTADOR DE MASCOTAS)
 -- Creado para: Pruebas de filtrado Server-Side y Ataques Aéreos
 -- ==============================================================================
 
@@ -42,7 +42,7 @@ MainFrame.Draggable = true -- (Simple drag nativo)
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
-Title.Text = " 🦖 CATCH A MONSTER V1 - TEST VECTOR"
+Title.Text = " 🦖 aaaaaCATCH A MONSTER V1 - TEST VECTOR"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
