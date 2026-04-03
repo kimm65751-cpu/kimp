@@ -30,7 +30,7 @@ SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 285)
+MF.Size = UDim2.new(0, 300, 0, 365)
 MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
@@ -77,6 +77,24 @@ BtnCodes.TextColor3 = Color3.new(1,1,1)
 BtnCodes.Font = Enum.Font.GothamBold
 BtnCodes.TextSize = 12
 BtnCodes.Text = "📋 ABRIR GESTOR DE CÓDIGOS"
+
+local BtnMagnet = Instance.new("TextButton", MF)
+BtnMagnet.Size = UDim2.new(0.42, 0, 0, 35)
+BtnMagnet.Position = UDim2.new(0.05, 0, 0, 200)
+BtnMagnet.BackgroundColor3 = Color3.fromRGB(50, 20, 60)
+BtnMagnet.TextColor3 = Color3.new(1,1,1)
+BtnMagnet.Font = Enum.Font.GothamBold
+BtnMagnet.TextSize = 11
+BtnMagnet.Text = "🧲 IMÁN MOBS"
+
+local BtnSkill = Instance.new("TextButton", MF)
+BtnSkill.Size = UDim2.new(0.42, 0, 0, 35)
+BtnSkill.Position = UDim2.new(0.53, 0, 0, 200)
+BtnSkill.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
+BtnSkill.TextColor3 = Color3.new(1,1,1)
+BtnSkill.Font = Enum.Font.GothamBold
+BtnSkill.TextSize = 11
+BtnSkill.Text = "🔥 AUTO SKILL (X)"
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -200,6 +218,9 @@ end)
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
 -- ==============================================================================
+local VIM = game:GetService("VirtualInputManager")
+local MobMagnetEnabled = false
+local AutoSkillEnabled = false
 
 local function GetNearestMob()
     local nearestDist = math.huge
@@ -237,6 +258,27 @@ RunService.Stepped:Connect(function()
         local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.Velocity = Vector3.new(0,0,0)
+        end
+        
+        -- 3. Juntar Mobs (Mob Bring/Magnet) - Manipulación de NetworkOwnership por proximidad
+        if MobMagnetEnabled and hrp then
+            -- Definimos un punto de colisión seguro "Reunión" a 10 studs de ti
+            local gatherPoint = hrp.CFrame * CFrame.new(0, -5, -4) 
+            for _, mob in pairs(NPCsFolder:GetChildren()) do
+                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                    if mob.Humanoid.Health > 0 then
+                        -- Si el mob está a menos de 150 studs, lo jalamos lentamente hacia el grupo para evitar kicks de teletransportación
+                        local mobHrp = mob.HumanoidRootPart
+                        local dist = (mobHrp.Position - hrp.Position).Magnitude
+                        if dist < 150 and dist > 8 then
+                            pcall(function()
+                                -- Se usa MoveTo o CFrame suave para que parezca que ellos caminan hacia ti
+                                mobHrp.CFrame = mobHrp.CFrame:Lerp(gatherPoint, 0.05)
+                            end)
+                        end
+                    end
+                end
+            end
         end
     end
 end)
@@ -300,6 +342,17 @@ task.spawn(function()
                         pcall(function()
                             CombatRemote:FireServer()
                         end)
+                        
+                        -- Auto Skill "X" (Uso Virtual Legítimo del teclado)
+                        if AutoSkillEnabled then
+                            pcall(function()
+                                -- Envia la tecla X internamente como si fuera un humano apretándola, forzando 
+                                -- al script original del juego a lanzar la Skill_X si tienes la Katana en mano y está sin cooldown.
+                                VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                                task.wait(0.05)
+                                VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                            end)
+                        end
                     end
                 else
                     StatusLabel.Text = "Buscando Mobs vivos..."
@@ -339,6 +392,28 @@ BtnToggle.MouseButton1Click:Connect(function()
                 Workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid
             end
         end)
+    end
+end)
+
+BtnMagnet.MouseButton1Click:Connect(function()
+    MobMagnetEnabled = not MobMagnetEnabled
+    if MobMagnetEnabled then
+        BtnMagnet.BackgroundColor3 = Color3.fromRGB(150, 40, 180)
+        BtnMagnet.Text = "🧲 IMÁN: ON"
+    else
+        BtnMagnet.BackgroundColor3 = Color3.fromRGB(50, 20, 60)
+        BtnMagnet.Text = "🧲 IMÁN MOBS"
+    end
+end)
+
+BtnSkill.MouseButton1Click:Connect(function()
+    AutoSkillEnabled = not AutoSkillEnabled
+    if AutoSkillEnabled then
+        BtnSkill.BackgroundColor3 = Color3.fromRGB(200, 80, 40)
+        BtnSkill.Text = "🔥 SKILL (X): ON"
+    else
+        BtnSkill.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
+        BtnSkill.Text = "🔥 AUTO SKILL (X)"
     end
 end)
 
