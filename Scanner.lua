@@ -69,26 +69,133 @@ BtnHeight.Position = UDim2.new(0.05, 0, 0, 120)
 BtnHeight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 BtnHeight.TextColor3 = Color3.new(1,1,1)
 BtnHeight.Font = Enum.Font.Gotham
-BtnHeight.TextSize = 12
-BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
-
 local BtnCodes = Instance.new("TextButton", MF)
 BtnCodes.Size = UDim2.new(0.9, 0, 0, 35)
 BtnCodes.Position = UDim2.new(0.05, 0, 0, 160)
-BtnCodes.BackgroundColor3 = Color3.fromRGB(80, 60, 20)
+BtnCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
 BtnCodes.TextColor3 = Color3.new(1,1,1)
 BtnCodes.Font = Enum.Font.GothamBold
 BtnCodes.TextSize = 12
-BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
+BtnCodes.Text = "📋 ABRIR GESTOR DE CÓDIGOS"
 
-local BtnScanCodes = Instance.new("TextButton", MF)
-BtnScanCodes.Size = UDim2.new(0.9, 0, 0, 35)
-BtnScanCodes.Position = UDim2.new(0.05, 0, 0, 200)
-BtnScanCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
-BtnScanCodes.TextColor3 = Color3.new(1,1,1)
-BtnScanCodes.Font = Enum.Font.GothamBold
-BtnScanCodes.TextSize = 12
-BtnScanCodes.Text = "🔍 ESCANEAR SISTEMA DE CÓDIGOS"
+-- ==============================================================================
+-- PESTAÑA DE CÓDIGOS (NUEVA UI)
+-- ==============================================================================
+local CodesFrame = Instance.new("Frame", SG)
+CodesFrame.Size = UDim2.new(0, 300, 0, 350)
+CodesFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
+CodesFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+CodesFrame.BorderSizePixel = 2
+CodesFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
+CodesFrame.Active = true
+CodesFrame.Draggable = true
+CodesFrame.Visible = false
+
+local CodesTitle = Instance.new("TextLabel", CodesFrame)
+CodesTitle.Size = UDim2.new(1, 0, 0, 30)
+CodesTitle.BackgroundColor3 = Color3.fromRGB(10, 40, 60)
+CodesTitle.Text = " 💎 CÓDIGOS DESCUBIERTOS"
+CodesTitle.TextColor3 = Color3.fromRGB(150, 200, 255)
+CodesTitle.Font = Enum.Font.GothamBold
+CodesTitle.TextSize = 14
+
+local CodeBackBtn = Instance.new("TextButton", CodesFrame)
+CodeBackBtn.Size = UDim2.new(0.4, 0, 0, 25)
+CodeBackBtn.Position = UDim2.new(0.05, 0, 0, 315)
+CodeBackBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
+CodeBackBtn.TextColor3 = Color3.new(1,1,1)
+CodeBackBtn.Font = Enum.Font.Gotham
+CodeBackBtn.TextSize = 12
+CodeBackBtn.Text = "Cerrar"
+
+local CopyAllBtn = Instance.new("TextButton", CodesFrame)
+CopyAllBtn.Size = UDim2.new(0.4, 0, 0, 25)
+CopyAllBtn.Position = UDim2.new(0.55, 0, 0, 315)
+CopyAllBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 40)
+CopyAllBtn.TextColor3 = Color3.new(1,1,1)
+CopyAllBtn.Font = Enum.Font.Gotham
+CopyAllBtn.TextSize = 11
+CopyAllBtn.Text = "Copiar Todos"
+
+local CodesScroll = Instance.new("ScrollingFrame", CodesFrame)
+CodesScroll.Size = UDim2.new(1, 0, 0, 275)
+CodesScroll.Position = UDim2.new(0, 0, 0, 35)
+CodesScroll.BackgroundTransparency = 1
+CodesScroll.ScrollBarThickness = 4
+CodesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+local CodesList = Instance.new("UIListLayout", CodesScroll)
+
+BtnCodes.MouseButton1Click:Connect(function()
+    MF.Visible = false
+    CodesFrame.Visible = true
+    
+    -- Cargar Códigos
+    for _, child in pairs(CodesScroll:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+    
+    local ok, conf = pcall(function() return require(ReplicatedStorage:WaitForChild("CodesConfig", 2)) end)
+    local allCodesStr = ""
+    if ok and conf and conf.Codes then
+        local num = 0
+        for codeName, data in pairs(conf.Codes) do
+            num = num + 1
+            allCodesStr = allCodesStr .. codeName .. "\n"
+            
+            local cFrame = Instance.new("Frame", CodesScroll)
+            cFrame.Size = UDim2.new(1, 0, 0, 35)
+            cFrame.BackgroundTransparency = 1
+            
+            local cLabel = Instance.new("TextLabel", cFrame)
+            cLabel.Size = UDim2.new(0.7, 0, 1, 0)
+            cLabel.BackgroundTransparency = 1
+            cLabel.Text = " " .. codeName
+            cLabel.TextColor3 = Color3.new(1,1,1)
+            cLabel.Font = Enum.Font.Code
+            cLabel.TextSize = 12
+            cLabel.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local cCopy = Instance.new("TextButton", cFrame)
+            cCopy.Size = UDim2.new(0.25, 0, 0.7, 0)
+            cCopy.Position = UDim2.new(0.7, 0, 0.15, 0)
+            cCopy.BackgroundColor3 = Color3.fromRGB(40,40,60)
+            cCopy.TextColor3 = Color3.new(1,1,1)
+            cCopy.Font = Enum.Font.Gotham
+            cCopy.TextSize = 11
+            cCopy.Text = "Copiar"
+            
+            cCopy.MouseButton1Click:Connect(function()
+                if setclipboard then
+                    setclipboard(codeName)
+                    cCopy.Text = "Copiado!"
+                    task.wait(1)
+                    cCopy.Text = "Copiar"
+                end
+            end)
+        end
+        CodesScroll.CanvasSize = UDim2.new(0, 0, 0, num * 35)
+        
+        CopyAllBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(allCodesStr)
+                CopyAllBtn.Text = "Completado!"
+                task.wait(1.5)
+                CopyAllBtn.Text = "Copiar Todos"
+            end
+        end)
+    else
+        local err = Instance.new("TextLabel", CodesScroll)
+        err.Size = UDim2.new(1, 0, 0, 50)
+        err.BackgroundTransparency = 1
+        err.TextColor3 = Color3.new(1,0,0)
+        err.Text = "No se pudieron obtener los códigos."
+    end
+end)
+
+CodeBackBtn.MouseButton1Click:Connect(function()
+    CodesFrame.Visible = false
+    MF.Visible = true
+end)
 
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
@@ -165,36 +272,33 @@ task.spawn(function()
                         -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
                         
                         if FarmMode == "Arriba" then
-                            -- Oscilación (Yo-Yo): Pega bajando a 6 studs, sube a 16 studs para evadir
-                            -- os.clock() * 6 controla la velocidad del rebote (más rápido = más esquiva)
-                            local bounce = math.sin(os.clock() * 6) * 5 
-                            local currentY = 11 + bounce -- Fluctúa entre 6 (Abajo) y 16 (Arriba)
+                            -- Optimizando YO-YO para Anticheat y Magnetismo de golpes.
+                            -- Si usamos senos rápidos (math.sin), el servidor tira los 'RequestHit' a la basura 
+                            -- porque el "Client" no está cerca el tiempo suficiente para procesar el ping (Lag delay)
+                            
+                            local clock = os.clock() % 2
+                            local currentY
+                            if clock < 0.6 then
+                                currentY = 6 -- Baja y se queda 0.6 segundos dando golpes efectivos y rotundos
+                            else
+                                currentY = 16 -- Luego sube a 16 studs y espera (invulnerabilidad)
+                            end
                             
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, currentY, 0)
                         elseif FarmMode == "Detras" then
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
                         elseif FarmMode == "Abajo" then
-                            -- Subterráneo Y por la espalda (Rotación dinámica pegada)
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                         end
                         
-                        -- ==========================================
-                        -- CAMARA CINEMATOGRÁFICA (Espectador de Mob)
-                        -- Esto evita que el suelo o noclip ponga tu cámara en primera persona o negra
                         pcall(function()
-                            local cam = Workspace.CurrentCamera
-                            if cam and cam.CameraSubject ~= mob:FindFirstChild("Humanoid") then
-                                cam.CameraSubject = mob:FindFirstChild("Humanoid") or mobHrp
-                            end
+                            char:PivotTo(hrp.CFrame)
                         end)
+                        
                         -- ==========================================
-                        -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hitt)
+                        -- MOTOR DE IMPACTOS OPTIMIZADO (Anti-Fallo)
                         pcall(function()
-                            -- Según el escaneo, no pide argumentos, pero asume que tienes el arma equipada.
                             CombatRemote:FireServer()
-                            
-                            -- Algunos juegos animan la espada, disparamos click también para que el server lo procese
-                            if tool then tool:Activate() end
                         end)
                     end
                 else
@@ -257,111 +361,4 @@ BtnHeight.MouseButton1Click:Connect(function()
     end
 end)
 
--- Buscador Dinámico y Reclamador de Codigos
-BtnCodes.MouseButton1Click:Connect(function()
-    BtnCodes.Text = "⏳ Validando remotas..."
-    task.spawn(function()
-        -- RUTA EXACTA EXTRAIDA DEL CODE_ANALYZER_REPORT
-        local codeRemote = ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("CodeRedeem")
-        
-        if not codeRemote then
-            BtnCodes.Text = "❌ No se encontró 'CodeRedeem'"
-            task.wait(2)
-            BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
-            return
-        end
-        
-        BtnCodes.Text = "⏳ Obteniendo códigos vivos..."
-        local ok, conf = pcall(function() return require(ReplicatedStorage:WaitForChild("CodesConfig", 2)) end)
-        
-        if ok and conf and conf.Codes then
-            local count = 0
-            for codeName, data in pairs(conf.Codes) do
-                pcall(function()
-                    -- Según el reporte, CodeRedeem es un RemoteFunction
-                    codeRemote:InvokeServer(codeName)
-                end)
-                count = count + 1
-                BtnCodes.Text = "💎 Reclamando: [" .. codeName .. "] " .. count
-                task.wait(0.5) -- Pausa de medio segundo para no saturar 
-            end
-            BtnCodes.Text = "✅ " .. count .. " CÓDIGOS RECLAMADOS"
-        else
-            BtnCodes.Text = "❌ No se pudieron leer los códigos"
-        end
-        
-        task.wait(3)
-        BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
-    end)
-end)
 
--- Escáner Forense para Sistema de Códigos
-BtnScanCodes.MouseButton1Click:Connect(function()
-    BtnScanCodes.Text = "⏳ Escaneando..."
-    task.spawn(function()
-        local logDump = "=== REPORTE DE AUDITORÍA: SISTEMA DE CÓDIGOS ===\n"
-        logDump = logDump .. "Fecha: " .. os.date() .. "\n\n"
-        
-        logDump = logDump .. "[1] BUSCANDO REMOTAS (RemoteEvents / RemoteFunctions)\n"
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local name = obj.Name:lower()
-                -- Filtro: Cualquier cosa que suene a canjear códigos, recompensas o menús
-                if name:find("code") or name:find("redeem") or name:find("claim") or name:find("reward") or name:find("promo") then
-                    logDump = logDump .. "[EXACT MATCH] " .. obj.ClassName .. ": " .. obj:GetFullName() .. "\n"
-                end
-            end
-        end
-        
-        logDump = logDump .. "\n[2] BUSCANDO MÓDULOS DE CONFIGURACIÓN (.lua)\n"
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("ModuleScript") then
-                local name = obj.Name:lower()
-                if name:find("code") or name:find("redeem") or name:find("reward") or name:find("gift") then
-                    logDump = logDump .. "[MODULO ENCONTRADO] " .. obj:GetFullName() .. "\n"
-                    
-                    -- Intentar extraer algo de info si es posible
-                    pcall(function()
-                        local req = require(obj)
-                        if type(req) == "table" then
-                            logDump = logDump .. "   > (Requiere Exitoso) Claves internas: "
-                            for k, _ in pairs(req) do
-                                logDump = logDump .. tostring(k) .. ", "
-                            end
-                            logDump = logDump .. "\n"
-                        end
-                    end)
-                end
-            end
-        end
-        
-        logDump = logDump .. "\n[3] BUSCANDO BOTONES EN UI DEL CLIENTE LOCAL\n"
-        if LP:FindFirstChild("PlayerGui") then
-            for _, obj in pairs(LP.PlayerGui:GetDescendants()) do
-                if obj:IsA("TextButton") or obj:IsA("ImageButton") or obj:IsA("TextBox") then
-                    local name = obj.Name:lower()
-                    if name:find("code") or name:find("redeem") or name:find("enter") then
-                        logDump = logDump .. "[UI ELEMENT] " .. obj.ClassName .. " en " .. obj:GetFullName() .. "\n"
-                    end
-                end
-            end
-        end
-
-        logDump = logDump .. "\n=== FIN DEL ESCANEO ===\n"
-        
-        -- Guardar el Archivo
-        local fileName = "CODE_ANALYZER_REPORT_" .. tostring(os.time()) .. ".txt"
-        if writefile then
-            pcall(function() writefile(fileName, logDump) end)
-            BtnScanCodes.Text = "✅ GUARDADO: " .. fileName
-        elseif setclipboard then
-            setclipboard(logDump)
-            BtnScanCodes.Text = "✅ COPIADO AL PORTAPAPELES"
-        else
-            BtnScanCodes.Text = "❌ ERROR: EJECUTOR NO SOPORTA ESCRITURA"
-        end
-        
-        task.wait(4)
-        BtnScanCodes.Text = "🔍 ESCANEAR SISTEMA DE CÓDIGOS"
-    end)
-end)
