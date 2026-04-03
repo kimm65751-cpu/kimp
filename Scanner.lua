@@ -16,6 +16,7 @@ local OfsY, OfsZ = 10, 0
 
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
+local TargetBosses = "Normal" -- "Normal", "Ignorar", "SoloBoss"
 local GlobalMagnetTarget = nil
 local VIM = game:GetService("VirtualInputManager")
 
@@ -103,6 +104,15 @@ BtnSkill.TextColor3 = Color3.new(1,1,1)
 BtnSkill.Font = Enum.Font.GothamBold
 BtnSkill.TextSize = 11
 BtnSkill.Text = "🔥 AUTO SKILL (X)"
+
+local BtnBoss = Instance.new("TextButton", MF)
+BtnBoss.Size = UDim2.new(0.9, 0, 0, 30)
+BtnBoss.Position = UDim2.new(0.05, 0, 0, 245)
+BtnBoss.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+BtnBoss.TextColor3 = Color3.new(1,1,1)
+BtnBoss.Font = Enum.Font.GothamBold
+BtnBoss.TextSize = 11
+BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -235,10 +245,19 @@ local function GetNearestMob()
 
     for _, mob in pairs(NPCsFolder:GetChildren()) do
         if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-            -- Ignorar explícitamente cualquier entidad tipo "Dummy" de entrenamiento
             if not mob.Name:lower():match("dummy") then
-                -- Solo enfocarse en mobs vivos
-                if mob.Humanoid.Health > 0 then
+                local isBoss = mob.Name:lower():match("boss")
+                local allow = false
+                
+                if TargetBosses == "SoloBoss" then
+                    if isBoss then allow = true end
+                elseif TargetBosses == "Ignorar" then
+                    if not isBoss then allow = true end
+                else
+                    allow = true
+                end
+                
+                if allow and mob.Humanoid.Health > 0 then
                     local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
                     if dist < nearestDist then
                         nearestDist = dist
@@ -290,10 +309,28 @@ task.spawn(function()
                     continue
                 end
 
-                -- Equipar espada/arma si la tenemos
+                -- Equipar espada/arma si no tenemos nada en las manos
                 local tool = char:FindFirstChildOfClass("Tool")
                 if not tool then
-                    tool = LP.Backpack:FindFirstChildOfClass("Tool")
+                    -- Buscamos prioridad de espadas
+                    for _, t in pairs(LP.Backpack:GetChildren()) do
+                        if t:IsA("Tool") and (t.Name:lower():match("katana") or t.Name:lower():match("sword") or t.Name:lower():match("blade")) then
+                            tool = t
+                            break
+                        end
+                    end
+                    -- Si no hay espadas, agarramos la primera herramienta que NO sea 'Combat' o 'Puños'
+                    if not tool then
+                        for _, t in pairs(LP.Backpack:GetChildren()) do
+                            if t:IsA("Tool") and not t.Name:lower():match("combat") then
+                                tool = t
+                                break
+                            end
+                        end
+                    end
+                    -- Último recurso
+                    if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
+                    
                     if tool then char.Humanoid:EquipTool(tool) end
                 end
 
@@ -342,8 +379,19 @@ task.spawn(function()
                             local sorted = {}
                             for _, m in pairs(NPCsFolder:GetChildren()) do
                                 if m:IsA("Model") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                                    -- ¡Excluir Dummys también del Multi-Aggro!
-                                    if not m.Name:lower():match("dummy") then
+                                    local isDummy = m.Name:lower():match("dummy")
+                                    local isBoss = m.Name:lower():match("boss")
+                                    
+                                    local allow = false
+                                    if TargetBosses == "SoloBoss" then
+                                        if isBoss then allow = true end
+                                    elseif TargetBosses == "Ignorar" then
+                                        if not isBoss then allow = true end
+                                    else
+                                        allow = true
+                                    end
+                                    
+                                    if not isDummy and allow then
                                         local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
                                         if dist < 150 then
                                             table.insert(sorted, {m, dist})
@@ -369,21 +417,32 @@ task.spawn(function()
                                 local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z).Unit
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
                                 
-                                if FarmMode == "Arriba" then
-                                    -- Suspensión Fija Perfecta (Modo Dios). No más yo-yo, te quedas a 10 studs
-                                    -- exactos sobre el mob. Inalcanzable para sus ataques.
-                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                    
-                                elseif FarmMode == "Detras" then
-                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, 0, OfsZ)
-                                    
-                                elseif FarmMode == "Abajo" then
-                                    -- Matemática pura que FUNCIONA: Copia el cuerpo del mob, va 8 studs abajo y 6 atrás.
-                                    hrp.CFrame = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                                local currentFarmMode = FarmMode
+                                if TargetBosses == "SoloBoss" then
+                                    currentFarmMode = "Arriba"
+                                    OfsY = 10
+                                    OfsZ = 0
+                                end
+                                
+                                local TargetCF
+                                if currentFarmMode == "Arriba" then
+                                    TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
+                                elseif currentFarmMode == "Detras" then
+                                    TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                elseif currentFarmMode == "Abajo" then
+                                    TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                                 end
                                 
                                 pcall(function()
-                                    char:PivotTo(hrp.CFrame)
+                                    local flyDist = (hrp.Position - TargetCF.Position).Magnitude
+                                    if TargetBosses == "SoloBoss" and flyDist > 15 then
+                                        -- FLY CLIP: Vuelo suave constante (apróx 100 studs/seg) para moverse largo sin teleports
+                                        local flyStep = math.clamp(20 / flyDist, 0, 1)
+                                        char:PivotTo(hrp.CFrame:Lerp(TargetCF, flyStep))
+                                    else
+                                        -- Cerca o Modalidad Normal: Anchored Pivot
+                                        char:PivotTo(TargetCF)
+                                    end
                                 end)
                                 
                                 pcall(function()
@@ -393,23 +452,26 @@ task.spawn(function()
                                     end
                                 end)
                                 
-                                pcall(function()
-                                    CombatRemote:FireServer()
-                                    if tool then tool:Activate() end
-                                end)
-                                
-                                -- Aimbot para Skills
-                                if AutoSkillEnabled then
+                                -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
+                                local distFinal = (hrp.Position - TargetCF.Position).Magnitude
+                                if distFinal <= 20 then
                                     pcall(function()
-                                        hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
-                                        VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-                                        task.wait(0.01)
-                                        VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                                        CombatRemote:FireServer()
+                                        if tool then tool:Activate() end
                                     end)
+                                    
+                                    -- Aimbot para Skills
+                                    if AutoSkillEnabled then
+                                        pcall(function()
+                                            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
+                                            VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                                            task.wait(0.01)
+                                            VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                                        end)
+                                    end
                                 end
                                 
-                                -- Una minúscula pausa entre saltos, el aggro natural
-                                -- hará que todos los golpeados vengan hacia tu ubicación final solos.
+                                -- Una minúscula pausa entre saltos
                                 task.wait(0.05)
                             end
                         end
@@ -485,6 +547,22 @@ BtnSkill.MouseButton1Click:Connect(function()
     else
         BtnSkill.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
         BtnSkill.Text = "🔥 AUTO SKILL (X)"
+    end
+end)
+
+BtnBoss.MouseButton1Click:Connect(function()
+    if TargetBosses == "Normal" then
+        TargetBosses = "Ignorar"
+        BtnBoss.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        BtnBoss.Text = "🛑 IGNORAR BOSSES: OFF"
+    elseif TargetBosses == "Ignorar" then
+        TargetBosses = "SoloBoss"
+        BtnBoss.BackgroundColor3 = Color3.fromRGB(200, 20, 150)
+        BtnBoss.Text = "👹 SOLO BOSS (FLY AIR)"
+    else
+        TargetBosses = "Normal"
+        BtnBoss.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
     end
 end)
 
