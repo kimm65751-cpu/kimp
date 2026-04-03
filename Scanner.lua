@@ -46,7 +46,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
+Title.Text = " ⚔️ AURA-FARM (HOVER MOeeeeDE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -324,8 +324,10 @@ task.spawn(function()
                         for _, targetMob in pairs(mobsToHit) do
                             local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
                             if tHrp then
-                                local rx, rotY, rz = tHrp.CFrame:ToEulerAnglesYXZ()
-                                local flatMobCFrame = CFrame.new(tHrp.Position) * CFrame.Angles(0, rotY, 0)
+                                -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
+                                -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
+                                local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z).Unit
+                                local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
                                 
                                 if FarmMode == "Arriba" then
                                     -- Suspensión Fija Perfecta (Modo Dios). No más yo-yo, te quedas a 10 studs
@@ -453,8 +455,8 @@ BtnHeight.MouseButton1Click:Connect(function()
         BtnHeight.Text = "Posición Segura: 🥷 POR LA ESPALDA"
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
-        OfsY = -8 -- 8 studs bajo tierra
-        OfsZ = 6  -- 6 studs a la espalda
+        OfsY = -7.5 -- Algo menos profundo para no fallar golpes
+        OfsZ = 3.5  -- Detrás, pero justo en el límite máximo de la espada (hitbox)
         BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
     else
         FarmMode = "Arriba"
