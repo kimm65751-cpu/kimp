@@ -907,17 +907,7 @@ end)
 local ReconActive = false
 local LoggedEntities = {}
 local ReconConnections = {}
-
-BtnSpy.MouseButton1Click:Connect(function()
-    ReconActive = not ReconActive
-    if ReconActive then
-        BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
-        BtnSpy.Text = "📡 RECON ACTIVO: ESPERANDO STREAMING..."
-        
-        SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-        if writefile then
-            pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (MÁXIMO RENDIMIENTO) ===\n\n") end)
-        end
+local SpyFileName = "OmniLiveMapDump.txt"
         
 local TourActive = false
 local TourIslands = {
