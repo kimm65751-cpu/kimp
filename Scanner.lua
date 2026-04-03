@@ -30,7 +30,7 @@ SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 200)
+MF.Size = UDim2.new(0, 300, 0, 285)
 MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
@@ -71,6 +71,24 @@ BtnHeight.TextColor3 = Color3.new(1,1,1)
 BtnHeight.Font = Enum.Font.Gotham
 BtnHeight.TextSize = 12
 BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+
+local BtnCodes = Instance.new("TextButton", MF)
+BtnCodes.Size = UDim2.new(0.9, 0, 0, 35)
+BtnCodes.Position = UDim2.new(0.05, 0, 0, 160)
+BtnCodes.BackgroundColor3 = Color3.fromRGB(80, 60, 20)
+BtnCodes.TextColor3 = Color3.new(1,1,1)
+BtnCodes.Font = Enum.Font.GothamBold
+BtnCodes.TextSize = 12
+BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
+
+local BtnScanCodes = Instance.new("TextButton", MF)
+BtnScanCodes.Size = UDim2.new(0.9, 0, 0, 35)
+BtnScanCodes.Position = UDim2.new(0.05, 0, 0, 200)
+BtnScanCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
+BtnScanCodes.TextColor3 = Color3.new(1,1,1)
+BtnScanCodes.Font = Enum.Font.GothamBold
+BtnScanCodes.TextSize = 12
+BtnScanCodes.Text = "🔍 ESCANEAR SISTEMA DE CÓDIGOS"
 
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
@@ -145,21 +163,26 @@ task.spawn(function()
                     if mobHrp then
                         -- ==========================================
                         -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
-                        -- Corregimos el problema de "echado" (lookAt vertical)
                         
-                        local targetPos
+                        -- Evitar cálculo de LookAt que colapsaba la cámara
                         if FarmMode == "Arriba" then
-                            targetPos = mobHrp.Position + Vector3.new(0, OfsY, 0)
+                            -- Se ubica arriba y copia la rotación Y del mob para estar derecho
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
                         elseif FarmMode == "Detras" then
-                            targetPos = mobHrp.CFrame:PointToWorldSpace(Vector3.new(0, 0, OfsZ))
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
                         elseif FarmMode == "Abajo" then
-                            targetPos = mobHrp.Position + Vector3.new(0, OfsY, 0)
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
                         end
                         
-                        -- CFrame que mira hacia el mob, pero manteniendo la postura erguida (eje Y bloqueado)
-                        local lookAtPos = Vector3.new(mobHrp.Position.X, targetPos.Y, mobHrp.Position.Z)
-                        hrp.CFrame = CFrame.new(targetPos, lookAtPos)
-                        
+                        -- ==========================================
+                        -- CAMARA CINEMATOGRÁFICA (Espectador de Mob)
+                        -- Esto evita que el suelo o noclip ponga tu cámara en primera persona o negra
+                        pcall(function()
+                            local cam = Workspace.CurrentCamera
+                            if cam and cam.CameraSubject ~= mob:FindFirstChild("Humanoid") then
+                                cam.CameraSubject = mob:FindFirstChild("Humanoid") or mobHrp
+                            end
+                        end)
                         -- ==========================================
                         -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hitt)
                         pcall(function()
@@ -201,6 +224,13 @@ BtnToggle.MouseButton1Click:Connect(function()
         BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
         StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
         StatusLabel.Text = "Status: INACTIVO"
+        
+        -- Restaurar cámara cuando apagas
+        pcall(function()
+            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
+                Workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid
+            end
+        end)
     end
 end)
 
@@ -221,4 +251,124 @@ BtnHeight.MouseButton1Click:Connect(function()
         OfsZ = 0
         BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
     end
+end)
+
+-- Buscador Dinámico y Reclamador de Codigos
+BtnCodes.MouseButton1Click:Connect(function()
+    BtnCodes.Text = "⏳ Buscando remotas..."
+    task.spawn(function()
+        local codeRemote = nil
+        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local lName = obj.Name:lower()
+                if lName:find("code") or lName:find("redeem") then
+                    codeRemote = obj
+                    break
+                end
+            end
+        end
+        
+        if not codeRemote then
+            BtnCodes.Text = "❌ No se encontró el evento de Códigos"
+            task.wait(2)
+            BtnCodes.Text = "💎 RECLAMAR TODOS LOS CÓDIGOS"
+            return
+        end
+        
+        BtnCodes.Text = "⏳ Robando datos de CodesConfig..."
+        local ok, conf = pcall(function() return require(ReplicatedStorage:WaitForChild("CodesConfig", 2)) end)
+        
+        if ok and conf and conf.Codes then
+            local count = 0
+            for codeName, _ in pairs(conf.Codes) do
+                pcall(function()
+                    if codeRemote:IsA("RemoteEvent") then
+                        codeRemote:FireServer(codeName)
+                    else
+                        codeRemote:InvokeServer(codeName)
+                    end
+                end)
+                count = count + 1
+                BtnCodes.Text = "💎 Reclamando: " .. count .. " / " .. tostring(BtnCodes.Text:match("/ (%d+)") or "?")
+                task.wait(0.2)
+            end
+            BtnCodes.Text = "✅ " .. count .. " CÓDIGOS RECLAMADOS"
+        else
+            BtnCodes.Text = "❌ Módulo CodesConfig no accesible"
+        end
+        
+        task.wait(3)
+        BtnCodes.Text = "💎 INTENTAR RECLAMAR (A CIEGAS)"
+    end)
+end)
+
+-- Escáner Forense para Sistema de Códigos
+BtnScanCodes.MouseButton1Click:Connect(function()
+    BtnScanCodes.Text = "⏳ Escaneando..."
+    task.spawn(function()
+        local logDump = "=== REPORTE DE AUDITORÍA: SISTEMA DE CÓDIGOS ===\n"
+        logDump = logDump .. "Fecha: " .. os.date() .. "\n\n"
+        
+        logDump = logDump .. "[1] BUSCANDO REMOTAS (RemoteEvents / RemoteFunctions)\n"
+        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local name = obj.Name:lower()
+                -- Filtro: Cualquier cosa que suene a canjear códigos, recompensas o menús
+                if name:find("code") or name:find("redeem") or name:find("claim") or name:find("reward") or name:find("promo") then
+                    logDump = logDump .. "[EXACT MATCH] " .. obj.ClassName .. ": " .. obj:GetFullName() .. "\n"
+                end
+            end
+        end
+        
+        logDump = logDump .. "\n[2] BUSCANDO MÓDULOS DE CONFIGURACIÓN (.lua)\n"
+        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("ModuleScript") then
+                local name = obj.Name:lower()
+                if name:find("code") or name:find("redeem") or name:find("reward") or name:find("gift") then
+                    logDump = logDump .. "[MODULO ENCONTRADO] " .. obj:GetFullName() .. "\n"
+                    
+                    -- Intentar extraer algo de info si es posible
+                    pcall(function()
+                        local req = require(obj)
+                        if type(req) == "table" then
+                            logDump = logDump .. "   > (Requiere Exitoso) Claves internas: "
+                            for k, _ in pairs(req) do
+                                logDump = logDump .. tostring(k) .. ", "
+                            end
+                            logDump = logDump .. "\n"
+                        end
+                    end)
+                end
+            end
+        end
+        
+        logDump = logDump .. "\n[3] BUSCANDO BOTONES EN UI DEL CLIENTE LOCAL\n"
+        if LP:FindFirstChild("PlayerGui") then
+            for _, obj in pairs(LP.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") or obj:IsA("ImageButton") or obj:IsA("TextBox") then
+                    local name = obj.Name:lower()
+                    if name:find("code") or name:find("redeem") or name:find("enter") then
+                        logDump = logDump .. "[UI ELEMENT] " .. obj.ClassName .. " en " .. obj:GetFullName() .. "\n"
+                    end
+                end
+            end
+        end
+
+        logDump = logDump .. "\n=== FIN DEL ESCANEO ===\n"
+        
+        -- Guardar el Archivo
+        local fileName = "CODE_ANALYZER_REPORT_" .. tostring(os.time()) .. ".txt"
+        if writefile then
+            pcall(function() writefile(fileName, logDump) end)
+            BtnScanCodes.Text = "✅ GUARDADO: " .. fileName
+        elseif setclipboard then
+            setclipboard(logDump)
+            BtnScanCodes.Text = "✅ COPIADO AL PORTAPAPELES"
+        else
+            BtnScanCodes.Text = "❌ ERROR: EJECUTOR NO SOPORTA ESCRITURA"
+        end
+        
+        task.wait(4)
+        BtnScanCodes.Text = "🔍 ESCANEAR SISTEMA DE CÓDIGOS"
+    end)
 end)
