@@ -1,5 +1,3 @@
-
- 
 -- ==============================================================================
 -- 🔬 DIAGNÓSTICO TOTAL V1.0 — DETECTOR DE FALLOS EN GUI Y LUA
 -- Ejecuta ANTES que cualquier otro script para saber exactamente:
