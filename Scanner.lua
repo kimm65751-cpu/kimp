@@ -29,7 +29,7 @@ local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild
 local NPCsFolder = Workspace:WaitForChild("NPCs")
 
 -- ==============================================================================
--- GUI
+-- GUI V2.0 — DISEÑO PREMIUM TABBED (COLORES SUAVES, MINIMALISTA)
 -- ==============================================================================
 local TargetGui = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 for _, v in pairs(TargetGui:GetChildren()) do if v.Name == "OmniAutoFarm" then pcall(function() v:Destroy() end) end end
@@ -39,248 +39,260 @@ SG.Name = "OmniAutoFarm"
 SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
+-- ======================== PALETA DE COLORES SUAVES ========================
+local C = {
+    bg       = Color3.fromRGB(22, 24, 30),
+    sidebar  = Color3.fromRGB(28, 30, 38),
+    panel    = Color3.fromRGB(30, 33, 42),
+    accent   = Color3.fromRGB(100, 130, 255),
+    accentOn = Color3.fromRGB(90, 210, 140),
+    accentOff= Color3.fromRGB(60, 65, 80),
+    red      = Color3.fromRGB(200, 80, 90),
+    title    = Color3.fromRGB(180, 190, 230),
+    text     = Color3.fromRGB(200, 205, 220),
+    muted    = Color3.fromRGB(110, 115, 135),
+    card     = Color3.fromRGB(38, 42, 55),
+    border   = Color3.fromRGB(55, 60, 80),
+}
+
+-- ======================== CONTENEDOR PRINCIPAL ========================
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 440)
-MF.Position = UDim2.new(0.05, 0, 0.4, 0)
-MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MF.BorderSizePixel = 2
-MF.BorderColor3 = Color3.fromRGB(255, 0, 100)
+MF.Name = "MainFrame"
+MF.Size = UDim2.new(0, 460, 0, 420)
+MF.Position = UDim2.new(0.5, -230, 0.5, -210)
+MF.BackgroundColor3 = C.bg
+MF.BorderSizePixel = 0
 MF.Active = true
 MF.Draggable = true
+Instance.new("UICorner", MF).CornerRadius = UDim.new(0, 10)
 
+local MFStroke = Instance.new("UIStroke", MF)
+MFStroke.Color = C.border
+MFStroke.Thickness = 1.5
+
+-- ========== BOTÓN FLOTANTE ==========
 local BtnFloat = Instance.new("TextButton", SG)
-BtnFloat.Size = UDim2.new(0, 45, 0, 45)
-BtnFloat.Position = UDim2.new(0, 20, 0, 20)
-BtnFloat.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-BtnFloat.BorderColor3 = Color3.fromRGB(255, 0, 100)
-BtnFloat.BorderSizePixel = 2
-BtnFloat.Text = "💎"
-BtnFloat.TextSize = 20
+BtnFloat.Size = UDim2.new(0, 40, 0, 40)
+BtnFloat.Position = UDim2.new(0, 15, 0, 15)
+BtnFloat.BackgroundColor3 = C.sidebar
+BtnFloat.Text = "⚔️"
+BtnFloat.TextSize = 18
 BtnFloat.Active = true
 BtnFloat.Draggable = true
+BtnFloat.BorderSizePixel = 0
+Instance.new("UICorner", BtnFloat).CornerRadius = UDim.new(0, 20)
+Instance.new("UIStroke", BtnFloat).Color = C.accent
 
-local Title = Instance.new("TextLabel", MF)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
-Title.TextColor3 = Color3.fromRGB(255, 150, 150)
+-- ========== BARRA DE TÍTULO ==========
+local TitleBar = Instance.new("Frame", MF)
+TitleBar.Size = UDim2.new(1, 0, 0, 36)
+TitleBar.BackgroundColor3 = C.sidebar
+TitleBar.BorderSizePixel = 0
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel", TitleBar)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
+Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
-local BtnMin = Instance.new("TextButton", MF)
-BtnMin.Size = UDim2.new(0, 30, 0, 30)
-BtnMin.Position = UDim2.new(1, -30, 0, 0)
+local BtnMin = Instance.new("TextButton", TitleBar)
+BtnMin.Size = UDim2.new(0, 36, 0, 36)
+BtnMin.Position = UDim2.new(1, -36, 0, 0)
 BtnMin.BackgroundTransparency = 1
-BtnMin.Text = "➖"
-BtnMin.TextColor3 = Color3.new(1, 1, 1)
-BtnMin.TextSize = 16
+BtnMin.Text = "—"
+BtnMin.TextColor3 = C.muted
+BtnMin.TextSize = 18
 BtnMin.Font = Enum.Font.GothamBold
 
+-- ========== STATUS BAR ==========
 local StatusLabel = Instance.new("TextLabel", MF)
-StatusLabel.Size = UDim2.new(1, 0, 0, 20)
-StatusLabel.Position = UDim2.new(0, 0, 0, 35)
+StatusLabel.Size = UDim2.new(1, -20, 0, 18)
+StatusLabel.Position = UDim2.new(0, 10, 0, 38)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Status: INACTIVO"
-StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.Text = "Status: Inactivo"
+StatusLabel.TextColor3 = C.muted
 StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 11
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local BtnToggle = Instance.new("TextButton", MF)
-BtnToggle.Size = UDim2.new(0.9, 0, 0, 40)
-BtnToggle.Position = UDim2.new(0.05, 0, 0, 70)
-BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
-BtnToggle.TextColor3 = Color3.new(1,1,1)
-BtnToggle.Font = Enum.Font.GothamBold
-BtnToggle.TextSize = 16
-BtnToggle.Text = "► INICIAR AUTO-FARM"
+-- ======================== SIDEBAR (PESTAÑAS) ========================
+local Sidebar = Instance.new("Frame", MF)
+Sidebar.Size = UDim2.new(0, 52, 1, -60)
+Sidebar.Position = UDim2.new(0, 0, 0, 58)
+Sidebar.BackgroundColor3 = C.sidebar
+Sidebar.BorderSizePixel = 0
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 8)
 
-local BtnHeight = Instance.new("TextButton", MF)
-BtnHeight.Size = UDim2.new(0.9, 0, 0, 30)
-BtnHeight.Position = UDim2.new(0.05, 0, 0, 120)
-BtnHeight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-BtnHeight.TextColor3 = Color3.new(1,1,1)
-BtnHeight.Font = Enum.Font.Gotham
-BtnHeight.TextSize = 12
-BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+local SideLayout = Instance.new("UIListLayout", Sidebar)
+SideLayout.Padding = UDim.new(0, 4)
+SideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+Instance.new("UIPadding", Sidebar).PaddingTop = UDim.new(0, 8)
 
-local BtnCodes = Instance.new("TextButton", MF)
-BtnCodes.Size = UDim2.new(0.9, 0, 0, 35)
-BtnCodes.Position = UDim2.new(0.05, 0, 0, 160)
-BtnCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
-BtnCodes.TextColor3 = Color3.new(1,1,1)
-BtnCodes.Font = Enum.Font.GothamBold
-BtnCodes.TextSize = 12
-BtnCodes.Text = "📋 ABRIR GESTOR DE CÓDIGOS"
+local ActiveTab = "Farm"
+local TabFrames = {}
 
-local BtnMagnet = Instance.new("TextButton", MF)
-BtnMagnet.Size = UDim2.new(0.42, 0, 0, 35)
-BtnMagnet.Position = UDim2.new(0.05, 0, 0, 200)
-BtnMagnet.BackgroundColor3 = Color3.fromRGB(50, 20, 60)
-BtnMagnet.TextColor3 = Color3.new(1,1,1)
-BtnMagnet.Font = Enum.Font.GothamBold
-BtnMagnet.TextSize = 11
-BtnMagnet.Text = "🧲 IMÁN MOBS"
-
-local BtnSkill = Instance.new("TextButton", MF)
-BtnSkill.Size = UDim2.new(0.42, 0, 0, 35)
-BtnSkill.Position = UDim2.new(0.53, 0, 0, 200)
-BtnSkill.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
-BtnSkill.TextColor3 = Color3.new(1,1,1)
-BtnSkill.Font = Enum.Font.GothamBold
-BtnSkill.TextSize = 11
-BtnSkill.Text = "🔥 AUTO SKILL (X)"
-
-local BtnBoss = Instance.new("TextButton", MF)
-BtnBoss.Size = UDim2.new(0.9, 0, 0, 30)
-BtnBoss.Position = UDim2.new(0.05, 0, 0, 245)
-BtnBoss.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-BtnBoss.TextColor3 = Color3.new(1,1,1)
-BtnBoss.Font = Enum.Font.GothamBold
-BtnBoss.TextSize = 11
-BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
-
-local BtnTravelMenu = Instance.new("TextButton", MF)
-BtnTravelMenu.Size = UDim2.new(0.9, 0, 0, 30)
-BtnTravelMenu.Position = UDim2.new(0.05, 0, 0, 280)
-BtnTravelMenu.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-BtnTravelMenu.TextColor3 = Color3.new(1,1,1)
-BtnTravelMenu.Font = Enum.Font.GothamBold
-BtnTravelMenu.TextSize = 11
-BtnTravelMenu.Text = "🧭 ABRIR MENÚ DE VIAJE SEGURO (NOCLIP)"
-
-local BtnSpy = Instance.new("TextButton", MF)
-BtnSpy.Size = UDim2.new(0.9, 0, 0, 30)
-BtnSpy.Position = UDim2.new(0.05, 0, 0, 320)
-BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
-BtnSpy.TextColor3 = Color3.new(1,1,1)
-BtnSpy.Font = Enum.Font.GothamBold
-BtnSpy.TextSize = 10
-BtnSpy.Text = "📡 INICIAR ESCANEAR CONTINUO DE MAPA"
-
-local BtnAutoTour = Instance.new("TextButton", MF)
-BtnAutoTour.Size = UDim2.new(0.9, 0, 0, 30)
-BtnAutoTour.Position = UDim2.new(0.05, 0, 0, 360)
-BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
-BtnAutoTour.TextColor3 = Color3.new(1,1,1)
-BtnAutoTour.Font = Enum.Font.GothamBold
-BtnAutoTour.TextSize = 10
-BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
-
-local LogFrame = Instance.new("Frame", SG)
-LogFrame.Size = UDim2.new(0, 300, 0, 400)
-LogFrame.Position = UDim2.new(1, -320, 0.5, -200)
-LogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-LogFrame.BorderSizePixel = 2
-LogFrame.BorderColor3 = Color3.fromRGB(120, 40, 150)
-LogFrame.Visible = false
-
-local LogTitle = Instance.new("TextLabel", LogFrame)
-LogTitle.Size = UDim2.new(1, 0, 0, 30)
-LogTitle.BackgroundColor3 = Color3.fromRGB(80, 20, 100)
-LogTitle.Text = "📡 LOG BOT CARTÓGRAFO"
-LogTitle.TextColor3 = Color3.new(1,1,1)
-LogTitle.Font = Enum.Font.GothamBold
-
-local LogScroll = Instance.new("ScrollingFrame", LogFrame)
-LogScroll.Size = UDim2.new(1, -10, 1, -40)
-LogScroll.Position = UDim2.new(0, 5, 0, 35)
-LogScroll.BackgroundTransparency = 1
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogScroll.ScrollBarThickness = 3
-local LogLayout = Instance.new("UIListLayout", LogScroll)
-LogLayout.Padding = UDim.new(0, 3)
-
-local function AddLog(text, color)
-    local l = Instance.new("TextLabel", LogScroll)
-    l.Size = UDim2.new(1, 0, 0, 15)
-    l.BackgroundTransparency = 1
-    l.TextColor3 = color or Color3.new(1,1,1)
-    l.TextSize = 11
-    l.Font = Enum.Font.Gotham
-    l.TextXAlignment = Enum.TextXAlignment.Left
-    l.Text = text
-    LogScroll.CanvasSize = UDim2.new(0, 0, 0, LogLayout.AbsoluteContentSize.Y)
-    LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
+local function MakeTabBtn(icon, tabName, order)
+    local tb = Instance.new("TextButton", Sidebar)
+    tb.Size = UDim2.new(0, 40, 0, 40)
+    tb.BackgroundColor3 = (tabName == "Farm") and C.accent or C.accentOff
+    tb.Text = icon
+    tb.TextSize = 18
+    tb.Font = Enum.Font.GothamBold
+    tb.TextColor3 = Color3.new(1,1,1)
+    tb.LayoutOrder = order
+    tb.BorderSizePixel = 0
+    tb.Name = "Tab_" .. tabName
+    Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 8)
+    return tb
 end
 
-local PanicLabel = Instance.new("TextLabel", MF)
-PanicLabel.Size = UDim2.new(0.9, 0, 0, 15)
-PanicLabel.Position = UDim2.new(0.05, 0, 0, 400)
-PanicLabel.BackgroundTransparency = 1
-PanicLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-PanicLabel.Font = Enum.Font.GothamBold
-PanicLabel.TextSize = 10
-PanicLabel.Text = "🛡️ ESCUDO PÁNICO (ESCAPA AL " .. math.floor(PanicThreshold * 100) .. "%)"
+local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
+local TabTP   = MakeTabBtn("🗺️", "Teleport", 2)
+local TabLogs = MakeTabBtn("📋", "Logs", 3)
 
-local SliderBg = Instance.new("TextButton", MF)
-SliderBg.Size = UDim2.new(0.9, 0, 0, 15)
-SliderBg.Position = UDim2.new(0.05, 0, 0, 380)
-SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+-- ======================== PANEL DE CONTENIDO ========================
+local ContentPanel = Instance.new("Frame", MF)
+ContentPanel.Size = UDim2.new(1, -58, 1, -60)
+ContentPanel.Position = UDim2.new(0, 56, 0, 58)
+ContentPanel.BackgroundColor3 = C.panel
+ContentPanel.BorderSizePixel = 0
+Instance.new("UICorner", ContentPanel).CornerRadius = UDim.new(0, 8)
+
+-- ======================== UTILIDADES DE UI ========================
+local function MakeScrollPage(name)
+    local page = Instance.new("ScrollingFrame", ContentPanel)
+    page.Name = name
+    page.Size = UDim2.new(1, -10, 1, -10)
+    page.Position = UDim2.new(0, 5, 0, 5)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = C.accent
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.Visible = (name == "Farm")
+    local lay = Instance.new("UIListLayout", page)
+    lay.Padding = UDim.new(0, 5)
+    lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    lay.SortOrder = Enum.SortOrder.LayoutOrder
+    Instance.new("UIPadding", page).PaddingTop = UDim.new(0, 4)
+    TabFrames[name] = page
+    return page
+end
+
+local function SwitchTab(tabName)
+    ActiveTab = tabName
+    for name, frame in pairs(TabFrames) do
+        frame.Visible = (name == tabName)
+    end
+    for _, btn in pairs(Sidebar:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.BackgroundColor3 = btn.Name == ("Tab_" .. tabName) and C.accent or C.accentOff
+        end
+    end
+end
+
+TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
+TabTP.MouseButton1Click:Connect(function() SwitchTab("Teleport") end)
+TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
+
+local function SectionLabel(parent, text, order)
+    local l = Instance.new("TextLabel", parent)
+    l.Size = UDim2.new(1, -10, 0, 22)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = C.accent
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 11
+    l.Text = "  " .. text
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.LayoutOrder = order or 0
+end
+
+local function ToggleButton(parent, text, order, defaultColor)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.BackgroundColor3 = defaultColor or C.card
+    btn.TextColor3 = C.text
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.Text = "  " .. text
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.LayoutOrder = order or 0
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    return btn
+end
+
+-- =======================================================================================
+-- ========== TAB 1: FARM ==========
+-- =======================================================================================
+local FarmPage = MakeScrollPage("Farm")
+
+SectionLabel(FarmPage, "COMBATE", 1)
+local BtnToggle = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
+BtnToggle.TextSize = 13
+BtnToggle.Font = Enum.Font.GothamBold
+local BtnHeight = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
+local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
+local BtnSkill  = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
+local BtnBoss   = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
+
+SectionLabel(FarmPage, "DEFENSA", 10)
+local PanicLabel = Instance.new("TextLabel", FarmPage)
+PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
+PanicLabel.BackgroundTransparency = 1
+PanicLabel.TextColor3 = C.muted
+PanicLabel.Font = Enum.Font.Gotham
+PanicLabel.TextSize = 10
+PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
+PanicLabel.TextXAlignment = Enum.TextXAlignment.Left
+PanicLabel.LayoutOrder = 11
+
+local SliderBg = Instance.new("TextButton", FarmPage)
+SliderBg.Size = UDim2.new(0.95, 0, 0, 12)
+SliderBg.BackgroundColor3 = Color3.fromRGB(40, 42, 55)
 SliderBg.Text = ""
+SliderBg.LayoutOrder = 12
+SliderBg.BorderSizePixel = 0
+Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(0, 6)
 
 local SliderFill = Instance.new("Frame", SliderBg)
 SliderFill.Size = UDim2.new(PanicThreshold, 0, 1, 0)
-SliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+SliderFill.BackgroundColor3 = C.accentOn
 SliderFill.BorderSizePixel = 0
+Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(0, 6)
 
--- ==============================================================================
--- PESTAÑA VIAJE SEGURO (FLY NOCLIP)
--- ==============================================================================
-local TravelFrame = Instance.new("Frame", SG)
-TravelFrame.Size = UDim2.new(0, 250, 0, 360)
-TravelFrame.Position = UDim2.new(0.05, 310, 0.4, 0)
-TravelFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
-TravelFrame.BorderSizePixel = 2
-TravelFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
-TravelFrame.Active = true
-TravelFrame.Draggable = true
-TravelFrame.Visible = false
+SectionLabel(FarmPage, "UTILIDADES", 20)
+local BtnCodes = ToggleButton(FarmPage, "📋 Gestor de Códigos", 21, Color3.fromRGB(35, 55, 75))
 
-local TTitle = Instance.new("TextLabel", TravelFrame)
-TTitle.Size = UDim2.new(1, 0, 0, 30)
-TTitle.BackgroundColor3 = Color3.fromRGB(10, 40, 80)
-TTitle.Text = " ✈️ MENU NAVEGACIÓN"
-TTitle.TextColor3 = Color3.new(1,1,1)
-TTitle.Font = Enum.Font.GothamBold
-TTitle.TextSize = 13
-
-local TBtnClose = Instance.new("TextButton", TravelFrame)
-TBtnClose.Size = UDim2.new(0, 30, 0, 30)
-TBtnClose.Position = UDim2.new(1, -30, 0, 0)
-TBtnClose.BackgroundTransparency = 1
-TBtnClose.Text = "❌"
-TBtnClose.TextColor3 = Color3.new(1,1,1)
-
-local TScroll = Instance.new("ScrollingFrame", TravelFrame)
-TScroll.Size = UDim2.new(1, 0, 1, -30)
-TScroll.Position = UDim2.new(0, 0, 0, 30)
-TScroll.BackgroundTransparency = 1
-TScroll.ScrollBarThickness = 4
-TScroll.CanvasSize = UDim2.new(0, 0, 0, 700)
+-- =======================================================================================
+-- ========== TAB 2: TELEPORT ==========
+-- =======================================================================================
+local TPPage = MakeScrollPage("Teleport")
 
 local IsTraveling = false
 local AutoSnipeFruit = false
 
 local function CancelTravel()
     IsTraveling = false
-    StatusLabel.Text = "Status: INACTIVO"
+    StatusLabel.Text = "Status: Inactivo"
 end
 
 local function SafeTravel(targetVector3, destinationName)
     CancelTravel()
     task.wait(0.1)
     IsTraveling = true
-    
     local char = LP.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    -- Frenar AutoFarm para que no entre en dilema
     AutoFarm = false
-    BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
-    BtnToggle.Text = "► INICIAR AUTO-FARM"
-    
+    BtnToggle.BackgroundColor3 = C.red
+    BtnToggle.Text = "  ► Iniciar Auto-Farm"
     StatusLabel.Text = "✈️ Viajando a: " .. destinationName
-    
     task.spawn(function()
         while IsTraveling do
             pcall(function()
@@ -289,17 +301,13 @@ local function SafeTravel(targetVector3, destinationName)
                     local dist = (hrp.Position - targetVector3).Magnitude
                     if dist <= 15 then
                         IsTraveling = false
-                        StatusLabel.Text = "Status: 🏁 Llegada a " .. destinationName
+                        StatusLabel.Text = "🏁 Llegada a " .. destinationName
                         char:PivotTo(CFrame.new(targetVector3))
                     else
-                        local step = math.clamp(30 / dist, 0, 1) -- ~150 studs/s
-                        
-                        -- VUELO RECTO CAMUFLADO (Ondulación):
-                        -- Usamos math.sin para mover el personaje arriba/abajo de forma sinusoidal natural
-                        -- Esto engaña al ojo humano para que parezca que presiona 'Space' para saltar repetidamente
-                        local ondulateBase = math.sin(os.clock() * 6) * 2 -- Sube y baja 2 Studs de forma suave
+                        local step = math.clamp(30 / dist, 0, 1)
+                        local wave = math.sin(os.clock() * 6) * 2
                         local targetLerp = hrp.CFrame:Lerp(CFrame.new(targetVector3), step)
-                        char:PivotTo(targetLerp * CFrame.new(0, ondulateBase, 0))
+                        char:PivotTo(targetLerp * CFrame.new(0, wave, 0))
                     end
                 end
             end)
@@ -308,108 +316,205 @@ local function SafeTravel(targetVector3, destinationName)
     end)
 end
 
-local travelList = Instance.new("UIListLayout", TScroll)
-travelList.Padding = UDim.new(0, 5)
-travelList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-travelList.SortOrder = Enum.SortOrder.LayoutOrder
-
-local function LabelTitle(text)
-    local l = Instance.new("TextLabel", TScroll)
-    l.Size = UDim2.new(1, 0, 0, 20)
-    l.BackgroundTransparency = 1
-    l.TextColor3 = Color3.fromRGB(150, 150, 200)
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = 11
-    l.Text = text
+local tpOrder = 0
+local function TPSection(text)
+    tpOrder = tpOrder + 1
+    SectionLabel(TPPage, text, tpOrder * 100)
 end
 
-local function CreateDynamicTravelBtn(color, text, mode, vectorOrName)
-    local btn = Instance.new("TextButton", TScroll)
-    btn.Size = UDim2.new(0.95, 0, 0, 30)
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1,1,1)
+local function TPButton(text, color, mode, target)
+    tpOrder = tpOrder + 1
+    local btn = Instance.new("TextButton", TPPage)
+    btn.Size = UDim2.new(0.95, 0, 0, 28)
+    btn.BackgroundColor3 = color or C.card
+    btn.TextColor3 = C.text
     btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 10
-    btn.Text = " " .. text
+    btn.Text = "  " .. text
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    
+    btn.LayoutOrder = tpOrder * 100
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
     btn.MouseButton1Click:Connect(function()
-        if mode == "Vector3" then
-            SafeTravel(vectorOrName, text)
-        elseif mode == "FindNPC" then
+        if mode == "V3" then
+            SafeTravel(target, text)
+        elseif mode == "NPC" then
             local obj = nil
-            local searchName = tostring(vectorOrName):lower()
-            -- Búsqueda agresiva ignorando carpetas estructurales
             for _, v in pairs(Workspace:GetDescendants()) do
-                if v.Name:lower():match(searchName) then
-                    if v:IsA("Model") and v.PrimaryPart then obj = v break end
-                    if v:FindFirstChild("HumanoidRootPart") then obj = v break end
+                if v.Name:lower():match(target:lower()) then
+                    if v:IsA("Model") and (v.PrimaryPart or v:FindFirstChild("HumanoidRootPart")) then obj = v break end
                 end
             end
-            
             if obj then
-                local tPos = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
-                SafeTravel(tPos, text)
-            else
-                StatusLabel.Text = "Status: ❌ VENDEDOR NO NACE EN EL MAPA AÚN."
-            end
-        elseif mode == "Cancel" then
-            CancelTravel()
-        elseif mode == "FruitSnipe" then
+                local p = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
+                SafeTravel(p, text)
+            else StatusLabel.Text = "❌ NPC no cargado aún." end
+        elseif mode == "Cancel" then CancelTravel()
+        elseif mode == "Snipe" then
             AutoSnipeFruit = not AutoSnipeFruit
             if AutoSnipeFruit then
-                btn.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
-                btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-                btn.Text = " 🍏 AUTO-RECOLECTOR: ACTIVADO"
-                StatusLabel.Text = "Status: 🍏 Cazando (Vuela por las islas...)"
+                btn.BackgroundColor3 = C.accentOn; btn.Text = "  🍏 Auto-Recolector: ACTIVO"
             else
-                btn.BackgroundColor3 = Color3.fromRGB(20, 200, 50)
-                btn.TextColor3 = Color3.new(1,1,1)
-                btn.Text = " 🍏 AUTO-RECOLECTOR (SNIPER): OFF"
-                StatusLabel.Text = "Status: ❌ Auto-Cazador de Frutas Apagado."
+                btn.BackgroundColor3 = C.card; btn.Text = "  🍏 Auto-Recolector (Sniper): OFF"
             end
         end
     end)
+    return btn
 end
 
-LabelTitle("🌍 ISLAS Y PORTALES GLOBALES")
-CreateDynamicTravelBtn(Color3.fromRGB(30,50,80), "🌀 Starter Island", "Vector3", Vector3.new(-71, -2, -299))
-CreateDynamicTravelBtn(Color3.fromRGB(80,70,30), "🏜️ Sand Island", "Vector3", Vector3.new(17, -6, -305))
-CreateDynamicTravelBtn(Color3.fromRGB(30,100,30), "🌴 Jungle Island", "Vector3", Vector3.new(-392, -2, 407))
-CreateDynamicTravelBtn(Color3.fromRGB(150,100,30), "🐫 Desert Island", "Vector3", Vector3.new(-688, -1, -287))
-CreateDynamicTravelBtn(Color3.fromRGB(150,150,200), "❄️ Snow Island", "Vector3", Vector3.new(-182, -1, -998))
-CreateDynamicTravelBtn(Color3.fromRGB(50,50,150), "⚓ Sailor Island", "Vector3", Vector3.new(182, 5, 669))
-CreateDynamicTravelBtn(Color3.fromRGB(100,30,100), "👻 Hollow Island", "Vector3", Vector3.new(-542, -1, 872))
-CreateDynamicTravelBtn(Color3.fromRGB(60,60,60), "⛩️ Shibuya Island", "Vector3", Vector3.new(1269, 13, 233))
-CreateDynamicTravelBtn(Color3.fromRGB(80,40,40), "🏙️ Shinjuku Island", "Vector3", Vector3.new(189, -1, -1643))
-CreateDynamicTravelBtn(Color3.fromRGB(100,100,30), "🏫 Academy Island", "Vector3", Vector3.new(962, -2, 1053))
-CreateDynamicTravelBtn(Color3.fromRGB(40,40,100), "🗡️ Lawless Island", "Vector3", Vector3.new(209, -4, 1673))
-CreateDynamicTravelBtn(Color3.fromRGB(10,100,100), "🧪 Portal Slime", "Vector3", Vector3.new(-982, -2, 275))
-CreateDynamicTravelBtn(Color3.fromRGB(100,20,50), "⚔️ Portal Ninja", "Vector3", Vector3.new(-1621, 10, -575))
+local function NPCGuideEntry(npcName, desc, pos, order)
+    local card = Instance.new("Frame", TPPage)
+    card.Size = UDim2.new(0.95, 0, 0, 52)
+    card.BackgroundColor3 = Color3.fromRGB(32, 36, 48)
+    card.BorderSizePixel = 0
+    card.LayoutOrder = order
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 6)
+    
+    local nameL = Instance.new("TextLabel", card)
+    nameL.Size = UDim2.new(0.65, 0, 0, 20)
+    nameL.Position = UDim2.new(0, 8, 0, 4)
+    nameL.BackgroundTransparency = 1
+    nameL.Text = npcName
+    nameL.TextColor3 = Color3.fromRGB(170, 200, 255)
+    nameL.Font = Enum.Font.GothamBold
+    nameL.TextSize = 10
+    nameL.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local descL = Instance.new("TextLabel", card)
+    descL.Size = UDim2.new(1, -16, 0, 18)
+    descL.Position = UDim2.new(0, 8, 0, 26)
+    descL.BackgroundTransparency = 1
+    descL.Text = desc
+    descL.TextColor3 = C.muted
+    descL.Font = Enum.Font.Gotham
+    descL.TextSize = 9
+    descL.TextXAlignment = Enum.TextXAlignment.Left
+    descL.TextWrapped = true
+    
+    local goBtn = Instance.new("TextButton", card)
+    goBtn.Size = UDim2.new(0, 40, 0, 20)
+    goBtn.Position = UDim2.new(1, -48, 0, 4)
+    goBtn.BackgroundColor3 = C.accent
+    goBtn.Text = "IR"
+    goBtn.TextColor3 = Color3.new(1,1,1)
+    goBtn.Font = Enum.Font.GothamBold
+    goBtn.TextSize = 10
+    goBtn.BorderSizePixel = 0
+    Instance.new("UICorner", goBtn).CornerRadius = UDim.new(0, 4)
+    goBtn.MouseButton1Click:Connect(function() SafeTravel(pos, npcName) end)
+end
 
-LabelTitle("🔥 EVENTOS ESPECIALES Y DUNGEONS")
-CreateDynamicTravelBtn(Color3.fromRGB(200,50,50), "👹 Boss Rush Portal", "Vector3", Vector3.new(106, 6, 840))
-CreateDynamicTravelBtn(Color3.fromRGB(100,20,20), "⚖️ Portal Judgement", "Vector3", Vector3.new(-1029, -2, -989))
-CreateDynamicTravelBtn(Color3.fromRGB(150,80,20), "🗼 Infinite Tower Portal", "Vector3", Vector3.new(1276, -4, -1474))
-CreateDynamicTravelBtn(Color3.fromRGB(80,50,80), "🕳️ Dungeon Portal", "Vector3", Vector3.new(1272, 5, -897))
-CreateDynamicTravelBtn(Color3.fromRGB(250,50,50), "💀 Strongest Boss Portal", "Vector3", Vector3.new(593, -2, -1052))
+-- —————————— ISLAS ——————————
+TPSection("🌍 ISLAS")
+TPButton("🌀 Starter Island", Color3.fromRGB(35,45,65), "V3", Vector3.new(-71,-2,-299))
+TPButton("🏖️ Sand Island", Color3.fromRGB(65,55,35), "V3", Vector3.new(17,-6,-305))
+TPButton("🌴 Jungle Island", Color3.fromRGB(30,65,35), "V3", Vector3.new(-392,-2,407))
+TPButton("🐪 Desert Island", Color3.fromRGB(75,55,30), "V3", Vector3.new(-688,-1,-287))
+TPButton("❄️ Snow Island", Color3.fromRGB(55,65,85), "V3", Vector3.new(-182,-1,-998))
+TPButton("⚓ Sailor Island", Color3.fromRGB(35,45,75), "V3", Vector3.new(182,5,669))
+TPButton("👻 Hollow Island", Color3.fromRGB(55,35,65), "V3", Vector3.new(-542,-1,872))
+TPButton("⛩️ Shibuya Island", Color3.fromRGB(50,45,55), "V3", Vector3.new(1269,13,233))
+TPButton("🏙️ Shinjuku Island", Color3.fromRGB(55,40,45), "V3", Vector3.new(189,-1,-1643))
+TPButton("🏫 Academy Island", Color3.fromRGB(55,55,35), "V3", Vector3.new(962,-2,1053))
+TPButton("🗡️ Lawless Island", Color3.fromRGB(40,40,60), "V3", Vector3.new(209,-4,1673))
+TPButton("🧪 Slime Island", Color3.fromRGB(35,60,60), "V3", Vector3.new(-982,-2,275))
+TPButton("🥷 Ninja Island", Color3.fromRGB(55,35,50), "V3", Vector3.new(-1621,10,-575))
 
-LabelTitle("🤖 MISIONES IMPORTANTES")
-CreateDynamicTravelBtn(Color3.fromRGB(30,80,30), "📜 Quest Starter (Lvl 0-249)", "Vector3", Vector3.new(171, 16, -215))
-CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "👑 Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
-CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "🥊 Quest Haki (Nieve)", "Vector3", Vector3.new(-499, 23, -1253))
-CreateDynamicTravelBtn(Color3.fromRGB(80,30,80), "👑 Quest Ragna (Nieve)", "Vector3", Vector3.new(-273, -5, -1354))
+-- —————————— DUNGEONS ——————————
+TPSection("🔥 DUNGEONS & EVENTOS")
+TPButton("👹 Boss Rush", Color3.fromRGB(75,35,35), "V3", Vector3.new(106,6,840))
+TPButton("⚖️ Judgement", Color3.fromRGB(60,30,45), "V3", Vector3.new(-1029,-2,-989))
+TPButton("🗼 Infinite Tower", Color3.fromRGB(65,50,30), "V3", Vector3.new(1276,-4,-1474))
+TPButton("🕳️ Dungeon", Color3.fromRGB(50,40,60), "V3", Vector3.new(1272,5,-897))
+TPButton("💀 Boss Más Fuerte", Color3.fromRGB(80,30,30), "V3", Vector3.new(593,-2,-1052))
 
-LabelTitle("🍎 FRUTAS Y MERCADOS")
-CreateDynamicTravelBtn(Color3.fromRGB(200,80,80), "💎 Vendedor (Gemas)", "FindNPC", "GemFruitDealer")
-CreateDynamicTravelBtn(Color3.fromRGB(200,80,80), "🪙 Vendedor (Monedas)", "FindNPC", "CoinFruitDealer")
-CreateDynamicTravelBtn(Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
+-- —————————— NPCs TELEPORT DIRECTO ——————————
+TPSection("🤖 NPCs — TELEPORT DIRECTO")
+TPButton("📜 Quest 1 (Lvl 0-99)", C.card, "V3", Vector3.new(171,16,-215))
+TPButton("📜 Quest 2 (Lvl 100-249)", C.card, "V3", Vector3.new(-8,-3,-203))
+TPButton("📜 Quest 3 (Lvl 250-499)", C.card, "V3", Vector3.new(-520,-2,434))
+TPButton("📜 Quest 4 (Lvl 500-749)", C.card, "V3", Vector3.new(-468,18,480))
+TPButton("📜 Quest 5 (Lvl 750-999)", C.card, "V3", Vector3.new(-688,-3,-461))
+TPButton("📜 Quest 6 (Lvl 1000-1499)", C.card, "V3", Vector3.new(-864,-5,-386))
+TPButton("📜 Quest 7 (Lvl 1500-1999)", C.card, "V3", Vector3.new(-389,-2,-946))
+TPButton("📜 Quest 8 (Lvl 2000-2999)", C.card, "V3", Vector3.new(-551,22,-1026))
+TPButton("📜 Quest 9 (Lvl 3000-3999)", C.card, "V3", Vector3.new(1419,8,372))
+TPButton("📜 Quest 10 (Lvl 4000-5000)", C.card, "V3", Vector3.new(1604,8,429))
+TPButton("📜 Quest 11 (Lvl 5000-6250)", C.card, "V3", Vector3.new(-286,-4,1038))
+TPButton("📜 Quest 12 (Lvl 6250-7000)", C.card, "V3", Vector3.new(626,1,-1610))
+TPButton("📜 Quest 13 (Lvl 7000-8000)", C.card, "V3", Vector3.new(-20,1,-1986))
+TPButton("📜 Quest 14 (Lvl 8000-9000)", C.card, "V3", Vector3.new(-1188,17,338))
+TPButton("📜 Quest 15 (Lvl 9000-10000)", C.card, "V3", Vector3.new(1028,1,1241))
+TPButton("📜 Quest 18 (Lvl 11500-12000)", C.card, "V3", Vector3.new(-1787,6,-745))
+TPButton("📜 Quest 19 (Lvl 12000+)", C.card, "V3", Vector3.new(67,-2,1758))
 
-LabelTitle("🚨 EMERGENCIAS")
-CreateDynamicTravelBtn(Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
+-- —————————— FRUTAS ——————————
+TPSection("🍎 FRUTAS")
+TPButton("💎 Vendedor de Frutas (Gemas)", Color3.fromRGB(55, 35, 45), "NPC", "GemFruitDealer")
+TPButton("🪙 Vendedor de Frutas (Monedas)", Color3.fromRGB(55, 45, 35), "NPC", "CoinFruitDealer")
+TPButton("🍏 Auto-Recolector (Sniper): OFF", Color3.fromRGB(30, 60, 40), "Snipe", "")
+TPButton("🛑 DETENER VUELO", C.red, "Cancel", "")
 
-BtnTravelMenu.MouseButton1Click:Connect(function() TravelFrame.Visible = not TravelFrame.Visible end)
-TBtnClose.MouseButton1Click:Connect(function() TravelFrame.Visible = false end)
+-- —————————— MINI-GUÍA DE NPCs ——————————
+TPSection("📖 MINI-GUÍA — NPCs IMPORTANTES")
+
+local g = 9000
+NPCGuideEntry("🥋 Haki Master", "Te enseña Haki. Debes tener nivel suficiente. Ubicado en Snow Island. Te da el poder de Haki para golpear usuarios de Logia.", Vector3.new(-499,23,-1253), g+1)
+NPCGuideEntry("🐉 Dragon Slayer Master", "Questline de Ragna. Desbloquea buffs de Dragon Slayer al completar sus misiones. Snow Island.", Vector3.new(-273,-5,-1354), g+2)
+NPCGuideEntry("👤 Shadow Master", "Questline Shadow. Desbloquea buffs de Shadow. Se encuentra en Starter Island.", Vector3.new(335,25,-378), g+3)
+NPCGuideEntry("👑 Shadow Monarch Master", "Buff avanzado de Shadow Monarch. Starter Island, zona alta.", Vector3.new(243,26,-84), g+4)
+NPCGuideEntry("🧬 Manipulator Master", "Questline Aizen. Desbloquea buffs de Manipulator. Hollow Island, zona lejana.", Vector3.new(-893,24,1229), g+5)
+NPCGuideEntry("⚡ Atomic Master", "Questline Atomic. Desbloquea buffs atómicos. Lawless Island.", Vector3.new(216,-6,2126), g+6)
+NPCGuideEntry("🌙 Moon Slayer F Move", "Mastery de movimiento F de Moon Slayer. Zona de Boss (isla principal).", Vector3.new(831,57,-984), g+7)
+NPCGuideEntry("✨ Blessed Maiden F Move", "Mastery de movimiento F de Blessed Maiden. Cerca del Portal Boss.", Vector3.new(940,5,-1067), g+8)
+NPCGuideEntry("⚔️ Corrupted Excalibur F Move", "Mastery de Saber Alter. Zona profunda de Boss Island.", Vector3.new(694,1,-1227), g+9)
+NPCGuideEntry("♾️ Strongest Of Today Domain", "Dominio de Gojo. Requiere arma específica. Shinjuku Island.", Vector3.new(55,41,-2067), g+10)
+NPCGuideEntry("👹 Strongest In History Domain", "Dominio de Sukuna. Requiere arma específica. Shinjuku Island.", Vector3.new(598,30,-2055), g+11)
+NPCGuideEntry("🥷 Strongest Shinobi F Move", "Mastery de Shinobi. Ninja Island, zona más profunda.", Vector3.new(-1981,25,-374), g+12)
+NPCGuideEntry("🏪 Boss Rush Shop", "Tienda de Boss Rush. Compra recompensas con tokens de Boss Rush.", Vector3.new(104,6,826), g+13)
+NPCGuideEntry("💎 Gems Fruit Dealer", "Compra frutas con Gemas. Sailor Island, cerca del puerto.", Vector3.new(400,2,752), g+14)
+NPCGuideEntry("🪙 Coins Fruit Dealer", "Compra frutas con Monedas. Sailor Island, junto al Gem Dealer.", Vector3.new(408,2,802), g+15)
+NPCGuideEntry("😈 Demonite Quest (Anos)", "Quest especial del Demonite. Academy Island.", Vector3.new(727,-2,1273), g+16)
+NPCGuideEntry("💠 Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
+
+-- =======================================================================================
+-- ========== TAB 3: LOGS ==========
+-- =======================================================================================
+local LogsPage = MakeScrollPage("Logs")
+SectionLabel(LogsPage, "📋 REGISTRO DE EVENTOS", 1)
+
+local LogPlaceholder = Instance.new("TextLabel", LogsPage)
+LogPlaceholder.Size = UDim2.new(0.95, 0, 0, 60)
+LogPlaceholder.BackgroundColor3 = C.card
+LogPlaceholder.TextColor3 = C.muted
+LogPlaceholder.Font = Enum.Font.Gotham
+LogPlaceholder.TextSize = 11
+LogPlaceholder.Text = "Los registros de actividad aparecerán aquí.\nPróximamente: historial de combate, frutas encontradas, y más."
+LogPlaceholder.TextWrapped = true
+LogPlaceholder.LayoutOrder = 2
+LogPlaceholder.BorderSizePixel = 0
+Instance.new("UICorner", LogPlaceholder).CornerRadius = UDim.new(0, 6)
+
+-- ========== VARIABLES OCULTAS PARA COMPATIBILIDAD BACKEND ==========
+-- Estos elementos ya no se pintan en la GUI pero se mantienen para que
+-- las conexiones de línea 831+ y el Fruit ESP sigan compilando sin error.
+local BtnSpy = Instance.new("TextButton") -- fantasma, sin Parent
+BtnSpy.Visible = false
+local BtnAutoTour = Instance.new("TextButton")
+BtnAutoTour.Visible = false
+local BtnTravelMenu = Instance.new("TextButton")
+BtnTravelMenu.Visible = false
+local TravelFrame = Instance.new("Frame")
+TravelFrame.Visible = false
+local TBtnClose = Instance.new("TextButton")
+TBtnClose.Visible = false
+local LogFrame = Instance.new("Frame")
+LogFrame.Visible = false
+local LogScroll = Instance.new("ScrollingFrame")
+local LogLayout = Instance.new("UIListLayout", LogScroll)
+LogLayout.Padding = UDim.new(0, 3)
+local function AddLog(text, color) end -- stub silencioso
+local TScroll = Instance.new("ScrollingFrame") -- fantasma
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -831,31 +936,27 @@ end)
 BtnToggle.MouseButton1Click:Connect(function()
     AutoFarm = not AutoFarm
     if AutoFarm then
-        BtnToggle.Text = "◼ DETENER AUTO-FARM"
-        BtnToggle.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        StatusLabel.Text = "Status: BUSCANDO OBJETIVOS"
+        BtnToggle.Text = "  ◼ Detener Auto-Farm"
+        BtnToggle.BackgroundColor3 = C.accentOn
+        StatusLabel.TextColor3 = C.accentOn
+        StatusLabel.Text = "Status: Buscando objetivos..."
         
         local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
             hrp:FindFirstChildOfClass("BodyVelocity"):Destroy()
         end
     else
-        BtnToggle.Text = "► INICIAR AUTO-FARM"
-        BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
-        StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        StatusLabel.Text = "Status: INACTIVO"
+        BtnToggle.Text = "  ► Iniciar Auto-Farm"
+        BtnToggle.BackgroundColor3 = C.red
+        StatusLabel.TextColor3 = C.muted
+        StatusLabel.Text = "Status: Inactivo"
         
-        -- Anti-Caída del Map al Detenerse: 
-        -- Te teletransporta 15 studs hacia arriba (a la superficie) antes de devolverte la gravedad
         pcall(function()
             local char = LP.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if hrp then
-                -- Sube 15 metros en seco para asegurarte de pisar la hierba y no caer al vacío infinito
                 char:PivotTo(hrp.CFrame * CFrame.new(0, 15, 0))
             end
-            
             if char and char:FindFirstChild("Humanoid") then
                 Workspace.CurrentCamera.CameraSubject = char.Humanoid
             end
@@ -866,38 +967,38 @@ end)
 BtnMagnet.MouseButton1Click:Connect(function()
     MobMagnetEnabled = not MobMagnetEnabled
     if MobMagnetEnabled then
-        BtnMagnet.BackgroundColor3 = Color3.fromRGB(150, 40, 180)
-        BtnMagnet.Text = "🧲 IMÁN: ON"
+        BtnMagnet.BackgroundColor3 = C.accentOn
+        BtnMagnet.Text = "  🧲 Imán: ACTIVO"
     else
-        BtnMagnet.BackgroundColor3 = Color3.fromRGB(50, 20, 60)
-        BtnMagnet.Text = "🧲 IMÁN MOBS"
+        BtnMagnet.BackgroundColor3 = C.card
+        BtnMagnet.Text = "  🧲 Imán de Mobs"
     end
 end)
 
 BtnSkill.MouseButton1Click:Connect(function()
     AutoSkillEnabled = not AutoSkillEnabled
     if AutoSkillEnabled then
-        BtnSkill.BackgroundColor3 = Color3.fromRGB(200, 80, 40)
-        BtnSkill.Text = "🔥 SKILL (X): ON"
+        BtnSkill.BackgroundColor3 = C.accentOn
+        BtnSkill.Text = "  🔥 Skill (X): ACTIVO"
     else
-        BtnSkill.BackgroundColor3 = Color3.fromRGB(80, 40, 20)
-        BtnSkill.Text = "🔥 AUTO SKILL (X)"
+        BtnSkill.BackgroundColor3 = C.card
+        BtnSkill.Text = "  🔥 Auto Skill (X)"
     end
 end)
 
 BtnBoss.MouseButton1Click:Connect(function()
     if TargetBosses == "Normal" then
         TargetBosses = "Ignorar"
-        BtnBoss.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        BtnBoss.Text = "🛑 IGNORAR BOSSES: OFF"
+        BtnBoss.BackgroundColor3 = C.accentOff
+        BtnBoss.Text = "  🛑 Ignorar Bosses"
     elseif TargetBosses == "Ignorar" then
         TargetBosses = "SoloBoss"
-        BtnBoss.BackgroundColor3 = Color3.fromRGB(200, 20, 150)
-        BtnBoss.Text = "👹 SOLO BOSS (FLY AIR)"
+        BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180)
+        BtnBoss.Text = "  👹 Solo Boss (Fly Air)"
     else
         TargetBosses = "Normal"
-        BtnBoss.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-        BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
+        BtnBoss.BackgroundColor3 = C.card
+        BtnBoss.Text = "  🎯 Cazar Bosses: Normal"
     end
 end)
 
@@ -1087,7 +1188,7 @@ SliderBg.MouseButton1Down:Connect(function()
         local pos = math.clamp(relativeX / SliderBg.AbsoluteSize.X, 0.01, 1)
         PanicThreshold = pos
         SliderFill.Size = UDim2.new(pos, 0, 1, 0)
-        PanicLabel.Text = "🛡️ ESCUDO PÁNICO (ESCAPA AL " .. math.floor(pos * 100) .. "%)"
+        PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(pos * 100) .. "%"
     end)
 end)
 
@@ -1102,18 +1203,18 @@ BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Detras"
         OfsY = 0
-        OfsZ = 6 -- 6 studs a la espalda
-        BtnHeight.Text = "Posición Segura: 🥷 POR LA ESPALDA"
+        OfsZ = 6
+        BtnHeight.Text = "  Posición: 🥷 Por la Espalda"
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
-        OfsY = -8 -- Exactamente 8 studs bajo tierra
-        OfsZ = 6  -- 6 studs a la espalda
-        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
+        OfsY = -8
+        OfsZ = 6
+        BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
     else
         FarmMode = "Arriba"
-        OfsY = 10 -- 10 studs directamente sobre su cabeza
-        OfsZ = 0  -- Eje Z nulo para evitar diagonales que te acerquen
-        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+        OfsY = 10
+        OfsZ = 0
+        BtnHeight.Text = "  Posición: ☁️ Arriba"
     end
 end)
 
@@ -1122,7 +1223,6 @@ local function ToggleUI()
     MF.Visible = not MF.Visible
     if not MF.Visible then
         if CodesFrame then CodesFrame.Visible = false end
-        if TravelFrame then TravelFrame.Visible = false end
     end
 end
 BtnMin.MouseButton1Click:Connect(ToggleUI)
