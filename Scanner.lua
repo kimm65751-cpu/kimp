@@ -110,7 +110,7 @@ BtnCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
 BtnCodes.TextColor3 = Color3.new(1,1,1)
 BtnCodes.Font = Enum.Font.GothamBold
 BtnCodes.TextSize = 12
-BtnCodes.Text = "📋 ABRIR GESTOeeR DE CÓDIGOS"
+BtnCodes.Text = "📋 ABRIR GESTOR DE CÓDIGOS"
 
 local BtnMagnet = Instance.new("TextButton", MF)
 BtnMagnet.Size = UDim2.new(0.42, 0, 0, 35)
@@ -210,7 +210,7 @@ TScroll.Size = UDim2.new(1, 0, 1, -30)
 TScroll.Position = UDim2.new(0, 0, 0, 30)
 TScroll.BackgroundTransparency = 1
 TScroll.ScrollBarThickness = 4
-TScroll.CanvasSize = UDim2.new(0, 0, 0, 600)
+TScroll.CanvasSize = UDim2.new(0, 0, 0, 700)
 
 local IsTraveling = false
 local AutoSnipeFruit = false
@@ -314,7 +314,6 @@ end
 -- ==============================================
 -- BOTONES DE ZONAS (NOCLIP DIRECTO)
 -- ==============================================
-local sectionY = 10
 local function LabelTitle(y, text)
     local l = Instance.new("TextLabel", TScroll)
     l.Size = UDim2.new(1, 0, 0, 20)
@@ -326,22 +325,29 @@ local function LabelTitle(y, text)
     l.Text = text
 end
 
-LabelTitle(5, "🌍 PORTALES E ISLAS (FÍSICO)")
-CreateDynamicTravelBtn(30, Color3.fromRGB(30,50,80), "🌀 Volar a Starter Island", "Vector3", Vector3.new(-71, -2, -299))
-CreateDynamicTravelBtn(65, Color3.fromRGB(80,70,30), "🏜️ Volar a Isla de Arena", "Vector3", Vector3.new(17, -6, -305))
+LabelTitle(5, "🌍 PORTALES E ISLAS")
+CreateDynamicTravelBtn(30, Color3.fromRGB(30,50,80), "🌀 Starter Island", "Vector3", Vector3.new(-71, -2, -299))
+CreateDynamicTravelBtn(65, Color3.fromRGB(80,70,30), "🏜️ Sand Island", "Vector3", Vector3.new(17, -6, -305))
+CreateDynamicTravelBtn(100, Color3.fromRGB(30,100,30), "🌴 Jungle Island", "Vector3", Vector3.new(-392, -2, 407))
+CreateDynamicTravelBtn(135, Color3.fromRGB(150,100,30), "🐫 Desert Island", "Vector3", Vector3.new(-688, -1, -287))
+CreateDynamicTravelBtn(170, Color3.fromRGB(150,150,200), "❄️ Snow Island", "Vector3", Vector3.new(-182, -1, -998))
+CreateDynamicTravelBtn(205, Color3.fromRGB(50,50,150), "⚓ Sailor Island", "Vector3", Vector3.new(182, 5, 669))
+CreateDynamicTravelBtn(240, Color3.fromRGB(100,30,100), "👻 Hollow Island", "Vector3", Vector3.new(-542, -1, 872))
+CreateDynamicTravelBtn(275, Color3.fromRGB(200,50,50), "👹 Boss Rush Portal", "Vector3", Vector3.new(106, 6, 840))
 
-LabelTitle(105, "🤖 NPCs IMPORTANTES")
-CreateDynamicTravelBtn(130, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 1", "Vector3", Vector3.new(171, 16, -215))
-CreateDynamicTravelBtn(165, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 2", "Vector3", Vector3.new(-8, -3, -203))
-CreateDynamicTravelBtn(200, Color3.fromRGB(80,30,80), "👑 Volar a Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
+LabelTitle(315, "🤖 NPCs IMPORTANTES")
+CreateDynamicTravelBtn(340, Color3.fromRGB(30,80,30), "📜 Quest NPCs Starter (1,2)", "Vector3", Vector3.new(171, 16, -215))
+CreateDynamicTravelBtn(375, Color3.fromRGB(80,30,80), "👑 Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
+CreateDynamicTravelBtn(410, Color3.fromRGB(80,30,80), "🥊 Quest Haki (Nieve)", "Vector3", Vector3.new(-499, 23, -1253))
+CreateDynamicTravelBtn(445, Color3.fromRGB(80,30,80), "👑 Quest Ragna (Nieve)", "Vector3", Vector3.new(-273, -5, -1354))
 
-LabelTitle(240, "🍎 FRUTAS Y MERCADO")
-CreateDynamicTravelBtn(265, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
-CreateDynamicTravelBtn(300, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
-CreateDynamicTravelBtn(335, Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
+LabelTitle(485, "🍎 FRUTAS Y MERCADOS")
+CreateDynamicTravelBtn(510, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
+CreateDynamicTravelBtn(545, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
+CreateDynamicTravelBtn(580, Color3.fromRGB(20,200,50), "🍏 AUTO-RECOLECTOR (SNIPER): OFF", "FruitSnipe", "")
 
-LabelTitle(375, "🚨 EMERGENCIAS")
-CreateDynamicTravelBtn(400, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
+LabelTitle(620, "🚨 EMERGENCIAS")
+CreateDynamicTravelBtn(645, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
 
 
 
@@ -839,73 +845,74 @@ BtnBoss.MouseButton1Click:Connect(function()
 end)
 
 -- ==============================================
--- OMNI-RECON : AUTO-DUMPER CONTINUO
+-- OMNI-RECON : AUTO-DUMPER CONTINUO (CERO LAG)
 -- ==============================================
 local ReconActive = false
 local LoggedEntities = {}
+local ReconConnections = {}
 
 BtnSpy.MouseButton1Click:Connect(function()
     ReconActive = not ReconActive
     if ReconActive then
         BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
-        BtnSpy.Text = "📡 RECON ACTIVO: BUSCANDO NUEVAS ZONAS..."
+        BtnSpy.Text = "📡 RECON ACTIVO: ESPERANDO STREAMING..."
         
         SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
         if writefile then
-            pcall(function() writefile(SpyFileName, "=== BITÁCORA EN VIVO DE EXPLORACIÓN ===\n\n") end)
+            pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (MÁXIMO RENDIMIENTO) ===\n\n") end)
+        end
+        
+        local function ProcessEntity(obj)
+            if not ReconActive then return end
+            pcall(function()
+                local fullName = obj:GetFullName()
+                if LoggedEntities[fullName] then return end
+                
+                local n = obj.Name:lower()
+                local isPortal = n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation")
+                local isNPC = obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and (n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true))
+                
+                if isPortal then
+                    local p = "N/A"
+                    if obj:IsA("Model") and obj.PrimaryPart then p = math.floor(obj.PrimaryPart.Position.X)..","..math.floor(obj.PrimaryPart.Position.Y)..","..math.floor(obj.PrimaryPart.Position.Z)
+                    elseif obj:IsA("BasePart") then p = math.floor(obj.Position.X)..","..math.floor(obj.Position.Y)..","..math.floor(obj.Position.Z) end
+                    
+                    if p ~= "N/A" then 
+                        local txt = "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. "\n"
+                        LoggedEntities[fullName] = true
+                        print("🗺️ [RECON STREAMING] Isla/Portal Materializado: " .. obj.Name)
+                        if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
+                        elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
+                    end
+                elseif isNPC then
+                    -- Buscar nombres reales legibles para humanos si el Dev usó nombres como "QuestNPC5"
+                    local realName = obj.Name
+                    local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if prompt and prompt.ObjectText and prompt.ObjectText ~= "" then
+                        realName = realName .. " (Diálogo: '" .. prompt.ObjectText .. "')"
+                    end
+                    
+                    local p = obj.HumanoidRootPart.Position
+                    local txt = "[NPC/DEALER] -> " .. realName .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
+                    LoggedEntities[fullName] = true
+                    print("🤖 [RECON STREAMING] NPC Materializado: " .. realName)
+                    if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
+                    elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
+                end
+            end)
         end
         
         task.spawn(function()
-            while ReconActive do
-                local newStuff = ""
-                
-                -- Escaneamos Portales/Islas
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    local fullName = obj:GetFullName()
-                    if not LoggedEntities[fullName] then
-                        local n = obj.Name:lower()
-                        if n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation") then
-                            local p = "N/A"
-                            if obj:IsA("Model") and obj.PrimaryPart then p = tostring(math.floor(obj.PrimaryPart.Position.X))..","..tostring(math.floor(obj.PrimaryPart.Position.Y))..","..tostring(math.floor(obj.PrimaryPart.Position.Z))
-                            elseif obj:IsA("BasePart") then p = tostring(math.floor(obj.Position.X))..","..tostring(math.floor(obj.Position.Y))..","..tostring(math.floor(obj.Position.Z)) end
-                            
-                            if p ~= "N/A" then 
-                                newStuff = newStuff .. "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. " | Ruta: " .. fullName .. "\n"
-                                LoggedEntities[fullName] = true
-                                print("🗺️ [RECON] Nueva Zona Descubierta: " .. obj.Name)
-                            end
-                        end
-                    end
-                end
-                
-                -- Escaneamos NPCs/Quests/Shops
-                for _, obj in pairs(Workspace:GetDescendants()) do
-                    local fullName = obj:GetFullName()
-                    if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and not LoggedEntities[fullName] then
-                        local n = obj.Name:lower()
-                        if n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true) then
-                            local p = obj.HumanoidRootPart.Position
-                            newStuff = newStuff .. "[NPC/DEALER] -> " .. obj.Name .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. " | Ruta: " .. fullName .. "\n"
-                            LoggedEntities[fullName] = true
-                            print("🤖 [RECON] Nuevo NPC Descubierto: " .. obj.Name)
-                        end
-                    end
-                end
-                
-                if newStuff ~= "" and appendfile then
-                    pcall(function() appendfile(SpyFileName, newStuff) end)
-                elseif newStuff ~= "" and writefile then
-                    local old = ""
-                    pcall(function() old = readfile(SpyFileName) end)
-                    pcall(function() writefile(SpyFileName, old .. newStuff) end)
-                end
-                
-                task.wait(2) -- Verificar cada 2 segundos a medida que vuelas por el mundo
-            end
+            -- Un TIRON unico para leer lo que SI tienes en frente
+            for _, obj in pairs(Workspace:GetDescendants()) do ProcessEntity(obj) end
+            -- SIN CICLOS WHILE FALSE, USAMOS EL MOTOR DE ROBLOX PARA CAZAR EL RESTO!
+            table.insert(ReconConnections, Workspace.DescendantAdded:Connect(ProcessEntity))
         end)
     else
         BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
         BtnSpy.Text = "📡 INICIAR ESCANEAR CONTINUO DE MAPA"
+        for _, conn in pairs(ReconConnections) do conn:Disconnect() end
+        ReconConnections = {}
     end
 end)
 
