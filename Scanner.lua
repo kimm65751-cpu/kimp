@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🦖 CATCH A MONSTER: AUTO-FARM V1.0 (GUI + HUEVOS + FLOTADOR DE MASCOTAS)
+-- 🦖 CATCH A MONSTER: AUTO-FARM V11 (GUI + HUEVOS + FLOTADOR DE MASCOTAS)
 -- Creado para: Pruebas de filtrado Server-Side y Ataques Aéreos
 -- ==============================================================================
 
@@ -163,8 +163,10 @@ ToggleESPBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================================
--- 3. INTERSECCIÓN DE MEMORIA LUA (GETGC) PARA ATAQUE/RANGO
+-- 2. ATAQUE VELOZ Y RANGO EXTENDIDO (MEMORY INJECTION)
 -- ==========================================================
+-- Interceptamos la basura de Lua (GC) buscando variables del auto-ataque.
+-- Modificaremos Range, CatchRange, etc.
 task.spawn(function()
     local countExitos = 0
     while true do
@@ -184,13 +186,13 @@ task.spawn(function()
                         v.MaxCatchDistance = 300; altered = true
                     end
                     
-                    -- Hacking Velocidad (Cooldown Limit Bypass)
-                    if rawget(v, "AttackSpeed") and type(v.AttackSpeed) == "number" and v.AttackSpeed > 0.1 then
-                        v.AttackSpeed = 0.05; altered = true
-                    end
-                    if rawget(v, "AttackCooldown") and type(v.AttackCooldown) == "number" and v.AttackCooldown > 0.1 then
-                        v.AttackCooldown = 0.05; altered = true
-                    end
+                    -- Hacking Velocidad (PELIGRO DE KICK - APAGADO POR AHORA)
+                    -- if rawget(v, "AttackSpeed") and type(v.AttackSpeed) == "number" and v.AttackSpeed > 0.1 then
+                    --     v.AttackSpeed = 0.05; altered = true
+                    -- end
+                    -- if rawget(v, "AttackCooldown") and type(v.AttackCooldown) == "number" and v.AttackCooldown > 0.1 then
+                    --     v.AttackCooldown = 0.05; altered = true
+                    -- end
                     
                     if altered then countExitos = countExitos + 1 end
                 end
@@ -198,7 +200,7 @@ task.spawn(function()
         end)
         
         if countExitos > 0 then
-            AddLog("✔️ MemoryScan exitoso: " .. countExitos .. " tablas inyectadas con Rango: 300, Cooldown: 0.05", Color3.fromRGB(100, 255, 100))
+            AddLog("✔️ MemoryScan exitoso: " .. countExitos .. " tablas inyectadas SOLO con Rango: 300", Color3.fromRGB(100, 255, 100))
             countExitos = 0
         end
         task.wait(10)
@@ -264,10 +266,8 @@ end)
 -- ==========================================================
 -- 5. ATAQUE SPAMMER: SATURACIÓN DE SERVIDOR (Click Aura)
 -- ==========================================================
--- Como descubrimos que el servidor rige el ritmo (AttackSpeed ignorado local),
--- vamos a bombardear el ClickDetector (MouseClick) del monstruo lejano.
--- Esto forzará al servidor a crear "FightLogicPlayerCreate" de forma superpuesta si no tiene rate-limit.
-local TargetAura = true
+-- (PELIGRO DE KICK - APAGADO TEMPORALMENTE)
+local TargetAura = false
 local Rango_Aura = 200
 
 task.spawn(function()
