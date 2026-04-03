@@ -48,6 +48,17 @@ MF.BorderColor3 = Color3.fromRGB(255, 0, 100)
 MF.Active = true
 MF.Draggable = true
 
+local BtnFloat = Instance.new("TextButton", SG)
+BtnFloat.Size = UDim2.new(0, 45, 0, 45)
+BtnFloat.Position = UDim2.new(0, 20, 0, 20)
+BtnFloat.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+BtnFloat.BorderColor3 = Color3.fromRGB(255, 0, 100)
+BtnFloat.BorderSizePixel = 2
+BtnFloat.Text = "💎"
+BtnFloat.TextSize = 20
+BtnFloat.Active = true
+BtnFloat.Draggable = true
+
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
@@ -55,6 +66,16 @@ Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local BtnMin = Instance.new("TextButton", MF)
+BtnMin.Size = UDim2.new(0, 30, 0, 30)
+BtnMin.Position = UDim2.new(1, -30, 0, 0)
+BtnMin.BackgroundTransparency = 1
+BtnMin.Text = "➖"
+BtnMin.TextColor3 = Color3.new(1, 1, 1)
+BtnMin.TextSize = 16
+BtnMin.Font = Enum.Font.GothamBold
 
 local StatusLabel = Instance.new("TextLabel", MF)
 StatusLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -121,11 +142,11 @@ BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
 local BtnSpy = Instance.new("TextButton", MF)
 BtnSpy.Size = UDim2.new(0.9, 0, 0, 30)
 BtnSpy.Position = UDim2.new(0.05, 0, 0, 280)
-BtnSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
 BtnSpy.TextColor3 = Color3.new(1,1,1)
 BtnSpy.Font = Enum.Font.GothamBold
-BtnSpy.TextSize = 11
-BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
+BtnSpy.TextSize = 10
+BtnSpy.Text = "📡 ESCANEAR MAPA (DUMP A TXT)"
 
 local PanicLabel = Instance.new("TextLabel", MF)
 PanicLabel.Size = UDim2.new(0.9, 0, 0, 15)
@@ -268,46 +289,6 @@ end)
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
 -- ==============================================================================
--- [NUEVO] INTERCEPTOR GLOBAL DE RED (SPY LOG)
--- ==============================================================================
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt and mt.__namecall then
-        setreadonly(mt, false)
-        local oldNamecall = mt.__namecall
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if SpyEnabled and (method == "FireServer" or method == "InvokeServer") then
-                -- Filtramos el Remoto de combate propio para no llenar el TXT (spam)
-                if self ~= CombatRemote and self.Name ~= "RequestHit" then
-                    local args = {...}
-                    local strArgs = ""
-                    for _, v in ipairs(args) do
-                        strArgs = strArgs .. tostring(v) .. " [" .. typeof(v) .. "], "
-                    end
-                    
-                    local logLine = "\n[SPY] " .. self.Name .. ":" .. method .. "() | Args: " .. strArgs
-                    -- Imprime en consola (F9)
-                    print(logLine)
-                    
-                    -- Guarda automáticamente en el Workspace del Ejecutor
-                    task.spawn(function()
-                        if appendfile then
-                            pcall(function() appendfile(SpyFileName, logLine) end)
-                        elseif writefile then
-                            local old = ""
-                            pcall(function() old = readfile(SpyFileName) end)
-                            pcall(function() writefile(SpyFileName, old .. logLine) end)
-                        end
-                    end)
-                end
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end
-end)
--- ==============================================================================
 
 
 local function GetNearestMob()
@@ -413,31 +394,36 @@ task.spawn(function()
                     -- ==============================================
                     -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
                     -- ==============================================
-                    if LastMobTracker ~= mob then
-                        LastMobTracker = mob
-                        CurrentMobHealth = mob.Humanoid.Health
-                        MobHitTimer = os.clock()
-                        
-                        -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
-                        pcall(function()
-                            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                            task.wait(0.05)
-                            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                        end)
-                    else
-                        if mob.Humanoid.Health < CurrentMobHealth then
-                            -- Confirmamos que hubo daño real, reseteamos el reloj
+                    if not IsInPanicRecovery then
+                        if LastMobTracker ~= mob then
+                            LastMobTracker = mob
                             CurrentMobHealth = mob.Humanoid.Health
                             MobHitTimer = os.clock()
-                        elseif os.clock() - MobHitTimer >= 5.0 then
-                            -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
+                            
+                            -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
                             pcall(function()
                                 VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                                 task.wait(0.05)
                                 VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                             end)
-                            MobHitTimer = os.clock() -- Refrescamos para intentar de nuevo
+                        else
+                            if mob.Humanoid.Health < CurrentMobHealth then
+                                -- Confirmamos que hubo daño real, reseteamos el reloj
+                                CurrentMobHealth = mob.Humanoid.Health
+                                MobHitTimer = os.clock()
+                            elseif os.clock() - MobHitTimer >= 5.0 then
+                                -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
+                                pcall(function()
+                                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                    task.wait(0.05)
+                                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                                end)
+                                MobHitTimer = os.clock() -- Refrescamos para intentar de nuevo
+                            end
                         end
+                    else
+                        -- Si estamos en pánico, mantener el reloj fresco para que no tire click apenas bajemos
+                        MobHitTimer = os.clock() 
                     end
                     
                     StatusLabel.Text = "Cazando: " .. mob.Name
@@ -673,19 +659,70 @@ BtnBoss.MouseButton1Click:Connect(function()
 end)
 
 BtnSpy.MouseButton1Click:Connect(function()
-    SpyEnabled = not SpyEnabled
-    if SpyEnabled then
-        BtnSpy.BackgroundColor3 = Color3.fromRGB(10, 100, 200)
-        BtnSpy.Text = "📡 ESPÍA ACTIVO: GUARDANDO EN TXT..."
-        SpyFileName = "OmniSpy_Dumps_" .. tostring(math.floor(os.clock())) .. ".txt"
-        print("Iniciando Log a archivo en la carpeta 'workspace' del ejecutor: " .. SpyFileName)
-        if writefile then
-            pcall(function() writefile(SpyFileName, "=== OMNI-SPY INICIADO ===\nVe y pisa la Zona Segura para capturar el remoto...\n") end)
+    BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 150, 20)
+    BtnSpy.Text = "⏳ ANALIZANDO MUNDO..."
+    task.wait(0.1)
+    
+    local Dump = "=== [ OMNI-RECON: DUMP DE COORDENADAS Y SISTEMAS ] ===\n\n"
+    local RS = game:GetService("ReplicatedStorage")
+    local WS = game:GetService("Workspace")
+    
+    -- 1. BUSCAR PORTALES
+    Dump = Dump .. "--- [ PORTALES E ISLAS ] ---\n"
+    for _, obj in pairs(WS:GetDescendants()) do
+        local n = obj.Name:lower()
+        if n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation") then
+            local p = "N/A"
+            if obj:IsA("Model") and obj.PrimaryPart then p = tostring(math.floor(obj.PrimaryPart.Position.X))..","..tostring(math.floor(obj.PrimaryPart.Position.Y))..","..tostring(math.floor(obj.PrimaryPart.Position.Z))
+            elseif obj:IsA("BasePart") then p = tostring(math.floor(obj.Position.X))..","..tostring(math.floor(obj.Position.Y))..","..tostring(math.floor(obj.Position.Z)) end
+            if p ~= "N/A" then Dump = Dump .. "-> " .. obj.Name .. " | Pos: " .. p .. " | Ruta: " .. obj:GetFullName() .. "\n" end
         end
-    else
-        BtnSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-        BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
     end
+    
+    -- 2. BUSCAR NPCs (FRUTAS/QUESTS/VENDEDORES)
+    Dump = Dump .. "\n--- [ NPCs / DEALERS / QUESTS ] ---\n"
+    for _, obj in pairs(WS:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name then
+            local n = obj.Name:lower()
+            -- Filtra NPCs comerciales o importantes, ignora mobs normales
+            if n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or n:match("seller") or obj:FindFirstChild("ProximityPrompt", true) then
+                local p = obj.HumanoidRootPart.Position
+                Dump = Dump .. "-> " .. obj.Name .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
+            end
+        end
+    end
+    
+    -- 3. BUSCAR FRUTAS DROPEADAS O SPANWERS
+    Dump = Dump .. "\n--- [ FRUTAS EN MAPA (ACTUAL) ] ---\n"
+    local fruitCount = 0
+    for _, obj in pairs(WS:GetDescendants()) do
+        local n = obj.Name:lower()
+        if (n:match("fruit") or n:match("akuma")) and obj:IsA("Model") then
+             Dump = Dump .. "-> FRUTA ENCONTRADA: " .. obj.Name .. " | Ruta: " .. obj:GetFullName() .. "\n"
+             fruitCount = fruitCount + 1
+        end
+    end
+    if fruitCount == 0 then Dump = Dump .. "No hay frutas caídas en este servidor actualmente.\n" end
+    
+    -- 4. VOLCADO DE MÓDULOS DE CONFIGURACIÓN DE FRUTAS/ISLAS
+    Dump = Dump .. "\n--- [ MÓDULOS DEL SERVIDOR (FRUTAS Y PORTALES) ] ---\n"
+    for _, obj in pairs(RS:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+            local n = obj.Name:lower()
+            if n:match("fruit") or n:match("portal") or n:match("spawn") or n:match("island") or n:match("npc") or n:match("quest") then
+                Dump = Dump .. "-> Script: " .. obj.Name .. " | Ruta: " .. obj:GetFullName() .. "\n"
+            end
+        end
+    end
+    
+    SpyFileName = "OmniRecon_MapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
+    if writefile then
+        pcall(function() writefile(SpyFileName, Dump) end)
+        BtnSpy.Text = "✅ ¡DUMPEO CREADO! (" .. SpyFileName .. ")"
+    else
+        BtnSpy.Text = "❌ ERROR: TU EJECUTOR NO SOPORTA WRITEFILE"
+    end
+    BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
 end)
 
 -- Sistema de interaccion Slider
@@ -729,3 +766,13 @@ BtnHeight.MouseButton1Click:Connect(function()
         BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
     end
 end)
+
+-- Lógica para Ocultar/Mostrar (Minimizar)
+local function ToggleUI()
+    MF.Visible = not MF.Visible
+    if not MF.Visible then
+        CodesFrame.Visible = false
+    end
+end
+BtnMin.MouseButton1Click:Connect(ToggleUI)
+BtnFloat.MouseButton1Click:Connect(ToggleUI)
