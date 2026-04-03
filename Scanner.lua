@@ -12,6 +12,9 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
 local TextChatService = game:GetService("TextChatService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local CollectionService = game:GetService("CollectionService")
+local UserInputService = game:GetService("UserInputService")
 
 local LP = Players.LocalPlayer
 
@@ -19,6 +22,73 @@ local FILE_PREFIX = "CatchAMonster_Analyzer_"
 local FILE_EXT = ".txt"
 local SNAPSHOT_INTERVAL = 2
 local MAX_ENTITY_ROWS = 12
+local MAX_OBJECT_ROWS = 12
+
+local INTEREST_KEYWORDS = {
+    "pet",
+    "mascota",
+    "monster",
+    "mob",
+    "npc",
+    "boss",
+    "egg",
+    "huevo",
+    "reward",
+    "gift",
+    "drop",
+    "loot",
+    "pickup",
+    "pick",
+    "collect",
+    "claim",
+    "bag",
+    "inventory",
+    "incub",
+    "incubacion",
+    "hatch",
+    "hatchery",
+    "machine",
+    "time",
+    "tiempo",
+    "origin",
+    "origen",
+    "feed",
+    "food",
+    "heal",
+    "damage",
+    "attack",
+    "skill",
+    "fight",
+    "exp",
+    "level",
+    "rango",
+    "rank"
+}
+
+local NOISE_MODEL_NAMES = {
+    shower = true
+}
+
+local VALUE_KEYWORDS = {
+    hp = true,
+    health = true,
+    maxhealth = true,
+    level = true,
+    lvl = true,
+    rarity = true,
+    rank = true,
+    damage = true,
+    atk = true,
+    attack = true,
+    exp = true,
+    owneruserid = true,
+    monsterid = true,
+    npcid = true,
+    reward = true,
+    egg = true,
+    hatch = true,
+    incub = true
+}
 
 local Analyzer = {
     active = false,
@@ -31,6 +101,11 @@ local Analyzer = {
     connections = {},
     lastSnapshotAt = 0,
     recentActivity = {},
+    trackedModels = {},
+    trackedPrompts = {},
+    trackedValues = {},
+    trackedGui = {},
+    modelSyncDefs = {},
     targetScripts = {
         "ClientStarter",
         "PlayerAttack",
@@ -94,6 +169,67 @@ local function safeTostring(value)
         return "{" .. table.concat(parts, " | ") .. "}"
     end
     return tostring(value)
+end
+
+local function lowerOrEmpty(value)
+    return string.lower(tostring(value or ""))
+end
+
+local function containsKeyword(text)
+    local lower = lowerOrEmpty(text)
+    for _, keyword in ipairs(INTEREST_KEYWORDS) do
+        if string.find(lower, keyword, 1, true) then
+            return true, keyword
+        end
+    end
+    return false, nil
+end
+
+local function hasInterestingValueName(name)
+    local lower = lowerOrEmpty(name)
+    if VALUE_KEYWORDS[lower] then
+        return true
+    end
+    for keyword in pairs(VALUE_KEYWORDS) do
+        if string.find(lower, keyword, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function safeGetTags(instance)
+    if not CollectionService then
+        return nil
+    end
+    local ok, tags = pcall(CollectionService.GetTags, CollectionService, instance)
+    if not ok or type(tags) ~= "table" or #tags == 0 then
+        return nil
+    end
+    table.sort(tags)
+    return table.concat(tags, ",")
+end
+
+local function summarizeAttributes(instance, limit)
+    local ok, attrs = pcall(instance.GetAttributes, instance)
+    if not ok or type(attrs) ~= "table" then
+        return nil
+    end
+    local parts = {}
+    local count = 0
+    for key, value in pairs(attrs) do
+        count = count + 1
+        if count > (limit or 10) then
+            table.insert(parts, "...")
+            break
+        end
+        table.insert(parts, tostring(key) .. "=" .. safeTostring(value))
+    end
+    if #parts == 0 then
+        return nil
+    end
+    table.sort(parts)
+    return table.concat(parts, " | ")
 end
 
 local function writeLine(topic, action, payload)
@@ -226,11 +362,133 @@ local function getDistanceFromPlayer(part)
     return (root.Position - part.Position).Magnitude
 end
 
+local function isNoiseModel(model)
+    if not model or not model:IsA("Model") then
+        return false
+    end
+    local lower = lowerOrEmpty(model.Name)
+    if NOISE_MODEL_NAMES[lower] then
+        return true
+    end
+    local path = lowerOrEmpty(model:GetFullName())
+    if string.find(path, "gpartcachefolder", 1, true) then
+        return true
+    end
+    return false
+end
+
+local function getRootInterestingInstance(instance)
+    local current = instance
+    local candidate = instance
+    while current and current ~= Workspace do
+        if current:IsA("Model") or current:IsA("BasePart") then
+            candidate = current
+        end
+        current = current.Parent
+    end
+    return candidate
+end
+
+local function getPromptSummary(prompt)
+    if not prompt or not prompt:IsA("ProximityPrompt") then
+        return nil
+    end
+    return {
+        action = prompt.ActionText,
+        object = prompt.ObjectText,
+        key = prompt.KeyboardKeyCode ~= Enum.KeyCode.Unknown and prompt.KeyboardKeyCode.Name or nil,
+        hold = prompt.HoldDuration,
+        maxDistance = prompt.MaxActivationDistance,
+        enabled = prompt.Enabled,
+        style = tostring(prompt.Style),
+        parent = prompt.Parent and prompt.Parent:GetFullName() or nil
+    }
+end
+
+local function classifyInstance(instance)
+    if not instance then
+        return nil
+    end
+
+    local path = lowerOrEmpty(instance:GetFullName())
+    local name = lowerOrEmpty(instance.Name)
+    local kinds = {}
+    local clientPets = Workspace:FindFirstChild("ClientPets")
+
+    if (clientPets and instance:IsDescendantOf(clientPets)) or string.find(path, "clientpets", 1, true) then
+        table.insert(kinds, "Pet")
+    end
+    if string.find(path, "clientmonsters", 1, true) or string.find(name, "monster", 1, true) then
+        table.insert(kinds, "Monster")
+    end
+    if string.find(path, ".npc", 1, true) or string.find(name, "npc", 1, true) then
+        table.insert(kinds, "NPC")
+    end
+    if string.find(name, "boss", 1, true) or string.find(path, "boss", 1, true) then
+        table.insert(kinds, "Boss")
+    end
+    if string.find(name, "egg", 1, true) or string.find(name, "huevo", 1, true) or string.find(path, "egg", 1, true) then
+        table.insert(kinds, "Egg")
+    end
+    if string.find(path, "areapickup", 1, true) or string.find(name, "pickup", 1, true) or string.find(name, "reward", 1, true)
+        or string.find(name, "gift", 1, true) or string.find(name, "loot", 1, true) or string.find(name, "drop", 1, true) then
+        table.insert(kinds, "Pickup")
+    end
+    if string.find(name, "incub", 1, true) or string.find(name, "hatch", 1, true) or string.find(path, "incub", 1, true)
+        or string.find(path, "machine", 1, true) or string.find(path, "hatch", 1, true) then
+        table.insert(kinds, "Incubator")
+    end
+
+    local prompt = instance:IsA("ProximityPrompt") and instance or instance:FindFirstChildWhichIsA("ProximityPrompt", true)
+    local click = instance:IsA("ClickDetector") and instance or instance:FindFirstChildWhichIsA("ClickDetector", true)
+    if prompt or click then
+        table.insert(kinds, "Interactive")
+    end
+
+    local hit, keyword = containsKeyword(path)
+    if hit and keyword then
+        table.insert(kinds, "Keyword:" .. keyword)
+    end
+
+    if #kinds == 0 then
+        return nil
+    end
+
+    local unique = {}
+    local ordered = {}
+    for _, kind in ipairs(kinds) do
+        if not unique[kind] then
+            unique[kind] = true
+            table.insert(ordered, kind)
+        end
+    end
+    return table.concat(ordered, ",")
+end
+
+local function isWorldObjectCandidate(instance)
+    if not instance or instance.Parent == nil then
+        return false
+    end
+    if instance:IsA("Model") and isNoiseModel(instance) then
+        return false
+    end
+    if instance:IsA("ProximityPrompt") or instance:IsA("ClickDetector") then
+        return true
+    end
+    if instance:IsA("Model") or instance:IsA("BasePart") then
+        return classifyInstance(instance) ~= nil
+    end
+    return false
+end
+
 local function isEntityCandidate(model)
     if not model or not model:IsA("Model") or isPlayerCharacter(model) then
         return false
     end
     if model.Parent == nil then
+        return false
+    end
+    if isNoiseModel(model) then
         return false
     end
 
@@ -297,6 +555,73 @@ local function collectEntityRows()
     end
     out.entityCount = #rows
     return out
+end
+
+local function collectObjectRows()
+    local rows = {}
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if (obj:IsA("Model") or obj:IsA("BasePart")) and isWorldObjectCandidate(obj) then
+            local root = getRootInterestingInstance(obj)
+            if root == obj then
+                local part = root:IsA("BasePart") and root or getPrimaryPart(root)
+                table.insert(rows, {
+                    name = root.Name,
+                    kind = classifyInstance(root),
+                    path = root:GetFullName(),
+                    dist = getDistanceFromPlayer(part) or 999999,
+                    pos = part and part.Position or nil,
+                    attrs = summarizeAttributes(root, 8),
+                    tags = safeGetTags(root),
+                    prompt = root:FindFirstChildWhichIsA("ProximityPrompt", true),
+                    click = root:FindFirstChildWhichIsA("ClickDetector", true)
+                })
+            end
+        end
+    end
+
+    table.sort(rows, function(a, b)
+        return (a.dist or 999999) < (b.dist or 999999)
+    end)
+
+    local out = {}
+    for i = 1, math.min(#rows, MAX_OBJECT_ROWS) do
+        local row = rows[i]
+        out["object" .. i] = string.format(
+            "%s | kind=%s | dist=%s | pos=%s | prompt=%s | click=%s | attrs=%s | tags=%s",
+            row.name,
+            tostring(row.kind),
+            row.dist and string.format("%.1f", row.dist) or "n/a",
+            safeTostring(row.pos),
+            row.prompt and row.prompt.Name or "nil",
+            row.click and row.click.Name or "nil",
+            tostring(row.attrs),
+            tostring(row.tags)
+        )
+    end
+    out.objectCount = #rows
+    return out
+end
+
+local function collectSyncState()
+    local payload = {
+        syncDefs = 0
+    }
+    local count = 0
+    for syncId, meta in pairs(Analyzer.modelSyncDefs) do
+        count = count + 1
+        if count <= 10 then
+            payload["sync" .. count] = string.format(
+                "%s | model=%s | tag=%s | syncName=%s | nodes=%s",
+                tostring(syncId),
+                tostring(meta.ModelName),
+                tostring(meta.SysTag),
+                tostring(meta.ModelSyncName),
+                tostring(meta.NodeCount)
+            )
+        end
+    end
+    payload.syncDefs = count
+    return payload
 end
 
 local function collectInventoryState()
@@ -395,6 +720,41 @@ local function logTargetScripts()
     end
 end
 
+local function logRelevantAssets()
+    local roots = {
+        LP:FindFirstChild("PlayerScripts"),
+        ReplicatedStorage,
+        Workspace
+    }
+
+    for _, root in ipairs(roots) do
+        if root then
+            local emitted = 0
+            for _, obj in ipairs(root:GetDescendants()) do
+                if obj:IsA("ModuleScript") or obj:IsA("LocalScript") or obj:IsA("Folder") or obj:IsA("Model") then
+                    local hit = containsKeyword(obj:GetFullName())
+                    if hit then
+                        emitted = emitted + 1
+                        writeLine("ASSET", "Relevant", {
+                            root = root.Name,
+                            class = obj.ClassName,
+                            name = obj.Name,
+                            path = obj:GetFullName()
+                        })
+                        if emitted >= 150 then
+                            writeLine("ASSET", "Truncated", {
+                                root = root.Name,
+                                emitted = emitted
+                            })
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function dumpRemoteTree()
     local roots = {
         ReplicatedStorage:FindFirstChild("CommonLibrary"),
@@ -427,6 +787,202 @@ local function dumpRemoteTree()
     end
 end
 
+local function watchValueObject(valueObj, ownerPath)
+    if not valueObj or Analyzer.trackedValues[valueObj] then
+        return
+    end
+    Analyzer.trackedValues[valueObj] = true
+
+    local valueName = valueObj.Name
+    if not hasInterestingValueName(valueName) then
+        return
+    end
+
+    writeLine("VALUE", "Observed", {
+        owner = ownerPath,
+        name = valueName,
+        class = valueObj.ClassName,
+        value = valueObj.Value
+    })
+
+    addConnection(valueObj:GetPropertyChangedSignal("Value"):Connect(function()
+        writeLine("VALUE", "Changed", {
+            owner = ownerPath,
+            name = valueName,
+            class = valueObj.ClassName,
+            value = valueObj.Value
+        })
+    end))
+end
+
+local function watchModelSignals(model, source)
+    if not model or not model:IsA("Model") or Analyzer.trackedModels[model] then
+        return
+    end
+    Analyzer.trackedModels[model] = true
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    local rootPart = getPrimaryPart(model)
+    writeLine("ENTITY_TRACE", "Observed", {
+        source = source,
+        name = model.Name,
+        path = model:GetFullName(),
+        kind = classifyInstance(model),
+        pos = rootPart and rootPart.Position or nil,
+        distance = getDistanceFromPlayer(rootPart),
+        attrs = summarizeAttributes(model, 10),
+        tags = safeGetTags(model),
+        hasHumanoid = hum ~= nil,
+        hasAnimator = model:FindFirstChildOfClass("AnimationController") ~= nil
+    })
+
+    addConnection(model.AttributeChanged:Connect(function(attr)
+        writeLine("ENTITY_TRACE", "AttributeChanged", {
+            name = model.Name,
+            path = model:GetFullName(),
+            attribute = attr,
+            value = model:GetAttribute(attr)
+        })
+    end))
+
+    if hum then
+        writeLine("COMBAT", "HealthBaseline", {
+            name = model.Name,
+            path = model:GetFullName(),
+            health = hum.Health,
+            maxHealth = hum.MaxHealth
+        })
+        addConnection(hum.HealthChanged:Connect(function(value)
+            writeLine("COMBAT", "HealthChanged", {
+                name = model.Name,
+                path = model:GetFullName(),
+                health = value,
+                maxHealth = hum.MaxHealth
+            })
+        end))
+        addConnection(hum:GetPropertyChangedSignal("MaxHealth"):Connect(function()
+            writeLine("COMBAT", "MaxHealthChanged", {
+                name = model.Name,
+                path = model:GetFullName(),
+                health = hum.Health,
+                maxHealth = hum.MaxHealth
+            })
+        end))
+    end
+
+    for _, desc in ipairs(model:GetDescendants()) do
+        if desc:IsA("IntValue") or desc:IsA("NumberValue") or desc:IsA("StringValue") or desc:IsA("BoolValue") then
+            watchValueObject(desc, model:GetFullName())
+        end
+    end
+
+    addConnection(model.DescendantAdded:Connect(function(desc)
+        if desc:IsA("IntValue") or desc:IsA("NumberValue") or desc:IsA("StringValue") or desc:IsA("BoolValue") then
+            watchValueObject(desc, model:GetFullName())
+        elseif desc:IsA("Humanoid") then
+            writeLine("COMBAT", "HumanoidAdded", {
+                name = model.Name,
+                path = model:GetFullName(),
+                health = desc.Health,
+                maxHealth = desc.MaxHealth
+            })
+        elseif desc:IsA("AnimationTrack") or desc:IsA("Animator") then
+            writeLine("ENTITY_TRACE", "AnimationNodeAdded", {
+                name = model.Name,
+                path = model:GetFullName(),
+                child = desc.ClassName,
+                childName = desc.Name
+            })
+        end
+    end))
+end
+
+local function logWorldObject(instance, action, extra)
+    local root = getRootInterestingInstance(instance)
+    if not root or not isWorldObjectCandidate(root) then
+        return
+    end
+
+    local part = root:IsA("BasePart") and root or getPrimaryPart(root)
+    local prompt = root:FindFirstChildWhichIsA("ProximityPrompt", true)
+    local click = root:FindFirstChildWhichIsA("ClickDetector", true)
+    local payload = {
+        action = action,
+        name = root.Name,
+        class = root.ClassName,
+        path = root:GetFullName(),
+        kind = classifyInstance(root),
+        pos = part and part.Position or nil,
+        distance = getDistanceFromPlayer(part),
+        attrs = summarizeAttributes(root, 10),
+        tags = safeGetTags(root),
+        prompt = prompt and prompt.Name or nil,
+        click = click and click.Name or nil
+    }
+    if extra then
+        for key, value in pairs(extra) do
+            payload[key] = value
+        end
+    end
+    writeLine("OBJECT", action, payload)
+end
+
+local function watchPrompt(prompt)
+    if not prompt or not prompt:IsA("ProximityPrompt") or Analyzer.trackedPrompts[prompt] then
+        return
+    end
+    Analyzer.trackedPrompts[prompt] = true
+
+    local summary = getPromptSummary(prompt) or {}
+    summary.kind = classifyInstance(getRootInterestingInstance(prompt))
+    writeLine("PROMPT", "Observed", summary)
+
+    addConnection(prompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+        local payload = getPromptSummary(prompt) or {}
+        payload.kind = classifyInstance(getRootInterestingInstance(prompt))
+        writeLine("PROMPT", "EnabledChanged", payload)
+    end))
+end
+
+local function watchGuiObject(guiObject)
+    if not guiObject or Analyzer.trackedGui[guiObject] then
+        return
+    end
+    Analyzer.trackedGui[guiObject] = true
+
+    local function emit(action)
+        local text
+        if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") or guiObject:IsA("TextBox") then
+            text = guiObject.Text
+        else
+            text = guiObject.Name
+        end
+        local interesting = select(1, containsKeyword(text)) or select(1, containsKeyword(guiObject:GetFullName()))
+        if interesting then
+            writeLine("GUI_TRACE", action, {
+                class = guiObject.ClassName,
+                name = guiObject.Name,
+                path = guiObject:GetFullName(),
+                text = text,
+                visible = guiObject:IsA("GuiObject") and guiObject.Visible or nil
+            })
+        end
+    end
+
+    emit("Observed")
+
+    if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") or guiObject:IsA("TextBox") then
+        addConnection(guiObject:GetPropertyChangedSignal("Text"):Connect(function()
+            emit("TextChanged")
+        end))
+    end
+    if guiObject:IsA("GuiObject") then
+        addConnection(guiObject:GetPropertyChangedSignal("Visible"):Connect(function()
+            emit("VisibleChanged")
+        end))
+    end
+end
+
 local function hookIncomingRemotes()
     local roots = {
         ReplicatedStorage:FindFirstChild("CommonLibrary"),
@@ -450,6 +1006,50 @@ local function hookIncomingRemotes()
                             argc = #args,
                             args = argsText
                         })
+
+                        if obj.Name == "ModelSync" and type(args[2]) == "table" then
+                            local syncId = tostring(args[1])
+                            Analyzer.modelSyncDefs[syncId] = {
+                                ModelName = args[2].ModelName,
+                                ModelSyncName = args[2].ModelSyncName,
+                                NodeCount = args[2].NodeCount,
+                                SysTag = args[2].SysTag
+                            }
+                            writeLine("SYNC_DEF", "Registered", {
+                                syncId = syncId,
+                                modelName = args[2].ModelName,
+                                modelSyncName = args[2].ModelSyncName,
+                                nodeCount = args[2].NodeCount,
+                                sysTag = args[2].SysTag
+                            })
+                        elseif obj.Name == "Message" and typeof(args[1]) == "string" then
+                            local messageKind = tostring(args[1])
+                            if messageKind == "StreamingAddData" or messageKind == "StreamingUpdateData" or messageKind == "StreamingRemoveData" then
+                                local syncId = args[2] ~= nil and tostring(args[2]) or nil
+                                local meta = syncId and Analyzer.modelSyncDefs[syncId] or nil
+                                writeLine("SYNC_EVENT", messageKind, {
+                                    syncId = syncId,
+                                    modelName = meta and meta.ModelName or nil,
+                                    modelSyncName = meta and meta.ModelSyncName or nil,
+                                    sysTag = meta and meta.SysTag or nil,
+                                    updateKind = args[3],
+                                    payload = args[4]
+                                })
+                            elseif messageKind == "AreaInitComplete" or messageKind == "ServerSetPlayerCFrame" or messageKind == "ClientAreaShowerBeforeInitedResponse" then
+                                writeLine("AREA", messageKind, {
+                                    arg2 = args[2],
+                                    arg3 = args[3],
+                                    arg4 = args[4]
+                                })
+                            end
+                        elseif obj.Name == "NotificationEvent" and args[1] == "ServerMessage" then
+                            writeLine("ANNOUNCE", "ServerMessage", {
+                                subtype = args[2],
+                                template = args[3],
+                                payload = args[4]
+                            })
+                        end
+
                         local lowerRemote = string.lower(obj.Name)
                         if string.find(lowerRemote, "message") or string.find(lowerRemote, "notify") or string.find(lowerRemote, "chat") then
                             for i = 1, #args do
@@ -657,6 +1257,7 @@ local function watchPlayerState()
                 child = child.Name,
                 class = child.ClassName
             })
+            logWorldObject(child, "BackpackChild")
         end))
         addConnection(backpack.ChildRemoved:Connect(function(child)
             writeLine("INVENTORY", "BackpackRemoved", {
@@ -665,6 +1266,120 @@ local function watchPlayerState()
             })
         end))
     end
+
+    local function watchCharacter(char)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            writeLine("PLAYER", "HumanoidObserved", {
+                health = hum.Health,
+                maxHealth = hum.MaxHealth
+            })
+            addConnection(hum.HealthChanged:Connect(function(value)
+                writeLine("PLAYER", "HealthChanged", {
+                    health = value,
+                    maxHealth = hum.MaxHealth
+                })
+            end))
+        end
+
+        addConnection(char.ChildAdded:Connect(function(child)
+            writeLine("PLAYER", "CharacterChildAdded", {
+                child = child.Name,
+                class = child.ClassName
+            })
+            logWorldObject(child, "CharacterChild")
+        end))
+        addConnection(char.ChildRemoved:Connect(function(child)
+            writeLine("PLAYER", "CharacterChildRemoved", {
+                child = child.Name,
+                class = child.ClassName
+            })
+        end))
+    end
+
+    if LP.Character then
+        watchCharacter(LP.Character)
+    end
+    addConnection(LP.CharacterAdded:Connect(function(char)
+        writeLine("PLAYER", "CharacterAdded", {
+            path = char:GetFullName()
+        })
+        watchCharacter(char)
+    end))
+end
+
+local function watchGuiState()
+    local playerGui = LP:FindFirstChild("PlayerGui")
+    if not playerGui then
+        return
+    end
+
+    for _, obj in ipairs(playerGui:GetDescendants()) do
+        if obj:IsA("GuiObject") then
+            watchGuiObject(obj)
+        end
+    end
+
+    addConnection(playerGui.DescendantAdded:Connect(function(obj)
+        if obj:IsA("GuiObject") then
+            watchGuiObject(obj)
+        end
+    end))
+end
+
+local function watchPromptSystems()
+    pcall(function()
+        addConnection(ProximityPromptService.PromptShown:Connect(function(prompt)
+            watchPrompt(prompt)
+            local payload = getPromptSummary(prompt) or {}
+            payload.kind = classifyInstance(getRootInterestingInstance(prompt))
+            payload.recent = getRecentActivitySummary(6, 6)
+            writeLine("PROMPT", "Shown", payload)
+        end))
+    end)
+
+    pcall(function()
+        addConnection(ProximityPromptService.PromptHidden:Connect(function(prompt)
+            local payload = getPromptSummary(prompt) or {}
+            payload.kind = classifyInstance(getRootInterestingInstance(prompt))
+            payload.recent = getRecentActivitySummary(6, 6)
+            writeLine("PROMPT", "Hidden", payload)
+        end))
+    end)
+
+    pcall(function()
+        addConnection(ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
+            local payload = getPromptSummary(prompt) or {}
+            payload.kind = classifyInstance(getRootInterestingInstance(prompt))
+            payload.player = player and player.Name or nil
+            payload.recent = getRecentActivitySummary(6, 6)
+            writeLine("PROMPT", "Triggered", payload)
+        end))
+    end)
+end
+
+local function watchInputState()
+    addConnection(UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then
+            return
+        end
+        writeLine("INPUT", "Began", {
+            key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil,
+            userInputType = tostring(input.UserInputType),
+            recent = getRecentActivitySummary(4, 6)
+        })
+    end))
+
+    addConnection(UserInputService.InputEnded:Connect(function(input, processed)
+        if processed then
+            return
+        end
+        writeLine("INPUT", "Ended", {
+            key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil,
+            userInputType = tostring(input.UserInputType),
+            recent = getRecentActivitySummary(4, 6)
+        })
+    end))
 end
 
 local function watchWorkspaceEntities()
@@ -674,13 +1389,22 @@ local function watchWorkspaceEntities()
             writeLine("ENTITY", "Added", {
                 name = obj.Name,
                 path = obj:GetFullName(),
+                kind = classifyInstance(obj),
                 pos = part and part.Position or nil,
                 distance = getDistanceFromPlayer(part),
                 owner = obj:GetAttribute("OwnerUserId"),
                 monsterId = obj:GetAttribute("MonsterId"),
                 npcId = obj:GetAttribute("NpcId"),
-                level = obj:GetAttribute("Level")
+                level = obj:GetAttribute("Level"),
+                attrs = summarizeAttributes(obj, 8),
+                tags = safeGetTags(obj)
             })
+            watchModelSignals(obj, "Workspace")
+        elseif isWorldObjectCandidate(obj) and not markSeen(getRootInterestingInstance(obj), "WorldObject") then
+            logWorldObject(obj, "Added")
+            if obj:IsA("ProximityPrompt") then
+                watchPrompt(obj)
+            end
         end
     end))
 
@@ -690,14 +1414,34 @@ local function watchWorkspaceEntities()
                 name = obj.Name,
                 path = obj:GetFullName()
             })
+        elseif isWorldObjectCandidate(obj) then
+            logWorldObject(obj, "Removing")
         end
     end))
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and isEntityCandidate(obj) then
+            watchModelSignals(obj, "Initial")
+        elseif obj:IsA("ProximityPrompt") then
+            watchPrompt(obj)
+        elseif (obj:IsA("Model") or obj:IsA("BasePart")) and isWorldObjectCandidate(obj) and not markSeen(getRootInterestingInstance(obj), "InitialWorldObject") then
+            logWorldObject(obj, "Initial")
+        end
+    end
 end
 
 local function snapshot()
     local payload = collectInventoryState()
     local entities = collectEntityRows()
+    local objects = collectObjectRows()
+    local syncState = collectSyncState()
     for key, value in pairs(entities) do
+        payload[key] = value
+    end
+    for key, value in pairs(objects) do
+        payload[key] = value
+    end
+    for key, value in pairs(syncState) do
         payload[key] = value
     end
     writeLine("SNAPSHOT", "Tick", payload)
@@ -710,12 +1454,13 @@ local function updateGui()
     end
 
     local entities = collectEntityRows()
+    local objects = collectObjectRows()
     local inventory = collectInventoryState()
     ui.statusLabel.Text = Analyzer.active and "Status: ACTIVE" or "Status: STOPPED"
     ui.fileLabel.Text = "File: " .. tostring(Analyzer.file or "n/a")
     ui.placeLabel.Text = "Place: " .. tostring(game.PlaceId) .. " | Players: " .. tostring(#Players:GetPlayers())
     ui.inventoryLabel.Text = "Backpack: " .. tostring(inventory.backpackCount) .. " | Equipped: " .. tostring(inventory.equippedObject)
-    ui.entityLabel.Text = "Entities nearby: " .. tostring(entities.entityCount or 0)
+    ui.entityLabel.Text = "Entities: " .. tostring(entities.entityCount or 0) .. " | Objects: " .. tostring(objects.objectCount or 0)
 end
 
 local function createGui()
@@ -892,6 +1637,11 @@ function Analyzer.start(origin)
     Analyzer.remotesHooked = {}
     Analyzer.recentActivity = {}
     Analyzer.lastSnapshotAt = 0
+    Analyzer.trackedModels = {}
+    Analyzer.trackedPrompts = {}
+    Analyzer.trackedValues = {}
+    Analyzer.trackedGui = {}
+    Analyzer.modelSyncDefs = {}
 
     if Analyzer.file and writefile then
         pcall(function()
@@ -902,10 +1652,14 @@ function Analyzer.start(origin)
     createGui()
     dumpRemoteTree()
     logTargetScripts()
+    logRelevantAssets()
     hookIncomingRemotes()
     installNamecallHook()
     watchChatSystems()
     watchPlayerState()
+    watchGuiState()
+    watchPromptSystems()
+    watchInputState()
     watchWorkspaceEntities()
     probeDataFunctions()
 
