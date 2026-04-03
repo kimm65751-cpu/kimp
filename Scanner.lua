@@ -17,6 +17,8 @@ local OfsY, OfsZ = 10, 0
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
 local TargetBosses = "Normal" -- "Normal", "Ignorar", "SoloBoss"
+local SpyEnabled = false
+local SpyFileName = ""
 local GlobalMagnetTarget = nil
 local VIM = game:GetService("VirtualInputManager")
 
@@ -36,7 +38,7 @@ SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 365)
+MF.Size = UDim2.new(0, 300, 0, 405)
 MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
@@ -113,6 +115,15 @@ BtnBoss.TextColor3 = Color3.new(1,1,1)
 BtnBoss.Font = Enum.Font.GothamBold
 BtnBoss.TextSize = 11
 BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
+
+local BtnSpy = Instance.new("TextButton", MF)
+BtnSpy.Size = UDim2.new(0.9, 0, 0, 30)
+BtnSpy.Position = UDim2.new(0.05, 0, 0, 280)
+BtnSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+BtnSpy.TextColor3 = Color3.new(1,1,1)
+BtnSpy.Font = Enum.Font.GothamBold
+BtnSpy.TextSize = 11
+BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -235,6 +246,47 @@ end)
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
 -- ==============================================================================
+-- [NUEVO] INTERCEPTOR GLOBAL DE RED (SPY LOG)
+-- ==============================================================================
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt and mt.__namecall then
+        setreadonly(mt, false)
+        local oldNamecall = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if SpyEnabled and (method == "FireServer" or method == "InvokeServer") then
+                -- Filtramos el Remoto de combate propio para no llenar el TXT (spam)
+                if self ~= CombatRemote and self.Name ~= "RequestHit" then
+                    local args = {...}
+                    local strArgs = ""
+                    for _, v in ipairs(args) do
+                        strArgs = strArgs .. tostring(v) .. " [" .. typeof(v) .. "], "
+                    end
+                    
+                    local logLine = "\n[SPY] " .. self.Name .. ":" .. method .. "() | Args: " .. strArgs
+                    -- Imprime en consola (F9)
+                    print(logLine)
+                    
+                    -- Guarda automáticamente en el Workspace del Ejecutor
+                    task.spawn(function()
+                        if appendfile then
+                            pcall(function() appendfile(SpyFileName, logLine) end)
+                        elseif writefile then
+                            local old = ""
+                            pcall(function() old = readfile(SpyFileName) end)
+                            pcall(function() writefile(SpyFileName, old .. logLine) end)
+                        end
+                    end)
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end
+end)
+-- ==============================================================================
+
 
 local function GetNearestMob()
     local nearestDist = math.huge
@@ -563,6 +615,22 @@ BtnBoss.MouseButton1Click:Connect(function()
         TargetBosses = "Normal"
         BtnBoss.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
         BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
+    end
+end)
+
+BtnSpy.MouseButton1Click:Connect(function()
+    SpyEnabled = not SpyEnabled
+    if SpyEnabled then
+        BtnSpy.BackgroundColor3 = Color3.fromRGB(10, 100, 200)
+        BtnSpy.Text = "📡 ESPÍA ACTIVO: GUARDANDO EN TXT..."
+        SpyFileName = "OmniSpy_Dumps_" .. tostring(math.floor(os.clock())) .. ".txt"
+        print("Iniciando Log a archivo en la carpeta 'workspace' del ejecutor: " .. SpyFileName)
+        if writefile then
+            pcall(function() writefile(SpyFileName, "=== OMNI-SPY INICIADO ===\nVe y pisa la Zona Segura para capturar el remoto...\n") end)
+        end
+    else
+        BtnSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
     end
 end)
 
