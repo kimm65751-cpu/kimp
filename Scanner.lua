@@ -1,1585 +1,383 @@
-local existing = rawget(_G, "CAMQAHarness")
-if existing and existing.stop then
-    pcall(function()
-        existing.stop("Replaced")
-    end)
-end
+-- ==============================================================================
+-- 🦖 CATCH A MONSTER: VECTOR-C V5.0 (SILENCIADOR DE MONSTRUOS)
+-- El cliente calcula TODO el combate (IsServerLogic=false).
+-- Si bloqueamos los FightSkillStart de mobs, NUNCA atacan.
+-- ==============================================================================
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
-local ProximityPromptService = game:GetService("ProximityPromptService")
-
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local VIM = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
-local CONFIG = {
-    uiName = "CAM_QA_Harness",
-    filePrefix = "CAM_QA_Harness_",
-    fileExt = ".txt",
-    snapshotInterval = 3,
-    espUpdateInterval = 0.25,
-    flushInterval = 1,
-    maxUiLines = 180,
-    bufferMax = 30,
-    recoverTraceRadius = 22,
-    recoverTraceCooldown = 1.25
-}
+-- ==========================================================
+-- 1. GUI MINIMALISTA
+-- ==========================================================
+local UI_Name = "CAM_VectorC"
+if CoreGui:FindFirstChild(UI_Name) then CoreGui[UI_Name]:Destroy() end
 
-local IMPORTANT_MESSAGE_KINDS = {
-    FightSkillStart = true,
-    FightSkillEnd = true,
-    FightLogicPlayerCreate = true,
-    FightLogicPlayerDestroy = true,
-    MonsterHurtInfo = true,
-    PetHurtInfo = true,
-    PetHealthSync = true,
-    MonsterCatch = true,
-    FightPlayerDie = true,
-    ObjectPointSyncAdd = true,
-    ObjectPointSyncRemove = true
-}
+local SG = Instance.new("ScreenGui")
+SG.Name = UI_Name
+SG.ResetOnSpawn = false
+SG.Parent = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 
-local IMPORTANT_INPUT = {
-    E = true,
-    F = true,
-    Q = true,
-    R = true
-}
+local MF = Instance.new("Frame", SG)
+MF.Size = UDim2.new(0, 420, 0, 260)
+MF.Position = UDim2.new(0.55, 0, 0.35, 0)
+MF.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MF.BorderSizePixel = 2
+MF.BorderColor3 = Color3.fromRGB(255, 80, 80)
+MF.Active = true
+MF.Draggable = true
 
-local PROBE_MODES = {
-    { id = "NONE", label = "NONE" },
-    { id = "HOVER", label = "HOVER" },
-    { id = "UNDERFOOT", label = "UNDERFOOT" },
-    { id = "UNDERGROUND", label = "UNDERGROUND" },
-    { id = "PET_NEUTRAL", label = "PET NEUTRAL" },
-    { id = "MONSTER_MASK", label = "MONSTER MASK" }
-}
+local Title = Instance.new("TextLabel", MF)
+Title.Size = UDim2.new(1, 0, 0, 28)
+Title.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
+Title.Text = " 🔇 VECTOR C: SILENCIADOR DE ATAQUES MOB"
+Title.TextColor3 = Color3.fromRGB(255, 200, 200)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-local MISSING_ATTR = {}
+-- Log panel
+local LogFrame = Instance.new("ScrollingFrame", MF)
+LogFrame.Size = UDim2.new(1, -16, 0, 120)
+LogFrame.Position = UDim2.new(0, 8, 0, 32)
+LogFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogFrame.ScrollBarThickness = 4
+LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UIListLayout", LogFrame).SortOrder = Enum.SortOrder.LayoutOrder
 
-local State = {
-    active = true,
-    espEnabled = true,
-    auditEnabled = true,
-    recoverTraceEnabled = true,
-    probeMode = "NONE",
-    file = nil,
-    connections = {},
-    trackedEsp = {},
-    uiLines = {},
-    buffer = {},
-    petOriginals = {},
-    monsterOriginals = {},
-    petHealth = {},
-    recoverGuiObserved = {},
-    recoverGuiState = {},
-    recoverLastTraceByPet = {},
-    lastRecoverGuiAt = 0,
-    lastSnapshotAt = 0,
-    lastEspAt = 0,
-    lastFlushAt = 0,
-    ui = {}
-}
-
-_G.CAMQAHarness = State
-
-local function addConnection(conn)
-    table.insert(State.connections, conn)
-    return conn
+local logCount = 0
+local function Log(txt, col)
+    logCount = logCount + 1
+    local m = Instance.new("TextLabel", LogFrame)
+    m.Size = UDim2.new(1, 0, 0, 16)
+    m.BackgroundTransparency = 1
+    m.Text = "["..os.date("%X").."] "..txt
+    m.TextXAlignment = Enum.TextXAlignment.Left
+    m.TextColor3 = col or Color3.fromRGB(180, 180, 180)
+    m.Font = Enum.Font.Code
+    m.TextSize = 11
+    m.TextWrapped = true
+    m.AutomaticSize = Enum.AutomaticSize.Y
+    m.LayoutOrder = logCount
+    LogFrame.CanvasPosition = Vector2.new(0, 99999)
 end
 
-local function cleanupConnections()
-    for _, conn in ipairs(State.connections) do
-        pcall(function()
-            conn:Disconnect()
-        end)
-    end
-    State.connections = {}
+-- Botones
+local function MakeBtn(text, posY)
+    local b = Instance.new("TextButton", MF)
+    b.Size = UDim2.new(0.92, 0, 0, 32)
+    b.Position = UDim2.new(0.04, 0, 0, posY)
+    b.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    b.TextColor3 = Color3.new(1, 1, 1)
+    b.Font = Enum.Font.GothamSemibold
+    b.TextSize = 13
+    b.Text = text
+    return b
 end
 
-local function lower(value)
-    return string.lower(tostring(value or ""))
-end
+local btnSilence = MakeBtn("🔇 ACTIVAR: Silenciar Ataques Mob", 158)
+local btnAutoFarm = MakeBtn("⚔️ ACTIVAR: Auto-Farm (Click+Catch)", 196)
 
-local function safeTostring(value)
-    local kind = typeof(value)
-    if kind == "Instance" then
-        return value:GetFullName()
-    end
-    if kind == "Vector3" then
-        return string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
-    end
-    if kind == "CFrame" then
-        local p = value.Position
-        return string.format("%.2f, %.2f, %.2f", p.X, p.Y, p.Z)
-    end
-    if kind == "table" then
-        local parts = {}
-        local count = 0
-        for k, v in pairs(value) do
-            count = count + 1
-            if count > 8 then
-                table.insert(parts, "...")
-                break
-            end
-            table.insert(parts, tostring(k) .. "=" .. safeTostring(v))
-        end
-        table.sort(parts)
-        return "{" .. table.concat(parts, " | ") .. "}"
-    end
-    return tostring(value)
-end
+local Toggles = {Silence = false, AutoFarm = false}
+local silencedCount = 0
 
-local function trimText(value, limit)
-    local text = tostring(value or "")
-    local max = limit or 220
-    if #text > max then
-        return string.sub(text, 1, max) .. "..."
-    end
-    return text
-end
+btnSilence.MouseButton1Click:Connect(function()
+    Toggles.Silence = not Toggles.Silence
+    btnSilence.BackgroundColor3 = Toggles.Silence and Color3.fromRGB(180, 40, 40) or Color3.fromRGB(40, 40, 45)
+    btnSilence.Text = Toggles.Silence and "🔇 ACTIVO: Mobs Silenciados" or "🔇 ACTIVAR: Silenciar Ataques Mob"
+    Log(Toggles.Silence and "Silenciador ACTIVADO" or "Silenciador DESACTIVADO", Color3.fromRGB(255, 100, 100))
+end)
 
-local function getGuiParent()
-    local ok = pcall(function()
-        return CoreGui.Name
-    end)
-    if ok then
-        return CoreGui
-    end
-    return LP:WaitForChild("PlayerGui")
-end
+btnAutoFarm.MouseButton1Click:Connect(function()
+    Toggles.AutoFarm = not Toggles.AutoFarm
+    btnAutoFarm.BackgroundColor3 = Toggles.AutoFarm and Color3.fromRGB(40, 120, 40) or Color3.fromRGB(40, 40, 45)
+    btnAutoFarm.Text = Toggles.AutoFarm and "⚔️ ACTIVO: Auto-Farm Encadenado" or "⚔️ ACTIVAR: Auto-Farm (Click+Catch)"
+    Log(Toggles.AutoFarm and "Auto-Farm ACTIVADO" or "Auto-Farm DESACTIVADO", Color3.fromRGB(100, 255, 100))
+end)
 
-local function getCharacterRoot()
-    local char = LP.Character
-    if not char then
-        return nil
-    end
-    return char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-end
+-- ==========================================================
+-- 2. VECTOR C: INTERCEPTOR DE COMBATE
+-- ==========================================================
+-- El juego usa un sistema de mensajes centralizado via RemoteEvent.
+-- Todos los eventos de combate pasan por ahí con arg1 = nombre del evento.
+-- Los ataques de mobs tienen UnitKey que empieza con "M".
 
-local function getRootPart(root)
-    if not root or not root.Parent then
-        return nil
-    end
-    if root:IsA("BasePart") then
-        return root
-    end
-    if root:IsA("Model") then
-        return root.PrimaryPart or root:FindFirstChildWhichIsA("BasePart", true)
-    end
-    return root:FindFirstChildWhichIsA("BasePart", true)
-end
+Log("Buscando RemoteEvents de combate...", Color3.fromRGB(0, 200, 255))
 
-local function getNextFileName()
-    if not (isfile and writefile) then
-        return nil
-    end
-    local idx = 1
-    while isfile(CONFIG.filePrefix .. idx .. CONFIG.fileExt) do
-        idx = idx + 1
-    end
-    return CONFIG.filePrefix .. idx .. CONFIG.fileExt
-end
-
-local function flushFile()
-    if not State.file or #State.buffer == 0 then
+task.spawn(function()
+    -- Buscar TODOS los RemoteEvents en CommonLibrary
+    local commonLib = ReplicatedStorage:FindFirstChild("CommonLibrary")
+    if not commonLib then
+        Log("ERROR: CommonLibrary no encontrada", Color3.fromRGB(255, 0, 0))
         return
     end
-    local chunk = table.concat(State.buffer, "\n") .. "\n"
-    State.buffer = {}
-    if appendfile then
-        pcall(function()
-            appendfile(State.file, chunk)
-        end)
-        return
-    end
-    if readfile and writefile then
-        pcall(function()
-            local old = ""
-            if isfile and isfile(State.file) then
-                old = readfile(State.file)
-            end
-            writefile(State.file, old .. chunk)
-        end)
-    end
-end
 
-local function ensureFile()
-    if State.file or not writefile then
-        return
-    end
-    local fileName = getNextFileName()
-    if not fileName then
-        return
-    end
-    State.file = fileName
-    local header = table.concat({
-        "============================================================",
-        " CAM QA HARNESS",
-        " Date: " .. os.date("%Y-%m-%d %H:%M:%S"),
-        " PlaceId=" .. tostring(game.PlaceId) .. " | JobId=" .. tostring(game.JobId),
-        " Player=" .. tostring(LP and LP.Name or "unknown"),
-        "============================================================",
-        ""
-    }, "\n")
+    -- Buscar el evento principal de mensajes
+    local targetEvent = nil
+    
+    -- Método 1: Buscar en Tool/RemoteManager/Events
     pcall(function()
-        writefile(fileName, header)
-    end)
-end
-
-local function updateCanvas()
-    local list = State.ui.list
-    local scroll = State.ui.logScroll
-    if list and scroll then
-        scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 8)
-        scroll.CanvasPosition = Vector2.new(0, math.max(0, scroll.CanvasSize.Y.Offset))
-    end
-end
-
-local function addUiLine(text, color)
-    local scroll = State.ui.logScroll
-    if not scroll then
-        return
-    end
-    local line = Instance.new("TextLabel")
-    line.BackgroundTransparency = 1
-    line.Size = UDim2.new(1, -8, 0, 18)
-    line.AutomaticSize = Enum.AutomaticSize.Y
-    line.TextXAlignment = Enum.TextXAlignment.Left
-    line.TextYAlignment = Enum.TextYAlignment.Top
-    line.TextWrapped = true
-    line.Font = Enum.Font.Code
-    line.TextSize = 12
-    line.TextColor3 = color or Color3.fromRGB(220, 220, 220)
-    line.Text = "[" .. os.date("%X") .. "] " .. text
-    line.Parent = scroll
-
-    table.insert(State.uiLines, line)
-    if #State.uiLines > CONFIG.maxUiLines then
-        local removeCount = #State.uiLines - CONFIG.maxUiLines
-        for _ = 1, removeCount do
-            local old = table.remove(State.uiLines, 1)
-            if old then
-                old:Destroy()
-            end
-        end
-    end
-    updateCanvas()
-end
-
-local function writeLine(kind, action, payload, color)
-    ensureFile()
-    local line = os.date("%H:%M:%S") .. " | " .. tostring(kind) .. " | " .. tostring(action)
-    if payload ~= nil then
-        line = line .. " | " .. trimText(safeTostring(payload), 500)
-    end
-    table.insert(State.buffer, line)
-    if #State.buffer >= CONFIG.bufferMax then
-        flushFile()
-    end
-    addUiLine(line, color)
-end
-
-local function makeButton(parent, text, xOffset, width)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, width, 0, 22)
-    button.Position = UDim2.new(1, xOffset, 0, 4)
-    button.BackgroundColor3 = Color3.fromRGB(70, 95, 120)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 11
-    button.Font = Enum.Font.GothamBold
-    button.Text = text
-    button.Parent = parent
-    return button
-end
-
-local function setStatus(text)
-    if State.ui.status then
-        State.ui.status.Text = "Status: " .. text
-    end
-end
-
-local function refreshProbeUi()
-    if State.ui.probeLabel then
-        State.ui.probeLabel.Text = "Probe: " .. tostring(State.probeMode)
-    end
-    if not State.ui.probeButtons then
-        return
-    end
-    for _, mode in ipairs(PROBE_MODES) do
-        local button = State.ui.probeButtons[mode.id]
-        if button then
-            local active = State.probeMode == mode.id
-            button.BackgroundColor3 = active and Color3.fromRGB(225, 170, 75) or Color3.fromRGB(65, 80, 95)
-            button.TextColor3 = active and Color3.fromRGB(20, 20, 20) or Color3.fromRGB(255, 255, 255)
-        end
-    end
-end
-
-local function buildGui()
-    local old = getGuiParent():FindFirstChild(CONFIG.uiName)
-    if old then
-        old:Destroy()
-    end
-
-    local screen = Instance.new("ScreenGui")
-    screen.Name = CONFIG.uiName
-    screen.ResetOnSpawn = false
-    screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screen.Parent = getGuiParent()
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 540, 0, 410)
-    frame.Position = UDim2.new(0.57, 0, 0.38, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(16, 22, 28)
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    frame.Parent = screen
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.BackgroundColor3 = Color3.fromRGB(30, 46, 60)
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.Text = "  CAM QA HARNESS - Pickup ESP + Combat Audit"
-    title.Parent = frame
-
-    local espButton = makeButton(title, "ESP ON", -88, 70)
-    local auditButton = makeButton(title, "AUDIT ON", -164, 70)
-    local recoverButton = makeButton(title, "RECOVER ON", -254, 86)
-    local scanButton = makeButton(title, "SCAN", -324, 64)
-    local clearButton = makeButton(title, "CLEAR", -394, 64)
-
-    local status = Instance.new("TextLabel")
-    status.Size = UDim2.new(1, -12, 0, 18)
-    status.Position = UDim2.new(0, 6, 0, 34)
-    status.BackgroundTransparency = 1
-    status.TextColor3 = Color3.fromRGB(160, 220, 255)
-    status.TextXAlignment = Enum.TextXAlignment.Left
-    status.Font = Enum.Font.Code
-    status.TextSize = 12
-    status.Parent = frame
-
-    local fileLabel = Instance.new("TextLabel")
-    fileLabel.Size = UDim2.new(1, -12, 0, 18)
-    fileLabel.Position = UDim2.new(0, 6, 0, 52)
-    fileLabel.BackgroundTransparency = 1
-    fileLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    fileLabel.TextXAlignment = Enum.TextXAlignment.Left
-    fileLabel.Font = Enum.Font.Code
-    fileLabel.TextSize = 12
-    fileLabel.Parent = frame
-
-    local probeLabel = Instance.new("TextLabel")
-    probeLabel.Size = UDim2.new(1, -12, 0, 18)
-    probeLabel.Position = UDim2.new(0, 6, 0, 70)
-    probeLabel.BackgroundTransparency = 1
-    probeLabel.TextColor3 = Color3.fromRGB(255, 210, 120)
-    probeLabel.TextXAlignment = Enum.TextXAlignment.Left
-    probeLabel.Font = Enum.Font.Code
-    probeLabel.TextSize = 12
-    probeLabel.Text = "Probe: NONE"
-    probeLabel.Parent = frame
-
-    local probeBar = Instance.new("Frame")
-    probeBar.Size = UDim2.new(1, -12, 0, 42)
-    probeBar.Position = UDim2.new(0, 6, 0, 88)
-    probeBar.BackgroundTransparency = 1
-    probeBar.Parent = frame
-
-    local probeList = Instance.new("UIListLayout")
-    probeList.FillDirection = Enum.FillDirection.Horizontal
-    probeList.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    probeList.Padding = UDim.new(0, 4)
-    probeList.Parent = probeBar
-
-    local probeButtons = {}
-    for _, mode in ipairs(PROBE_MODES) do
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0, 84, 0, 22)
-        button.BackgroundColor3 = Color3.fromRGB(65, 80, 95)
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.Font = Enum.Font.GothamBold
-        button.TextSize = 10
-        button.TextWrapped = true
-        button.Text = mode.label
-        button.Parent = probeBar
-        probeButtons[mode.id] = button
-    end
-
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -12, 1, -136)
-    scroll.Position = UDim2.new(0, 6, 0, 132)
-    scroll.BackgroundColor3 = Color3.fromRGB(7, 10, 12)
-    scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 6
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scroll.Parent = frame
-
-    local list = Instance.new("UIListLayout")
-    list.SortOrder = Enum.SortOrder.LayoutOrder
-    list.Padding = UDim.new(0, 2)
-    list.Parent = scroll
-
-    addConnection(list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas))
-
-    State.ui.screen = screen
-    State.ui.frame = frame
-    State.ui.status = status
-    State.ui.fileLabel = fileLabel
-    State.ui.probeLabel = probeLabel
-    State.ui.probeButtons = probeButtons
-    State.ui.logScroll = scroll
-    State.ui.list = list
-    State.ui.espButton = espButton
-    State.ui.auditButton = auditButton
-    State.ui.recoverButton = recoverButton
-    State.ui.scanButton = scanButton
-    State.ui.clearButton = clearButton
-    State.ui.espFolder = Instance.new("Folder")
-    State.ui.espFolder.Name = "CAM_QA_ESP"
-    State.ui.espFolder.Parent = screen
-
-    espButton.MouseButton1Click:Connect(function()
-        State.espEnabled = not State.espEnabled
-        espButton.Text = State.espEnabled and "ESP ON" or "ESP OFF"
-        espButton.BackgroundColor3 = State.espEnabled and Color3.fromRGB(90, 170, 90) or Color3.fromRGB(170, 80, 80)
-        writeLine("UI", "ToggleESP", { enabled = State.espEnabled }, Color3.fromRGB(200, 220, 120))
-    end)
-
-    auditButton.MouseButton1Click:Connect(function()
-        State.auditEnabled = not State.auditEnabled
-        auditButton.Text = State.auditEnabled and "AUDIT ON" or "AUDIT OFF"
-        auditButton.BackgroundColor3 = State.auditEnabled and Color3.fromRGB(90, 170, 90) or Color3.fromRGB(170, 80, 80)
-        writeLine("UI", "ToggleAudit", { enabled = State.auditEnabled }, Color3.fromRGB(200, 220, 120))
-    end)
-
-    recoverButton.MouseButton1Click:Connect(function()
-        State.recoverTraceEnabled = not State.recoverTraceEnabled
-        recoverButton.Text = State.recoverTraceEnabled and "RECOVER ON" or "RECOVER OFF"
-        recoverButton.BackgroundColor3 = State.recoverTraceEnabled and Color3.fromRGB(90, 170, 90) or Color3.fromRGB(170, 80, 80)
-        writeLine("UI", "ToggleRecoverTrace", { enabled = State.recoverTraceEnabled }, Color3.fromRGB(200, 220, 120))
-    end)
-
-    clearButton.MouseButton1Click:Connect(function()
-        for _, line in ipairs(State.uiLines) do
-            line:Destroy()
-        end
-        State.uiLines = {}
-        updateCanvas()
-    end)
-end
-
-local function saveAttr(storeTable, instance, key)
-    local store = storeTable[instance]
-    if not store then
-        store = { attrs = {} }
-        storeTable[instance] = store
-    end
-    if store.attrs[key] ~= nil then
-        return
-    end
-    local current = instance:GetAttribute(key)
-    if current == nil then
-        store.attrs[key] = MISSING_ATTR
-    else
-        store.attrs[key] = current
-    end
-end
-
-local function saveCFrame(storeTable, instance, part)
-    local store = storeTable[instance]
-    if not store then
-        store = { attrs = {} }
-        storeTable[instance] = store
-    end
-    if store.cframe == nil then
-        store.cframe = part.CFrame
-    end
-end
-
-local function restoreStore(storeTable)
-    for instance, store in pairs(storeTable) do
-        if instance and instance.Parent then
-            if store.attrs then
-                for key, value in pairs(store.attrs) do
-                    pcall(function()
-                        if value == MISSING_ATTR then
-                            instance:SetAttribute(key, nil)
-                        else
-                            instance:SetAttribute(key, value)
+        local tool = commonLib:FindFirstChild("Tool")
+        if tool then
+            local rm = tool:FindFirstChild("RemoteManager")
+            if rm then
+                local evts = rm:FindFirstChild("Events")
+                if evts then
+                    for _, child in pairs(evts:GetChildren()) do
+                        if child:IsA("RemoteEvent") then
+                            Log("Encontrado RE: " .. child.Name, Color3.fromRGB(150, 150, 150))
+                            -- El evento principal suele llamarse "Message" o similar
+                            if child.Name == "Message" or child.Name == "Msg" or child.Name == "Event" then
+                                targetEvent = child
+                            end
                         end
-                    end)
-                end
-            end
-            if store.cframe then
-                local part = getRootPart(instance)
-                if part then
-                    pcall(function()
-                        part.CFrame = store.cframe
-                    end)
-                end
-            end
-        end
-    end
-    table.clear(storeTable)
-end
-
-local function getOwnedPetRoots()
-    local roots = {}
-    local suffixes = {}
-    local myId = tonumber(LP.UserId)
-
-    local pets = Workspace:FindFirstChild("Pets")
-    if pets then
-        for _, pet in ipairs(pets:GetChildren()) do
-            local playerId = tonumber(pet:GetAttribute("PlayerId"))
-            if playerId == myId then
-                table.insert(roots, pet)
-                local suffix = tostring(pet.Name):match("^Pet_%d+_(%d+)$")
-                if suffix then
-                    suffixes[suffix] = true
-                end
-            end
-        end
-    end
-
-    local clientPets = Workspace:FindFirstChild("ClientPets")
-    if clientPets then
-        for _, pet in ipairs(clientPets:GetChildren()) do
-            local suffix = tostring(pet.Name):match("^Pet_(%d+)$")
-            if suffix and suffixes[suffix] then
-                table.insert(roots, pet)
-            end
-        end
-    end
-
-    return roots
-end
-
-local function getGuiReadableText(inst)
-    if not inst then
-        return nil
-    end
-    if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
-        return inst.Text
-    end
-    return inst.Name
-end
-
-local function isRecoverGuiCandidate(inst)
-    if not inst or not inst:IsDescendantOf(LP:WaitForChild("PlayerGui")) then
-        return false
-    end
-    local probe = lower(inst.Name .. " " .. tostring(getGuiReadableText(inst) or ""))
-    return probe:find("recover", 1, true)
-        or probe:find("imgrecover", 1, true)
-        or probe:find("volver", 1, true)
-        or probe:find("return", 1, true)
-        or probe:find("teleport", 1, true)
-        or probe:find("back", 1, true)
-end
-
-local function findOwnedPetByItemId(petItemId)
-    if petItemId == nil then
-        return nil, nil
-    end
-    local pets = Workspace:FindFirstChild("Pets")
-    if pets then
-        for _, pet in ipairs(pets:GetChildren()) do
-            if tonumber(pet:GetAttribute("PetItemId")) == tonumber(petItemId) then
-                return pet, "Workspace.Pets"
-            end
-        end
-    end
-
-    local suffix = nil
-    local owned = getOwnedPetRoots()
-    for _, pet in ipairs(owned) do
-        if tonumber(pet:GetAttribute("PetItemId")) == tonumber(petItemId) then
-            suffix = tostring(pet.Name):match("^Pet_%d+_(%d+)$")
-            break
-        end
-    end
-    if suffix then
-        local clientPets = Workspace:FindFirstChild("ClientPets")
-        local renderPet = clientPets and clientPets:FindFirstChild("Pet_" .. suffix)
-        if renderPet then
-            return renderPet, "Workspace.ClientPets"
-        end
-    end
-    return nil, nil
-end
-
-local function collectNearbyRecoverContext(position)
-    local radius = CONFIG.recoverTraceRadius
-    local areaRoot = Workspace:FindFirstChild("Area")
-    local searchRoot = areaRoot and areaRoot:FindFirstChild("Root")
-    searchRoot = searchRoot and searchRoot:FindFirstChild("Area") or searchRoot or areaRoot
-    if not searchRoot then
-        return {}
-    end
-
-    local seen = {}
-    local nearest = {}
-    local scanned = 0
-    for _, desc in ipairs(searchRoot:GetDescendants()) do
-        scanned = scanned + 1
-        if scanned > 1400 then
-            break
-        end
-        local root = desc
-        if desc:IsA("BasePart") and desc.Parent and desc.Parent:IsA("Model") then
-            root = desc.Parent
-        end
-        if (root:IsA("Model") or root:IsA("BasePart")) and not seen[root] then
-            seen[root] = true
-            local adornee = findAdornee(root)
-            if adornee then
-                local dist = (adornee.Position - position).Magnitude
-                if dist <= radius then
-                    local name = tostring(root.Name)
-                    local path = lower(root:GetFullName())
-                    local prompt = root:FindFirstChildWhichIsA("ProximityPrompt", true)
-                    local click = root:FindFirstChildWhichIsA("ClickDetector", true)
-                    local include = prompt ~= nil
-                        or click ~= nil
-                        or path:find("npc", 1, true)
-                        or path:find("teleport", 1, true)
-                        or path:find("heal", 1, true)
-                        or path:find("recover", 1, true)
-                        or path:find("base", 1, true)
-                        or path:find("altar", 1, true)
-                        or path:find("machine", 1, true)
-                        or path:find("platform", 1, true)
-                        or path:find("pad", 1, true)
-                    if include then
-                        table.insert(nearest, {
-                            name = name,
-                            dist = math.floor(dist * 10) / 10,
-                            prompt = prompt and prompt.ActionText or nil,
-                            click = click ~= nil,
-                            path = root:GetFullName()
-                        })
                     end
                 end
             end
         end
-    end
-
-    table.sort(nearest, function(a, b)
-        return a.dist < b.dist
     end)
-    while #nearest > 6 do
-        table.remove(nearest)
-    end
-    return nearest
-end
 
-local function getVisibleRecoverGui()
-    local visible = {}
-    for inst in pairs(State.recoverGuiObserved) do
-        if inst and inst.Parent then
-            local okVisible = true
-            if inst:IsA("GuiObject") then
-                okVisible = inst.Visible
+    -- Método 2: Si no encontramos por nombre, buscamos todos los RE que tengan conexiones de combate
+    if not targetEvent then
+        Log("Buscando RE por conexiones activas...", Color3.fromRGB(200, 200, 0))
+        pcall(function()
+            if type(getconnections) ~= "function" then
+                Log("ERROR: getconnections() no disponible en tu executor", Color3.fromRGB(255, 0, 0))
+                return
             end
-            if okVisible then
-                table.insert(visible, {
-                    name = inst.Name,
-                    text = getGuiReadableText(inst),
-                    path = inst:GetFullName()
-                })
-            end
-        end
-    end
-    return visible
-end
-
-local function traceRecoverContext(reason, petItemId, oldHealth, newHealth)
-    if not State.recoverTraceEnabled then
-        return
-    end
-    local now = os.clock()
-    local key = tostring(petItemId or "global")
-    local last = State.recoverLastTraceByPet[key]
-    if last and now - last < CONFIG.recoverTraceCooldown then
-        return
-    end
-    State.recoverLastTraceByPet[key] = now
-
-    local rootPart = getCharacterRoot()
-    local pet, source = findOwnedPetByItemId(petItemId)
-    local petPart = getRootPart(pet)
-    local payload = {
-        reason = reason,
-        petItemId = petItemId,
-        old = oldHealth,
-        new = newHealth,
-        source = source,
-        visibleGui = getVisibleRecoverGui()
-    }
-
-    if rootPart then
-        payload.playerPos = rootPart.Position
-    end
-    if petPart then
-        payload.pet = pet and pet.Name or nil
-        payload.petPos = petPart.Position
-        payload.petPlayerDist = rootPart and (math.floor((petPart.Position - rootPart.Position).Magnitude * 10) / 10) or nil
-        payload.nearby = collectNearbyRecoverContext(petPart.Position)
-    elseif rootPart then
-        payload.nearby = collectNearbyRecoverContext(rootPart.Position)
-    end
-
-    writeLine("RECOVER", reason, payload, Color3.fromRGB(120, 255, 200))
-end
-
-local function hookRecoverGuiObject(inst)
-    if not isRecoverGuiCandidate(inst) or State.recoverGuiObserved[inst] then
-        return
-    end
-    State.recoverGuiObserved[inst] = true
-
-    local function emit(action)
-        if not State.recoverTraceEnabled or not State.active then
-            return
-        end
-        local payload = {
-            class = inst.ClassName,
-            name = inst.Name,
-            text = getGuiReadableText(inst),
-            path = inst:GetFullName()
-        }
-        if inst:IsA("GuiObject") then
-            payload.visible = inst.Visible
-        end
-        writeLine("GUI_TRACE", action, payload, Color3.fromRGB(180, 220, 255))
-        if payload.visible ~= false then
-            traceRecoverContext("GuiSignal", nil, nil, nil)
-        end
-    end
-
-    emit("Tracked")
-    if inst:IsA("GuiObject") then
-        addConnection(inst:GetPropertyChangedSignal("Visible"):Connect(function()
-            emit("VisibleChanged")
-        end))
-        if inst.Visible then
-            State.lastRecoverGuiAt = os.clock()
-        end
-    end
-    if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
-        addConnection(inst:GetPropertyChangedSignal("Text"):Connect(function()
-            emit("TextChanged")
-        end))
-    end
-    if inst:IsA("GuiButton") then
-        addConnection(inst.Activated:Connect(function()
-            emit("Activated")
-        end))
-    end
-end
-
-local function installRecoverGuiAudit()
-    local playerGui = LP:WaitForChild("PlayerGui")
-    for _, desc in ipairs(playerGui:GetDescendants()) do
-        hookRecoverGuiObject(desc)
-    end
-    addConnection(playerGui.DescendantAdded:Connect(function(desc)
-        task.defer(function()
-            if State.active then
-                hookRecoverGuiObject(desc)
+            
+            -- Escanear TODOS los RemoteEvents del juego
+            for _, desc in pairs(ReplicatedStorage:GetDescendants()) do
+                if desc:IsA("RemoteEvent") then
+                    local conns = getconnections(desc.OnClientEvent)
+                    if #conns > 0 then
+                        Log("RE con conexiones: " .. desc:GetFullName() .. " (" .. #conns .. " conns)", Color3.fromRGB(200, 200, 100))
+                        -- Si tiene muchas conexiones, probablemente es el principal
+                        if #conns >= 1 and not targetEvent then
+                            targetEvent = desc
+                        end
+                    end
+                end
             end
         end)
-    end))
-end
-
-local function getProbeOffsets(index)
-    local offsets = {
-        Vector3.new(-5, 0, -2),
-        Vector3.new(0, 0, -4),
-        Vector3.new(5, 0, -2),
-        Vector3.new(-8, 0, 2),
-        Vector3.new(8, 0, 2)
-    }
-    return offsets[((index - 1) % #offsets) + 1]
-end
-
-local function applyPetPositionProbe(mode)
-    local rootPart = getCharacterRoot()
-    if not rootPart then
-        return
     end
 
-    local ownedPets = getOwnedPetRoots()
-    for index, pet in ipairs(ownedPets) do
-        local part = getRootPart(pet)
-        if part then
-            saveCFrame(State.petOriginals, pet, part)
-            local offset = getProbeOffsets(index)
-            local yOffset = 0
-            if mode == "HOVER" then
-                yOffset = 10
-            elseif mode == "UNDERFOOT" then
-                yOffset = -2.5
-            elseif mode == "UNDERGROUND" then
-                yOffset = -8
-            end
-            local target = rootPart.Position + Vector3.new(offset.X, yOffset, offset.Z)
-            pcall(function()
-                part.CFrame = CFrame.new(target)
+    if not targetEvent then
+        Log("No se encontró RemoteEvent principal. Intentando hookmetamethod...", Color3.fromRGB(255, 150, 0))
+        
+        -- Método 3: hookmetamethod - intercepta TODAS las llamadas de red
+        if type(hookmetamethod) == "function" then
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if method == "FireServer" or method == "InvokeServer" then
+                    -- No tocamos lo que el cliente envía al servidor
+                elseif method == "Connect" or method == "connect" then
+                    -- No interferimos con conexiones
+                end
+                
+                return oldNamecall(self, ...)
             end)
+            Log("hookmetamethod instalado (pasivo)", Color3.fromRGB(150, 255, 150))
         end
-    end
-end
-
-local function applyPetNeutralProbe()
-    local pets = Workspace:FindFirstChild("Pets")
-    if not pets then
-        return
-    end
-    local myId = tonumber(LP.UserId)
-    for _, pet in ipairs(pets:GetChildren()) do
-        local playerId = tonumber(pet:GetAttribute("PlayerId"))
-        if playerId == myId then
-            if pet:GetAttribute("PlayerId") ~= nil then
-                saveAttr(State.petOriginals, pet, "PlayerId")
-                pcall(function()
-                    pet:SetAttribute("PlayerId", 0)
-                end)
-            end
-            if pet:GetAttribute("OwnerUserId") ~= nil then
-                saveAttr(State.petOriginals, pet, "OwnerUserId")
-                pcall(function()
-                    pet:SetAttribute("OwnerUserId", 0)
-                end)
-            end
-        end
-    end
-end
-
-local function applyMonsterMaskProbe()
-    local roots = {
-        Workspace:FindFirstChild("Monsters"),
-        Workspace:FindFirstChild("ClientMonsters")
-    }
-    local myIdText = tostring(LP.UserId)
-
-    for _, folder in ipairs(roots) do
-        if folder then
-            for _, monster in ipairs(folder:GetChildren()) do
-                local ok, attrs = pcall(monster.GetAttributes, monster)
-                if ok and type(attrs) == "table" then
-                    for key, value in pairs(attrs) do
-                        local lowerKey = lower(key)
-                        local remove = false
-                        if string.find(lowerKey, "battleplayer_", 1, true) and string.find(lowerKey, myIdText, 1, true) then
-                            remove = true
-                        elseif string.find(lowerKey, "catchplayerid_", 1, true) and string.find(lowerKey, myIdText, 1, true) then
-                            remove = true
-                        elseif lowerKey == "catchtakenplayerid" and tostring(value) == myIdText then
-                            remove = true
-                        end
-                        if remove then
-                            saveAttr(State.monsterOriginals, monster, key)
-                            pcall(function()
-                                monster:SetAttribute(key, nil)
+        
+        -- Método 4: Hook directo al OnClientEvent de TODOS los RE
+        pcall(function()
+            if type(getconnections) ~= "function" then return end
+            
+            for _, desc in pairs(ReplicatedStorage:GetDescendants()) do
+                if desc:IsA("RemoteEvent") then
+                    local conns = getconnections(desc.OnClientEvent)
+                    for _, conn in pairs(conns) do
+                        local origFn = conn.Function
+                        if origFn then
+                            conn:Disable()
+                            
+                            desc.OnClientEvent:Connect(function(...)
+                                local args = {...}
+                                local firstName = tostring(args[1] or "")
+                                
+                                -- VECTOR C: Silenciar ataques de monstruos
+                                if Toggles.Silence then
+                                    -- Bloquear FightSkillStart de mobs (UnitKey empieza con M)
+                                    if firstName == "FightSkillStart" then
+                                        local unitKey = tostring(args[4] or "")
+                                        if unitKey:sub(1, 1) == "M" then
+                                            silencedCount = silencedCount + 1
+                                            if silencedCount % 5 == 1 then
+                                                Log("🔇 Ataque de " .. unitKey .. " BLOQUEADO (total: " .. silencedCount .. ")", Color3.fromRGB(255, 80, 80))
+                                            end
+                                            return -- DROPPING: el mob no ataca
+                                        end
+                                    end
+                                    
+                                    -- Bloquear PetHurtInfo (daño recibido por mascotas)
+                                    if firstName == "PetHurtInfo" then
+                                        silencedCount = silencedCount + 1
+                                        return -- DROPPING: tus mascotas no reciben daño
+                                    end
+                                    
+                                    -- Bloquear ObjectPointSync de mobs (proyectiles enemigos)
+                                    if firstName == "ObjectPointSyncAdd" then
+                                        local data = args[3]
+                                        if type(data) == "table" then
+                                            local caster = tostring(data.CasterUnitKey or "")
+                                            if caster:sub(1, 1) == "M" then
+                                                return -- DROPPING: proyectil del mob no se renderiza
+                                            end
+                                        end
+                                    end
+                                    
+                                    -- Bloquear FightLogicPlayerCreate de mobs
+                                    if firstName == "FightLogicPlayerCreate" then
+                                        local data = args[3]
+                                        if type(data) == "table" then
+                                            local src = tostring(data.SourceUnitKey or "")
+                                            if src:sub(1, 1) == "M" then
+                                                return -- DROPPING: lógica de ataque mob no se crea
+                                            end
+                                        end
+                                    end
+                                end
+                                
+                                -- AUTO-CATCH: Cuando llega PushRewardEvent, presionar E automáticamente
+                                if Toggles.AutoFarm and firstName == "PushRewardEvent" then
+                                    Log("💀 Mob muerto! Auto-capturando...", Color3.fromRGB(255, 255, 0))
+                                    task.delay(0.3, function()
+                                        pcall(function()
+                                            -- Simular presionar E
+                                            local vim = game:GetService("VirtualInputManager")
+                                            vim:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                                            task.wait(0.1)
+                                            vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                                        end)
+                                    end)
+                                end
+                                
+                                -- Todo lo demás pasa normal
+                                origFn(...)
                             end)
                         end
                     end
                 end
             end
-        end
-    end
-end
-
-local function setProbeMode(mode)
-    if State.probeMode == mode then
-        return
-    end
-    restoreStore(State.petOriginals)
-    restoreStore(State.monsterOriginals)
-    State.probeMode = mode
-    refreshProbeUi()
-    writeLine("PROBE", "ModeChanged", { mode = mode }, Color3.fromRGB(255, 210, 120))
-end
-
-local function applyProbeMode()
-    if State.probeMode == "NONE" then
-        return
-    elseif State.probeMode == "HOVER" or State.probeMode == "UNDERFOOT" or State.probeMode == "UNDERGROUND" then
-        applyPetPositionProbe(State.probeMode)
-    elseif State.probeMode == "PET_NEUTRAL" then
-        applyPetNeutralProbe()
-    elseif State.probeMode == "MONSTER_MASK" then
-        applyMonsterMaskProbe()
-    end
-end
-
-local function findAdornee(root)
-    if not root or not root.Parent then
-        return nil
-    end
-    if root:IsA("BasePart") then
-        return root
-    end
-    if root:IsA("Model") then
-        return root.PrimaryPart or root:FindFirstChildWhichIsA("BasePart", true)
-    end
-    return root:FindFirstChildWhichIsA("BasePart", true)
-end
-
-local function readInterestingAttributes(root)
-    local attrs = {}
-    local function pull(inst)
-        if not inst then
-            return
-        end
-        local ok, values = pcall(inst.GetAttributes, inst)
-        if not ok or type(values) ~= "table" then
-            return
-        end
-        for key, value in pairs(values) do
-            local lowerKey = lower(key)
-            if lowerKey == "rewardres" or lowerKey == "reward" or lowerKey == "tmplid"
-                or lowerKey == "monsterid" or lowerKey == "npcid" or lowerKey == "level"
-                or lowerKey == "owneruserid" or lowerKey == "playerid" or lowerKey == "petitemid" or lowerKey == "systag"
-                or lowerKey == "catchendtick" or lowerKey == "catchtakenplayerid"
-                or string.find(lowerKey, "battleplayer", 1, true)
-                or string.find(lowerKey, "catchplayerid", 1, true) then
-                attrs[key] = value
-            end
-        end
-    end
-
-    pull(root)
-    local count = 0
-    for _, desc in ipairs(root:GetDescendants()) do
-        count = count + 1
-        if count > 40 then
-            break
-        end
-        pull(desc)
-    end
-    return attrs
-end
-
-local function extractRewardInfo(attrs)
-    local rewardRes = attrs.RewardRes
-    local tmplId = attrs.TmplId
-    local reward = attrs.Reward
-
-    if type(reward) == "table" then
-        rewardRes = rewardRes or reward.RewardRes
-        tmplId = tmplId or reward.TmplId
-    elseif type(reward) == "string" then
-        rewardRes = rewardRes
-            or reward:match('"RewardRes"%s*:%s*"([^"]+)"')
-            or reward:match("RewardRes%s*[=:]%s*\"?([%w_]+)\"?")
-        local nestedTmplId = reward:match('"TmplId"%s*:%s*(%d+)')
-            or reward:match("TmplId%s*[=:]%s*(%d+)")
-        if tmplId == nil and nestedTmplId then
-            tmplId = tonumber(nestedTmplId)
-        end
-    end
-
-    return rewardRes, tmplId
-end
-
-local function classifyRoot(root)
-    if not root then
-        return "Unknown", {}
-    end
-    local path = lower(root:GetFullName())
-    local name = lower(root.Name)
-    local attrs = readInterestingAttributes(root)
-    local rewardRes = extractRewardInfo(attrs)
-    local rewardText = lower(rewardRes or attrs.RewardRes or attrs.Reward)
-
-    if string.find(path, "areapickup", 1, true) or attrs.RewardRes ~= nil or attrs.Reward ~= nil then
-        if rewardText == "egg"
-            or string.find(rewardText, "egg", 1, true)
-            or string.find(name, "egg", 1, true)
-            or string.find(name, "huevo", 1, true) then
-            return "Egg", attrs
-        end
-        return "Pickup", attrs
-    end
-    if string.find(path, "clientmonsters", 1, true) or string.find(path, "workspace.monsters", 1, true)
-        or attrs.MonsterId ~= nil or string.find(name, "monster", 1, true) then
-        return "Monster", attrs
-    end
-    if string.find(path, "clientpets", 1, true) or string.find(path, "workspace.pets", 1, true)
-        or attrs.PetItemId ~= nil or attrs.OwnerUserId ~= nil or attrs.PlayerId ~= nil or string.find(name, "pet", 1, true) then
-        return "Pet", attrs
-    end
-    return "Object", attrs
-end
-
-local function getBattleSummary(attrs)
-    local battle = false
-    local caught = false
-    for key in pairs(attrs) do
-        local lowerKey = lower(key)
-        if string.find(lowerKey, "battleplayer", 1, true) then
-            battle = true
-        elseif string.find(lowerKey, "catchplayerid", 1, true) or lowerKey == "catchtakenplayerid" or lowerKey == "catchendtick" then
-            caught = true
-        end
-    end
-    return battle, caught
-end
-
-local function formatPickupLabel(kind, root, attrs)
-    local label = kind
-    local rewardRes, tmplId = extractRewardInfo(attrs)
-    if rewardRes then
-        label = label .. " | " .. tostring(rewardRes)
-    else
-        label = label .. " | " .. tostring(root.Name)
-    end
-    if tmplId then
-        label = label .. " #" .. tostring(tmplId)
-    end
-    return label
-end
-
-local function removeTrackedEsp(root)
-    local tracked = State.trackedEsp[root]
-    if not tracked then
-        return
-    end
-    if tracked.gui then
-        tracked.gui:Destroy()
-    end
-    State.trackedEsp[root] = nil
-end
-
-local function registerPickupEsp(root, kind, attrs, source)
-    if State.trackedEsp[root] then
-        return
-    end
-    local adornee = findAdornee(root)
-    if not adornee then
-        return
-    end
-
-    local gui = Instance.new("BillboardGui")
-    gui.Name = "ESP_" .. root.Name
-    gui.AlwaysOnTop = true
-    gui.Size = UDim2.new(0, 170, 0, 42)
-    gui.StudsOffset = Vector3.new(0, 3, 0)
-    gui.Adornee = adornee
-    gui.Enabled = State.espEnabled
-    gui.Parent = State.ui.espFolder
-
-    local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.TextScaled = true
-    text.TextStrokeTransparency = 0
-    text.Font = Enum.Font.GothamBold
-    text.TextColor3 = kind == "Egg" and Color3.fromRGB(255, 235, 80) or Color3.fromRGB(100, 255, 140)
-    text.Parent = gui
-
-    State.trackedEsp[root] = {
-        root = root,
-        kind = kind,
-        attrs = attrs,
-        gui = gui,
-        text = text
-    }
-
-    local rewardRes, tmplId = extractRewardInfo(attrs)
-    writeLine("WORLD", source, {
-        kind = kind,
-        path = root:GetFullName(),
-        rewardRes = rewardRes,
-        tmplId = tmplId,
-        reward = attrs.Reward
-    }, kind == "Egg" and Color3.fromRGB(255, 235, 80) or Color3.fromRGB(120, 255, 170))
-end
-
-local function inspectRoot(root, source)
-    if not root or not root.Parent then
-        return
-    end
-    local kind, attrs = classifyRoot(root)
-    local prompt = root:FindFirstChildWhichIsA("ProximityPrompt", true)
-    local click = root:FindFirstChildWhichIsA("ClickDetector", true)
-
-    if kind == "Egg" or kind == "Pickup" then
-        registerPickupEsp(root, kind, attrs, source)
-        return
-    end
-
-    if kind == "Monster" or kind == "Pet" then
-        local battle, caught = getBattleSummary(attrs)
-        writeLine("ENTITY", source, {
-            kind = kind,
-            path = root:GetFullName(),
-            monsterId = attrs.MonsterId,
-            petItemId = attrs.PetItemId,
-            level = attrs.Level,
-            playerId = attrs.PlayerId,
-            ownerUserId = attrs.OwnerUserId,
-            battle = battle,
-            caught = caught,
-            click = click ~= nil,
-            prompt = prompt ~= nil
-        }, kind == "Monster" and Color3.fromRGB(255, 180, 110) or Color3.fromRGB(130, 220, 255))
-    end
-end
-
-local function scanInterestingRoots()
-    local roots = {
-        Workspace:FindFirstChild("AreaPickUp"),
-        Workspace:FindFirstChild("Monsters"),
-        Workspace:FindFirstChild("Pets"),
-        Workspace:FindFirstChild("ClientMonsters"),
-        Workspace:FindFirstChild("ClientPets")
-    }
-
-    for _, folder in ipairs(roots) do
-        if folder then
-            for _, child in ipairs(folder:GetChildren()) do
-                inspectRoot(child, "Scan")
-            end
-        end
-    end
-end
-
-local function watchFolder(folder)
-    if not folder then
-        return
-    end
-    for _, child in ipairs(folder:GetChildren()) do
-        inspectRoot(child, "Initial")
-    end
-    addConnection(folder.ChildAdded:Connect(function(child)
-        task.delay(0.1, function()
-            if State.active then
-                inspectRoot(child, "Added")
-            end
+            Log("✅ Hooks instalados en TODOS los RemoteEvents", Color3.fromRGB(0, 255, 0))
         end)
-    end))
-    addConnection(folder.ChildRemoved:Connect(function(child)
-        removeTrackedEsp(child)
-    end))
-end
-
-local function updateEsps()
-    if not State.espEnabled then
-        for _, tracked in pairs(State.trackedEsp) do
-            tracked.gui.Enabled = false
-        end
+        
         return
     end
 
-    local rootPart = getCharacterRoot()
-    for root, tracked in pairs(State.trackedEsp) do
-        if not root.Parent then
-            removeTrackedEsp(root)
-        else
-            local adornee = findAdornee(root)
-            if not adornee then
-                removeTrackedEsp(root)
-            else
-                tracked.gui.Adornee = adornee
-                tracked.gui.Enabled = true
-                local distText = "?"
-                if rootPart then
-                    distText = tostring(math.floor((adornee.Position - rootPart.Position).Magnitude))
-                end
-                tracked.text.Text = formatPickupLabel(tracked.kind, root, tracked.attrs) .. "\n[" .. distText .. "m]"
-            end
-        end
-    end
-end
-
-local function mergeAttributes(primary, secondary)
-    local merged = {}
-    for _, attrs in ipairs({ primary, secondary }) do
-        if type(attrs) == "table" then
-            for key, value in pairs(attrs) do
-                if merged[key] == nil then
-                    merged[key] = value
-                end
-            end
-        end
-    end
-    return merged
-end
-
-local function collectMonsterEntries()
-    local entries = {}
-
-    local function attach(folder, field)
-        if not folder then
-            return
-        end
-        for _, child in ipairs(folder:GetChildren()) do
-            local _, attrs = classifyRoot(child)
-            local key = tostring(attrs.MonsterId or child.Name)
-            local entry = entries[key]
-            if not entry then
-                entry = { key = key }
-                entries[key] = entry
-            end
-            entry[field] = child
-            entry[field .. "Attrs"] = attrs
-        end
-    end
-
-    attach(Workspace:FindFirstChild("Monsters"), "logic")
-    attach(Workspace:FindFirstChild("ClientMonsters"), "render")
-
-    local list = {}
-    for _, entry in pairs(entries) do
-        entry.attrs = mergeAttributes(entry.logicAttrs, entry.renderAttrs)
-        entry.adornee = findAdornee(entry.render or entry.logic)
-        table.insert(list, entry)
-    end
-    return list
-end
-
-local function collectPetEntries()
-    local entries = {}
-
-    local function attach(folder, field)
-        if not folder then
-            return
-        end
-        for _, child in ipairs(folder:GetChildren()) do
-            local _, attrs = classifyRoot(child)
-            local suffix = tostring(child.Name):match("^Pet_%d+_(%d+)$") or tostring(child.Name):match("^Pet_(%d+)$")
-            local key = tostring(attrs.PetItemId or suffix or child.Name)
-            local entry = entries[key]
-            if not entry then
-                entry = { key = key }
-                entries[key] = entry
-            end
-            entry[field] = child
-            entry[field .. "Attrs"] = attrs
-        end
-    end
-
-    attach(Workspace:FindFirstChild("Pets"), "logic")
-    attach(Workspace:FindFirstChild("ClientPets"), "render")
-
-    local count = 0
-    for _ in pairs(entries) do
-        count = count + 1
-    end
-    return count
-end
-
-local function snapshotProbeState(rootPart)
-    if State.probeMode == "NONE" or not rootPart then
-        return
-    end
-
-    local probePets = getOwnedPetRoots()
-    if #probePets == 0 then
-        for pet in pairs(State.petOriginals) do
-            if pet and pet.Parent then
-                table.insert(probePets, pet)
-            end
-        end
-    end
-
-    local samples = {}
-    for index, pet in ipairs(probePets) do
-        if index > 3 then
-            break
-        end
-        local part = getRootPart(pet)
-        if part then
-            local attrs = readInterestingAttributes(pet)
-            table.insert(samples, {
-                pet = pet.Name,
-                dist = math.floor((part.Position - rootPart.Position).Magnitude),
-                dy = math.floor((part.Position.Y - rootPart.Position.Y) * 10) / 10,
-                playerId = attrs.PlayerId,
-                ownerUserId = attrs.OwnerUserId
-            })
-        end
-    end
-
-    writeLine("PROBE", "PetState", {
-        mode = State.probeMode,
-        samples = samples
-    }, Color3.fromRGB(255, 210, 120))
-end
-
-local function snapshotWorld()
-    local rootPart = getCharacterRoot()
-    local areaPickUp = Workspace:FindFirstChild("AreaPickUp")
-
-    local eggCount, pickupCount, monsterCount, petCount = 0, 0, 0, 0
-    local nearest = {}
-
-    if areaPickUp then
-        for _, child in ipairs(areaPickUp:GetChildren()) do
-            local kind = classifyRoot(child)
-            if kind == "Egg" then
-                eggCount = eggCount + 1
-            else
-                pickupCount = pickupCount + 1
-            end
-        end
-    end
-
-    local monsterEntries = collectMonsterEntries()
-    monsterCount = #monsterEntries
-    if rootPart then
-        table.sort(monsterEntries, function(a, b)
-            local aDist = a.adornee and (a.adornee.Position - rootPart.Position).Magnitude or math.huge
-            local bDist = b.adornee and (b.adornee.Position - rootPart.Position).Magnitude or math.huge
-            return aDist < bDist
-        end)
-        for _, entry in ipairs(monsterEntries) do
-            if #nearest >= 4 then
-                break
-            end
-            if entry.adornee then
-                local battle, caught = getBattleSummary(entry.attrs)
-                table.insert(nearest, {
-                    id = entry.attrs.MonsterId or entry.key,
-                    level = entry.attrs.Level,
-                    dist = math.floor((entry.adornee.Position - rootPart.Position).Magnitude),
-                    battle = battle,
-                    caught = caught
-                })
-            end
-        end
-    end
-
-    petCount = collectPetEntries()
-
-    writeLine("SNAPSHOT", "World", {
-        eggs = eggCount,
-        pickups = pickupCount,
-        monsters = monsterCount,
-        pets = petCount,
-        nearestMonsters = nearest
-    }, Color3.fromRGB(160, 200, 255))
-    snapshotProbeState(rootPart)
-end
-
-local function hookRemoteEvent(remote, callback)
-    if not remote or not remote:IsA("RemoteEvent") then
-        return
-    end
-    addConnection(remote.OnClientEvent:Connect(function(...)
-        if not State.active or not State.auditEnabled then
-            return
-        end
-        callback(...)
-    end))
-end
-
-local function installRemoteAudit()
-    local common = ReplicatedStorage:FindFirstChild("CommonLibrary")
-    local tool = common and common:FindFirstChild("Tool")
-    local manager = tool and tool:FindFirstChild("RemoteManager")
-    local events = manager and manager:FindFirstChild("Events")
-    if not events then
-        writeLine("SYSTEM", "RemoteManagerMissing", nil, Color3.fromRGB(255, 120, 120))
-        return
-    end
-
-    hookRemoteEvent(events:FindFirstChild("NotificationEvent"), function(...)
-        local args = { ... }
-        writeLine("ANNOUNCE", "NotificationEvent", {
-            subtype = args[1],
-            a2 = args[2],
-            a3 = args[3],
-            a4 = args[4]
-        }, Color3.fromRGB(255, 235, 120))
-    end)
-
-    hookRemoteEvent(events:FindFirstChild("PushRewardEvent"), function(...)
-        writeLine("REWARD", "PushRewardEvent", { ... }, Color3.fromRGB(120, 255, 170))
-    end)
-
-    hookRemoteEvent(events:FindFirstChild("Message"), function(...)
-        local args = { ... }
-        local kind = tostring(args[1] or "")
-        if IMPORTANT_MESSAGE_KINDS[kind] then
-            if kind == "PetHealthSync" then
-                local petItemId = tonumber(args[2])
-                local healthPayload = args[3]
-                local newHealth = tonumber(healthPayload)
-                if newHealth == nil and type(healthPayload) == "table" then
-                    newHealth = tonumber(healthPayload.v or healthPayload.Value or healthPayload.Health)
-                end
-                local oldHealth = petItemId and State.petHealth[petItemId] or nil
-                if petItemId and newHealth then
-                    State.petHealth[petItemId] = newHealth
-                    if oldHealth and newHealth > oldHealth then
-                        writeLine("HEAL", "PetHealthUp", {
-                            petItemId = petItemId,
-                            old = oldHealth,
-                            new = newHealth,
-                            delta = newHealth - oldHealth
-                        }, Color3.fromRGB(120, 255, 170))
-                        traceRecoverContext("PetHealthUp", petItemId, oldHealth, newHealth)
-                    elseif newHealth <= 0 then
-                        writeLine("HEAL", "PetDown", {
-                            petItemId = petItemId,
-                            new = newHealth
-                        }, Color3.fromRGB(255, 130, 130))
-                        traceRecoverContext("PetDown", petItemId, oldHealth, newHealth)
-                    elseif oldHealth and newHealth < oldHealth then
-                        writeLine("HEAL", "PetHealthDown", {
-                            petItemId = petItemId,
-                            old = oldHealth,
-                            new = newHealth,
-                            delta = newHealth - oldHealth
-                        }, Color3.fromRGB(255, 190, 130))
+    -- Si encontramos el targetEvent directamente
+    if targetEvent and type(getconnections) == "function" then
+        local conns = getconnections(targetEvent.OnClientEvent)
+        Log("Hookeando " .. targetEvent.Name .. " con " .. #conns .. " conexiones...", Color3.fromRGB(0, 255, 200))
+        
+        for _, conn in pairs(conns) do
+            local origFn = conn.Function
+            if origFn then
+                conn:Disable()
+                
+                targetEvent.OnClientEvent:Connect(function(...)
+                    local args = {...}
+                    local firstName = tostring(args[1] or "")
+                    
+                    if Toggles.Silence then
+                        if firstName == "FightSkillStart" then
+                            local unitKey = tostring(args[4] or "")
+                            if unitKey:sub(1, 1) == "M" then
+                                silencedCount = silencedCount + 1
+                                if silencedCount % 5 == 1 then
+                                    Log("🔇 Bloqueado ataque " .. unitKey .. " (#" .. silencedCount .. ")", Color3.fromRGB(255, 80, 80))
+                                end
+                                return
+                            end
+                        end
+                        if firstName == "PetHurtInfo" then
+                            silencedCount = silencedCount + 1
+                            return
+                        end
+                        if firstName == "ObjectPointSyncAdd" then
+                            local d = args[3]
+                            if type(d) == "table" and tostring(d.CasterUnitKey or ""):sub(1,1) == "M" then
+                                return
+                            end
+                        end
+                        if firstName == "FightLogicPlayerCreate" then
+                            local d = args[3]
+                            if type(d) == "table" and tostring(d.SourceUnitKey or ""):sub(1,1) == "M" then
+                                return
+                            end
+                        end
                     end
-                end
-            end
-            writeLine("COMBAT", kind, { ... }, Color3.fromRGB(255, 190, 130))
-        elseif kind == "StreamingAddData" or kind == "StreamingRemoveData" then
-            local updateKind = tostring(args[3] or "")
-            if updateKind ~= "MovePath" then
-                writeLine("SYNC", kind, { ... }, Color3.fromRGB(160, 210, 255))
-            end
-        end
-    end)
-end
-
-local function installInputAudit()
-    addConnection(UserInputService.InputBegan:Connect(function(input, processed)
-        if not State.active or not State.auditEnabled or processed then
-            return
-        end
-
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            writeLine("INPUT", "MouseButton1", nil, Color3.fromRGB(210, 210, 210))
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-            writeLine("INPUT", "MouseButton2", nil, Color3.fromRGB(210, 210, 210))
-        elseif input.UserInputType == Enum.UserInputType.Keyboard then
-            local key = input.KeyCode.Name
-            if IMPORTANT_INPUT[key] then
-                writeLine("INPUT", key, nil, Color3.fromRGB(210, 210, 210))
-            end
-        end
-    end))
-
-    addConnection(ProximityPromptService.PromptShown:Connect(function(prompt)
-        if not State.active or not State.auditEnabled then
-            return
-        end
-        writeLine("PROMPT", "Shown", {
-            path = prompt:GetFullName(),
-            action = prompt.ActionText,
-            object = prompt.ObjectText,
-            key = prompt.KeyboardKeyCode.Name
-        }, Color3.fromRGB(180, 220, 255))
-    end))
-
-    addConnection(ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
-        if not State.active or not State.auditEnabled then
-            return
-        end
-        writeLine("PROMPT", "Triggered", {
-            path = prompt:GetFullName(),
-            action = prompt.ActionText,
-            object = prompt.ObjectText,
-            player = player and player.Name or nil
-        }, Color3.fromRGB(180, 255, 180))
-    end))
-end
-
-local function installLoops()
-    addConnection(RunService.Heartbeat:Connect(function()
-        if not State.active then
-            return
-        end
-
-        local now = os.clock()
-        if now - State.lastEspAt >= CONFIG.espUpdateInterval then
-            State.lastEspAt = now
-            updateEsps()
-            applyProbeMode()
-        end
-        if now - State.lastSnapshotAt >= CONFIG.snapshotInterval then
-            State.lastSnapshotAt = now
-            snapshotWorld()
-        end
-        if now - State.lastFlushAt >= CONFIG.flushInterval then
-            State.lastFlushAt = now
-            flushFile()
-        end
-    end))
-end
-
-local function installUiActions()
-    State.ui.scanButton.MouseButton1Click:Connect(function()
-        writeLine("UI", "ManualScan", nil, Color3.fromRGB(220, 220, 120))
-        scanInterestingRoots()
-        snapshotWorld()
-    end)
-
-    if State.ui.probeButtons then
-        for _, mode in ipairs(PROBE_MODES) do
-            local button = State.ui.probeButtons[mode.id]
-            if button then
-                button.MouseButton1Click:Connect(function()
-                    setProbeMode(mode.id)
+                    
+                    if Toggles.AutoFarm and firstName == "PushRewardEvent" then
+                        Log("💀 Mob muerto! Auto-catch...", Color3.fromRGB(255, 255, 0))
+                        task.delay(0.3, function()
+                            pcall(function()
+                                local vim = game:GetService("VirtualInputManager")
+                                vim:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                                task.wait(0.1)
+                                vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                            end)
+                        end)
+                    end
+                    
+                    origFn(...)
                 end)
             end
         end
+        Log("✅ Vector C instalado en: " .. targetEvent:GetFullName(), Color3.fromRGB(0, 255, 0))
     end
-end
+end)
 
-function State.stop(reason)
-    State.active = false
-    flushFile()
-    cleanupConnections()
-    restoreStore(State.petOriginals)
-    restoreStore(State.monsterOriginals)
-    for root in pairs(State.trackedEsp) do
-        removeTrackedEsp(root)
+-- ==========================================================
+-- 3. AUTO-FARM: ClickDetector del mob más cercano
+-- ==========================================================
+task.spawn(function()
+    while true do
+        if Toggles.AutoFarm then
+            pcall(function()
+                if not LP.Character or not LP.Character.PrimaryPart then return end
+                local myPos = LP.Character.PrimaryPart.Position
+                local closest = nil
+                local closestDist = 80 -- rango máximo de búsqueda
+                
+                -- Buscar en ClientMonsters (los que tienen ClickDetector)
+                local cm = Workspace:FindFirstChild("ClientMonsters")
+                if cm then
+                    for _, mob in pairs(cm:GetChildren()) do
+                        if mob:IsA("Model") then
+                            local cd = mob:FindFirstChildWhichIsA("ClickDetector", true)
+                            if cd then
+                                local part = mob.PrimaryPart or mob:FindFirstChildWhichIsA("BasePart")
+                                if part then
+                                    local dist = (part.Position - myPos).Magnitude
+                                    if dist < closestDist then
+                                        closestDist = dist
+                                        closest = cd
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if closest then
+                    -- Disparar el click para iniciar combate
+                    fireclickdetector(closest)
+                    Log("🖱️ Click en mob a " .. math.floor(closestDist) .. "m", Color3.fromRGB(100, 200, 255))
+                end
+            end)
+        end
+        task.wait(3) -- cada 3 segundos buscar nuevo mob
     end
-    if State.ui.screen then
-        State.ui.screen:Destroy()
-    end
-    rawset(_G, "CAMQAHarness", nil)
-end
+end)
 
-buildGui()
-ensureFile()
-if State.ui.fileLabel then
-    State.ui.fileLabel.Text = "File: " .. tostring(State.file or "writefile unavailable")
-end
-setStatus("Running")
-refreshProbeUi()
-writeLine("SYSTEM", "Started", {
-    placeId = game.PlaceId,
-    jobId = game.JobId,
-    player = LP and LP.Name or "unknown"
-}, Color3.fromRGB(120, 255, 200))
-
-watchFolder(Workspace:FindFirstChild("AreaPickUp"))
-watchFolder(Workspace:FindFirstChild("Monsters"))
-watchFolder(Workspace:FindFirstChild("Pets"))
-watchFolder(Workspace:FindFirstChild("ClientMonsters"))
-watchFolder(Workspace:FindFirstChild("ClientPets"))
-installRecoverGuiAudit()
-installRemoteAudit()
-installInputAudit()
-installLoops()
-installUiActions()
-scanInterestingRoots()
-snapshotWorld()
+Log("Script listo. Activa los botones para empezar.", Color3.fromRGB(255, 255, 255))
