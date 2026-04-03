@@ -1,7 +1,5 @@
 -- ==============================================================================
--- 🦖 CATCH A MONSTER: V9.0 — INYECCIÓN DE MÓDULOS DE COMBATE
--- Secuestramos la lógica oficial del juego (MgrFightClient) 
--- y disparamos sus propias funciones a la velocidad de la luz (x50/segundo).
+-- 🦖 CATCH A MONSTER: V9.2 — INYECCIÓN GATLING (10x Seg) + LOGS
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -11,11 +9,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local LP = Players.LocalPlayer
 
-local UI_Name = "CAM_Injector"
-if CoreGui:FindFirstChild(UI_Name) then CoreGui[UI_Name]:Destroy() end
+-- LIMPIEZA DE VIEJAS GUIS
+for _, name in pairs({"CAM_Spy", "CAM_Poisoner", "CAM_Injector", "CAM_Hack"}) do
+    pcall(function()
+        if CoreGui:FindFirstChild(name) then CoreGui[name]:Destroy() end
+        if LP.PlayerGui:FindFirstChild(name) then LP.PlayerGui[name]:Destroy() end
+    end)
+end
 
 local SG = Instance.new("ScreenGui")
-SG.Name = UI_Name
+SG.Name = "CAM_Injector"
 SG.ResetOnSpawn = false
 SG.Parent = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 
@@ -31,7 +34,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 26)
 Title.BackgroundColor3 = Color3.fromRGB(60, 0, 80)
-Title.Text = " 💉 INYECTOR DE MÓDULOS (GATLING) V9.1"
+Title.Text = " 💉 INYECTOR DE MÓDULOS (GATLING) V9.2"
 Title.TextColor3 = Color3.fromRGB(240, 150, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 12
@@ -110,7 +113,6 @@ btnHook.MouseButton1Click:Connect(function()
             MgrFightClient = require(modPath)
             if type(MgrFightClient) == "table" and MgrFightClient.TryUseSkill then
                 Log("✅ ¡Módulo SECUESTRADO exitosamente!", Color3.fromRGB(0, 255, 0))
-                Log("  → Funciones disponibles: TryUseSkill, _doUseSkillWaitAck...", Color3.fromRGB(150, 255, 150))
                 btnHook.BackgroundColor3 = Color3.fromRGB(0, 150, 50)
                 btnHook.Text = "⚙️ MÓDULO SECUESTRADO"
             else
@@ -134,8 +136,8 @@ btnGatling.MouseButton1Click:Connect(function()
     end
     gatlingActive = not gatlingActive
     btnGatling.BackgroundColor3 = gatlingActive and Color3.fromRGB(180, 0, 0) or Color3.fromRGB(35, 35, 40)
-    btnGatling.Text = gatlingActive and "💥 GATLING ACTIVADO (Spamming TryUseSkill)" or "💥 ACTIVAR: GATLING DE ATAQUES"
-    Log(gatlingActive and "✅ Gatling de ataques activado!" or "🛑 Gatling desactivado.", Color3.fromRGB(200, 100, 255))
+    btnGatling.Text = gatlingActive and "💥 GATLING ACTIVADO" or "💥 ACTIVAR: GATLING DE ATAQUES"
+    Log(gatlingActive and "✅ Gatling activado!" or "🛑 Gatling desactivado.", Color3.fromRGB(200, 100, 255))
 end)
 
 task.spawn(function()
@@ -151,26 +153,20 @@ task.spawn(function()
                 if cm then
                     for _, mob in pairs(cm:GetChildren()) do
                         if mob:IsA("Model") and mob.PrimaryPart then
-                            local cd = mob:FindFirstChildWhichIsA("ClickDetector", true)
-                            if cd then
-                                local d = (mob.PrimaryPart.Position - myPos).Magnitude
-                                if d < targetDist then
-                                    targetDist = d
-                                    targetMob = mob
-                                end
+                            local d = (mob.PrimaryPart.Position - myPos).Magnitude
+                            if d < targetDist then
+                                targetDist = d
+                                targetMob = mob
                             end
                         end
                     end
                 end
                 
-                -- Extraer nuestro Pet (si "ArriettyShushu_Pet_1" etc)
-                -- Esto asume que TryUseSkill requiere el mob y quizas el owner o el pet
-                -- Haremos fuzzing mandándolo directamente con nuestro Character y el mob
                 if targetMob then
                     local successCount = 0
                     local failMsg = nil
                     
-                    -- Disparar 10 veces usando combinaciones de TryUseSkill
+                    -- Disparar 10 veces en combinaciones
                     for i = 1, 5 do
                         local s1, e1 = pcall(function()
                             MgrFightClient.TryUseSkill(MgrFightClient, targetMob) 
@@ -178,13 +174,13 @@ task.spawn(function()
                         if s1 then successCount = successCount + 1 else failMsg = e1 end
                         
                         local s2, e2 = pcall(function()
-                            MgrFightClient:TryUseSkill(targetMob)
+                            MgrFightClient.TryUseSkill(targetMob)
                         end)
                         if s2 then successCount = successCount + 1 else failMsg = failMsg or e2 end
                     end
                     
                     if successCount > 0 then
-                        Log("💥 TryUseSkill enviado "..successCount.."x a "..tostring(targetMob.Name), Color3.fromRGB(150, 255, 100))
+                        Log("💥 TryUseSkill OK "..successCount.."x a "..tostring(targetMob.Name), Color3.fromRGB(150, 255, 100))
                     end
                     if failMsg then
                         Log("❌ Error: "..tostring(failMsg), Color3.fromRGB(255, 100, 100))
@@ -192,7 +188,7 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(1) -- 1 vez por segundo, 10 ataques por ciclo = 10 por segundo (reducido para no crashear)
+        task.wait(1) 
     end
 end)
 
@@ -228,7 +224,6 @@ task.spawn(function()
     end
 end)
 
--- Auto E en PushRewardEvent
 task.spawn(function()
     pcall(function()
         for _, desc in pairs(ReplicatedStorage:GetDescendants()) do
@@ -250,18 +245,16 @@ task.spawn(function()
 end)
 
 -- ==========================================================
--- 4. CAPTURA 100% TEMPLATES (En caso de que lo necesites)
+-- 4. CAPTURA 100% TEMPLATES
 -- ==========================================================
 btnCatch.MouseButton1Click:Connect(function()
     Log("Forzando CatchProbability = 1 en todo gc...", Color3.fromRGB(200, 200, 100))
     local fixed = 0
     pcall(function()
         for _, v in pairs(getgc(true)) do
-            if type(v) == "table" then
-                if type(rawget(v, "CatchProbability")) == "number" then
-                    rawset(v, "CatchProbability", 1)
-                    fixed = fixed + 1
-                end
+            if type(v) == "table" and type(rawget(v, "CatchProbability")) == "number" then
+                rawset(v, "CatchProbability", 1)
+                fixed = fixed + 1
             end
         end
     end)
@@ -269,8 +262,4 @@ btnCatch.MouseButton1Click:Connect(function()
     btnCatch.BackgroundColor3 = Color3.fromRGB(150, 100, 0)
 end)
 
-Log("=== INSTRUCCIONES ===", Color3.fromRGB(255, 255, 255))
-Log("1) Pulsa 'SECUESTRAR MÓDULO'. Debería decir EXITO.", Color3.fromRGB(200, 200, 200))
-Log("2) Pulsa 'ACTIVAR GATLING'.", Color3.fromRGB(200, 200, 200))
-Log("3) Acércate a un mob. El script bombardeará al juego con llamadas a TryUseSkill.", Color3.fromRGB(255, 200, 100))
-Log("Si funciona, el mob se derretirá instantáneamente.", Color3.fromRGB(100, 255, 100))
+Log("=== INYECTOR LISTO ===", Color3.fromRGB(0, 255, 0))
