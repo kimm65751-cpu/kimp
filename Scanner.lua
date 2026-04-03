@@ -221,6 +221,7 @@ end)
 local VIM = game:GetService("VirtualInputManager")
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
+local GlobalMagnetTarget = nil
 
 local function GetNearestMob()
     local nearestDist = math.huge
@@ -260,20 +261,21 @@ RunService.Stepped:Connect(function()
             hrp.Velocity = Vector3.new(0,0,0)
         end
         
-        -- 3. Juntar Mobs (Mob Bring/Magnet) - Manipulación de NetworkOwnership por proximidad
-        if MobMagnetEnabled and hrp then
-            -- Definimos un punto de colisión seguro "Reunión" a 10 studs de ti
-            local gatherPoint = hrp.CFrame * CFrame.new(0, -5, -4) 
-            for _, mob in pairs(NPCsFolder:GetChildren()) do
-                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-                    if mob.Humanoid.Health > 0 then
-                        -- Si el mob está a menos de 150 studs, lo jalamos lentamente hacia el grupo para evitar kicks de teletransportación
-                        local mobHrp = mob.HumanoidRootPart
-                        local dist = (mobHrp.Position - hrp.Position).Magnitude
-                        if dist < 150 and dist > 8 then
+        -- 3. Juntar Mobs (Mob Bring/Magnet) - Atracción estricta al punto central anclado al suelo
+        if MobMagnetEnabled and GlobalMagnetTarget then
+            for _, otherMob in pairs(NPCsFolder:GetChildren()) do
+                if otherMob:IsA("Model") and otherMob:FindFirstChild("Humanoid") and otherMob:FindFirstChild("HumanoidRootPart") then
+                    if otherMob.Humanoid.Health > 0 then
+                        local otherHrp = otherMob.HumanoidRootPart
+                        local dist = (otherHrp.Position - GlobalMagnetTarget).Magnitude
+                        
+                        -- Jalamos a los mobs que están a menos de 150 studs (rango seguro de NetworkOwnership)
+                        -- Nos aseguramos de no moverlos de arriba abajo (respetamos su Y natural del suelo)
+                        if dist < 150 and dist > 4 then
                             pcall(function()
-                                -- Se usa MoveTo o CFrame suave para que parezca que ellos caminan hacia ti
-                                mobHrp.CFrame = mobHrp.CFrame:Lerp(gatherPoint, 0.05)
+                                local targetPos = Vector3.new(GlobalMagnetTarget.X, otherHrp.Position.Y, GlobalMagnetTarget.Z)
+                                -- Modificamos la Posición suavemente sin alterar su ángulo de rotación
+                                otherHrp.CFrame = otherHrp.CFrame + (targetPos - otherHrp.Position) * 0.05
                             end)
                         end
                     end
@@ -292,6 +294,7 @@ task.spawn(function()
                 -- Check si el jugador murió para reiniciar
                 if char.Humanoid.Health <= 0 then
                     StatusLabel.Text = "Status: Reviviendo..."
+                    GlobalMagnetTarget = nil
                     task.wait(2)
                     continue
                 end
@@ -310,6 +313,9 @@ task.spawn(function()
                     local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
 
                     if mobHrp then
+                        -- Actualiza el nodo magnético Global para que el Stepped atraiga al resto aquí
+                        GlobalMagnetTarget = mobHrp.Position
+                        
                         -- ==========================================
                         -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
                         
@@ -353,14 +359,22 @@ task.spawn(function()
                                 VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
                             end)
                         end
+                        end
                     end
                 else
+                    GlobalMagnetTarget = nil
                     StatusLabel.Text = "Buscando Mobs vivos..."
                 end
             else
+                GlobalMagnetTarget = nil
                 StatusLabel.Text = "Esperando al Personaje..."
             end
+        else
+            GlobalMagnetTarget = nil
         end
+        
+        -- Pausa de seguridad del loop (Anti-Crash y Anti-Spam)
+        task.wait(0.2)
     end
 end)
 
