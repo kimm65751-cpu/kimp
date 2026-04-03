@@ -14,6 +14,11 @@ local AutoFarm = false
 local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
 local OfsY, OfsZ = 10, 0
 
+local MobMagnetEnabled = false
+local AutoSkillEnabled = false
+local GlobalMagnetTarget = nil
+local VIM = game:GetService("VirtualInputManager")
+
 -- Endpoints Críticos (Sacados del Scanner)
 local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
 local NPCsFolder = Workspace:WaitForChild("NPCs")
@@ -41,7 +46,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM 1 (HOVER MODE)"
+Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -69,6 +74,9 @@ BtnHeight.Position = UDim2.new(0.05, 0, 0, 120)
 BtnHeight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 BtnHeight.TextColor3 = Color3.new(1,1,1)
 BtnHeight.Font = Enum.Font.Gotham
+BtnHeight.TextSize = 12
+BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+
 local BtnCodes = Instance.new("TextButton", MF)
 BtnCodes.Size = UDim2.new(0.9, 0, 0, 35)
 BtnCodes.Position = UDim2.new(0.05, 0, 0, 160)
@@ -147,7 +155,6 @@ BtnCodes.MouseButton1Click:Connect(function()
     MF.Visible = false
     CodesFrame.Visible = true
     
-    -- Cargar Códigos
     for _, child in pairs(CodesScroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
@@ -218,10 +225,6 @@ end)
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
 -- ==============================================================================
-local VIM = game:GetService("VirtualInputManager")
-local MobMagnetEnabled = false
-local AutoSkillEnabled = false
-local GlobalMagnetTarget = nil
 
 local function GetNearestMob()
     local nearestDist = math.huge
@@ -261,20 +264,16 @@ RunService.Stepped:Connect(function()
             hrp.Velocity = Vector3.new(0,0,0)
         end
         
-        -- 3. Juntar Mobs (Mob Bring/Magnet) - Atracción estricta al punto central anclado al suelo
+        -- 3. Imán Mobs
         if MobMagnetEnabled and GlobalMagnetTarget then
             for _, otherMob in pairs(NPCsFolder:GetChildren()) do
                 if otherMob:IsA("Model") and otherMob:FindFirstChild("Humanoid") and otherMob:FindFirstChild("HumanoidRootPart") then
                     if otherMob.Humanoid.Health > 0 then
                         local otherHrp = otherMob.HumanoidRootPart
                         local dist = (otherHrp.Position - GlobalMagnetTarget).Magnitude
-                        
-                        -- Jalamos a los mobs que están a menos de 150 studs (rango seguro de NetworkOwnership)
-                        -- Nos aseguramos de no moverlos de arriba abajo (respetamos su Y natural del suelo)
                         if dist < 150 and dist > 4 then
                             pcall(function()
                                 local targetPos = Vector3.new(GlobalMagnetTarget.X, otherHrp.Position.Y, GlobalMagnetTarget.Z)
-                                -- Modificamos la Posición suavemente sin alterar su ángulo de rotación
                                 otherHrp.CFrame = otherHrp.CFrame + (targetPos - otherHrp.Position) * 0.05
                             end)
                         end
@@ -313,41 +312,40 @@ task.spawn(function()
                     local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
 
                     if mobHrp then
-                        -- Actualiza el nodo magnético Global para que el Stepped atraiga al resto aquí
                         GlobalMagnetTarget = mobHrp.Position
                         
                         -- ==========================================
-                        -- REPOSICIONAMIENTO PERFECTO ORIGINAL
-                        
+                        -- [ESTA ES LA LÓGICA DE CFRAME ORIGINAL Y PERFECTA RESTAURADA]
                         if FarmMode == "Arriba" then
-                            local bounce = math.sin(os.clock() * 3.5) * 6 
-                            local currentY = 10 + bounce 
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, currentY, 0)
-                            
+                            -- Se ubica arriba y copia la rotación Y del mob para estar derecho
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
                         elseif FarmMode == "Detras" then
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
-                            
                         elseif FarmMode == "Abajo" then
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
                         end
-                        
-                        pcall(function()
-                            char:PivotTo(hrp.CFrame)
-                        end)
+                        -- ==========================================
                         
                         -- ==========================================
-                        -- MOTOR DE IMPACTOS CLÁSICO (Restaurado)
+                        -- CAMARA CINEMATOGRÁFICA (Espectador de Mob)
+                        pcall(function()
+                            local cam = Workspace.CurrentCamera
+                            if cam and cam.CameraSubject ~= mob:FindFirstChild("Humanoid") then
+                                cam.CameraSubject = mob:FindFirstChild("Humanoid") or mobHrp
+                            end
+                        end)
+                        -- ==========================================
+                        
+                        -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hit)
                         pcall(function()
                             CombatRemote:FireServer()
-                            -- REGLA DE ORO: Si no damos click, el juego asume pacífico. 
-                            -- Restauré tool:Activate() fundamental para que haga Daño
                             if tool then tool:Activate() end
                         end)
                         
                         -- Auto Skill "X" (Uso Virtual Legítimo del teclado)
                         if AutoSkillEnabled then
                             pcall(function()
-                                -- AIMBOT EXCLUSIVO DEL SKILL: Solo giramos justo el instante antes de disparar la X
+                                -- AIMBOT EXCLUSIVO DEL SKILL: 
                                 hrp.CFrame = CFrame.lookAt(hrp.Position, mobHrp.Position)
                                 
                                 VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
@@ -367,9 +365,6 @@ task.spawn(function()
         else
             GlobalMagnetTarget = nil
         end
-        
-        -- Pausa de seguridad del loop (Anti-Crash y Anti-Spam)
-        task.wait(0.2)
     end
 end)
 
@@ -384,7 +379,6 @@ BtnToggle.MouseButton1Click:Connect(function()
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
         StatusLabel.Text = "Status: BUSCANDO OBJETIVOS"
         
-        -- Si inicias o revives, asegura que no te caigas reseteando cosas raras
         local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
             hrp:FindFirstChildOfClass("BodyVelocity"):Destroy()
@@ -395,7 +389,6 @@ BtnToggle.MouseButton1Click:Connect(function()
         StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
         StatusLabel.Text = "Status: INACTIVO"
         
-        -- Restaurar cámara cuando apagas
         pcall(function()
             if LP.Character and LP.Character:FindFirstChild("Humanoid") then
                 Workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid
@@ -435,14 +428,12 @@ BtnHeight.MouseButton1Click:Connect(function()
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
         OfsY = -8 -- 8 studs bajo tierra
-        OfsZ = 6  -- 6 studs a la espalda
-        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
+        OfsZ = 0
+        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO"
     else
         FarmMode = "Arriba"
         OfsY = 10 -- 10 studs sobre su cabeza
         OfsZ = 0
-        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA (YO-YO)"
+        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
     end
 end)
-
-
