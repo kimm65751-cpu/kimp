@@ -46,7 +46,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM 2 (HOVER MODE)"
+Title.Text = " ⚔️ AURA-FARM (HOVER MODE)3"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -264,23 +264,8 @@ RunService.Stepped:Connect(function()
             hrp.Velocity = Vector3.new(0,0,0)
         end
         
-        -- 3. Imán Mobs
-        if MobMagnetEnabled and GlobalMagnetTarget then
-            for _, otherMob in pairs(NPCsFolder:GetChildren()) do
-                if otherMob:IsA("Model") and otherMob:FindFirstChild("Humanoid") and otherMob:FindFirstChild("HumanoidRootPart") then
-                    if otherMob.Humanoid.Health > 0 then
-                        local otherHrp = otherMob.HumanoidRootPart
-                        local dist = (otherHrp.Position - GlobalMagnetTarget).Magnitude
-                        if dist < 150 and dist > 4 then
-                            pcall(function()
-                                local targetPos = Vector3.new(GlobalMagnetTarget.X, otherHrp.Position.Y, GlobalMagnetTarget.Z)
-                                otherHrp.CFrame = otherHrp.CFrame + (targetPos - otherHrp.Position) * 0.05
-                            end)
-                        end
-                    end
-                end
-            end
-        end
+        -- El Imán Magnético Lerp fue eliminado por buguear las físicas. 
+        -- Ahora se usa el Aggro IA en el Motor de Ataque.
     end
 end)
 
@@ -314,55 +299,77 @@ task.spawn(function()
                     if mobHrp then
                         GlobalMagnetTarget = mobHrp.Position
                         
-                        -- ==========================================
-                        -- [NUEVAS FÍSICAS: ROTACIÓN PLANA (ANTI-ECHADO)]
-                        -- Extraemos SOLO la rotación horizontal (Y) del monstruo. 
-                        -- Esto anula la rotación hacia arriba o abajo, previniendo que el personaje se eche o se deforme.
-                        local rx, rotY, rz = mobHrp.CFrame:ToEulerAnglesYXZ()
-                        local flatMobCFrame = CFrame.new(mobHrp.Position) * CFrame.Angles(0, rotY, 0)
-                        
-                        if FarmMode == "Arriba" then
-                            -- Yo-Yo extremo (Sube y baja rápido, esquiva y pega)
-                            local bounce = math.sin(os.clock() * 6) * 5 
-                            local currentY = 11 + bounce -- Oscila rápido entre 6 y 16 studs
-                            
-                            hrp.CFrame = flatMobCFrame * CFrame.new(0, currentY, 0)
-                            
-                        elseif FarmMode == "Detras" then
-                            hrp.CFrame = flatMobCFrame * CFrame.new(0, 0, OfsZ)
-                            
-                        elseif FarmMode == "Abajo" then
-                            -- Pega desde Abajo rotando SIEMPRE a la espalda del monstruo (OfsZ y OfsY)
-                            hrp.CFrame = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
-                        end
-                        -- ==========================================
-                        
-                        -- ==========================================
-                        -- CAMARA CINEMATOGRÁFICA (Espectador de Mob)
-                        pcall(function()
-                            local cam = Workspace.CurrentCamera
-                            if cam and cam.CameraSubject ~= mob:FindFirstChild("Humanoid") then
-                                cam.CameraSubject = mob:FindFirstChild("Humanoid") or mobHrp
+                        -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
+                        local mobsToHit = {}
+                        if MobMagnetEnabled then
+                            local sorted = {}
+                            for _, m in pairs(NPCsFolder:GetChildren()) do
+                                if m:IsA("Model") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                                    local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
+                                    if dist < 150 then
+                                        table.insert(sorted, {m, dist})
+                                    end
+                                end
                             end
-                        end)
-                        -- ==========================================
+                            table.sort(sorted, function(a,b) return a[2] < b[2] end)
+                            -- Agarra hasta a los 4 más cercanos
+                            for i=1, math.min(4, #sorted) do
+                                table.insert(mobsToHit, sorted[i][1])
+                            end
+                        else
+                            table.insert(mobsToHit, mob)
+                        end
                         
-                        -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hit)
-                        pcall(function()
-                            CombatRemote:FireServer()
-                            if tool then tool:Activate() end
-                        end)
-                        
-                        -- Auto Skill "X" (Uso Virtual Legítimo del teclado)
-                        if AutoSkillEnabled then
-                            pcall(function()
-                                -- AIMBOT EXCLUSIVO DEL SKILL: 
-                                hrp.CFrame = CFrame.lookAt(hrp.Position, mobHrp.Position)
+                        -- Ataque Dinámico / Multi-Golpe para Juntar
+                        for _, targetMob in pairs(mobsToHit) do
+                            local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
+                            if tHrp then
+                                local rx, rotY, rz = tHrp.CFrame:ToEulerAnglesYXZ()
+                                local flatMobCFrame = CFrame.new(tHrp.Position) * CFrame.Angles(0, rotY, 0)
                                 
-                                VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                                if FarmMode == "Arriba" then
+                                    local bounce = math.sin(os.clock() * 6) * 5 
+                                    local currentY = 11 + bounce 
+                                    -- ¡Ahora también hereda el OfsZ para estar detrás en el aire!
+                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, currentY, OfsZ)
+                                    
+                                elseif FarmMode == "Detras" then
+                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                    
+                                elseif FarmMode == "Abajo" then
+                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
+                                end
+                                
+                                pcall(function()
+                                    char:PivotTo(hrp.CFrame)
+                                end)
+                                
+                                pcall(function()
+                                    local cam = Workspace.CurrentCamera
+                                    if cam and cam.CameraSubject ~= targetMob:FindFirstChild("Humanoid") then
+                                        cam.CameraSubject = targetMob:FindFirstChild("Humanoid") or tHrp
+                                    end
+                                end)
+                                
+                                pcall(function()
+                                    CombatRemote:FireServer()
+                                    if tool then tool:Activate() end
+                                end)
+                                
+                                -- Aimbot para Skills
+                                if AutoSkillEnabled then
+                                    pcall(function()
+                                        hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
+                                        VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                                        task.wait(0.01)
+                                        VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                                    end)
+                                end
+                                
+                                -- Una minúscula pausa entre saltos, el aggro natural
+                                -- hará que todos los golpeados vengan hacia tu ubicación final solos.
                                 task.wait(0.05)
-                                VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
-                            end)
+                            end
                         end
                     end
                 else
@@ -400,9 +407,18 @@ BtnToggle.MouseButton1Click:Connect(function()
         StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
         StatusLabel.Text = "Status: INACTIVO"
         
+        -- Anti-Caída del Map al Detenerse: 
+        -- Te teletransporta 15 studs hacia arriba (a la superficie) antes de devolverte la gravedad
         pcall(function()
-            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                Workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid
+            local char = LP.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Sube 15 metros en seco para asegurarte de pisar la hierba y no caer al vacío infinito
+                char:PivotTo(hrp.CFrame * CFrame.new(0, 15, 0))
+            end
+            
+            if char and char:FindFirstChild("Humanoid") then
+                Workspace.CurrentCamera.CameraSubject = char.Humanoid
             end
         end)
     end
@@ -444,7 +460,7 @@ BtnHeight.MouseButton1Click:Connect(function()
     else
         FarmMode = "Arriba"
         OfsY = 10 -- 10 studs sobre su cabeza
-        OfsZ = 0
-        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA (YO-YO RAPIDO)"
+        OfsZ = 6  -- 6 studs a la espalda (ARRIBA TAMBIÉN SERÁ TRASERO)
+        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA Y ATRÁS (YO-YO)"
     end
 end)
