@@ -110,7 +110,7 @@ BtnCodes.BackgroundColor3 = Color3.fromRGB(20, 60, 90)
 BtnCodes.TextColor3 = Color3.new(1,1,1)
 BtnCodes.Font = Enum.Font.GothamBold
 BtnCodes.TextSize = 12
-BtnCodes.Text = "📋 ABRIR GESTOR DE CÓDIGOS"
+BtnCodes.Text = "📋 ABRIR GESTOeeR DE CÓDIGOS"
 
 local BtnMagnet = Instance.new("TextButton", MF)
 BtnMagnet.Size = UDim2.new(0.42, 0, 0, 35)
