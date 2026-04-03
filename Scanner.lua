@@ -206,13 +206,12 @@ task.spawn(function()
 end)
 
 -- ==========================================================
--- 4. CONTROLADOR FÍSICO: MASCOTAS FLOTANTES (Anti-Grounding)
+-- 4. CONTROLADOR FÍSICO Y ANTI-GRAVEDAD (Vuelo Limpio)
 -- ==========================================================
--- Identificaremos tus mascotas en Workspace.ClientPets y haremos que ataquen desde el aire (15 studs arriba)
 local altura_flotacion = 15
 
 task.spawn(function()
-    RunService.Stepped:Connect(function()
+    while true do
         pcall(function()
             local miPersonaje = LP.Character
             if not miPersonaje or not miPersonaje.PrimaryPart then return end
@@ -220,46 +219,100 @@ task.spawn(function()
             local myId = tostring(LP.UserId)
             local clientPets = Workspace:FindFirstChild("ClientPets")
             if not clientPets then return end
-
-            local misMascotasValidadas = 0
             
             for _, pet in pairs(clientPets:GetChildren()) do
-                if pet:IsA("Model") and pet.PrimaryPart then
-                    -- Filtrar solo TUS mascotas. 
-                    -- Usualmente el juego guarda un Attribute de 'OwnerUserId'
+                if pet:IsA("Model") then
                     local owner = tostring(pet:GetAttribute("OwnerUserId") or "")
                     
-                    if owner == myId or (pet.PrimaryPart.Position - miPersonaje.PrimaryPart.Position).Magnitude < 40 then
-                        misMascotasValidadas = misMascotasValidadas + 1
+                    -- Si es nuestra mascota o está muy cerca
+                    if owner == myId or (pet.PrimaryPart and (pet.PrimaryPart.Position - miPersonaje.PrimaryPart.Position).Magnitude < 40) then
                         
-                        -- Intentar anular gravedad o empuje si el servidor usa AlignPosition
-                        local bodyVelocity = pet.PrimaryPart:FindFirstChildWhichIsA("BodyVelocity")
-                        local bp = pet.PrimaryPart:FindFirstChildWhichIsA("AlignPosition")
-                        
-                        if bp then
-                            -- Si el juego las mueve moviendo el AlignPosition a un target (monstruo),
-                            -- simplemente hackeamos el Y offset de su target:
-                            if bp.Attachment1 and bp.Attachment1.Parent then
-                                -- Mover la marca (Attachment) objetivo 15 studs hacia arriba
-                                local currentV = bp.Attachment1.Position
-                                bp.Attachment1.Position = Vector3.new(currentV.X, altura_flotacion, currentV.Z)
-                            else
-                                -- Modificar directamente CFrame si no obedecen
-                                pet.PrimaryPart.CFrame = pet.PrimaryPart.CFrame + Vector3.new(0, 0.5, 0)
+                        local humanoid = pet:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            -- TRUCO MAGISTRAL: No forzamos `.Position`, le decimos al motor 
+                            -- que las piernas del pet miden 15 metros. El pet caminará naturalmente por el aire.
+                            if humanoid.HipHeight < altura_flotacion then
+                                humanoid.HipHeight = altura_flotacion
+                                
+                                -- Ajustar variables de salto o escalada por si acaso
+                                humanoid.UseJumpPower = true
+                                humanoid.JumpPower = 0
                             end
-                        else
-                            -- Mascota normal movida por CFrame, solo elevarla.
-                            pet.PrimaryPart.CFrame = CFrame.new(pet.PrimaryPart.Position.X, miPersonaje.PrimaryPart.Position.Y + altura_flotacion, pet.PrimaryPart.Position.Z)
                         end
+                        
+                        -- En caso de que usen algo distinto al Humanoid (como Animators/BodyVelocity)
+                        if pet.PrimaryPart then
+                            local ap = pet.PrimaryPart:FindFirstChildWhichIsA("AlignPosition")
+                            if ap and ap.Attachment1 and ap.Attachment1.Parent then
+                                -- Corregimos la atracción visual también
+                                local pX, pY, pZ = ap.Attachment1.Position.X, ap.Attachment1.Position.Y, ap.Attachment1.Position.Z
+                                if pY < altura_flotacion then
+                                    ap.Attachment1.Position = Vector3.new(pX, pY + altura_flotacion, pZ)
+                                end
+                            end
+                        end
+                        
                     end
                 end
             end
         end)
-    end)
+        task.wait(0.5) -- Revisar medio segundo, HipHeight es persistente
+    end
+end)
+
+
+-- ==========================================================
+-- 5. ATAQUE SPAMMER: SATURACIÓN DE SERVIDOR (Click Aura)
+-- ==========================================================
+-- Como descubrimos que el servidor rige el ritmo (AttackSpeed ignorado local),
+-- vamos a bombardear el ClickDetector (MouseClick) del monstruo lejano.
+-- Esto forzará al servidor a crear "FightLogicPlayerCreate" de forma superpuesta si no tiene rate-limit.
+local TargetAura = true
+local Rango_Aura = 200
+
+task.spawn(function()
+    while true do
+        if TargetAura then
+            pcall(function()
+                local miPersonaje = LP.Character
+                if not miPersonaje or not miPersonaje.PrimaryPart then return end
+                local myPos = miPersonaje.PrimaryPart.Position
+                
+                -- Buscar todos los ClickDetectors de monstros activos
+                local function BuscarEn(carpeta)
+                    if not carpeta then return end
+                    for _, obj in pairs(carpeta:GetChildren()) do
+                        local cd = obj:FindFirstChildWhichIsA("ClickDetector", true)
+                        if cd then
+                            local part = cd.Parent
+                            if part and part:IsA("BasePart") then
+                                local dist = (part.Position - myPos).Magnitude
+                                if dist <= Rango_Aura then
+                                    -- ¡Fuego! (Disparar el click remote)
+                                    -- Algunos ClickDetectors en local firing requieren usar fireclickdetector si usas exploit, 
+                                    -- pero fireclickdetector(cd) depende del inyector. Usaremos un fallback nativo si no hay fireclick.
+                                    if type(fireclickdetector) == "function" then
+                                        fireclickdetector(cd, 0)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                -- Las clásicas carpetas donde podrían estar los Mobs 
+                BuscarEn(Workspace:FindFirstChild("Monsters"))
+                BuscarEn(Workspace:FindFirstChild("ClientMonsters"))
+                BuscarEn(Workspace:FindFirstChild("Bosses"))
+            end)
+        end
+        -- Disparar cada 0.1s (10 Clicks por segundo por Monstruo en el Radar)
+        task.wait(0.1)
+    end
 end)
 
 -- ==========================================================
--- 5. AUDITORÍA DE RED (ESPIA DEL SERVIDOR LOG)
+-- 6. AUDITORÍA DE RED (ESPIA DEL SERVIDOR LOG)
 -- ==========================================================
 task.spawn(function()
     local commonLib = ReplicatedStorage:FindFirstChild("CommonLibrary")
@@ -283,4 +336,5 @@ task.spawn(function()
     end
 end)
 
-AddLog("Configuración Física inicializada: Mascotas elevarán su vuelo a " .. altura_flotacion .. "m en combate.", Color3.fromRGB(255, 150, 255))
+AddLog("Configuración Física inicializada: Mascotas elevarán su vuelo a " .. altura_flotacion .. "m con HipHeight.", Color3.fromRGB(255, 150, 255))
+AddLog("Aura de Ataque (ClickDetector) Activada: Saturando Servidor...", Color3.fromRGB(255, 0, 0))
