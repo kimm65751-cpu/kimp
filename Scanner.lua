@@ -19,6 +19,8 @@ local AutoSkillEnabled = false
 local TargetBosses = "Normal" -- "Normal", "Ignorar", "SoloBoss"
 local SpyEnabled = false
 local SpyFileName = ""
+local PanicThreshold = 0.20
+local IsInPanicRecovery = false
 local GlobalMagnetTarget = nil
 local VIM = game:GetService("VirtualInputManager")
 
@@ -38,7 +40,7 @@ SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 405)
+MF.Size = UDim2.new(0, 300, 0, 420)
 MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
@@ -124,6 +126,26 @@ BtnSpy.TextColor3 = Color3.new(1,1,1)
 BtnSpy.Font = Enum.Font.GothamBold
 BtnSpy.TextSize = 11
 BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
+
+local PanicLabel = Instance.new("TextLabel", MF)
+PanicLabel.Size = UDim2.new(0.9, 0, 0, 15)
+PanicLabel.Position = UDim2.new(0.05, 0, 0, 320)
+PanicLabel.BackgroundTransparency = 1
+PanicLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+PanicLabel.Font = Enum.Font.GothamBold
+PanicLabel.TextSize = 10
+PanicLabel.Text = "🛡️ ESCUDO PÁNICO (ESCAPA AL " .. math.floor(PanicThreshold * 100) .. "%)"
+
+local SliderBg = Instance.new("TextButton", MF)
+SliderBg.Size = UDim2.new(0.9, 0, 0, 15)
+SliderBg.Position = UDim2.new(0.05, 0, 0, 340)
+SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+SliderBg.Text = ""
+
+local SliderFill = Instance.new("Frame", SliderBg)
+SliderFill.Size = UDim2.new(PanicThreshold, 0, 1, 0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+SliderFill.BorderSizePixel = 0
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -425,6 +447,38 @@ task.spawn(function()
                     if mobHrp then
                         GlobalMagnetTarget = mobHrp.Position
                         
+                        -- ==============================================
+                        -- INTERCEPTOR: PROTOCOLO DE PÁNICO (HUÍDA Y CURA)
+                        -- ==============================================
+                        local hpRatio = char.Humanoid.Health / char.Humanoid.MaxHealth
+                        if hpRatio <= PanicThreshold and char.Humanoid.Health > 0 then
+                            IsInPanicRecovery = true
+                        elseif IsInPanicRecovery and hpRatio >= 0.95 then
+                            IsInPanicRecovery = false -- Completamente sano
+                        end
+                        
+                        if IsInPanicRecovery then
+                            StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio*100) .. "%)"
+                            local escapeCF = CFrame.new(mobHrp.Position) * CFrame.new(0, 50, 0)
+                            
+                            pcall(function()
+                                local d = (hrp.Position - escapeCF.Position).Magnitude
+                                local step = math.clamp(20 / d, 0, 1)
+                                char:PivotTo(hrp.CFrame:Lerp(escapeCF, step))
+                            end)
+                            
+                            pcall(function()
+                                local cam = Workspace.CurrentCamera
+                                if cam and cam.CameraSubject ~= mob:FindFirstChild("Humanoid") then
+                                    cam.CameraSubject = mob:FindFirstChild("Humanoid") or mobHrp
+                                end
+                            end)
+                            
+                            task.wait(0.05)
+                            continue -- Salta todo el ataque sin afectar la retención del Mob!
+                        end
+                        -- ==============================================
+                        
                         -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
                         local mobsToHit = {}
                         if MobMagnetEnabled then
@@ -631,6 +685,29 @@ BtnSpy.MouseButton1Click:Connect(function()
     else
         BtnSpy.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
         BtnSpy.Text = "📡 INICIAR ESPÍA Y LOG A TXT"
+    end
+end)
+
+-- Sistema de interaccion Slider
+local sliderCon = nil
+local uis = game:GetService("UserInputService")
+
+SliderBg.MouseButton1Down:Connect(function()
+    local Mouse = LP:GetMouse()
+    if sliderCon then sliderCon:Disconnect() end
+    sliderCon = game:GetService("RunService").RenderStepped:Connect(function()
+        local relativeX = Mouse.X - SliderBg.AbsolutePosition.X
+        local pos = math.clamp(relativeX / SliderBg.AbsoluteSize.X, 0.01, 1)
+        PanicThreshold = pos
+        SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        PanicLabel.Text = "🛡️ ESCUDO PÁNICO (ESCAPA AL " .. math.floor(pos * 100) .. "%)"
+    end)
+end)
+
+uis.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and sliderCon then
+        sliderCon:Disconnect()
+        sliderCon = nil
     end
 end)
 
