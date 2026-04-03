@@ -11,7 +11,8 @@ local CoreGui = game:GetService("CoreGui")
 
 local LP = Players.LocalPlayer
 local AutoFarm = false
-local HoverHeight = 15 -- Altura segura por encima del mob (Flotando)
+local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
+local OfsY, OfsZ = 10, 0
 
 -- Endpoints Críticos (Sacados del Scanner)
 local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
@@ -69,7 +70,7 @@ BtnHeight.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 BtnHeight.TextColor3 = Color3.new(1,1,1)
 BtnHeight.Font = Enum.Font.Gotham
 BtnHeight.TextSize = 12
-BtnHeight.Text = "Altura Flotador: " .. HoverHeight .. " Studs"
+BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
 
 -- ==============================================================================
 -- LOGICA DEL AUTO FARM (Aura Kill + Vuelo hacia el mob)
@@ -143,10 +144,21 @@ task.spawn(function()
 
                     if mobHrp then
                         -- ==========================================
-                        -- HOVER FLY NOCLIP (Teleport arriba de su cabeza)
-                        -- Nos posicionamos exactamente en el eje X,Z del mob, pero en la altura le sumamos "HoverHeight"
-                        -- Usamos CFrame para evitar que se bugee con AntiTeleports.
-                        hrp.CFrame = CFrame.new(mobHrp.Position + Vector3.new(0, HoverHeight, 0), mobHrp.Position)
+                        -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
+                        -- Corregimos el problema de "echado" (lookAt vertical)
+                        
+                        local targetPos
+                        if FarmMode == "Arriba" then
+                            targetPos = mobHrp.Position + Vector3.new(0, OfsY, 0)
+                        elseif FarmMode == "Detras" then
+                            targetPos = mobHrp.CFrame:PointToWorldSpace(Vector3.new(0, 0, OfsZ))
+                        elseif FarmMode == "Abajo" then
+                            targetPos = mobHrp.Position + Vector3.new(0, OfsY, 0)
+                        end
+                        
+                        -- CFrame que mira hacia el mob, pero manteniendo la postura erguida (eje Y bloqueado)
+                        local lookAtPos = Vector3.new(mobHrp.Position.X, targetPos.Y, mobHrp.Position.Z)
+                        hrp.CFrame = CFrame.new(targetPos, lookAtPos)
                         
                         -- ==========================================
                         -- AURA KILL (Ataca instantáneamente enviando el Remoto de Hitt)
@@ -193,12 +205,20 @@ BtnToggle.MouseButton1Click:Connect(function()
 end)
 
 BtnHeight.MouseButton1Click:Connect(function()
-    if HoverHeight == 15 then
-        HoverHeight = 25
-    elseif HoverHeight == 25 then
-        HoverHeight = 5
+    if FarmMode == "Arriba" then
+        FarmMode = "Detras"
+        OfsY = 0
+        OfsZ = 6 -- 6 studs a la espalda
+        BtnHeight.Text = "Posición Segura: 🥷 POR LA ESPALDA"
+    elseif FarmMode == "Detras" then
+        FarmMode = "Abajo"
+        OfsY = -8 -- 8 studs bajo tierra
+        OfsZ = 0
+        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO"
     else
-        HoverHeight = 15
+        FarmMode = "Arriba"
+        OfsY = 10 -- 10 studs sobre su cabeza
+        OfsZ = 0
+        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
     end
-    BtnHeight.Text = "Altura Flotador: " .. HoverHeight .. " Studs"
 end)
