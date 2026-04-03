@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 🦖 CATCH A MONSTER: AUTO-FARM V1.0 (GUI + HUEVOS + FLOTADOR DE MASCOTAS)
--- Creado para: Pruebas de filtrado Server-Side y Ataques Aéreos
+-- 🦖 CATCH A MONSTER: AUTO-FARM V1.0 (PANEL MULTI-HACKS DE DEFENSA)
+-- Creado para: Pruebas Aisladas de Evasión de Daño y Curación Portátil
 -- ==============================================================================
 
 local Workspace = game:GetService("Workspace")
@@ -11,46 +11,56 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
+-- Variables de Estado (Toggles)
+local Toggles = {
+    Aereo = false,
+    Subterraneo = false,
+    SinDueno = false,
+    Ghosting = false,
+    Fountain = false,
+    ESP = true
+}
+
 -- ==========================================================
 -- 1. CREACIÓN DE LA INTERFAZ GRÁFICA (GUI & LOGS)
 -- ==========================================================
 local UI_Name = "CAM_AnalyzerBot"
-if CoreGui:FindFirstChild(UI_Name) then
-    CoreGui[UI_Name]:Destroy()
-end
+if CoreGui:FindFirstChild(UI_Name) then CoreGui[UI_Name]:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = UI_Name
 ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local getGuiParent = function()
-    local ok = pcall(function() return CoreGui.Name end)
-    if ok then return CoreGui end
-    return LP:WaitForChild("PlayerGui")
-end
-ScreenGui.Parent = getGuiParent()
+ScreenGui.Parent = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 450, 0, 320)
-MainFrame.Position = UDim2.new(0.6, 0, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 480, 0, 380)
+MainFrame.Position = UDim2.new(0.6, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true -- (Simple drag nativo)
+MainFrame.Draggable = true
 
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 40, 50)
-Title.Text = " 🦖 aaaaaCATCH A MONSTER V1 - TEST VECTOR"
+Title.Text = " 🦖aR: PANEL DE EVASIÓN"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
+-- Contenedor de Botones (Opciones Exclusivas)
+local BtnFrame = Instance.new("Frame", MainFrame)
+BtnFrame.Size = UDim2.new(1, 0, 0, 100)
+BtnFrame.Position = UDim2.new(0, 0, 0, 35)
+BtnFrame.BackgroundTransparency = 1
+
+local UIGridLayout = Instance.new("UIGridLayout", BtnFrame)
+UIGridLayout.CellSize = UDim2.new(0.3, -5, 0, 25)
+UIGridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+
 local LogFrame = Instance.new("ScrollingFrame", MainFrame)
-LogFrame.Size = UDim2.new(1, -20, 1, -50)
-LogFrame.Position = UDim2.new(0, 10, 0, 40)
+LogFrame.Size = UDim2.new(1, -20, 1, -150)
+LogFrame.Position = UDim2.new(0, 10, 0, 140)
 LogFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogFrame.ScrollBarThickness = 6
@@ -58,35 +68,64 @@ LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
 local UIListLayout = Instance.new("UIListLayout", LogFrame)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 2)
-
-local ToggleESPBtn = Instance.new("TextButton", Title)
-ToggleESPBtn.Size = UDim2.new(0, 80, 0, 20)
-ToggleESPBtn.Position = UDim2.new(1, -90, 0, 5)
-ToggleESPBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
-ToggleESPBtn.Text = "ESP: ON"
-ToggleESPBtn.Font = Enum.Font.GothamBold
-ToggleESPBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-local ESPEnabled = true
 
 -- Función para inyectar logs visuales
 local function AddLog(texto, color)
-    color = color or Color3.fromRGB(200, 200, 200)
     local msg = Instance.new("TextLabel", LogFrame)
     msg.Size = UDim2.new(1, 0, 0, 16)
     msg.BackgroundTransparency = 1
     msg.Text = "["..os.date("%X").."] " .. texto
     msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextColor3 = color
+    msg.TextColor3 = color or Color3.fromRGB(200, 200, 200)
     msg.Font = Enum.Font.Code
-    msg.TextSize = 12
+    msg.TextSize = 11
     msg.TextWrapped = true
     msg.AutomaticSize = Enum.AutomaticSize.Y
-    
     LogFrame.CanvasPosition = Vector2.new(0, 99999)
 end
 
-AddLog("Iniciando Módulos de Penetración...", Color3.fromRGB(0, 255, 255))
+-- Generador de Botones Dinámico
+local function ActivarModo(nombreActivo)
+    -- Para hacerlos mutuamente exclusivos (excepto ESP y Modos que combinan)
+    local excluyentes = {"Aereo", "Subterraneo", "Ghosting"}
+    if table.find(excluyentes, nombreActivo) then
+        for _, n in pairs(excluyentes) do
+            if n ~= nombreActivo then Toggles[n] = false end
+        end
+    end
+end
+
+local function CrearBoton(nombre, texto)
+    local btn = Instance.new("TextButton", BtnFrame)
+    btn.Text = texto
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 11
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    
+    btn.MouseButton1Click:Connect(function()
+        Toggles[nombre] = not Toggles[nombre]
+        ActivarModo(nombre)
+        
+        -- Actualizar colores de todos
+        for i, v in ipairs(BtnFrame:GetChildren()) do
+            if v:IsA("TextButton") then
+                local toggleName = v.Name
+                v.BackgroundColor3 = Toggles[toggleName] and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(50, 50, 50)
+            end
+        end
+        AddLog("Modo [".. texto .."] cambiado a: " .. tostring(Toggles[nombre]), Color3.fromRGB(0, 255, 255))
+    end)
+    btn.Name = nombre
+    return btn
+end
+
+CrearBoton("Aereo", "1. Flotar (Hip=25)")
+CrearBoton("Subterraneo", "2. Tóxicos (Hip=-10)")
+CrearBoton("SinDueno", "3. Neutralizar (Spoof)")
+CrearBoton("Ghosting", "4. Ghost (Ráfaga)")
+CrearBoton("Fountain", "5. Fuente Portátil")
+CrearBoton("ESP", "6. ESP Huevos")
 
 -- ==========================================================
 -- 2. SISTEMA ESP GLOBAL (HUEVOS Y PICKUPS)
@@ -102,23 +141,20 @@ local function CrearESP(objeto, color, texto_base)
     gui.Name = objeto.Name .. "_" .. tostring(objeto:GetDebugId(10))
     gui.Adornee = objeto:IsA("Model") and (objeto.PrimaryPart or objeto:FindFirstChildWhichIsA("BasePart")) or objeto
     gui.Size = UDim2.new(0, 150, 0, 50)
-    gui.StudsOffset = Vector3.new(0, 3, 0)
     gui.AlwaysOnTop = true
     gui.Parent = ESP_Folder
-    gui.Enabled = ESPEnabled
     
     local txt = Instance.new("TextLabel", gui)
     txt.Size = UDim2.new(1, 0, 1, 0)
     txt.BackgroundTransparency = 1
     txt.TextColor3 = color
-    txt.TextStrokeTransparency = 0
     txt.TextScaled = true
     txt.Font = Enum.Font.GothamBold
     
     task.spawn(function()
         while gui.Parent and objeto and objeto.Parent do
-            gui.Enabled = ESPEnabled
-            if ESPEnabled and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            gui.Enabled = Toggles.ESP
+            if Toggles.ESP and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
                 local ad = gui.Adornee
                 if ad then
                     local dist = math.floor((ad.Position - LP.Character.HumanoidRootPart.Position).Magnitude)
@@ -131,86 +167,27 @@ local function CrearESP(objeto, color, texto_base)
     end)
 end
 
-local function BuscarPickups()
-    local areaPickUp = Workspace:FindFirstChild("AreaPickUp")
-    if areaPickUp then
-        for _, obj in pairs(areaPickUp:GetChildren()) do
-            local nl = string.lower(obj.Name)
-            if string.find(nl, "egg") or (obj:GetAttribute("RewardRes") == "Egg") then
-                CrearESP(obj, Color3.fromRGB(255, 255, 0), "🥚 HUEVO")
-            else
-                CrearESP(obj, Color3.fromRGB(100, 255, 100), "💎 LOOT: " .. obj.Name)
-            end
-        end
-        
-        areaPickUp.ChildAdded:Connect(function(obj)
-            task.wait(0.2)
-            local nl = string.lower(obj.Name)
-            if string.find(nl, "egg") or (obj:GetAttribute("RewardRes") == "Egg") then
-                CrearESP(obj, Color3.fromRGB(255, 255, 0), "🥚 HUEVO DROPEADO")
-            else
-                CrearESP(obj, Color3.fromRGB(100, 255, 100), "💎 LOOT")
-            end
-        end)
-    end
-end
-BuscarPickups()
-
-ToggleESPBtn.MouseButton1Click:Connect(function()
-    ESPEnabled = not ESPEnabled
-    ToggleESPBtn.Text = ESPEnabled and "ESP: ON" or "ESP: OFF"
-    ToggleESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
-end)
-
 -- ==========================================================
--- 2. ATAQUE VELOZ Y RANGO EXTENDIDO (MEMORY INJECTION)
+-- 3. INTERSECCIÓN DE MEMORIA LUA (GETGC) PARA RANGO
 -- ==========================================================
--- Interceptamos la basura de Lua (GC) buscando variables del auto-ataque.
--- Modificaremos Range, CatchRange, etc.
 task.spawn(function()
-    local countExitos = 0
     while true do
         pcall(function()
             for _, v in pairs(getgc(true)) do
                 if type(v) == "table" then
-                    local altered = false
-                    
-                    -- Hacking Rangos
-                    if rawget(v, "AttackRange") and type(v.AttackRange) == "number" and v.AttackRange < 150 then
-                        v.AttackRange = 300; altered = true
-                    end
-                    if rawget(v, "CatchRange") and type(v.CatchRange) == "number" and v.CatchRange < 150 then
-                        v.CatchRange = 300; altered = true
-                    end
-                    if rawget(v, "MaxCatchDistance") and type(v.MaxCatchDistance) == "number" and v.MaxCatchDistance < 150 then
-                        v.MaxCatchDistance = 300; altered = true
-                    end
-                    
-                    -- Hacking Velocidad (PELIGRO DE KICK - APAGADO POR AHORA)
-                    -- if rawget(v, "AttackSpeed") and type(v.AttackSpeed) == "number" and v.AttackSpeed > 0.1 then
-                    --     v.AttackSpeed = 0.05; altered = true
-                    -- end
-                    -- if rawget(v, "AttackCooldown") and type(v.AttackCooldown) == "number" and v.AttackCooldown > 0.1 then
-                    --     v.AttackCooldown = 0.05; altered = true
-                    -- end
-                    
-                    if altered then countExitos = countExitos + 1 end
+                    if rawget(v, "AttackRange") and type(v.AttackRange) == "number" and v.AttackRange < 150 then v.AttackRange = 300 end
+                    if rawget(v, "CatchRange") and type(v.CatchRange) == "number" and v.CatchRange < 150 then v.CatchRange = 300 end
                 end
             end
         end)
-        
-        if countExitos > 0 then
-            AddLog("✔️ MemoryScan exitoso: " .. countExitos .. " tablas inyectadas SOLO con Rango: 300", Color3.fromRGB(100, 255, 100))
-            countExitos = 0
-        end
         task.wait(10)
     end
 end)
 
 -- ==========================================================
--- 4. CONTROLADOR FÍSICO Y ANTI-GRAVEDAD (Vuelo Limpio)
+-- 4. CONTROLADOR FÍSICO Y EVASIÓN TÁCTICA
 -- ==========================================================
-local altura_flotacion = 15
+local OriginalOwners = {}
 
 task.spawn(function()
     while true do
@@ -222,97 +199,86 @@ task.spawn(function()
             local clientPets = Workspace:FindFirstChild("ClientPets")
             if not clientPets then return end
             
+            -- Lógica para la Fuente Curativa Portátil
+            if Toggles.Fountain then
+                local fountainPart = nil
+                -- Buscar una zona de curación en el mapa
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and (obj.Name:lower():match("heal") or obj.Name:lower():match("recover") or obj.Name:lower():match("fountain")) then
+                        fountainPart = obj
+                        break
+                    end
+                end
+                
+                if fountainPart and not fountainPart.Anchored then 
+                    -- Si es un prop, teletransportarlo bajo nosotros
+                    fountainPart.CFrame = miPersonaje.PrimaryPart.CFrame * CFrame.new(0, -2, 0)
+                elseif fountainPart and fountainPart.Anchored then
+                    -- Si es anclado, intentamos sobreescribirlo pero puede fallar
+                    pcall(function() fountainPart.CFrame = miPersonaje.PrimaryPart.CFrame * CFrame.new(0, -2, 0) end)
+                end
+            end
+            
             for _, pet in pairs(clientPets:GetChildren()) do
                 if pet:IsA("Model") then
-                    local owner = tostring(pet:GetAttribute("OwnerUserId") or "")
+                    -- Restaurar Dueño si lo apagaron
+                    if not Toggles.SinDueno and OriginalOwners[pet] then
+                        pet:SetAttribute("OwnerUserId", OriginalOwners[pet])
+                        OriginalOwners[pet] = nil
+                    end
+
+                    local ownerAttr = pet:GetAttribute("OwnerUserId")
+                    local isMine = (tostring(ownerAttr) == myId) or (OriginalOwners[pet] == myId)
                     
-                    -- Si es nuestra mascota o está muy cerca
-                    if owner == myId or (pet.PrimaryPart and (pet.PrimaryPart.Position - miPersonaje.PrimaryPart.Position).Magnitude < 40) then
+                    if isMine then
+                        OriginalOwners[pet] = myId
+                        
+                        -- Toggle 3: Spoof de Dueño (Ignorado por I.A. Enemiga)
+                        if Toggles.SinDueno and pet:GetAttribute("OwnerUserId") ~= nil then
+                            pet:SetAttribute("OwnerUserId", nil) 
+                            pet:SetAttribute("IsPlayer", true) -- Spoof opcional
+                        end
                         
                         local humanoid = pet:FindFirstChildOfClass("Humanoid")
-                        if humanoid then
-                            -- TRUCO MAGISTRAL: No forzamos `.Position`, le decimos al motor 
-                            -- que las piernas del pet miden 15 metros. El pet caminará naturalmente por el aire.
-                            if humanoid.HipHeight < altura_flotacion then
-                                humanoid.HipHeight = altura_flotacion
-                                
-                                -- Ajustar variables de salto o escalada por si acaso
-                                humanoid.UseJumpPower = true
-                                humanoid.JumpPower = 0
-                            end
-                        end
+                        local pp = pet.PrimaryPart
                         
-                        -- En caso de que usen algo distinto al Humanoid (como Animators/BodyVelocity)
-                        if pet.PrimaryPart then
-                            local ap = pet.PrimaryPart:FindFirstChildWhichIsA("AlignPosition")
-                            if ap and ap.Attachment1 and ap.Attachment1.Parent then
-                                -- Corregimos la atracción visual también
-                                local pX, pY, pZ = ap.Attachment1.Position.X, ap.Attachment1.Position.Y, ap.Attachment1.Position.Z
-                                if pY < altura_flotacion then
-                                    ap.Attachment1.Position = Vector3.new(pX, pY + altura_flotacion, pZ)
+                        if humanoid and pp then
+                            -- Toggle 1 y 2: HipHeight Manipulation
+                            if Toggles.Aereo then
+                                humanoid.HipHeight = 25
+                            elseif Toggles.Subterraneo then
+                                humanoid.HipHeight = -10 -- Ir debajo de la tierra (Los proyectiles chocarán con el pasto)
+                            else
+                                if humanoid.HipHeight == 25 or humanoid.HipHeight == -10 then
+                                    humanoid.HipHeight = 2 -- Restaurar Default aprox
                                 end
                             end
+                            
+                            -- Toggle 4: Ghosting Strike
+                            -- Dejaremos al Humanoide congelado al lado tuyo pero lanzaremos 
+                            -- raycasts o lo haremos vibrar
+                            if Toggles.Ghosting then
+                                if not pp.Anchored then
+                                    -- Lo anclamos a nuestra espalda
+                                    pp.Anchored = true
+                                    pp.CFrame = miPersonaje.PrimaryPart.CFrame * CFrame.new(0, 0, 5)
+                                    
+                                    -- De aquí, el script real "intentará" atacar, pero físicamente el pet es un holograma seguro.
+                                end
+                            else
+                                if pp.Anchored then pp.Anchored = false end
+                            end
                         end
-                        
                     end
                 end
             end
         end)
-        task.wait(0.5) -- Revisar medio segundo, HipHeight es persistente
-    end
-end)
-
-
--- ==========================================================
--- 5. ATAQUE SPAMMER: SATURACIÓN DE SERVIDOR (Click Aura)
--- ==========================================================
--- (PELIGRO DE KICK - APAGADO TEMPORALMENTE)
-local TargetAura = false
-local Rango_Aura = 200
-
-task.spawn(function()
-    while true do
-        if TargetAura then
-            pcall(function()
-                local miPersonaje = LP.Character
-                if not miPersonaje or not miPersonaje.PrimaryPart then return end
-                local myPos = miPersonaje.PrimaryPart.Position
-                
-                -- Buscar todos los ClickDetectors de monstros activos
-                local function BuscarEn(carpeta)
-                    if not carpeta then return end
-                    for _, obj in pairs(carpeta:GetChildren()) do
-                        local cd = obj:FindFirstChildWhichIsA("ClickDetector", true)
-                        if cd then
-                            local part = cd.Parent
-                            if part and part:IsA("BasePart") then
-                                local dist = (part.Position - myPos).Magnitude
-                                if dist <= Rango_Aura then
-                                    -- ¡Fuego! (Disparar el click remote)
-                                    -- Algunos ClickDetectors en local firing requieren usar fireclickdetector si usas exploit, 
-                                    -- pero fireclickdetector(cd) depende del inyector. Usaremos un fallback nativo si no hay fireclick.
-                                    if type(fireclickdetector) == "function" then
-                                        fireclickdetector(cd, 0)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-                
-                -- Las clásicas carpetas donde podrían estar los Mobs 
-                BuscarEn(Workspace:FindFirstChild("Monsters"))
-                BuscarEn(Workspace:FindFirstChild("ClientMonsters"))
-                BuscarEn(Workspace:FindFirstChild("Bosses"))
-            end)
-        end
-        -- Disparar cada 0.1s (10 Clicks por segundo por Monstruo en el Radar)
-        task.wait(0.1)
+        task.wait(0.2) 
     end
 end)
 
 -- ==========================================================
--- 6. AUDITORÍA DE RED (ESPIA DEL SERVIDOR LOG)
+-- 5. AUDITORÍA DE RED (ESPIA DEL SERVIDOR LOG)
 -- ==========================================================
 task.spawn(function()
     local commonLib = ReplicatedStorage:FindFirstChild("CommonLibrary")
@@ -324,17 +290,16 @@ task.spawn(function()
             
             if petHurt then
                 petHurt.OnClientEvent:Connect(function()
-                    AddLog("⚠️ Tu mascota recibió daño del monstruo (PetHurtInfo).", Color3.fromRGB(255, 100, 100))
+                    AddLog("⚠️ Daño detectado. (La Evasión falló en este intento)", Color3.fromRGB(255, 100, 100))
                 end)
             end
             if monsterHurt then
                 monsterHurt.OnClientEvent:Connect(function()
-                    AddLog("💀 Monstruo Murió (Kill Effect Validado).", Color3.fromRGB(255, 200, 0))
+                    AddLog("💀 Monstruo Eliminado con Éxito.", Color3.fromRGB(255, 200, 0))
                 end)
             end
         end
     end
 end)
 
-AddLog("Configuración Física inicializada: Mascotas elevarán su vuelo a " .. altura_flotacion .. "m con HipHeight.", Color3.fromRGB(255, 150, 255))
-AddLog("Aura de Ataque (ClickDetector) Activada: Saturando Servidor...", Color3.fromRGB(255, 0, 0))
+AddLog("Panel Multi-Vector Cargado. Elige tu arma.", Color3.fromRGB(0, 255, 0))
