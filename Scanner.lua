@@ -46,7 +46,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
+Title.Text = " ⚔️ AURA-FARM 2 (HOVER MODE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -315,14 +315,25 @@ task.spawn(function()
                         GlobalMagnetTarget = mobHrp.Position
                         
                         -- ==========================================
-                        -- [ESTA ES LA LÓGICA DE CFRAME ORIGINAL Y PERFECTA RESTAURADA]
+                        -- [NUEVAS FÍSICAS: ROTACIÓN PLANA (ANTI-ECHADO)]
+                        -- Extraemos SOLO la rotación horizontal (Y) del monstruo. 
+                        -- Esto anula la rotación hacia arriba o abajo, previniendo que el personaje se eche o se deforme.
+                        local rx, rotY, rz = mobHrp.CFrame:ToEulerAnglesYXZ()
+                        local flatMobCFrame = CFrame.new(mobHrp.Position) * CFrame.Angles(0, rotY, 0)
+                        
                         if FarmMode == "Arriba" then
-                            -- Se ubica arriba y copia la rotación Y del mob para estar derecho
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
+                            -- Yo-Yo extremo (Sube y baja rápido, esquiva y pega)
+                            local bounce = math.sin(os.clock() * 6) * 5 
+                            local currentY = 11 + bounce -- Oscila rápido entre 6 y 16 studs
+                            
+                            hrp.CFrame = flatMobCFrame * CFrame.new(0, currentY, 0)
+                            
                         elseif FarmMode == "Detras" then
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
+                            hrp.CFrame = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                            
                         elseif FarmMode == "Abajo" then
-                            hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, 0)
+                            -- Pega desde Abajo rotando SIEMPRE a la espalda del monstruo (OfsZ y OfsY)
+                            hrp.CFrame = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
                         end
                         -- ==========================================
                         
@@ -428,12 +439,12 @@ BtnHeight.MouseButton1Click:Connect(function()
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
         OfsY = -8 -- 8 studs bajo tierra
-        OfsZ = 0
-        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO"
+        OfsZ = 6  -- 6 studs a la espalda
+        BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
     else
         FarmMode = "Arriba"
         OfsY = 10 -- 10 studs sobre su cabeza
         OfsZ = 0
-        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA"
+        BtnHeight.Text = "Posición Segura: ☁️ ARRIBA (YO-YO RAPIDO)"
     end
 end)
