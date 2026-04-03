@@ -40,7 +40,7 @@ SG.ResetOnSpawn = false
 SG.Parent = TargetGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 300, 0, 420)
+MF.Size = UDim2.new(0, 300, 0, 440)
 MF.Position = UDim2.new(0.05, 0, 0.4, 0)
 MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MF.BorderSizePixel = 2
@@ -139,9 +139,18 @@ BtnBoss.Font = Enum.Font.GothamBold
 BtnBoss.TextSize = 11
 BtnBoss.Text = "🎯 CAZAR BOSSES: ON"
 
+local BtnTravelMenu = Instance.new("TextButton", MF)
+BtnTravelMenu.Size = UDim2.new(0.9, 0, 0, 30)
+BtnTravelMenu.Position = UDim2.new(0.05, 0, 0, 280)
+BtnTravelMenu.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+BtnTravelMenu.TextColor3 = Color3.new(1,1,1)
+BtnTravelMenu.Font = Enum.Font.GothamBold
+BtnTravelMenu.TextSize = 11
+BtnTravelMenu.Text = "🧭 ABRIR MENÚ DE VIAJE SEGURO (NOCLIP)"
+
 local BtnSpy = Instance.new("TextButton", MF)
 BtnSpy.Size = UDim2.new(0.9, 0, 0, 30)
-BtnSpy.Position = UDim2.new(0.05, 0, 0, 280)
+BtnSpy.Position = UDim2.new(0.05, 0, 0, 320)
 BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
 BtnSpy.TextColor3 = Color3.new(1,1,1)
 BtnSpy.Font = Enum.Font.GothamBold
@@ -150,7 +159,7 @@ BtnSpy.Text = "📡 ESCANEAR MAPA (DUMP A TXT)"
 
 local PanicLabel = Instance.new("TextLabel", MF)
 PanicLabel.Size = UDim2.new(0.9, 0, 0, 15)
-PanicLabel.Position = UDim2.new(0.05, 0, 0, 320)
+PanicLabel.Position = UDim2.new(0.05, 0, 0, 360)
 PanicLabel.BackgroundTransparency = 1
 PanicLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 PanicLabel.Font = Enum.Font.GothamBold
@@ -159,7 +168,7 @@ PanicLabel.Text = "🛡️ ESCUDO PÁNICO (ESCAPA AL " .. math.floor(PanicThresh
 
 local SliderBg = Instance.new("TextButton", MF)
 SliderBg.Size = UDim2.new(0.9, 0, 0, 15)
-SliderBg.Position = UDim2.new(0.05, 0, 0, 340)
+SliderBg.Position = UDim2.new(0.05, 0, 0, 380)
 SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 SliderBg.Text = ""
 
@@ -167,6 +176,145 @@ local SliderFill = Instance.new("Frame", SliderBg)
 SliderFill.Size = UDim2.new(PanicThreshold, 0, 1, 0)
 SliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
 SliderFill.BorderSizePixel = 0
+
+-- ==============================================================================
+-- PESTAÑA VIAJE SEGURO (FLY NOCLIP)
+-- ==============================================================================
+local TravelFrame = Instance.new("Frame", SG)
+TravelFrame.Size = UDim2.new(0, 250, 0, 360)
+TravelFrame.Position = UDim2.new(0.05, 310, 0.4, 0)
+TravelFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
+TravelFrame.BorderSizePixel = 2
+TravelFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+TravelFrame.Active = true
+TravelFrame.Draggable = true
+TravelFrame.Visible = false
+
+local TTitle = Instance.new("TextLabel", TravelFrame)
+TTitle.Size = UDim2.new(1, 0, 0, 30)
+TTitle.BackgroundColor3 = Color3.fromRGB(10, 40, 80)
+TTitle.Text = " ✈️ MENU NAVEGACIÓN"
+TTitle.TextColor3 = Color3.new(1,1,1)
+TTitle.Font = Enum.Font.GothamBold
+TTitle.TextSize = 13
+
+local TBtnClose = Instance.new("TextButton", TravelFrame)
+TBtnClose.Size = UDim2.new(0, 30, 0, 30)
+TBtnClose.Position = UDim2.new(1, -30, 0, 0)
+TBtnClose.BackgroundTransparency = 1
+TBtnClose.Text = "❌"
+TBtnClose.TextColor3 = Color3.new(1,1,1)
+
+local IsTraveling = false
+
+local function CancelTravel()
+    IsTraveling = false
+    StatusLabel.Text = "Status: INACTIVO"
+end
+
+local function SafeTravel(targetVector3, destinationName)
+    CancelTravel()
+    task.wait(0.1)
+    IsTraveling = true
+    
+    local char = LP.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    -- Frenar AutoFarm para que no entre en dilema
+    AutoFarm = false
+    BtnToggle.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
+    BtnToggle.Text = "► INICIAR AUTO-FARM"
+    
+    StatusLabel.Text = "✈️ Viajando a: " .. destinationName
+    
+    task.spawn(function()
+        while IsTraveling do
+            pcall(function()
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local dist = (hrp.Position - targetVector3).Magnitude
+                    if dist <= 15 then
+                        IsTraveling = false
+                        StatusLabel.Text = "Status: 🏁 Llegada a " .. destinationName
+                        char:PivotTo(CFrame.new(targetVector3))
+                    else
+                        local step = math.clamp(30 / dist, 0, 1) -- ~150 studs/s
+                        
+                        -- VUELO RECTO CAMUFLADO (Ondulación):
+                        -- Usamos math.sin para mover el personaje arriba/abajo de forma sinusoidal natural
+                        -- Esto engaña al ojo humano para que parezca que presiona 'Space' para saltar repetidamente
+                        local ondulateBase = math.sin(os.clock() * 6) * 2 -- Sube y baja 2 Studs de forma suave
+                        local targetLerp = hrp.CFrame:Lerp(CFrame.new(targetVector3), step)
+                        char:PivotTo(targetLerp * CFrame.new(0, ondulateBase, 0))
+                    end
+                end
+            end)
+            task.wait(0.2)
+        end
+    end)
+end
+
+local function CreateDynamicTravelBtn(yPos, color, text, mode, vectorOrName)
+    local btn = Instance.new("TextButton", TravelFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 30)
+    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 10
+    btn.Text = text
+    
+    btn.MouseButton1Click:Connect(function()
+        if mode == "Vector3" then
+            SafeTravel(vectorOrName, text)
+        elseif mode == "Portal" then
+            -- MODO INYECCIÓN DE PORTAL: Vuelo Instantáneo Indetectable mediante uso del mecánico nativo
+            StatusLabel.Text = "🌀 Falsificando uso de Portal hacia: " .. vectorOrName
+            pcall(function()
+                local Remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents"):FindFirstChild("TeleportToPortal")
+                if Remote then Remote:FireServer(vectorOrName) end
+            end)
+        elseif mode == "FindNPC" then
+            local obj = Workspace:FindFirstChild(vectorOrName, true)
+            if obj and obj:IsA("Model") and obj.PrimaryPart then
+                SafeTravel(obj.PrimaryPart.Position, text)
+            elseif obj and obj:FindFirstChild("HumanoidRootPart") then
+                SafeTravel(obj.HumanoidRootPart.Position, text)
+            else
+                StatusLabel.Text = "❌ NPC '" .. text .. "' NO EXISTE AQUÍ."
+            end
+        elseif mode == "Cancel" then
+            CancelTravel()
+        elseif mode == "FruitSnipe" then
+            local fruitFound = false
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if (obj.Name:lower():match("fruit") or obj.Name:lower():match("akuma")) and obj:IsA("Model") and not obj:IsDescendantOf(LP.Character) and not obj:IsDescendantOf(Workspace:FindFirstChild("ServiceNPCs") or Workspace) then
+                    local pos = obj.PrimaryPart and obj.PrimaryPart.Position or (obj:FindFirstChild("HumanoidRootPart") and obj.HumanoidRootPart.Position) or (obj:FindFirstChildWhichIsA("BasePart") and obj:FindFirstChildWhichIsA("BasePart").Position)
+                    if pos then
+                        SafeTravel(pos, "¡FRUTA CAIDA! ("..obj.Name..")")
+                        fruitFound = true
+                        break
+                    end
+                end
+            end
+            if not fruitFound then StatusLabel.Text = "Status: ❌ No hay frutas silvestres ahorita." end
+        end
+    end)
+end
+
+CreateDynamicTravelBtn(40, Color3.fromRGB(30,50,80), "🌀 Teletransportar a Starter", "Portal", "Starter")
+CreateDynamicTravelBtn(75, Color3.fromRGB(80,70,30), "🌀 Teletransportar a Desert/Sand", "Portal", "Desert")
+CreateDynamicTravelBtn(110, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 1", "Vector3", Vector3.new(171, 16, -215))
+CreateDynamicTravelBtn(145, Color3.fromRGB(30,80,30), "📜 Volar a Quest NPC 2", "Vector3", Vector3.new(-8, -3, -203))
+CreateDynamicTravelBtn(180, Color3.fromRGB(80,30,80), "👑 Volar a Shadow Monarch", "Vector3", Vector3.new(243, 26, -84))
+CreateDynamicTravelBtn(215, Color3.fromRGB(200,80,80), "💎 Vendedor 1 (Gemas)", "FindNPC", "GemFruitDealer")
+CreateDynamicTravelBtn(250, Color3.fromRGB(200,80,80), "🪙 Vendedor 2 (Monedas)", "FindNPC", "CoinFruitDealer")
+CreateDynamicTravelBtn(285, Color3.fromRGB(20,200,50), "🍏 BUSCAR FRUTA SALVAJE (SNIPER)", "FruitSnipe", "")
+CreateDynamicTravelBtn(320, Color3.fromRGB(150,20,20), "🛑 DETENER VUELO", "Cancel", "")
+
+
+BtnTravelMenu.MouseButton1Click:Connect(function() TravelFrame.Visible = not TravelFrame.Visible end)
+TBtnClose.MouseButton1Click:Connect(function() TravelFrame.Visible = false end)
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -771,8 +919,71 @@ end)
 local function ToggleUI()
     MF.Visible = not MF.Visible
     if not MF.Visible then
-        CodesFrame.Visible = false
+        if CodesFrame then CodesFrame.Visible = false end
+        if TravelFrame then TravelFrame.Visible = false end
     end
 end
 BtnMin.MouseButton1Click:Connect(ToggleUI)
 BtnFloat.MouseButton1Click:Connect(ToggleUI)
+
+-- ==============================================================================
+-- [SISTEMA] FRUIT ESP GLOBAL (EXTRA SENSORY PERCEPTION)
+-- Se ejecuta de fondo para marcar frutas nacidas sin generar Lag en tu UI
+-- ==============================================================================
+task.spawn(function()
+    while task.wait(3) do
+        pcall(function()
+            local CoreGUI = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LP:WaitForChild("PlayerGui")
+            local ESPFolder = CoreGUI:FindFirstChild("OmniESPFolder")
+            if not ESPFolder then
+                ESPFolder = Instance.new("Folder", CoreGUI)
+                ESPFolder.Name = "OmniESPFolder"
+            end
+            
+            -- Limpiar ESPs viejos si la fruta desapareció o alguien la levantó
+            for _, esp in pairs(ESPFolder:GetChildren()) do
+                if not esp.Adornee or esp.Adornee.Parent == nil then
+                    esp:Destroy()
+                end
+            end
+            
+            -- Buscar frutas frescas en Workspace MUNDIAL
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if (obj.Name:lower():match("fruit") or obj.Name:lower():match("akuma")) and obj:IsA("Model") and not obj:IsDescendantOf(LP.Character) then
+                    -- Nos aseguramos que no sea la fruta que sostiene el vendedor en la mano (Dealer)
+                    if not obj:IsDescendantOf(Workspace:FindFirstChild("ServiceNPCs") or Workspace) or not obj.Parent.Name:match("Dealer") then
+                        local pPart = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
+                        if pPart then
+                            -- Crear ESP si no está etiquetada
+                            local exists = false
+                            for _, esp in pairs(ESPFolder:GetChildren()) do
+                                if esp.Adornee == pPart then exists = true break end
+                            end
+                            
+                            if not exists then
+                                local bbg = Instance.new("BillboardGui", ESPFolder)
+                                bbg.Adornee = pPart
+                                bbg.Size = UDim2.new(0, 150, 0, 50)
+                                bbg.AlwaysOnTop = true
+                                bbg.StudsOffset = Vector3.new(0, 5, 0)
+                                
+                                local txt = Instance.new("TextLabel", bbg)
+                                txt.Size = UDim2.new(1, 0, 1, 0)
+                                txt.BackgroundTransparency = 1
+                                txt.Text = "🍏 " .. obj.Name .. " ALERTA"
+                                txt.TextColor3 = Color3.new(0, 1, 0.2)
+                                txt.TextStrokeTransparency = 0.1
+                                txt.TextStrokeColor3 = Color3.new(0,0,0)
+                                txt.Font = Enum.Font.GothamBlack
+                                txt.TextSize = 14
+                                
+                                -- Alerta por Chat para el Bot!
+                                print("¡ALERTA GLOBAL! EN LA ISLA ACABA DE CAER: ", obj.Name)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
