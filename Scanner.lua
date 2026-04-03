@@ -26,6 +26,15 @@ local Analyzer = {
     baselineDumped = false,
     file = nil,
     session = tostring(os.time()) .. "-" .. tostring(math.floor(os.clock() * 1000) % 100000),
+    lastReturnToLobbyAt = nil,
+    journalEvidence = {},
+    selectedGhost = nil,
+    knownEvidence = {},
+    knownGhosts = {},
+    objectiveInfo = {},
+    completedObjectives = {},
+    getSelectedGhostOriginal = nil,
+    getSelectedGhostWrapped = nil,
     recent = {},
     watched = {},
     ui = {}
@@ -397,6 +406,218 @@ local function isWitherCandidate(obj)
         or string.find(n, "corrod")
 end
 
+local GHOST_SOURCE_ATTRS = {
+    FavoriteRoom = true,
+    Headless = true,
+    InvisibleOnLIDAR = true,
+    CanOnlyHuntInFavoriteRoom = true,
+    VisualModel = true,
+    Transparency = true,
+    LaserVisible = true,
+    Visible = true,
+    IsHunting = true,
+    Hunt = true
+}
+
+local function countChildren(instance)
+    if not instance then
+        return 0
+    end
+    local ok, children = pcall(instance.GetChildren, instance)
+    if ok and type(children) == "table" then
+        return #children
+    end
+    return 0
+end
+
+local function getGhostDebugId(ghost)
+    if not ghost or not ghost.GetDebugId then
+        return nil
+    end
+    local ok, debugId = pcall(function()
+        return ghost:GetDebugId()
+    end)
+    if ok then
+        return debugId
+    end
+    return nil
+end
+
+local function buildGhostStatePayload(ghost)
+    if not ghost then
+        return {
+            ghostPresent = false
+        }
+    end
+    local hrp = ghost:FindFirstChild("HumanoidRootPart")
+    local visibleParts = ghost:FindFirstChild("VisibleParts")
+    return {
+        ghost = ghost,
+        ghostDebugId = getGhostDebugId(ghost),
+        parent = ghost.Parent,
+        favoriteRoom = ghost:GetAttribute("FavoriteRoom"),
+        headless = ghost:GetAttribute("Headless"),
+        invisibleOnLIDAR = ghost:GetAttribute("InvisibleOnLIDAR"),
+        onlyFavoriteRoom = ghost:GetAttribute("CanOnlyHuntInFavoriteRoom"),
+        visualModel = ghost:GetAttribute("VisualModel"),
+        transparency = ghost:GetAttribute("Transparency"),
+        visibleParts = countChildren(visibleParts),
+        hasHumanoidRootPart = hrp ~= nil,
+        hrpPos = hrp and hrp.Position or nil
+    }
+end
+
+local function joinSortedKeys(map)
+    local values = {}
+    for key, value in pairs(map or {}) do
+        if value then
+            table.insert(values, tostring(key))
+        end
+    end
+    table.sort(values)
+    return table.concat(values, ", ")
+end
+
+local function getJournalContainers()
+    local playerGui = LP:FindFirstChild("PlayerGui")
+    local journal = playerGui and playerGui:FindFirstChild("Journal")
+    local holder = journal and journal:FindFirstChild("Holder")
+    local pages = holder and holder:FindFirstChild("Pages")
+    local page4 = pages and pages:FindFirstChild("Page4")
+    local left = page4 and page4:FindFirstChild("Left")
+    local right = page4 and page4:FindFirstChild("Right")
+    local leftPage = left and left:FindFirstChild("Page")
+    local rightPage = right and right:FindFirstChild("Page")
+    return {
+        evidenceTypes = leftPage and leftPage:FindFirstChild("EvidenceTypes"),
+        ghostTypes = rightPage and rightPage:FindFirstChild("GhostTypes")
+    }
+end
+
+local function collectJournalState()
+    local state = {
+        selectedGhost = Analyzer.selectedGhost,
+        evidenceTrue = joinSortedKeys(Analyzer.journalEvidence),
+        evidenceFalse = "",
+        source = "memory"
+    }
+    local containers = getJournalContainers()
+    local evidenceTypes = containers.evidenceTypes
+    local ghostTypes = containers.ghostTypes
+    if not evidenceTypes and not ghostTypes then
+        return state
+    end
+
+    local evidenceTrue = {}
+    local evidenceFalse = {}
+    if evidenceTypes then
+        for _, frame in ipairs(evidenceTypes:GetChildren()) do
+            if frame:IsA("Frame") then
+                local container = frame:FindFirstChild("Container") or frame
+                local highlight = container:FindFirstChild("Highlight")
+                local crossOut = container:FindFirstChild("CrossOut")
+                if highlight and highlight.Visible then
+                    table.insert(evidenceTrue, frame.Name)
+                elseif crossOut and crossOut.Visible then
+                    table.insert(evidenceFalse, frame.Name)
+                end
+            end
+        end
+    end
+
+    local selectedGhost = nil
+    if ghostTypes then
+        for _, frame in ipairs(ghostTypes:GetChildren()) do
+            if frame:IsA("Frame") then
+                local highlight = frame:FindFirstChild("Highlight")
+                if highlight and highlight.Visible then
+                    selectedGhost = frame.Name
+                    break
+                end
+            end
+        end
+    end
+
+    table.sort(evidenceTrue)
+    table.sort(evidenceFalse)
+    return {
+        selectedGhost = selectedGhost or Analyzer.selectedGhost,
+        evidenceTrue = table.concat(evidenceTrue, ", "),
+        evidenceFalse = table.concat(evidenceFalse, ", "),
+        source = "ui"
+    }
+end
+
+local function stripRichText(text)
+    local s = tostring(text or "")
+    s = s:gsub("<.->", "")
+    s = s:gsub("&lt;", "<")
+    s = s:gsub("&gt;", ">")
+    s = s:gsub("&quot;", "\"")
+    return s
+end
+
+local function joinObjectiveIndexes(map)
+    local indexes = {}
+    for idx, value in pairs(map or {}) do
+        if value then
+            table.insert(indexes, tonumber(idx) or idx)
+        end
+    end
+    table.sort(indexes, function(a, b)
+        return tostring(a) < tostring(b)
+    end)
+    local parts = {}
+    for _, idx in ipairs(indexes) do
+        table.insert(parts, tostring(idx))
+    end
+    return table.concat(parts, ", ")
+end
+
+local function collectObjectiveState()
+    local result = {
+        completed = joinObjectiveIndexes(Analyzer.completedObjectives),
+        visible = "",
+        notification = nil
+    }
+
+    local playerGui = LP:FindFirstChild("PlayerGui")
+    local phoneScreen = playerGui and playerGui:FindFirstChild("PhoneScreen")
+    local container = phoneScreen and phoneScreen:FindFirstChild("Container")
+    local screen = container and container:FindFirstChild("Screen")
+    local notification = screen and screen:FindFirstChild("Notification")
+    local notificationText = notification and notification:FindFirstChild("NotificationText")
+    if notificationText and notificationText:IsA("TextLabel") then
+        result.notification = stripRichText(notificationText.Text)
+    end
+
+    if not screen then
+        return result
+    end
+
+    local objectiveTexts = {}
+    local objectiveInfo = Analyzer.objectiveInfo or {}
+    for _, desc in ipairs(screen:GetDescendants()) do
+        if desc:IsA("TextLabel") then
+            local rawText = tostring(desc.Text or "")
+            local text = stripRichText(rawText)
+            if #text > 18 and not string.find(string.lower(text), "completed objective") then
+                for idx, info in pairs(objectiveInfo) do
+                    local objectiveText = stripRichText(info.ObjectiveDescription or "")
+                    if objectiveText ~= "" and text == objectiveText then
+                        table.insert(objectiveTexts, string.format("%s:%s", tostring(idx), tostring(info.ObjectiveTitle)))
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    table.sort(objectiveTexts)
+    result.visible = table.concat(objectiveTexts, ", ")
+    return result
+end
+
 local function buildEvidenceReverseMap()
     local reverse = {}
     pcall(function()
@@ -407,6 +628,7 @@ local function buildEvidenceReverseMap()
             if ok and type(evidenceTypes) == "table" then
                 for name, value in pairs(evidenceTypes) do
                     reverse[value] = name
+                    Analyzer.knownEvidence[name] = true
                 end
                 trace("MODULES", "EvidenceTypesLoaded", evidenceTypes, true)
             end
@@ -431,6 +653,7 @@ local function dumpGhostTypeModules()
             if moduleScript:IsA("ModuleScript") then
                 local ok, ghostInfo = pcall(require, moduleScript)
                 if ok and type(ghostInfo) == "table" then
+                    Analyzer.knownGhosts[moduleScript.Name] = true
                     local evidence = {}
                     for _, ev in ipairs(ghostInfo.Evidence or {}) do
                         table.insert(evidence, reverseEvidence[ev] or tostring(ev))
@@ -453,6 +676,58 @@ local function dumpGhostTypeModules()
             end
         end
     end)
+end
+
+local function dumpObjectiveInfo()
+    pcall(function()
+        local modules = ReplicatedStorage:FindFirstChild("Modules")
+        local objectiveModule = modules and modules:FindFirstChild("ObjectiveInfo")
+        if not objectiveModule then
+            return
+        end
+        local ok, objectiveInfo = pcall(require, objectiveModule)
+        if not ok or type(objectiveInfo) ~= "table" then
+            trace("MODULES", "ObjectiveInfoRequireFailed", {
+                ok = ok,
+                result = objectiveInfo
+            }, true)
+            return
+        end
+        Analyzer.objectiveInfo = {}
+        for idx, info in ipairs(objectiveInfo) do
+            Analyzer.objectiveInfo[idx] = info
+            trace("MODULES", "ObjectiveLoaded", {
+                index = idx,
+                title = info.ObjectiveTitle,
+                description = stripRichText(info.ObjectiveDescription),
+                itemRequired = info.ItemRequired,
+                reward = info.Reward
+            }, true)
+        end
+    end)
+end
+
+local function dumpGhostSourceHints()
+    trace("MODULES", "GhostReadSourceHint", {
+        module = "GhostSkinController",
+        reads = "Workspace.Ghost.VisualModel",
+        why = "aplica la skin visual del fantasma"
+    }, true)
+    trace("MODULES", "GhostReadSourceHint", {
+        module = "Haunted Mirror",
+        reads = "Workspace.Ghost.FavoriteRoom",
+        why = "apunta el cuarto favorito"
+    }, true)
+    trace("MODULES", "GhostReadSourceHint", {
+        module = "LIDAR Scanner",
+        reads = "Workspace.Ghost.InvisibleOnLIDAR",
+        why = "decide si clona o oculta el ghost en LIDAR"
+    }, true)
+    trace("MODULES", "GhostReadSourceHint", {
+        module = "Photo Camera",
+        reads = "Workspace.Ghost.Transparency, Headless, VisibleParts",
+        why = "renderiza el cuerpo visible/fisico del ghost"
+    }, true)
 end
 
 local function watchTrackedTool(tool)
@@ -656,6 +931,11 @@ local function watchRelevantRemoteEvents()
                 or string.find(n, "wither")
                 or string.find(n, "lidar")
                 or string.find(n, "lobby")
+                or string.find(n, "notify")
+                or string.find(n, "reward")
+                or string.find(n, "return")
+                or string.find(n, "cover")
+                or string.find(n, "death")
         end
         local function hookRemote(remote)
             if not remote:IsA("RemoteEvent") then
@@ -673,11 +953,31 @@ local function watchRelevantRemoteEvents()
                 for i = 1, math.min(#args, 4) do
                     preview["arg" .. i] = args[i]
                 end
-                trace("REMOTE", "OnClientEvent", {
+                local payload = {
                     remote = remote.Name,
                     argc = #args,
                     args = preview
-                })
+                }
+                local lowerName = string.lower(remote.Name)
+                if string.find(lowerName, "notify") and type(args[1]) == "table" then
+                    payload.text = args[1].Text
+                    payload.color = args[1].Color
+                elseif string.find(lowerName, "objectivecompleted") then
+                    local idx = tonumber(args[1])
+                    local info = idx and Analyzer.objectiveInfo[idx] or nil
+                    if idx then
+                        Analyzer.completedObjectives[idx] = true
+                    end
+                    payload.index = idx
+                    payload.title = info and info.ObjectiveTitle or nil
+                    payload.description = info and stripRichText(info.ObjectiveDescription) or nil
+                    payload.reward = info and info.Reward or nil
+                end
+                if Analyzer.lastReturnToLobbyAt then
+                    payload.postReturnWindow = os.clock() - Analyzer.lastReturnToLobbyAt <= 20
+                    payload.secondsSinceReturn = math.floor((os.clock() - Analyzer.lastReturnToLobbyAt) * 100) / 100
+                end
+                trace("REMOTE", "OnClientEvent", payload)
             end)
         end
         for _, remote in ipairs(eventsFolder:GetDescendants()) do
@@ -687,8 +987,82 @@ local function watchRelevantRemoteEvents()
     end)
 end
 
+local function watchGetSelectedGhost()
+    pcall(function()
+        task.spawn(function()
+            while true do
+                local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+                local remote = eventsFolder and eventsFolder:FindFirstChild("GetSelectedGhost")
+                if Analyzer.active and remote and remote:IsA("RemoteFunction") then
+                    local current = remote.OnClientInvoke
+                    if current and current ~= Analyzer.getSelectedGhostWrapped then
+                        Analyzer.getSelectedGhostOriginal = current
+                        local original = current
+                        local wrapped
+                        wrapped = function(...)
+                            local journalState = collectJournalState()
+                            local ok, result = pcall(original, ...)
+                            trace("JOURNAL", "GetSelectedGhostInvoked", {
+                                argCount = select("#", ...),
+                                selectedGhost = journalState.selectedGhost,
+                                evidenceTrue = journalState.evidenceTrue,
+                                evidenceFalse = journalState.evidenceFalse,
+                                source = journalState.source,
+                                returned = ok and result or nil,
+                                postReturnWindow = Analyzer.lastReturnToLobbyAt and (os.clock() - Analyzer.lastReturnToLobbyAt <= 20) or false,
+                                secondsSinceReturn = Analyzer.lastReturnToLobbyAt and math.floor((os.clock() - Analyzer.lastReturnToLobbyAt) * 100) / 100 or nil
+                            }, true)
+                            if ok then
+                                Analyzer.selectedGhost = result or Analyzer.selectedGhost
+                                return result
+                            end
+                            trace("JOURNAL", "GetSelectedGhostError", {
+                                error = tostring(result)
+                            }, true)
+                            error(result)
+                        end
+                        Analyzer.getSelectedGhostWrapped = wrapped
+                        remote.OnClientInvoke = wrapped
+                        trace("JOURNAL", "GetSelectedGhostWrapped", {
+                            remote = remote
+                        }, true)
+                    end
+                end
+                task.wait(0.5)
+            end
+        end)
+    end)
+end
+
 local function watchGhostLifecycle()
     pcall(function()
+        local function hookVisiblePartsFolder(ghost)
+            local folder = ghost:FindFirstChild("VisibleParts")
+            if not folder or markWatch(folder, "GhostVisibleParts") then
+                return
+            end
+            trace("GHOST", "VisiblePartsObserved", {
+                ghost = ghost,
+                folder = folder,
+                count = countChildren(folder)
+            }, true)
+            folder.ChildAdded:Connect(function(child)
+                trace("GHOST", "VisiblePartAdded", {
+                    ghost = ghost,
+                    child = child,
+                    count = countChildren(folder),
+                    isHeadPart = child:GetAttribute("IsHeadPart")
+                })
+            end)
+            folder.ChildRemoved:Connect(function(child)
+                trace("GHOST", "VisiblePartRemoved", {
+                    ghost = ghost,
+                    child = child,
+                    count = countChildren(folder)
+                })
+            end)
+        end
+
         local function hookGhost(ghost)
             if not ghost or not ghost:IsA("Model") then
                 return
@@ -696,24 +1070,45 @@ local function watchGhostLifecycle()
             if markWatch(ghost, "GhostLifecycle") then
                 return
             end
-            trace("GHOST", "GhostObserved", {
-                ghost = ghost,
-                favoriteRoom = ghost:GetAttribute("FavoriteRoom"),
-                headless = ghost:GetAttribute("Headless"),
-                invisibleOnLIDAR = ghost:GetAttribute("InvisibleOnLIDAR")
-            }, true)
+            trace("GHOST", "GhostObserved", buildGhostStatePayload(ghost), true)
+            hookVisiblePartsFolder(ghost)
+
+            ghost.ChildAdded:Connect(function(child)
+                trace("GHOST", "ChildAdded", {
+                    ghost = ghost,
+                    child = child,
+                    childName = child.Name,
+                    childClass = child.ClassName
+                })
+                if child.Name == "VisibleParts" then
+                    hookVisiblePartsFolder(ghost)
+                end
+            end)
+            ghost.ChildRemoved:Connect(function(child)
+                trace("GHOST", "ChildRemoved", {
+                    ghost = ghost,
+                    child = child,
+                    childName = child.Name,
+                    childClass = child.ClassName
+                })
+            end)
             ghost.AttributeChanged:Connect(function(attr)
-                trace("GHOST", "AttributeChanged", {
+                local payload = {
                     ghost = ghost,
                     attribute = attr,
                     value = ghost:GetAttribute(attr)
-                })
+                }
+                if GHOST_SOURCE_ATTRS[attr] then
+                    payload.favoriteRoom = ghost:GetAttribute("FavoriteRoom")
+                    payload.headless = ghost:GetAttribute("Headless")
+                    payload.invisibleOnLIDAR = ghost:GetAttribute("InvisibleOnLIDAR")
+                    payload.visualModel = ghost:GetAttribute("VisualModel")
+                    payload.transparency = ghost:GetAttribute("Transparency")
+                end
+                trace("GHOST", "AttributeChanged", payload)
             end)
             ghost.AncestryChanged:Connect(function()
-                trace("GHOST", "AncestryChanged", {
-                    ghost = ghost,
-                    parent = ghost.Parent
-                })
+                trace("GHOST", "AncestryChanged", buildGhostStatePayload(ghost))
             end)
         end
         local ghost = Workspace:FindFirstChild("Ghost")
@@ -727,6 +1122,15 @@ local function watchGhostLifecycle()
                 trace("ORB", "GhostOrbAdded", {
                     object = child,
                     parent = child.Parent
+                }, true)
+            end
+        end)
+        Workspace.ChildRemoved:Connect(function(child)
+            if child.Name == "Ghost" and child:IsA("Model") then
+                trace("GHOST", "WorkspaceChildRemoved", buildGhostStatePayload(child), true)
+            elseif child.Name == "GhostOrb" then
+                trace("ORB", "GhostOrbRemoved", {
+                    object = child
                 }, true)
             end
         end)
@@ -811,6 +1215,8 @@ end
 local function collectEvidenceSnapshot()
     local ghost = Workspace:FindFirstChild("Ghost")
     local orb = Workspace:FindFirstChild("GhostOrb")
+    local journalState = collectJournalState()
+    local objectiveState = collectObjectiveState()
     local photoTagged = {}
     local photoIdx = 0
     for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -828,17 +1234,31 @@ local function collectEvidenceSnapshot()
     end
     local snapshot = {
         ghostPresent = ghost ~= nil,
+        ghostDebugId = ghost and getGhostDebugId(ghost) or nil,
+        ghostParent = ghost and ghost.Parent or nil,
         favoriteRoom = ghost and ghost:GetAttribute("FavoriteRoom") or nil,
         headless = ghost and ghost:GetAttribute("Headless") or nil,
         invisibleOnLIDAR = ghost and ghost:GetAttribute("InvisibleOnLIDAR") or nil,
+        visualModel = ghost and ghost:GetAttribute("VisualModel") or nil,
+        transparency = ghost and ghost:GetAttribute("Transparency") or nil,
+        visibleParts = ghost and countChildren(ghost:FindFirstChild("VisibleParts")) or nil,
         orbPresent = orb ~= nil,
         orbY = orb and ((orb:IsA("BasePart") and orb.Position.Y) or (orb.PrimaryPart and orb.PrimaryPart.Position.Y)) or nil,
         handprintsVisible = collectVisibleHandprints(),
+        journalSource = journalState.source,
+        selectedGhostUI = journalState.selectedGhost,
+        evidenceTrueUI = journalState.evidenceTrue,
+        evidenceFalseUI = journalState.evidenceFalse,
+        objectivesVisible = objectiveState.visible,
+        objectivesCompleted = objectiveState.completed,
+        objectiveNotification = objectiveState.notification,
         equippedObject = LP:GetAttribute("EquippedObject"),
         invSlot1 = LP:GetAttribute("InvSlot1"),
         invSlot2 = LP:GetAttribute("InvSlot2"),
         invSlot3 = LP:GetAttribute("InvSlot3"),
-        invSlot4 = LP:GetAttribute("InvSlot4")
+        invSlot4 = LP:GetAttribute("InvSlot4"),
+        postReturnWindow = Analyzer.lastReturnToLobbyAt and (os.clock() - Analyzer.lastReturnToLobbyAt <= 20) or false,
+        secondsSinceReturn = Analyzer.lastReturnToLobbyAt and math.floor((os.clock() - Analyzer.lastReturnToLobbyAt) * 100) / 100 or nil
     }
     for key, value in pairs(photoTagged) do
         snapshot[key] = value
@@ -871,7 +1291,12 @@ local function initialize()
     end
     Analyzer.initialized = true
 
+    dumpGhostTypeModules()
+    dumpObjectiveInfo()
+    dumpGhostSourceHints()
+
     watchRelevantRemoteEvents()
+    watchGetSelectedGhost()
     watchGhostLifecycle()
     watchPlayerState()
     watchHandprintVisuals()
@@ -944,13 +1369,35 @@ local function initialize()
                             target = args[1]
                         })
                     elseif string.find(remoteName, "evidencemarkedinjournal") then
+                        local marked = tostring(args[1] or "")
+                        if Analyzer.knownEvidence[marked] then
+                            Analyzer.journalEvidence[marked] = true
+                        elseif Analyzer.knownGhosts[marked] then
+                            Analyzer.selectedGhost = marked
+                        end
+                        local journalState = collectJournalState()
                         trace("JOURNAL", "EvidenceMarked", {
                             method = method,
-                            evidence = args[1]
+                            evidence = args[1],
+                            selectedGhost = journalState.selectedGhost,
+                            evidenceTrue = journalState.evidenceTrue,
+                            evidenceFalse = journalState.evidenceFalse,
+                            source = journalState.source
                         })
                     elseif string.find(remoteName, "requestreturntolobby") then
+                        Analyzer.lastReturnToLobbyAt = os.clock()
+                        local journalState = collectJournalState()
+                        local objectiveState = collectObjectiveState()
                         trace("MATCH", "ReturnToLobbySent", {
-                            method = method
+                            method = method,
+                            seconds = Analyzer.lastReturnToLobbyAt,
+                            selectedGhost = journalState.selectedGhost,
+                            evidenceTrue = journalState.evidenceTrue,
+                            evidenceFalse = journalState.evidenceFalse,
+                            source = journalState.source,
+                            objectivesVisible = objectiveState.visible,
+                            objectivesCompleted = objectiveState.completed,
+                            objectiveNotification = objectiveState.notification
                         })
                     elseif string.find(remoteName, "togglejournal") then
                         trace("JOURNAL", "ToggleJournalSent", {
@@ -980,6 +1427,10 @@ start = function(origin)
     Analyzer.active = true
     Analyzer.file = resolveNextTraceFile()
     Analyzer.session = tostring(os.time()) .. "-" .. tostring(math.floor(os.clock() * 1000) % 100000)
+    Analyzer.lastReturnToLobbyAt = nil
+    Analyzer.journalEvidence = {}
+    Analyzer.selectedGhost = nil
+    Analyzer.completedObjectives = {}
     if writefile then
         pcall(writefile, Analyzer.file, "")
     end
