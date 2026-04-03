@@ -46,7 +46,7 @@ MF.Draggable = true
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(50, 10, 20)
-Title.Text = " ⚔️ AURA-FARM (HOVER MOeeeeDE)"
+Title.Text = " ⚔️ AURA-FARM (HOVER MODE)"
 Title.TextColor3 = Color3.fromRGB(255, 150, 150)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -338,7 +338,8 @@ task.spawn(function()
                                     hrp.CFrame = flatMobCFrame * CFrame.new(0, 0, OfsZ)
                                     
                                 elseif FarmMode == "Abajo" then
-                                    hrp.CFrame = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
+                                    -- Matemática pura que FUNCIONA: Copia el cuerpo del mob, va 8 studs abajo y 6 atrás.
+                                    hrp.CFrame = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                                 end
                                 
                                 pcall(function()
@@ -455,8 +456,8 @@ BtnHeight.MouseButton1Click:Connect(function()
         BtnHeight.Text = "Posición Segura: 🥷 POR LA ESPALDA"
     elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
-        OfsY = -7.5 -- Algo menos profundo para no fallar golpes
-        OfsZ = 3.5  -- Detrás, pero justo en el límite máximo de la espada (hitbox)
+        OfsY = -8 -- Exactamente 8 studs bajo tierra
+        OfsZ = 6  -- 6 studs a la espalda
         BtnHeight.Text = "Posición Segura: 🕳️ SUBTERRÁNEO TRASERO"
     else
         FarmMode = "Arriba"
