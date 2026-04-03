@@ -235,12 +235,15 @@ local function GetNearestMob()
 
     for _, mob in pairs(NPCsFolder:GetChildren()) do
         if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-            -- Solo enfocarse en mobs vivos
-            if mob.Humanoid.Health > 0 then
-                local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearestMob = mob
+            -- Ignorar explícitamente cualquier entidad tipo "Dummy" de entrenamiento
+            if not mob.Name:lower():match("dummy") then
+                -- Solo enfocarse en mobs vivos
+                if mob.Humanoid.Health > 0 then
+                    local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearestMob = mob
+                    end
                 end
             end
         end
@@ -271,6 +274,10 @@ end)
 
 -- Motor de ataque y persecución
 task.spawn(function()
+    local LastMobTracker = nil
+    local CurrentMobHealth = -1
+    local MobHitTimer = os.clock()
+    
     while task.wait() do
         if AutoFarm then
             local char = LP.Character
@@ -292,6 +299,36 @@ task.spawn(function()
 
                 local mob = GetNearestMob()
                 if mob then
+                    -- ==============================================
+                    -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
+                    -- ==============================================
+                    if LastMobTracker ~= mob then
+                        LastMobTracker = mob
+                        CurrentMobHealth = mob.Humanoid.Health
+                        MobHitTimer = os.clock()
+                        
+                        -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
+                        pcall(function()
+                            VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                            task.wait(0.05)
+                            VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                        end)
+                    else
+                        if mob.Humanoid.Health < CurrentMobHealth then
+                            -- Confirmamos que hubo daño real, reseteamos el reloj
+                            CurrentMobHealth = mob.Humanoid.Health
+                            MobHitTimer = os.clock()
+                        elseif os.clock() - MobHitTimer >= 5.0 then
+                            -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
+                            pcall(function()
+                                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                task.wait(0.05)
+                                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                            end)
+                            MobHitTimer = os.clock() -- Refrescamos para intentar de nuevo
+                        end
+                    end
+                    
                     StatusLabel.Text = "Cazando: " .. mob.Name
                     local hrp = char.HumanoidRootPart
                     local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
@@ -305,9 +342,12 @@ task.spawn(function()
                             local sorted = {}
                             for _, m in pairs(NPCsFolder:GetChildren()) do
                                 if m:IsA("Model") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                                    local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
-                                    if dist < 150 then
-                                        table.insert(sorted, {m, dist})
+                                    -- ¡Excluir Dummys también del Multi-Aggro!
+                                    if not m.Name:lower():match("dummy") then
+                                        local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
+                                        if dist < 150 then
+                                            table.insert(sorted, {m, dist})
+                                        end
                                     end
                                 end
                             end
