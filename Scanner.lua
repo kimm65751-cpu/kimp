@@ -1,6 +1,7 @@
 -- ==============================================================================
--- 🦖 CAM V9.5 — MgrFightClient GATLING (10x/seg) + LOGS + COPY
--- PlayerGui confirmado funcional
+-- 🦖 CAM V11 — PET ROTATION SYSTEM
+-- Opción A: Rota entre los 3 pets activos (los que caminan contigo)
+-- Opción B: Rota pets desde la mochila (PetBag swap)
 -- ==============================================================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,31 +15,30 @@ for _, v in pairs(PlayerGui:GetChildren()) do
 end
 
 local SG = Instance.new("ScreenGui")
-SG.Name = "CAM_V95"
+SG.Name = "CAM_V11"
 SG.ResetOnSpawn = false
 SG.Parent = PlayerGui
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 490, 0, 420)
-MF.Position = UDim2.new(0.4, 0, 0.15, 0)
+MF.Size = UDim2.new(0, 500, 0, 480)
+MF.Position = UDim2.new(0.38, 0, 0.1, 0)
 MF.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 MF.BorderSizePixel = 2
-MF.BorderColor3 = Color3.fromRGB(180, 0, 255)
+MF.BorderColor3 = Color3.fromRGB(0, 200, 255)
 MF.Active = true
 MF.Draggable = true
 
 local Title = Instance.new("TextLabel", MF)
 Title.Size = UDim2.new(1, 0, 0, 26)
-Title.BackgroundColor3 = Color3.fromRGB(50, 0, 70)
-Title.Text = "  💉 GATLING V9.5 — MgrFightClient (10x/seg)"
-Title.TextColor3 = Color3.fromRGB(220, 150, 255)
+Title.BackgroundColor3 = Color3.fromRGB(0, 50, 70)
+Title.Text = "  🔄 PET ROTATION V11 — A:Activos  B:Mochila"
+Title.TextColor3 = Color3.fromRGB(100, 220, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 12
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- LOG SCROLLFRAME
 local LogFrame = Instance.new("ScrollingFrame", MF)
-LogFrame.Size = UDim2.new(1, -10, 0, 200)
+LogFrame.Size = UDim2.new(1, -10, 0, 190)
 LogFrame.Position = UDim2.new(0, 5, 0, 28)
 LogFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -48,7 +48,6 @@ Instance.new("UIListLayout", LogFrame).SortOrder = Enum.SortOrder.LayoutOrder
 
 local lc = 0
 local logBuffer = {}
-
 local function Log(t, c)
     lc = lc + 1
     local line = "["..os.date("%X").."] "..t
@@ -67,211 +66,278 @@ local function Log(t, c)
     LogFrame.CanvasPosition = Vector2.new(0, 99999)
 end
 
-local function MkBtn(txt, py, col)
+local function MkBtn(txt, py, bw, bx)
     local b = Instance.new("TextButton", MF)
-    b.Size = UDim2.new(0.92, 0, 0, 28)
-    b.Position = UDim2.new(0.04, 0, 0, py)
-    b.BackgroundColor3 = col or Color3.fromRGB(40, 40, 50)
-    b.TextColor3 = Color3.new(1, 1, 1)
+    b.Size = UDim2.new(bw or 0.92, 0, 0, 28)
+    b.Position = UDim2.new(bx or 0.04, 0, 0, py)
+    b.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    b.TextColor3 = Color3.new(1,1,1)
     b.Font = Enum.Font.GothamSemibold
     b.TextSize = 11
     b.Text = txt
     return b
 end
 
-local btnHook    = MkBtn("⚙️  PASO 1: Cargar MgrFightClient (TryUseSkill)", 235)
-local btnGatling = MkBtn("💥  PASO 2: ACTIVAR GATLING (10x/seg)", 268)
-local btnFarm    = MkBtn("⚔️  AUTO-FARM (Click + Auto-Catch)",  301)
-local btnCatch   = MkBtn("🎯  CAPTURA 100% (CatchProbability=1)", 334)
-local btnCopy    = MkBtn("📋  COPIAR LOG AL PORTAPAPELES",        367, Color3.fromRGB(0, 60, 30))
+local btnScan    = MkBtn("🔍 ESCANEAR: Encontrar pets activos en Workspace", 228)
+local btnOptA    = MkBtn("🔄 OPCIÓN A: Rotación entre 3 pets activos", 261)
+local btnOptB    = MkBtn("🎒 OPCIÓN B: Swap rápido desde mochila (PetBag)", 294)
+local btnFarm    = MkBtn("⚔️ AUTO-FARM básico (Click + Auto-E)", 327)
+local btnCopy    = MkBtn("📋 COPIAR LOG", 360, 0.43, 0.04)
+local btnExport  = MkBtn("💾 EXPORTAR .TXT", 360, 0.45, 0.51)
 
--- COPIAR LOG
 btnCopy.MouseButton1Click:Connect(function()
     pcall(function()
-        if setclipboard then
-            setclipboard(table.concat(logBuffer, "\n"))
-            Log("📋 Log copiado al portapapeles!", Color3.fromRGB(0, 255, 0))
-        else
-            Log("❌ setclipboard no disponible en tu executor", Color3.fromRGB(255, 100, 100))
-        end
+        if setclipboard then setclipboard(table.concat(logBuffer,"\n"))
+            Log("📋 Copiado!", Color3.fromRGB(0,255,0))
+        else Log("❌ setclipboard no disponible", Color3.fromRGB(255,100,100)) end
     end)
+end)
+btnExport.MouseButton1Click:Connect(function()
+    local fn = "CAM_PetRot_"..os.date("%Y%m%d_%H%M%S")..".txt"
+    pcall(function() writefile(fn, table.concat(logBuffer,"\n")) end)
+    Log("💾 Exportado: "..fn, Color3.fromRGB(0,255,200))
 end)
 
 -- ==============================================================================
--- 1. CARGAR MÓDULO
+-- DETECCIÓN DE PETS ACTIVOS
 -- ==============================================================================
-local MFC = nil  -- MgrFightClient
+-- Los pets siguen al jugador. Buscamos modelos cerca del jugador
+-- que NO sean mobs (no tienen ClickDetector) y tienen PrimaryPart
+local activePets = {}
 
-btnHook.MouseButton1Click:Connect(function()
-    Log("Buscando ClientLogic.Fight.MgrFightClient...", Color3.fromRGB(255, 220, 80))
-
-    local ok, err = pcall(function()
-        local cl = ReplicatedStorage:FindFirstChild("ClientLogic")
-        if not cl then error("No existe ClientLogic en ReplicatedStorage") end
-
-        local fight = cl:FindFirstChild("Fight")
-        if not fight then error("No existe Fight dentro de ClientLogic") end
-
-        local mod = fight:FindFirstChild("MgrFightClient")
-        if not mod then error("No existe MgrFightClient dentro de Fight") end
-
-        if not mod:IsA("ModuleScript") then error("MgrFightClient no es un ModuleScript") end
-
-        MFC = require(mod)
-        btnHook.BackgroundColor3 = Color3.fromRGB(0, 130, 0)
-        btnHook.Text = "⚙️  MÓDULO CARGADO ✅"
-
-        if type(MFC) ~= "table" then error("require() devolvió: "..type(MFC)) end
-
-        -- Listar funciones disponibles
-        local funcs = {}
-        for k, v in pairs(MFC) do
-            if type(v) == "function" then table.insert(funcs, k) end
-        end
-        Log("✅ MÓDULO CARGADO. Funciones: "..table.concat(funcs, ", "), Color3.fromRGB(0, 255, 0))
-
-        if MFC.TryUseSkill then
-            Log("  → TryUseSkill ✅", Color3.fromRGB(100, 255, 100))
-        end
-        if MFC._doUseSkillWaitAck then
-            Log("  → _doUseSkillWaitAck ✅ (bypass cooldown)", Color3.fromRGB(100, 255, 200))
-        end
-        if MFC._pushUnitUsingSkill then
-            Log("  → _pushUnitUsingSkill ✅", Color3.fromRGB(100, 255, 200))
-        end
-    end)
-
-    if not ok then
-        Log("❌ ERROR al cargar módulo: "..tostring(err), Color3.fromRGB(255, 0, 0))
-    end
-end)
-
--- ==============================================================================
--- 2. GATLING — 10 llamadas por segundo a TryUseSkill
--- ==============================================================================
-local gatlingActive = false
-
-btnGatling.MouseButton1Click:Connect(function()
-    if not MFC then
-        Log("❌ Primero carga el módulo (Paso 1)", Color3.fromRGB(255, 100, 100))
+local function ScanPets()
+    activePets = {}
+    if not LP.Character or not LP.Character.PrimaryPart then
+        Log("❌ Tu personaje no está cargado", Color3.fromRGB(255,100,100))
         return
     end
-    gatlingActive = not gatlingActive
-    btnGatling.BackgroundColor3 = gatlingActive and Color3.fromRGB(160, 0, 0) or Color3.fromRGB(40, 40, 50)
-    btnGatling.Text = gatlingActive and "💥  GATLING ACTIVO — (Pulsa para PARAR)" or "💥  PASO 2: ACTIVAR GATLING (10x/seg)"
-    Log(gatlingActive and "✅ Gatling ON (10x/seg)" or "🛑 Gatling OFF", Color3.fromRGB(220, 150, 255))
-end)
+    local myPos = LP.Character.PrimaryPart.Position
 
-task.spawn(function()
-    while true do
-        task.wait(1) -- Ciclo cada 1 segundo
-
-        if not (gatlingActive and MFC and LP.Character and LP.Character.PrimaryPart) then
-            continue
+    -- Método 1: Buscar en carpeta ClientPets o similar
+    local petFolder = nil
+    for _, name in pairs({"ClientPets", "Pets", "PetModels", "PlayerPets"}) do
+        petFolder = Workspace:FindFirstChild(name)
+        if petFolder then
+            Log("📁 Carpeta de pets: Workspace."..name, Color3.fromRGB(100,255,200))
+            break
         end
+    end
 
-        -- Buscar mob más cercano
-        local myPos = LP.Character.PrimaryPart.Position
-        local targetMob, targetCd, targetDist = nil, nil, 80
+    if petFolder then
+        for _, child in pairs(petFolder:GetChildren()) do
+            if child:IsA("Model") and child.PrimaryPart then
+                table.insert(activePets, child)
+                Log("  🐾 Pet: "..child.Name, Color3.fromRGB(100,200,255))
+            end
+        end
+    else
+        -- Método 2: Buscar modelos cerca del jugador SIN ClickDetector
+        Log("⚠️ No hay carpeta ClientPets. Escaneando por proximidad...", Color3.fromRGB(255,200,0))
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.PrimaryPart then
+                local cd = obj:FindFirstChildWhichIsA("ClickDetector", true)
+                if not cd then -- No es un mob
+                    local d = (obj.PrimaryPart.Position - myPos).Magnitude
+                    if d < 30 and obj ~= LP.Character then -- Cerca y no eres tú
+                        table.insert(activePets, obj)
+                        Log("  🐾 Posible pet: "..obj.Name.." ["..math.floor(d).."m]", Color3.fromRGB(100,200,255))
+                    end
+                end
+            end
+        end
+    end
 
+    -- Método 3: Revisar getgc por objetos con Source=Evolution ACTIVOS
+    if #activePets == 0 then
+        Log("⚠️ Sin pets encontrados. Intentando getgc...", Color3.fromRGB(255,200,0))
         pcall(function()
-            local cm = Workspace:FindFirstChild("ClientMonsters")
-            if not cm then return end
-            for _, mob in pairs(cm:GetChildren()) do
-                if mob:IsA("Model") and mob.PrimaryPart then
-                    local d = (mob.PrimaryPart.Position - myPos).Magnitude
-                    if d < targetDist then
-                        targetDist = d
-                        targetMob = mob
-                        targetCd = mob:FindFirstChildWhichIsA("ClickDetector", true)
+            for _, v in pairs(getgc(true)) do
+                if type(v) == "table" then
+                    local src = rawget(v,"Source")
+                    local name = rawget(v,"Name")
+                    local model = rawget(v,"Model")
+                    -- Pet activo en el juego tiene Source=Evolution y un modelo cargado
+                    if src == "Evolution" and name and model then
+                        Log("  🐾 Pet en GC: "..tostring(name).." (model:"..tostring(model)..")", Color3.fromRGB(150,255,100))
                     end
                 end
             end
         end)
+    end
 
-        if not targetMob then
-            Log("⚠️ Sin mobs cerca (<80 studs)", Color3.fromRGB(255, 180, 0))
-            continue
-        end
+    Log("✅ Scan completo. Pets encontrados: "..#activePets, Color3.fromRGB(0,255,0))
+end
 
-        -- PASO 1: Click para iniciar combate
-        if targetCd then
-            pcall(function() fireclickdetector(targetCd) end)
-        end
+btnScan.MouseButton1Click:Connect(function()
+    Log("🔍 Escaneando pets activos...", Color3.fromRGB(0,200,255))
+    ScanPets()
+end)
 
-        -- PASO 2: Bypasear cooldown con _doUseSkillWaitAck
-        -- TryUseSkill tiene cooldown interno. _doUseSkillWaitAck es la capa
-        -- inferior que envía el ataque directo al servidor sin verificar cooldown.
-        local oks, lastErr = 0, nil
-        local method_used = "?"
+-- ==============================================================================
+-- OPCIÓN A: ROTACIÓN ENTRE PETS ACTIVOS (los 3 que caminan contigo)
+-- Estrategia: Cada X seg, cliqueamos UN pet diferente al mob
+-- para que el juego asigne ese pet como el atacante activo
+-- ==============================================================================
+local optAActive = false
+local petIndex = 1
 
-        -- Intento A: _doUseSkillWaitAck directo (sin cooldown)
-        if MFC._doUseSkillWaitAck then
-            for i = 1, 10 do
-                local s, e = pcall(function()
-                    MFC:_doUseSkillWaitAck(targetMob)
+btnOptA.MouseButton1Click:Connect(function()
+    if #activePets == 0 then
+        Log("❌ Primero escanea los pets (botón 🔍)", Color3.fromRGB(255,100,100))
+        return
+    end
+    optAActive = not optAActive
+    btnOptA.BackgroundColor3 = optAActive and Color3.fromRGB(0,100,150) or Color3.fromRGB(40,40,55)
+    btnOptA.Text = optAActive and "🔄 ROTACIÓN ACTIVA (Pulsa para parar)" or "🔄 OPCIÓN A: Rotación entre 3 pets activos"
+    Log(optAActive and ("✅ Rotación ON — "..#activePets.." pets") or "🛑 Rotación OFF", Color3.fromRGB(100,220,255))
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1.5) -- Rotar cada 1.5 segundos
+        if not optAActive or #activePets == 0 then continue end
+        if not LP.Character or not LP.Character.PrimaryPart then continue end
+
+        pcall(function()
+            -- Seleccionar siguiente pet en rotación
+            petIndex = (petIndex % #activePets) + 1
+            local currentPet = activePets[petIndex]
+
+            if not currentPet or not currentPet.Parent then
+                -- Pet ya no existe, rescanear
+                Log("⚠️ Pet "..petIndex.." no existe, rescaneando...", Color3.fromRGB(255,200,0))
+                ScanPets()
+                return
+            end
+
+            -- Buscar mob más cercano
+            local myPos = LP.Character.PrimaryPart.Position
+            local targetMob, targetCd, targetDist = nil, nil, 100
+
+            local cm = Workspace:FindFirstChild("ClientMonsters")
+            if cm then
+                for _, mob in pairs(cm:GetChildren()) do
+                    local cd = mob:FindFirstChildWhichIsA("ClickDetector", true)
+                    if cd and mob.PrimaryPart then
+                        local d = (mob.PrimaryPart.Position - myPos).Magnitude
+                        if d < targetDist then
+                            targetDist = d
+                            targetMob = mob
+                            targetCd = cd
+                        end
+                    end
+                end
+            end
+
+            if not targetCd then return end
+
+            -- Clickear el mob con el pet actual como "atacante"
+            -- El juego usa el pet más cercano al mob al hacer click
+            fireclickdetector(targetCd)
+
+            -- Intentar mover el pet hacia el mob para forzar que ESTE pet ataque
+            -- (el juego asigna el ataque al pet más cercano al mob)
+            local petPart = currentPet.PrimaryPart or currentPet:FindFirstChildWhichIsA("BasePart")
+            if petPart and targetMob.PrimaryPart then
+                -- Teletransportar brevemente el pet al mob (fuerza ataque)
+                local origCF = petPart.CFrame
+                pcall(function()
+                    petPart.CFrame = targetMob.PrimaryPart.CFrame + Vector3.new(0, 0, 3)
                 end)
-                if s then oks = oks + 1; method_used = "_doUseSkillWaitAck"
-                else lastErr = tostring(e) end
-            end
-        end
-
-        -- Intento B: _pushUnitUsingSkill para resetear estado + TryUseSkill
-        if oks == 0 and MFC._pushUnitUsingSkill then
-            for i = 1, 10 do
-                local s, e = pcall(function()
-                    MFC:_pushUnitUsingSkill(targetMob)
-                    MFC:TryUseSkill(targetMob)
+                task.wait(0.1)
+                pcall(function()
+                    petPart.CFrame = origCF -- Devolver a posición original
                 end)
-                if s then oks = oks + 1; method_used = "push+TryUseSkill"
-                else lastErr = tostring(e) end
             end
-        end
 
-        -- Intento C: TryUseRush (ataque rápido alternativo)
-        if oks == 0 and MFC.TryUseRush then
-            for i = 1, 10 do
-                local s, e = pcall(function()
-                    MFC:TryUseRush(targetMob)
-                end)
-                if s then oks = oks + 1; method_used = "TryUseRush"
-                else lastErr = tostring(e) end
-            end
-        end
-
-        -- Fallback D: TryUseSkill normal
-        if oks == 0 then
-            for i = 1, 10 do
-                local s, e = pcall(function() MFC:TryUseSkill(targetMob) end)
-                if s then oks = oks + 1; method_used = "TryUseSkill"
-                else lastErr = tostring(e) end
-            end
-        end
-
-        -- Reporte
-        if oks > 0 then
-            Log("💥 "..method_used.." "..oks.."/10 → "..targetMob.Name.." ["..math.floor(targetDist).."m]", Color3.fromRGB(100, 255, 100))
-        else
-            Log("❌ TODAS fallaron. Err: "..tostring(lastErr), Color3.fromRGB(255, 80, 80))
-        end
+            Log("🔄 Pet["..petIndex.."] "..currentPet.Name.." → "..targetMob.Name.." ["..math.floor(targetDist).."m]", Color3.fromRGB(100,255,200))
+        end)
     end
 end)
 
 -- ==============================================================================
--- 3. AUTO-FARM (Click + Auto-Catch)
+-- OPCIÓN B: SWAP DESDE MOCHILA (PetBag)
+-- Estrategia: Interceptar el RemoteEvent de swap de pets
+-- y rotarlos rápidamente desde el inventario
+-- ==============================================================================
+local optBActive = false
+local petBagRemote = nil
+
+-- Buscar el remote de swap de pets usando hookmetamethod
+local swapCaptured = false
+local lastSwapRemote = nil
+local lastSwapArgs = nil
+
+btnOptB.MouseButton1Click:Connect(function()
+    optBActive = not optBActive
+    btnOptB.BackgroundColor3 = optBActive and Color3.fromRGB(120,80,0) or Color3.fromRGB(40,40,55)
+    btnOptB.Text = optBActive and "🎒 SWAP MOCHILA ACTIVO (Pulsa para parar)" or "🎒 OPCIÓN B: Swap rápido desde mochila (PetBag)"
+    Log(optBActive and "✅ Swap de mochila ON" or "🛑 Swap de mochila OFF", Color3.fromRGB(255,200,100))
+
+    if optBActive and not swapCaptured then
+        swapCaptured = true
+        -- Instalar hook para capturar el remote de swap
+        local ok, err = pcall(function()
+            if type(hookmetamethod) ~= "function" then
+                error("hookmetamethod no disponible")
+            end
+            local oldNC
+            oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                if method == "FireServer" or method == "InvokeServer" then
+                    if (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
+                        local args = {...}
+                        local argStr = tostring(args[1] or "")
+                        -- Buscar eventos relacionados con pets/swap/equip
+                        local lower = self.Name:lower()..argStr:lower()
+                        if lower:find("pet") or lower:find("equip") or lower:find("swap") or
+                           lower:find("collect") or lower:find("bag") or lower:find("deploy") then
+                            lastSwapRemote = self
+                            lastSwapArgs = args
+                            Log("🎒 SWAP REMOTE CAPTURADO: "..self.Name.."("..argStr..")", Color3.fromRGB(255,200,0))
+                        end
+                    end
+                end
+                return oldNC(self, ...)
+            end))
+        end)
+        if ok then
+            Log("✅ Hook instalado — Ahora cambia un pet manualmente desde el menú", Color3.fromRGB(0,255,0))
+            Log("(Equipa/desequipa un pet desde tu inventario para capturar el remote)", Color3.fromRGB(200,200,200))
+        else
+            Log("❌ Hook falló: "..tostring(err), Color3.fromRGB(255,100,100))
+            Log("Tu executor no soporta hookmetamethod", Color3.fromRGB(255,100,100))
+        end
+    end
+end)
+
+-- Loop de swap rápido (una vez capturado el remote)
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if not optBActive or not lastSwapRemote then continue end
+        pcall(function()
+            -- Repetir el último swap capturado
+            lastSwapRemote:FireServer(table.unpack(lastSwapArgs))
+            Log("🔁 Swap disparado → "..lastSwapRemote.Name, Color3.fromRGB(255,200,100))
+        end)
+    end
+end)
+
+-- ==============================================================================
+-- AUTO-FARM BÁSICO
 -- ==============================================================================
 local farmActive = false
 btnFarm.MouseButton1Click:Connect(function()
     farmActive = not farmActive
-    btnFarm.BackgroundColor3 = farmActive and Color3.fromRGB(0, 100, 160) or Color3.fromRGB(40, 40, 50)
-    btnFarm.Text = farmActive and "⚔️  FARMING ACTIVO" or "⚔️  AUTO-FARM (Click + Auto-Catch)"
-    Log(farmActive and "⚔️ Auto-Farm ON" or "🛑 Auto-Farm OFF", Color3.fromRGB(100, 200, 255))
+    btnFarm.BackgroundColor3 = farmActive and Color3.fromRGB(0,100,50) or Color3.fromRGB(40,40,55)
+    btnFarm.Text = farmActive and "⚔️ FARMING ACTIVO" or "⚔️ AUTO-FARM básico (Click + Auto-E)"
 end)
 
 task.spawn(function()
     while true do
         task.wait(2.5)
-        if not (farmActive and LP.Character and LP.Character.PrimaryPart) then continue end
+        if not farmActive or not LP.Character or not LP.Character.PrimaryPart then continue end
         pcall(function()
             local best, bestDist = nil, 80
             local cm = Workspace:FindFirstChild("ClientMonsters")
@@ -289,7 +355,6 @@ task.spawn(function()
     end
 end)
 
--- Auto-Catch con E
 task.spawn(function()
     pcall(function()
         for _, desc in pairs(ReplicatedStorage:GetDescendants()) do
@@ -310,24 +375,8 @@ task.spawn(function()
     end)
 end)
 
--- ==============================================================================
--- 4. CAPTURA 100%
--- ==============================================================================
-btnCatch.MouseButton1Click:Connect(function()
-    local fixed = 0
-    pcall(function()
-        for _, v in pairs(getgc(true)) do
-            if type(v) == "table" and type(rawget(v, "CatchProbability")) == "number" then
-                rawset(v, "CatchProbability", 1)
-                fixed = fixed + 1
-            end
-        end
-    end)
-    Log("🎯 CatchProbability=1 en "..fixed.." tablas", Color3.fromRGB(255, 220, 0))
-    btnCatch.BackgroundColor3 = Color3.fromRGB(100, 70, 0)
-end)
-
--- ==============================================================================
-Log("✅ V9.5 cargada con PlayerGui", Color3.fromRGB(0, 255, 0))
-Log("PASO 1 → Cargar módulo | PASO 2 → Gatling", Color3.fromRGB(255, 220, 100))
-Log("El log mostrará OK o el ERROR exacto de cada llamada", Color3.fromRGB(200, 200, 200))
+Log("=== V11 PET ROTATION CARGADO ===", Color3.fromRGB(0,255,0))
+Log("PASO 1: Pulsa 🔍 ESCANEAR para encontrar tus pets activos", Color3.fromRGB(255,220,100))
+Log("PASO 2A: Pulsa 🔄 OPCIÓN A para rotar entre pets activos", Color3.fromRGB(100,200,255))
+Log("PASO 2B: Pulsa 🎒 OPCIÓN B + cambia un pet manualmente", Color3.fromRGB(255,200,100))
+Log("  → Cuando captures el remote, el swap se repite automático", Color3.fromRGB(200,200,200))
