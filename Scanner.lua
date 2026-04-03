@@ -317,24 +317,16 @@ task.spawn(function()
                         GlobalMagnetTarget = mobHrp.Position
                         
                         -- ==========================================
-                        -- REPOSICIONAMIENTO PERFECTO (HOVER, DETRÁS, ABAJO)
+                        -- REPOSICIONAMIENTO PERFECTO ORIGINAL
                         
                         if FarmMode == "Arriba" then
-                            -- Optimizando YO-YO para Anticheat y Magnetismo de golpes.
-                            -- Si usamos senos rápidos (math.sin), el servidor tira los 'RequestHit' a la basura 
-                            -- porque el "Client" no está cerca el tiempo suficiente para procesar el ping (Lag delay)
-                            
-                            local clock = os.clock() % 2
-                            local currentY
-                            if clock < 0.6 then
-                                currentY = 6 -- Baja y se queda 0.6 segundos dando golpes efectivos y rotundos
-                            else
-                                currentY = 16 -- Luego sube a 16 studs y espera (invulnerabilidad)
-                            end
-                            
+                            local bounce = math.sin(os.clock() * 3.5) * 6 
+                            local currentY = 10 + bounce 
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, currentY, 0)
+                            
                         elseif FarmMode == "Detras" then
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, 0, OfsZ)
+                            
                         elseif FarmMode == "Abajo" then
                             hrp.CFrame = mobHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                         end
@@ -344,16 +336,20 @@ task.spawn(function()
                         end)
                         
                         -- ==========================================
-                        -- MOTOR DE IMPACTOS OPTIMIZADO (Anti-Fallo)
+                        -- MOTOR DE IMPACTOS CLÁSICO (Restaurado)
                         pcall(function()
                             CombatRemote:FireServer()
+                            -- REGLA DE ORO: Si no damos click, el juego asume pacífico. 
+                            -- Restauré tool:Activate() fundamental para que haga Daño
+                            if tool then tool:Activate() end
                         end)
                         
                         -- Auto Skill "X" (Uso Virtual Legítimo del teclado)
                         if AutoSkillEnabled then
                             pcall(function()
-                                -- Envia la tecla X internamente como si fuera un humano apretándola, forzando 
-                                -- al script original del juego a lanzar la Skill_X si tienes la Katana en mano y está sin cooldown.
+                                -- AIMBOT EXCLUSIVO DEL SKILL: Solo giramos justo el instante antes de disparar la X
+                                hrp.CFrame = CFrame.lookAt(hrp.Position, mobHrp.Position)
+                                
                                 VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
                                 task.wait(0.05)
                                 VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
