@@ -95,7 +95,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FAR 4M"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -201,8 +201,6 @@ end
 
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabTP.MouseButton1Click:Connect(function() SwitchTab("Teleport") end)
-TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
-TabSnipe.MouseButton1Click:Connect(function() SwitchTab("Sniper") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -340,7 +338,7 @@ local function TPButton(text, color, mode, target)
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
     btn.MouseButton1Click:Connect(function()
         if mode == "V3" then
-            SafeTravel(target, text)
+            game.Players.LocalPlayer.Character:PivotTo(CFrame.new(target))
         elseif mode == "NPC" then
             local obj = nil
             for _, v in pairs(Workspace:GetDescendants()) do
@@ -350,7 +348,7 @@ local function TPButton(text, color, mode, target)
             end
             if obj then
                 local p = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
-                SafeTravel(p, text)
+                game.Players.LocalPlayer.Character:PivotTo(CFrame.new(p))
             else StatusLabel.Text = "❌ NPC no cargado aún." end
         elseif mode == "Cancel" then CancelTravel()
         elseif mode == "Snipe" then
@@ -404,7 +402,7 @@ local function NPCGuideEntry(npcName, desc, pos, order)
     goBtn.TextSize = 12
     goBtn.BorderSizePixel = 0
     Instance.new("UICorner", goBtn).CornerRadius = UDim.new(0, 4)
-    goBtn.MouseButton1Click:Connect(function() SafeTravel(pos, npcName) end)
+    goBtn.MouseButton1Click:Connect(function() game.Players.LocalPlayer.Character:PivotTo(CFrame.new(pos)) end)
 end
 
 -- —————————— ISLAS ——————————
@@ -1566,12 +1564,7 @@ task.spawn(function()
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
                                 
                                 local currentFarmMode = FarmMode
-                                if TargetBosses == "SoloBoss" then
-                                    currentFarmMode = "Arriba"
-                                    OfsY = 10
-                                    OfsZ = 0
-                                end
-                                
+                                                                
                                 local TargetCF
                                 if currentFarmMode == "Arriba" then
                                     TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
@@ -1702,201 +1695,12 @@ BtnBoss.MouseButton1Click:Connect(function()
     elseif TargetBosses == "Ignorar" then
         TargetBosses = "SoloBoss"
         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180)
-        BtnBoss.Text = "  👹 Solo Boss (Fly Air)"
+        BtnBoss.Text = "  👹 Solo Boss"
     else
         TargetBosses = "Normal"
         BtnBoss.BackgroundColor3 = C.card
         BtnBoss.Text = "  🎯 Cazar Bosses: Normal"
     end
-end)
-
--- ==============================================
--- OMNI-RECON : AUTO-DUMPER CONTINUO (CERO LAG)
--- ==============================================
-local ReconActive = false
-local LoggedEntities = {}
-local ReconConnections = {}
-local SpyFileName = "OmniLiveMapDump.txt"
-        
-local TourActive = false
-local TourIslands = {
-    {Name = "Starter Island", Pos = Vector3.new(-71, -2, -299)},
-    {Name = "Sand Island", Pos = Vector3.new(17, -6, -305)},
-    {Name = "Jungle Island", Pos = Vector3.new(-392, -2, 407)},
-    {Name = "Desert Island", Pos = Vector3.new(-688, -1, -287)},
-    {Name = "Snow Island", Pos = Vector3.new(-182, -1, -998)},
-    {Name = "Sailor Island", Pos = Vector3.new(182, 5, 669)},
-    {Name = "Hollow Island", Pos = Vector3.new(-542, -1, 872)},
-    {Name = "Shibuya Island", Pos = Vector3.new(1269, 13, 233)},
-    {Name = "Shinjuku Island", Pos = Vector3.new(189, -1, -1643)},
-    {Name = "Academy Island", Pos = Vector3.new(962, -2, 1053)},
-    {Name = "Lawless Island", Pos = Vector3.new(209, -4, 1673)},
-    {Name = "Slime Island", Pos = Vector3.new(-982, -2, 275)},
-    {Name = "Ninja Island", Pos = Vector3.new(-1621, 10, -575)}
-}
-
-local function ProcessEntity(obj)
-    if not ReconActive then return end
-    pcall(function()
-        local fullName = obj:GetFullName()
-        if LoggedEntities[fullName] then return end
-        
-        local n = obj.Name:lower()
-        local isPortal = n:match("portal") or n:match("teleport") or n:match("island") or obj:IsA("SpawnLocation")
-        local isNPC = obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= LP.Name and (n:match("dealer") or n:match("fruit") or n:match("quest") or n:match("shop") or obj:FindFirstChild("ProximityPrompt", true))
-        
-        if isPortal then
-            local p = "N/A"
-            if obj:IsA("Model") and obj.PrimaryPart then p = math.floor(obj.PrimaryPart.Position.X)..","..math.floor(obj.PrimaryPart.Position.Y)..","..math.floor(obj.PrimaryPart.Position.Z)
-            elseif obj:IsA("BasePart") then p = math.floor(obj.Position.X)..","..math.floor(obj.Position.Y)..","..math.floor(obj.Position.Z) end
-            
-            if p ~= "N/A" then 
-                local txt = "[PORTAL/ISLA] -> " .. obj.Name .. " | Pos: " .. p .. "\n"
-                LoggedEntities[fullName] = true
-                print("🗺️ [RECON STREAMING] Isla/Portal Materializado: " .. obj.Name)
-                if TourActive then AddLog("✓ " .. obj.Name, Color3.fromRGB(150, 150, 255)) end
-                if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
-                elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
-            end
-        elseif isNPC then
-            local realName = obj.Name
-            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
-            if prompt and prompt.ObjectText and prompt.ObjectText ~= "" then
-                realName = realName .. " ('" .. prompt.ObjectText .. "')"
-            end
-            
-            local p = obj.HumanoidRootPart.Position
-            local txt = "[NPC/DEALER] -> " .. realName .. " | Pos: " .. math.floor(p.X)..","..math.floor(p.Y)..","..math.floor(p.Z) .. "\n"
-            LoggedEntities[fullName] = true
-            print("🤖 [RECON STREAMING] NPC Materializado: " .. realName)
-            if TourActive then AddLog("✓ " .. realName, Color3.fromRGB(100, 255, 100)) end
-            if appendfile then pcall(function() appendfile(SpyFileName, txt) end)
-            elseif writefile then pcall(function() writefile(SpyFileName, readfile(SpyFileName) .. txt) end) end
-        end
-    end)
-end
-
-BtnAutoTour.MouseButton1Click:Connect(function()
-    TourActive = not TourActive
-    if TourActive then
-        LogFrame.Visible = true
-        BtnAutoTour.Text = "🛑 DETENER AUTO-EXPLORADOR"
-        BtnAutoTour.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-        
-        -- Verificar que ReconActive esté encendido obligatoriamente
-        if not ReconActive then
-            AddLog("⚠️ PRENDIENDO ESCÁNER AUTOMÁTICAMENTE...", Color3.fromRGB(255, 255, 50))
-            BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
-            BtnSpy.Text = "📡 RECON ACTIVO (MANEJADO POR TOUR)"
-            ReconActive = true
-            SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-            if writefile then pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (BOT TOUR) ===\n\n") end) end
-            
-            task.spawn(function()
-                table.insert(ReconConnections, Workspace.DescendantAdded:Connect(function(descendant)
-                    if descendant:IsA("Model") then
-                        task.spawn(function() task.wait(2); ProcessEntity(descendant) end)
-                    elseif descendant:IsA("ProximityPrompt") then
-                        task.spawn(function() task.wait(0.5); local pm = descendant:FindFirstAncestorWhichIsA("Model"); if pm then ProcessEntity(pm) end end)
-                    else ProcessEntity(descendant) end
-                end))
-            end)
-        end
-        
-        AddLog("► INICIANDO VUELO A LAS "..#TourIslands.." ISLAS...", Color3.fromRGB(50, 150, 255))
-        task.spawn(function()
-            for i, island in ipairs(TourIslands) do
-                if not TourActive then break end
-                AddLog("-------------------------", Color3.fromRGB(100, 100, 100))
-                AddLog("✈️ Vuelo Orbital Hacia: " .. island.Name, Color3.fromRGB(255, 200, 50))
-                
-                SafeTravel(island.Pos, "Tour: " .. island.Name)
-                
-                -- Esperar Físicamente la Llegada
-                while TourActive and IsTraveling and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") do
-                    local dist = (LP.Character.HumanoidRootPart.Position - island.Pos).Magnitude
-                    if dist < 50 then break end
-                    task.wait(0.5)
-                end
-                if not TourActive then break end
-                
-                AddLog("⬇️ " .. island.Name .. " Alcanzada. Esperando 8s a RED de Streaming...", Color3.fromRGB(100, 200, 255))
-                for tick = 1, 8 do
-                    if not TourActive then break end
-                    task.wait(1)
-                end
-                
-                if TourActive then AddLog("✅ " .. island.Name .. " Mapeada al .TXT", Color3.fromRGB(50, 255, 50)) end
-            end
-            
-            if TourActive then
-                AddLog("🎉 AUTO-TOUR COMPLETADO.", Color3.fromRGB(255, 50, 255))
-                AddLog("Revisa tu carpeta por " .. SpyFileName, Color3.new(1,1,1))
-                TourActive = false
-                BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
-                BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
-            end
-        end)
-    else
-        BtnAutoTour.Text = "🤖 INICIAR AUTO-EXPLORADOR (TOUR GLOBAL)"
-        BtnAutoTour.BackgroundColor3 = Color3.fromRGB(120, 40, 150)
-        LogFrame.Visible = false
-        CancelTravel() -- Stop flight on cancel
-    end
-end)
-
-BtnSpy.MouseButton1Click:Connect(function()
-    ReconActive = not ReconActive
-    if ReconActive then
-        BtnSpy.BackgroundColor3 = Color3.fromRGB(200, 100, 20)
-        BtnSpy.Text = "📡 RECON ACTIVO: ESPERANDO STREAMING..."
-        
-        SpyFileName = "OmniLiveMapDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-        if writefile then
-            pcall(function() writefile(SpyFileName, "=== BITÁCORA EVENT-DRIVEN (MÁXIMO RENDIMIENTO) ===\n\n") end)
-        end
-        
-        task.spawn(function()
-            for _, obj in pairs(Workspace:GetDescendants()) do ProcessEntity(obj) end
-            
-            table.insert(ReconConnections, Workspace.DescendantAdded:Connect(function(descendant)
-                if descendant:IsA("Model") then
-                    task.spawn(function()
-                        task.wait(2)
-                        ProcessEntity(descendant)
-                    end)
-                elseif descendant:IsA("ProximityPrompt") then
-                    task.spawn(function()
-                        task.wait(0.5)
-                        local parentModel = descendant:FindFirstAncestorWhichIsA("Model")
-                        if parentModel then ProcessEntity(parentModel) end
-                    end)
-                else
-                    ProcessEntity(descendant)
-                end
-            end))
-        end)
-    else
-        BtnSpy.BackgroundColor3 = Color3.fromRGB(30, 60, 40)
-        BtnSpy.Text = "📡 INICIAR ESCANEAR CONTINUO DE MAPA"
-        for _, conn in pairs(ReconConnections) do conn:Disconnect() end
-        ReconConnections = {}
-    end
-end)
-
--- Sistema de interaccion Slider
-local sliderCon = nil
-
-SliderBg.MouseButton1Down:Connect(function()
-    local Mouse = LP:GetMouse()
-    if sliderCon then sliderCon:Disconnect() end
-    sliderCon = game:GetService("RunService").RenderStepped:Connect(function()
-        local relativeX = Mouse.X - SliderBg.AbsolutePosition.X
-        local pos = math.clamp(relativeX / SliderBg.AbsoluteSize.X, 0.01, 1)
-        PanicThreshold = pos
-        SliderFill.Size = UDim2.new(pos, 0, 1, 0)
-        PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(pos * 100) .. "%"
-    end)
 end)
 
 uis.InputEnded:Connect(function(input)
@@ -1908,11 +1712,6 @@ end)
 
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
-        FarmMode = "Detras"
-        OfsY = 0
-        OfsZ = 6
-        BtnHeight.Text = "  Posición: 🥷 Por la Espalda"
-    elseif FarmMode == "Detras" then
         FarmMode = "Abajo"
         OfsY = -8
         OfsZ = 6
@@ -1925,6 +1724,63 @@ BtnHeight.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ==============================================================================
+-- AUTO-DUNGEON MISION (POR ORDEN)
+-- ==============================================================================
+local BtnAutoDungeon = Instance.new("TextButton", TPPage)
+BtnAutoDungeon.Size = UDim2.new(0.95, 0, 0, 36)
+BtnAutoDungeon.BackgroundColor3 = Color3.fromRGB(30, 90, 70)
+BtnAutoDungeon.TextColor3 = Color3.new(1,1,1)
+BtnAutoDungeon.Font = Enum.Font.GothamMedium
+BtnAutoDungeon.TextSize = 12
+BtnAutoDungeon.Text = "  🧩 Auto-Dungeon (Teleport AntiCheat Seguro)"
+BtnAutoDungeon.TextXAlignment = Enum.TextXAlignment.Left
+BtnAutoDungeon.LayoutOrder = 1000
+BtnAutoDungeon.BorderSizePixel = 0
+Instance.new("UICorner", BtnAutoDungeon).CornerRadius = UDim.new(0, 5)
+
+BtnAutoDungeon.MouseButton1Click:Connect(function()
+    BtnAutoDungeon.Text = "  🔴 Buscando 6 Piezas en orden rápido..."
+    task.spawn(function()
+        local IslasSecuencia = {
+            "Starter",
+            "Jungle",
+            "Desert",
+            "Snow",
+            "Shibuya",
+            "Hollow"
+        }
+        local player = game.Players.LocalPlayer
+        local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+        
+        pcall(function()
+            for i, islandName in ipairs(IslasSecuencia) do
+                -- USA LA RUTA NATIVA DEL JUEGO PARA ANTI-CHEAT
+                Remotes.TeleportToPortal:FireServer(islandName)
+                task.wait(3.5) -- Tiempo suficiente para que los datos carguen a la perfección
+                
+                local hallado = false
+                -- Al usar el Teleport Oficial del juego, nos evitamos desyncs
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj.Name == "DungeonPuzzlePiece" then
+                        local p = obj:FindFirstChildOfClass("ProximityPrompt")
+                        if p then
+                            player.Character:PivotTo(obj.CFrame)
+                            task.wait(1.5)
+                            pcall(function() fireproximityprompt(p, 1) end)
+                            pcall(function() fireproximityprompt(p) end)
+                            task.wait(1)
+                            hallado = true
+                            break -- Para y continua con la sig isla
+                        end
+                    end
+                end
+            end
+        end)
+        BtnAutoDungeon.Text = "  ✅ Auto-Misión Terminada"
+    end)
+end)
+
 -- Lógica para Ocultar/Mostrar (Minimizar)
 local function ToggleUI()
     MF.Visible = not MF.Visible
@@ -1935,72 +1791,4 @@ end
 BtnMin.MouseButton1Click:Connect(ToggleUI)
 BtnFloat.MouseButton1Click:Connect(ToggleUI)
 
--- ==============================================================================
--- [SISTEMA] FRUIT ESP GLOBAL (EXTRA SENSORY PERCEPTION)
--- Se ejecuta de fondo para marcar frutas nacidas sin generar Lag en tu UI
--- ==============================================================================
-task.spawn(function()
-    while task.wait(3) do
-        pcall(function()
-            local CoreGUI = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LP:WaitForChild("PlayerGui")
-            local ESPFolder = CoreGUI:FindFirstChild("OmniESPFolder")
-            if not ESPFolder then
-                ESPFolder = Instance.new("Folder", CoreGUI)
-                ESPFolder.Name = "OmniESPFolder"
-            end
-            
-            -- Limpiar ESPs viejos si la fruta desapareció o alguien la levantó
-            for _, esp in pairs(ESPFolder:GetChildren()) do
-                if not esp.Adornee or esp.Adornee.Parent == nil then
-                    esp:Destroy()
-                end
-            end
-            
-            -- Buscar frutas frescas en Workspace MUNDIAL
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                local n = obj.Name:lower()
-                if (n:match("fruit") or n:match("akuma")) and not obj:IsDescendantOf(LP.Character) then
-                    -- Nos aseguramos que no sea la fruta que sostiene el vendedor ni servicios raros
-                    if not obj.Parent.Name:lower():match("dealer") and not obj.Parent.Name:lower():match("servicenpc") then
-                        -- Filtramos Modelos VAMP, Herramientas, etc...
-                        local pPart = obj:IsA("Model") and obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart") or (obj:IsA("BasePart") and obj) or obj:FindFirstChild("HumanoidRootPart")
-                        if pPart then
-                            -- Crear ESP si no está etiquetada
-                            local exists = false
-                            for _, esp in pairs(ESPFolder:GetChildren()) do
-                                if esp.Adornee == pPart then exists = true break end
-                            end
-                            
-                            if not exists then
-                                local bbg = Instance.new("BillboardGui", ESPFolder)
-                                bbg.Adornee = pPart
-                                bbg.Size = UDim2.new(0, 150, 0, 50)
-                                bbg.AlwaysOnTop = true
-                                bbg.StudsOffset = Vector3.new(0, 5, 0)
-                                
-                                local txt = Instance.new("TextLabel", bbg)
-                                txt.Size = UDim2.new(1, 0, 1, 0)
-                                txt.BackgroundTransparency = 1
-                                txt.Text = "🍏 " .. obj.Name .. " ALERTA"
-                                txt.TextColor3 = Color3.new(0, 1, 0.2)
-                                txt.TextStrokeTransparency = 0.1
-                                txt.TextStrokeColor3 = Color3.new(0,0,0)
-                                txt.Font = Enum.Font.GothamBlack
-                                txt.TextSize = 14
-                                
-                                -- Alerta por Chat para el Bot!
-                                print("¡ALERTA GLOBAL! EN LA ISLA ACABA DE CAER: ", obj.Name)
-                            end
-                            
-                            -- AUTO-SNIPER DISPARADOR
-                            if AutoSnipeFruit and not IsTraveling then
-                                print("🍏 [AUTO-SNIPE FRUIT] Robando Controles para recoger: " .. obj.Name)
-                                SafeTravel(pPart.Position, "¡FRUTA RECIÉN CARGADA! ("..obj.Name..")")
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
+
