@@ -175,8 +175,6 @@ end
 
 local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
 local TabTP   = MakeTabBtn("🗺️", "Teleport", 2)
-local TabLogs = MakeTabBtn("📋", "Logs", 3)
-local TabSnipe = MakeTabBtn("🎯", "Sniper", 4)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel = Instance.new("Frame", MF)
@@ -221,8 +219,6 @@ end
 
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabTP.MouseButton1Click:Connect(function() SwitchTab("Teleport") end)
-TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
-TabSnipe.MouseButton1Click:Connect(function() SwitchTab("Sniper") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -560,729 +556,6 @@ NPCGuideEntry("🪙 Coins Fruit Dealer", "Compra frutas con Monedas. Sailor Isla
 NPCGuideEntry("😈 Demonite Quest (Anos)", "Quest especial del Demonite. Academy Island.", Vector3.new(727,-2,1273), g+16)
 NPCGuideEntry("🔮 Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
 
--- =======================================================================================
--- ========== TAB 4: 🎯 AUTO-SNIPER & HACK-TEST ==========
--- =======================================================================================
-local SnipePage = MakeScrollPage("Sniper")
-SectionLabel(SnipePage, "🎯 SNIPERS DE RNG (Auto-Skips)", 1)
-
-local function MakeSniperBtn(parent, text, bgColor, order)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.95, 0, 0, 36)
-    btn.BackgroundColor3 = bgColor
-    btn.TextColor3 = C.text
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 12
-    btn.Text = "  " .. text
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.BorderSizePixel = 0
-    btn.LayoutOrder = order
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    return btn
-end
-
-local BtnSnipeTrait = MakeSniperBtn(SnipePage, "🎯 Snipear Atributo SECRETO", Color3.fromRGB(80, 40, 90), 2)
-local BtnSnipeStats = MakeSniperBtn(SnipePage, "🎯 Snipear Stats a A/S/SS (Sube Suerte)", Color3.fromRGB(40, 80, 90), 3)
-
-SectionLabel(SnipePage, "👁️ VISUALES PARA EVENTOS / PUZZLES", 4)
-local BtnESPItems = MakeSniperBtn(SnipePage, "🟢 Activar ESP de Objetos/Puzzles", Color3.fromRGB(50, 100, 60), 5)
-local BtnAutoDungeon = MakeSniperBtn(SnipePage, "🧩 Auto-Misión Dungeon (Recolectar Todo)", Color3.fromRGB(30, 90, 70), 6)
-
-SectionLabel(SnipePage, "🧬 AUTO-USO DEL INVENTARIO (Max 15 usos)", 7)
-local BtnRaceUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Race Rerolls Rápido", Color3.fromRGB(90, 60, 30), 8)
-local BtnClanUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Clan Rerolls Rápido", Color3.fromRGB(90, 40, 40), 9)
-
-SectionLabel(SnipePage, "☢️ ANÁLISIS DE VULNERABILIDADES (ADMIN)", 10)
-local BtnAdminHack = MakeSniperBtn(SnipePage, "🚨 Ejecutar Test de Backdoor Admin", Color3.fromRGB(150, 40, 40), 11)
-
--- == LOGICA SNIPERS ==
-local Remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
-local RemotesR = ReplicatedStorage:FindFirstChild("Remotes")
-
-local ESP_Active = false
-BtnESPItems.MouseButton1Click:Connect(function()
-    ESP_Active = not ESP_Active
-    if ESP_Active then
-        BtnESPItems.BackgroundColor3 = C.accentOn
-        BtnESPItems.Text = "  🟢 ESP: ACTIVO"
-    else
-        BtnESPItems.BackgroundColor3 = Color3.fromRGB(50, 100, 60)
-        BtnESPItems.Text = "  🟢 Activar ESP de Objetos/Puzzles"
-    end
-end)
-
-BtnAutoDungeon.MouseButton1Click:Connect(function()
-    BtnAutoDungeon.Text = "  🔴 Ruteando Islas por Piezas... (AFK)"
-    task.spawn(function()
-        local function FirePrompt(part)
-            local p = part:FindFirstChildOfClass("ProximityPrompt")
-            if p then
-                pcall(function() fireproximityprompt(p, 1) end)
-                pcall(function() fireproximityprompt(p) end)
-            end
-        end
-
-        local IslasCentrales = {
-            Vector3.new(-71, 10, -299),   -- Starter
-            Vector3.new(-392, 10, 407),   -- Jungle
-            Vector3.new(-688, 10, -287),  -- Desert
-            Vector3.new(-182, 10, -998),  -- Snow
-            Vector3.new(1269, 30, 233),   -- Shibuya
-            Vector3.new(-542, 10, 872)    -- Hollow (Hueco Mundo)
-        }
-        
-        for i, pos in ipairs(IslasCentrales) do
-            pcall(function() SafeTravel(pos, "Isla " .. i) end)
-            task.wait(2.5)
-            
-            local hallado = false
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Name == "DungeonPuzzlePiece" then
-                    pcall(function() SafeTravel(obj.Position, "Pieza Dungeon") end)
-                    task.wait(1.5)
-                    FirePrompt(obj)
-                    task.wait(0.5)
-                    hallado = true
-                end
-            end
-            
-            if not hallado then
-                task.wait(0.5)
-            end
-        end
-        BtnAutoDungeon.Text = "  ✅ Auto-Misión: Piezas Aseguradas"
-    end)
-end)
-
-BtnSnipeTrait.MouseButton1Click:Connect(function()
-    pcall(function()
-        Remotes.TraitUpdateAutoSkip:FireServer({Epic = true, Legendary = true, Mythical = true, Secret = false})
-        task.wait(0.1)
-        Remotes.TraitAutoReroll:FireServer()
-    end)
-end)
-
-BtnSnipeStats.MouseButton1Click:Connect(function()
-    pcall(function()
-        -- Mandamos false a todo lo que SÍ QUEREMOS aceptar. A=false significa "No skipees A"
-        Remotes.StatRerollUpdateAutoSkip:FireServer({A = false, S = false, SS = false, SSS = false})
-        task.wait(0.1)
-        Remotes.StatRerollAutoRoll:FireServer()
-    end)
-end)
-
-local SnipeActiveRace = false
-BtnRaceUse.MouseButton1Click:Connect(function()
-    SnipeActiveRace = not SnipeActiveRace
-    if not SnipeActiveRace then
-        BtnRaceUse.Text = "  🚀 Gastar Race Rerolls (Apagado)"
-        return
-    end
-    BtnRaceUse.Text = "  🔴 BUSCANDO LIMITLESS/VAMPIRE... (Clic para parar)"
-
-    task.spawn(function()
-        while SnipeActiveRace do
-            pcall(function()
-                local eq = RemotesR.GetEquipped:InvokeServer()
-                if eq and eq.Race then
-                    if eq.Race == "Limitless" or eq.Race == "Vampire" then
-                        SnipeActiveRace = false
-                        BtnRaceUse.Text = "  ✅ Raza conseguida: " .. eq.Race
-                        return
-                    end
-                end
-                RemotesR.UseItem:FireServer("Race Reroll")
-            end)
-            task.wait(1.2) -- Tiempo seguro para no crash del servidor
-        end
-    end)
-end)
-
-local SnipeActiveClan = false
-BtnClanUse.MouseButton1Click:Connect(function()
-    SnipeActiveClan = not SnipeActiveClan
-    if not SnipeActiveClan then
-        BtnClanUse.Text = "  🚀 Gastar Clan Rerolls (Apagado)"
-        return
-    end
-    BtnClanUse.Text = "  🔴 BUSCANDO SUPREMOS... (Clic para parar)"
-
-    task.spawn(function()
-        while SnipeActiveClan do
-            pcall(function()
-                local eq = RemotesR.GetEquipped:InvokeServer()
-                if eq and eq.Clan then
-                    if eq.Clan == "Voldigoat" or eq.Clan == "Pride" or eq.Clan == "Monarch" then
-                        SnipeActiveClan = false
-                        BtnClanUse.Text = "  ✅ Clan supremo: " .. eq.Clan
-                        return
-                    end
-                end
-                RemotesR.UseItem:FireServer("Clan Reroll")
-            end)
-            task.wait(1.2)
-        end
-    end)
-end)
-
-BtnAdminHack.MouseButton1Click:Connect(function()
-    task.spawn(function()
-        pcall(function()
-            local R = ReplicatedStorage:FindFirstChild("Remotes")
-            if not R then return end
-            -- Test 1: Verificar si somos Admin a los ojos del servidor
-            local IsAdmin = R.AdminCheckAccess:InvokeServer()
-            if IsAdmin then
-                print("🔥 [HACK-TEST] ¡ERES ADMINISTRADOR EN EL SERVER! Vulnerabilidad Encontrada.")
-                local cmds = R.AdminGetCommands:InvokeServer()
-                print("🔥 [HACK-TEST] Comandos obtenidos:", typeof(cmds))
-            else
-                print("🔒 [HACK-TEST] Servidor seguro. AdminCheckAccess retornó falso o rechazado.")
-            end
-        end)
-    end)
-end)
-
--- =======================================================================================
--- ========== TAB 3: LOGS — OMNI-ANALYZER (NPCs + ROLLS + GUIs) ==========
--- =======================================================================================
-local LogsPage = MakeScrollPage("Logs")
-SectionLabel(LogsPage, "🗄️ OMNI-ANALYZER — NPCs, Rolls & GUIs", 1)
-
-local AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
-local AnalyzerActive = false
-local AnalyzerConns = {}
-local ALogCount = 0
-local WriteBuf = {} -- Buffer para escritura batched (anti-lag)
-
-local ALogScroll = Instance.new("ScrollingFrame", LogsPage)
-ALogScroll.Size = UDim2.new(0.95, 0, 0, 240)
-ALogScroll.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
-ALogScroll.BorderSizePixel = 0
-ALogScroll.ScrollBarThickness = 3
-ALogScroll.ScrollBarImageColor3 = C.accent
-ALogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-ALogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ALogScroll.LayoutOrder = 2
-Instance.new("UICorner", ALogScroll).CornerRadius = UDim.new(0, 6)
-local ALogLayout = Instance.new("UIListLayout", ALogScroll)
-ALogLayout.Padding = UDim.new(0, 2)
-ALogLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-local function ALog(text, color)
-    ALogCount = ALogCount + 1
-    local l = Instance.new("TextLabel", ALogScroll)
-    l.Size = UDim2.new(1, -8, 0, 18)
-    l.BackgroundTransparency = 1
-    l.TextColor3 = color or C.text
-    l.TextSize = 11
-    l.Font = Enum.Font.Code
-    l.TextXAlignment = Enum.TextXAlignment.Left
-    l.Text = "  " .. text
-    l.TextWrapped = true
-    l.LayoutOrder = ALogCount
-    task.defer(function() ALogScroll.CanvasPosition = Vector2.new(0, 99999) end)
-    if ALogCount > 250 then
-        local first = ALogScroll:FindFirstChildWhichIsA("TextLabel")
-        if first then first:Destroy() end
-    end
-end
-
--- === SISTEMA DE ESCRITURA BATCHED (Anti-Lag) ===
--- Acumula lineas en buffer y las escribe cada 3 segundos
-local function QueueWrite(line)
-    table.insert(WriteBuf, line)
-end
-
-local function FlushBuf()
-    if #WriteBuf == 0 then return end
-    local chunk = table.concat(WriteBuf, "\n") .. "\n"
-    WriteBuf = {}
-    pcall(function()
-        if appendfile then
-            appendfile(AnalyzerFileName, chunk)
-        elseif writefile then
-            local prev = ""
-            pcall(function() prev = readfile(AnalyzerFileName) end)
-            writefile(AnalyzerFileName, prev .. chunk)
-        end
-    end)
-end
-
--- === SERIALIZACIÓN PROFUNDA ===
-local function Ser(v, depth)
-    depth = depth or 0
-    if depth > 3 then return "..." end
-    local t = typeof(v)
-    if t == "table" then
-        local sub = {}
-        local count = 0
-        for k2, v2 in pairs(v) do
-            count = count + 1
-            if count > 20 then table.insert(sub, "..+" .. (count) .. " más") break end
-            table.insert(sub, tostring(k2) .. "=" .. Ser(v2, depth + 1))
-        end
-        return "{" .. table.concat(sub, ", ") .. "}"
-    elseif t == "Instance" then
-        return v.ClassName .. ":" .. v:GetFullName()
-    elseif t == "Vector3" then
-        return string.format("V3(%.0f,%.0f,%.0f)", v.X, v.Y, v.Z)
-    elseif t == "CFrame" then
-        return string.format("CF(%.0f,%.0f,%.0f)", v.X, v.Y, v.Z)
-    elseif t == "EnumItem" then
-        return tostring(v)
-    else
-        return tostring(v)
-    end
-end
-
-local function SerArgs(...)
-    local args = {...}
-    local parts = {}
-    for _, v in ipairs(args) do table.insert(parts, Ser(v)) end
-    return table.concat(parts, " | ")
-end
-
--- === BOTONES ===
-local BtnAnalyzer = Instance.new("TextButton", LogsPage)
-BtnAnalyzer.Size = UDim2.new(0.95, 0, 0, 40)
-BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
-BtnAnalyzer.TextColor3 = C.text
-BtnAnalyzer.Font = Enum.Font.GothamBold
-BtnAnalyzer.TextSize = 14
-BtnAnalyzer.Text = "  🗄️ INICIAR OMNI-ANALYZER"
-BtnAnalyzer.TextXAlignment = Enum.TextXAlignment.Left
-BtnAnalyzer.LayoutOrder = 3
-BtnAnalyzer.BorderSizePixel = 0
-Instance.new("UICorner", BtnAnalyzer).CornerRadius = UDim.new(0, 6)
-
-local BtnDump = Instance.new("TextButton", LogsPage)
-BtnDump.Size = UDim2.new(0.95, 0, 0, 34)
-BtnDump.BackgroundColor3 = Color3.fromRGB(40, 55, 70)
-BtnDump.TextColor3 = C.text
-BtnDump.Font = Enum.Font.GothamMedium
-BtnDump.TextSize = 12
-BtnDump.Text = "  📊 DUMP CONFIGS (Fruit, Rarity, Rolls, Settings)"
-BtnDump.TextXAlignment = Enum.TextXAlignment.Left
-BtnDump.LayoutOrder = 4
-BtnDump.BorderSizePixel = 0
-Instance.new("UICorner", BtnDump).CornerRadius = UDim.new(0, 6)
-
-SectionLabel(LogsPage, "📋 QUÉ CAPTURA EL ANALYZER", 5)
-
-local InfoBox = Instance.new("TextLabel", LogsPage)
-InfoBox.Size = UDim2.new(0.95, 0, 0, 130)
-InfoBox.BackgroundColor3 = C.card
-InfoBox.TextColor3 = C.muted
-InfoBox.Font = Enum.Font.Code
-InfoBox.TextSize = 10
-InfoBox.Text = "Al activar, captura EN VIVO sin lag:\n" ..
-    "🤖 NPC TOUCH — Detecta ProximityPrompt al hablar\n" ..
-    "📺 GUI OPEN — Detecta ventanas nuevas en PlayerGui\n" ..
-    "📡 REMOTES — 60+ RemoteEvents (Rolls, Traits,\n" ..
-    "   Powers, Stats, Fruits, Quests, Shop, Artifacts,\n" ..
-    "   Haki, Blessing, Trade, Skills, Ascension...)\n" ..
-    "💾 AUTO-SAVE cada 3s en .txt (batched)\n" ..
-    "Abre NPCs, haz Rolls, compra — todo queda capturado.\n" ..
-    "Clanes: Voldigoat, Pride, Monarch • Razas: Epic+Leg"
-InfoBox.TextWrapped = true
-InfoBox.TextXAlignment = Enum.TextXAlignment.Left
-InfoBox.TextYAlignment = Enum.TextYAlignment.Top
-InfoBox.LayoutOrder = 6
-InfoBox.BorderSizePixel = 0
-Instance.new("UICorner", InfoBox).CornerRadius = UDim.new(0, 6)
-Instance.new("UIPadding", InfoBox).PaddingLeft = UDim.new(0, 8)
-
--- === LISTA COMPLETA DE REMOTES A HOOKEAR ===
-local AllRemotes = {
-    -- Rolls / Rerolls / Spins
-    "TraitReroll", "TraitConfirm", "TraitUpdateFilters", "TraitUpdateAutoSkip",
-    "TraitGetData", "TraitDataUpdate", "TraitAutoReroll", "OpenTraitUI",
-    "PowerReroll", "PowerConfirm", "PowerUpdateAutoSkip", "PowerDataUpdate",
-    "PowerGetData", "PowerUnlock", "OpenPowerUI", "PowerShowConfirm",
-    "PowerToggleAutoRoll", "PowerUpdateFilters",
-    "StatRerollUpdate", "StatRerollUpdateAutoSkip", "StatRerollAutoRoll",
-    "OpenStatRerollUI", "StatUpdateAutoSkip",
-    "SpecPassiveReroll", "SpecPassiveConfirm", "SpecPassiveUpdateAutoSkip",
-    "SpecPassiveDataUpdate", "OpenSpecPassiveUI", "SpecPassiveShowConfirm",
-    "SpecPassiveUnlock", "SpecPassiveGetData", "SpecPassiveToggleAutoRoll",
-    -- Frutas
-    "FruitReroll", "FruitAction", "DropFruit", "FruitPowerRemote", "FruitPowerResponse",
-    "FruitClearWarning",
-    -- Stats / Perfil
-    "UpdatePlayerStats", "DataChanged", "ProfileLoaded", "AllocateStat",
-    "ResetStats", "ToggleStatsPanel", "LevelUp", "UpdateCurrency", "GetPlayerStats",
-    -- Quests
-    "QuestAccept", "QuestAbandon", "QuestProgress", "QuestComplete", "QuestUIUpdate",
-    "QuestRepeat",
-    -- Haki
-    "HakiRemote", "HakiStateUpdate", "HakiQuestUpdate", "HakiProgressionUpdate",
-    "ObservationHakiRemote", "ObservationHakiStateUpdate",
-    "ConquerorHakiRemote",
-    -- Artefactos
-    "ArtifactUpgrade", "ArtifactEquip", "ArtifactUnequip", "ArtifactDataSync",
-    "ArtifactOpenUI", "ArtifactCloseUI", "ArtifactUnlockSystem",
-    "ArtifactMilestoneOpenUI", "ArtifactMilestoneDataSync",
-    -- Shop / Compras
-    "OpenBossRushShop", "BossRushShopSync",
-    "OpenInfiniteTowerShop", "InfiniteTowerShopSync",
-    -- Skills / Ascension
-    "OpenSkillTreeUI", "SkillTreeUnlock", "SkillTreeUpgrade", "SkillTreeReset",
-    "SkillTreeUpdate", "GetSkillTreeData",
-    "OpenAscendUI", "GetAscendData", "RequestAscend", "AscendDataUpdate",
-    -- Títulos / Settings
-    "TitleEquip", "TitleUnequip", "TitleUnlocked", "TitleDataSync",
-    "SettingsToggle", "SettingsSync",
-    -- Loadouts / Storage
-    "LoadoutSave", "LoadoutLoad", "LoadoutSync",
-    "OpenStorageUI",
-    -- NPCs / Rewards
-    "NPCReward", "SetSpawnEvent",
-    -- Codes
-    "CodeRedeem",
-    -- Especiales (F Moves)
-    "CheckShadowFUnlocked", "ShadowFUnlockUpdate",
-    "CheckSukunaFUnlocked", "SukunaFUnlockUpdate",
-    "CheckGojoFUnlocked", "GojoFUnlockUpdate",
-    "CheckBlessedMaidenFUnlocked", "BlessedMaidenFUnlockUpdate",
-    "CheckSaberAlterFUnlocked", "SaberAlterFUnlockUpdate",
-    "CheckAtomicFUnlocked", "AtomicFUnlockUpdate",
-    "CheckMoonSlayerFUnlocked", "MoonSlayerFUnlockUpdate",
-    "CheckStrongestShinobiFUnlocked", "StrongestShinobiFUnlockUpdate",
-    "CheckRimuruFUnlocked", "RimuruFUnlockUpdate",
-    "CheckShadowMonarchFUnlocked", "ShadowMonarchFUnlockUpdate",
-    "CheckAizenFUnlocked", "AizenFUnlockUpdate",
-    -- Bosses invocables
-    "RequestSpawnRimuru", "RimuruBossResult",
-    "RequestSpawnTrueAizen", "TrueAizenBossResult",
-    "RequestSpawnAtomic", "AtomicBossResult",
-    -- Slime / Craft
-    "OpenSlimeCraftUI", "SlimeCraftUpdate",
-    "OpenGrailCraftUI",
-    -- Dungeon
-    "DungeonPortalSpawn", "DungeonUIUpdate",
-}
-
--- === COLORES POR CATEGORÍA ===
-local function RemoteColor(name)
-    local n = name:lower()
-    if n:match("trait") or n:match("race") then return Color3.fromRGB(255, 180, 100) end
-    if n:match("power") then return Color3.fromRGB(180, 130, 255) end
-    if n:match("stat") or n:match("reroll") then return Color3.fromRGB(100, 200, 255) end
-    if n:match("spec") or n:match("passive") then return Color3.fromRGB(255, 150, 200) end
-    if n:match("fruit") then return Color3.fromRGB(150, 255, 150) end
-    if n:match("quest") then return Color3.fromRGB(255, 255, 130) end
-    if n:match("haki") or n:match("conqueror") then return Color3.fromRGB(200, 100, 100) end
-    if n:match("artifact") then return Color3.fromRGB(180, 220, 255) end
-    if n:match("shop") or n:match("purchase") then return Color3.fromRGB(255, 200, 50) end
-    if n:match("skill") or n:match("ascend") then return Color3.fromRGB(200, 255, 200) end
-    if n:match("title") then return Color3.fromRGB(220, 200, 255) end
-    if n:match("unlock") or n:match("check") then return Color3.fromRGB(255, 180, 180) end
-    return Color3.fromRGB(180, 190, 210)
-end
-
--- === META-HOOK: CAPTURA DE TRIGGERS ENVIADOS AL SERVIDOR (FIRESHERVER) ===
-local HookSuccess = false
-pcall(function()
-    local OldNamecall
-    OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        if AnalyzerActive and not checkcaller() then
-            if method == "FireServer" or method == "InvokeServer" then
-                local n = self.Name
-                -- Ignoramos movimientos y combate directo para evitar spam
-                if not n:match("Combat") and not n:match("Dash") and not n:match("Mouse") and not n:match("Movement") then
-                    local args = {...}
-                    task.spawn(function()
-                        local data = SerArgs(unpack(args))
-                        local line = "[" .. os.date("%H:%M:%S") .. "] 📤 OUT ("..method.."): " .. n .. " → " .. data
-                        ALog(line, Color3.fromRGB(255, 80, 80))
-                        QueueWrite(line)
-                    end)
-                end
-            end
-        end
-        return OldNamecall(self, ...)
-    end)
-    HookSuccess = true
-end)
-
--- === LÓGICA PRINCIPAL DEL ANALYZER ===
-BtnAnalyzer.MouseButton1Click:Connect(function()
-    AnalyzerActive = not AnalyzerActive
-    if AnalyzerActive then
-        BtnAnalyzer.BackgroundColor3 = C.accentOn
-        BtnAnalyzer.Text = "  🚫 DETENER OMNI-ANALYZER"
-        
-        AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
-        pcall(function()
-            if writefile then
-                writefile(AnalyzerFileName, "=== OMNI-ANALYZER — " .. os.date() .. " ===\n" ..
-                    "Captura: NPCs, GUIs, RemoteEvents, Rolls, Shops\n\n")
-            end
-        end)
-        
-        local ts = function() return os.date("%H:%M:%S") end
-        local hookCount = 0
-        
-        -- ========== HOOK 1: TODOS LOS REMOTE EVENTS ==========
-        local RE_Folder = ReplicatedStorage:FindFirstChild("RemoteEvents")
-        if RE_Folder then
-            for _, remoteName in ipairs(AllRemotes) do
-                local remote = RE_Folder:FindFirstChild(remoteName)
-                if remote and remote:IsA("RemoteEvent") then
-                    local conn = remote.OnClientEvent:Connect(function(...)
-                        local data = SerArgs(...)
-                        local line = "[" .. ts() .. "] 📡 " .. remoteName .. " → " .. data
-                        ALog(line, RemoteColor(remoteName))
-                        QueueWrite(line)
-                    end)
-                    table.insert(AnalyzerConns, conn)
-                    hookCount = hookCount + 1
-                end
-            end
-        end
-        
-        -- También hookear Remotes (carpeta secundaria)
-        pcall(function()
-            local Remotes2 = ReplicatedStorage:FindFirstChild("Remotes")
-            if Remotes2 then
-                for _, remote in pairs(Remotes2:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                        if remote:IsA("RemoteEvent") then
-                            local conn = remote.OnClientEvent:Connect(function(...)
-                                local data = SerArgs(...)
-                                local line = "[" .. ts() .. "] 📡 R/" .. remote.Name .. " → " .. data
-                                ALog(line, Color3.fromRGB(200, 180, 150))
-                                QueueWrite(line)
-                            end)
-                            table.insert(AnalyzerConns, conn)
-                            hookCount = hookCount + 1
-                        end
-                    end
-                end
-            end
-        end)
-        
-        -- ========== HOOK 2: PROXIMTY PROMPT (NPC INTERACT) ==========
-        -- Detecta cuando el jugador habla con un NPC
-        local promptsHooked = {}
-        local function HookPrompt(prompt)
-            if promptsHooked[prompt] then return end
-            promptsHooked[prompt] = true
-            local conn = prompt.Triggered:Connect(function(playerWhoTriggered)
-                if playerWhoTriggered ~= LP then return end
-                local parent = prompt.Parent
-                local npcName = parent and parent.Name or "?"
-                local objText = prompt.ObjectText or ""
-                local actionText = prompt.ActionText or ""
-                local pos = "?"
-                pcall(function()
-                    if parent:IsA("Model") and parent.PrimaryPart then
-                        local p = parent.PrimaryPart.Position
-                        pos = string.format("%.0f,%.0f,%.0f", p.X, p.Y, p.Z)
-                    elseif parent.Parent and parent.Parent:IsA("Model") then
-                        local pp = parent.Parent
-                        npcName = pp.Name
-                        if pp.PrimaryPart then
-                            local p = pp.PrimaryPart.Position
-                            pos = string.format("%.0f,%.0f,%.0f", p.X, p.Y, p.Z)
-                        end
-                    end
-                end)
-                local line = "[" .. ts() .. "] 🤖 NPC INTERACT: " .. npcName ..
-                    " | Acción: " .. actionText ..
-                    " | Texto: " .. objText ..
-                    " | Pos: " .. pos ..
-                    " | Ruta: " .. prompt:GetFullName()
-                ALog(line, Color3.fromRGB(255, 220, 100))
-                QueueWrite(line)
-            end)
-            table.insert(AnalyzerConns, conn)
-        end
-        
-        -- Hookear prompts existentes
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("ProximityPrompt") then HookPrompt(v) end
-        end
-        -- Hookear prompts nuevos (streaming)
-        local conn_pp = Workspace.DescendantAdded:Connect(function(v)
-            if v:IsA("ProximityPrompt") then task.wait(0.1) HookPrompt(v) end
-        end)
-        table.insert(AnalyzerConns, conn_pp)
-        
-        -- ========== HOOK 3: GUI CHANGES (PlayerGui) ==========
-        -- Detecta cuando se abren nuevas ventanas (Reroll UI, Shop, etc.)
-        local guiLogged = {}
-        local conn_gui = LP.PlayerGui.DescendantAdded:Connect(function(child)
-            task.wait(0.05) -- Deja que se complete el render
-            if not child or not child.Parent then return end
-            -- Solo logear Frames/ScrollingFrames que sean pantallas grandes
-            if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-                local fullName = child:GetFullName()
-                -- Filtrar: ignorar nuestro propio GUI y cosas muy chicas
-                if fullName:match("OmniAutoFarm") then return end
-                -- Solo logear pantallas "raíz" (hijos directos de ScreenGui)
-                if child.Parent and child.Parent:IsA("ScreenGui") then
-                    local key = child.Parent.Name .. "/" .. child.Name
-                    if guiLogged[key] then return end
-                    guiLogged[key] = true
-                    -- Analizar contenido de la GUI
-                    local childInfo = {}
-                    for _, sub in pairs(child:GetDescendants()) do
-                        if sub:IsA("TextLabel") and sub.Text ~= "" and #sub.Text < 100 then
-                            table.insert(childInfo, sub.Name .. "='" .. sub.Text .. "'")
-                        elseif sub:IsA("TextButton") and sub.Text ~= "" then
-                            table.insert(childInfo, "BTN:" .. sub.Name .. "='" .. sub.Text .. "'")
-                        end
-                        if #childInfo >= 15 then break end
-                    end
-                    local line = "[" .. ts() .. "] 📺 GUI OPEN: " .. key ..
-                        " | Size: " .. tostring(child.Size) ..
-                        " | Contenido: " .. table.concat(childInfo, " • ")
-                    ALog(line, Color3.fromRGB(100, 220, 255))
-                    QueueWrite(line)
-                    -- Resetear para capturar reaperturas después de 2s
-                    task.delay(2, function() guiLogged[key] = nil end)
-                end
-            end
-        end)
-        table.insert(AnalyzerConns, conn_gui)
-        
-        -- ========== HOOK 4: VISIBILITY CHANGES (detecta UIs que se muestran) ==========
-        local visLogged = {}
-        pcall(function()
-            for _, sg in pairs(LP.PlayerGui:GetChildren()) do
-                if sg:IsA("ScreenGui") and sg.Name ~= "OmniAutoFarm" then
-                    for _, frame in pairs(sg:GetChildren()) do
-                        if (frame:IsA("Frame") or frame:IsA("ScrollingFrame")) then
-                            pcall(function()
-                                local conn_vis = frame:GetPropertyChangedSignal("Visible"):Connect(function()
-                                    if not frame.Visible then return end
-                                    local key = sg.Name .. "/" .. frame.Name
-                                    if visLogged[key] then return end
-                                    visLogged[key] = true
-                                    local labels = {}
-                                    for _, sub in pairs(frame:GetDescendants()) do
-                                        if sub:IsA("TextLabel") and sub.Text ~= "" and #sub.Text < 80 then
-                                            table.insert(labels, sub.Name .. "='" .. sub.Text .. "'")
-                                        end
-                                        if #labels >= 10 then break end
-                                    end
-                                    local line = "[" .. ts() .. "] 👁️ GUI SHOW: " .. key .. " | " .. table.concat(labels, " • ")
-                                    ALog(line, Color3.fromRGB(150, 200, 255))
-                                    QueueWrite(line)
-                                    task.delay(1.5, function() visLogged[key] = nil end)
-                                end)
-                                table.insert(AnalyzerConns, conn_vis)
-                            end)
-                        end
-                    end
-                end
-            end
-        end)
-        
-        -- ========== AUTO-FLUSH TIMER (cada 3 segundos) ==========
-        local flushConn = game:GetService("RunService").Heartbeat:Connect(function()
-            -- Flush cada ~3 segundos (180 frames aprox a 60fps)
-        end)
-        table.insert(AnalyzerConns, flushConn)
-        task.spawn(function()
-            while AnalyzerActive do
-                task.wait(3)
-                FlushBuf()
-            end
-        end)
-        
-        ALog("🟢 OMNI-ANALYZER ACTIVO — " .. hookCount .. " remotes + NPC prompts + GUIs", C.accentOn)
-        QueueWrite("[INICIO] " .. hookCount .. " hooks conectados — " .. os.date())
-        QueueWrite("[INFO] Captura: RemoteEvents, ProximityPrompts, GUI changes")
-        FlushBuf()
-    else
-        -- DETENER
-        BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
-        BtnAnalyzer.Text = "  🗄️ INICIAR OMNI-ANALYZER"
-        for _, conn in pairs(AnalyzerConns) do pcall(function() conn:Disconnect() end) end
-        AnalyzerConns = {}
-        FlushBuf()
-        ALog("🔴 OMNI-ANALYZER DETENIDO — Archivo: " .. AnalyzerFileName, C.red)
-        QueueWrite("[FIN] Detenido — " .. os.date())
-        FlushBuf()
-    end
-end)
-
--- === DUMP ESTÁTICO DE CONFIGS ===
-BtnDump.MouseButton1Click:Connect(function()
-    ALog("📊 Dumpeando módulos...", Color3.fromRGB(255, 200, 100))
-    local dumpFile = "ConfigDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-    local d = "=== CONFIG DUMP — " .. os.date() .. " ===\n\n"
-    
-    pcall(function()
-        local fc = require(ReplicatedStorage:WaitForChild("FruitConfig", 3))
-        if fc then
-            d = d .. "[FRUIT CONFIG]\n"
-            if fc.Rarities then for r, w in pairs(fc.Rarities) do d = d .. "  " .. r .. " = " .. w .. "%\n" end end
-            if fc.Fruits then for _, f in ipairs(fc.Fruits) do d = d .. "  - " .. f.Name .. " [" .. f.Rarity .. "]\n" end end
-            ALog("✅ FruitConfig", C.accentOn)
-        end
-    end)
-    pcall(function()
-        local irc = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemRarityConfig", 3))
-        if irc and irc.RarityOrder then
-            d = d .. "\n[ITEM RARITY ORDER]\n"
-            for i, r in ipairs(irc.RarityOrder) do d = d .. "  " .. i .. ". " .. r .. "\n" end
-            ALog("✅ ItemRarity", C.accentOn)
-        end
-    end)
-    pcall(function()
-        local sc = require(ReplicatedStorage:WaitForChild("SettingsConfig", 3))
-        if sc and sc.Settings then
-            d = d .. "\n[SETTINGS — ROLL/REROLL]\n"
-            for _, s in ipairs(sc.Settings) do
-                local cat = s.Category or ""
-                if cat:match("Reroll") or cat:match("Filter") or cat:match("Clan") or cat:match("Race") or cat:match("Skill") or cat:match("Haki") then
-                    d = d .. "  [" .. cat .. "] " .. (s.Key or "?") .. " = " .. (s.Label or "?") .. "\n"
-                end
-            end
-            if sc.CategoryOrder then
-                d = d .. "  Categorías:\n"
-                for cat, ord in pairs(sc.CategoryOrder) do d = d .. "    " .. cat .. " = " .. ord .. "\n" end
-            end
-            ALog("✅ SettingsConfig", C.accentOn)
-        end
-    end)
-    
-    -- Dump TODOS los RemoteEvents
-    d = d .. "\n[TODOS LOS REMOTE EVENTS]\n"
-    pcall(function()
-        local RE = ReplicatedStorage:FindFirstChild("RemoteEvents")
-        if RE then for _, c in pairs(RE:GetChildren()) do d = d .. "  " .. c.ClassName .. ": " .. c.Name .. "\n" end end
-    end)
-    pcall(function()
-        local R2 = ReplicatedStorage:FindFirstChild("Remotes")
-        if R2 then for _, c in pairs(R2:GetDescendants()) do
-            if c:IsA("RemoteEvent") or c:IsA("RemoteFunction") then d = d .. "  " .. c.ClassName .. ": " .. c:GetFullName() .. "\n" end
-        end end
-    end)
-    
-    -- Dump NPCs con ProximityPrompt en la zona actual
-    d = d .. "\n[NPCs CON PROXIMITY PROMPT (ZONA CARGADA)]\n"
-    pcall(function()
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("ProximityPrompt") then
-                local p = v.Parent
-                local pp = p and p.Parent
-                local npcName = (pp and pp:IsA("Model") and pp.Name) or (p and p.Name) or "?"
-                local objText = v.ObjectText or ""
-                local actionText = v.ActionText or ""
-                d = d .. "  🤖 " .. npcName .. " | Action: " .. actionText .. " | Text: " .. objText .. " | Path: " .. v:GetFullName() .. "\n"
-            end
-        end
-    end)
-    
-    pcall(function() if writefile then writefile(dumpFile, d) end end)
-    ALog("💾 " .. dumpFile, Color3.fromRGB(255, 255, 100))
-end)
 
 -- ========== VARIABLES OCULTAS PARA COMPATIBILIDAD BACKEND ==========
 local BtnSpy = Instance.new("TextButton")
@@ -1441,6 +714,44 @@ end)
 -- ==============================================================================
 
 
+local TargetMobsCache = {}
+local LastCacheTime = 0
+
+local function GetMobCache()
+    if os.clock() - LastCacheTime > 2.5 then
+        LastCacheTime = os.clock()
+        local folders = {}
+        if NPCsFolder then table.insert(folders, NPCsFolder) end
+        pcall(function()
+            for _, child in pairs(Workspace:GetChildren()) do
+                if child:IsA("Folder") or child:IsA("Model") then
+                    local n = child.Name:lower()
+                    if n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") or n:match("boss") then
+                        if child ~= NPCsFolder then
+                            table.insert(folders, child)
+                        end
+                    end
+                end
+            end
+        end)
+        
+        local newCache = {}
+        for _, folder in pairs(folders) do
+            pcall(function()
+                for _, mob in pairs(folder:GetDescendants()) do
+                    if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                        if not mob.Name:lower():match("dummy") and not mob.Name:lower():match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
+                            table.insert(newCache, mob)
+                        end
+                    end
+                end
+            end)
+        end
+        TargetMobsCache = newCache
+    end
+    return TargetMobsCache
+end
+
 local function GetNearestMob()
     local nearestDist = math.huge
     local nearestMob = nil
@@ -1448,30 +759,30 @@ local function GetNearestMob()
     if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
     local hrp = char.HumanoidRootPart
 
-    for _, mob in pairs(NPCsFolder:GetChildren()) do
-        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-            if not mob.Name:lower():match("dummy") then
-                local isBoss = mob.Name:lower():match("boss")
-                local allow = false
-                
-                if ScannedTargetName then
-                    if mob.Name == ScannedTargetName then allow = true end
-                else
-                    if TargetBosses == "SoloBoss" then
-                        if isBoss then allow = true end
-                    elseif TargetBosses == "Ignorar" then
-                        if not isBoss then allow = true end
-                    else
-                        allow = true
-                    end
-                end
-                
-                if allow and mob.Humanoid.Health > 0 then
-                    local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestMob = mob
-                    end
+    local cache = GetMobCache()
+    for _, mob in ipairs(cache) do
+        local allow = false
+        local isBoss = mob.Name:lower():match("boss")
+        
+        if ScannedTargetName then
+            if mob.Name == ScannedTargetName then allow = true end
+        else
+            if TargetBosses == "SoloBoss" then
+                if isBoss then allow = true end
+            elseif TargetBosses == "Ignorar" then
+                if not isBoss then allow = true end
+            else
+                allow = true
+            end
+        end
+        
+        if allow and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+            local tHrp = mob:FindFirstChild("HumanoidRootPart")
+            if tHrp then
+                local dist = (hrp.Position - tHrp.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestMob = mob
                 end
             end
         end
@@ -1634,21 +945,24 @@ task.spawn(function()
                         local mobsToHit = {}
                         if MobMagnetEnabled then
                             local sorted = {}
-                            for _, m in pairs(NPCsFolder:GetChildren()) do
-                                if m:IsA("Model") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                                    local isDummy = m.Name:lower():match("dummy")
+                            local cache = GetMobCache()
+                            for _, m in ipairs(cache) do
+                                if m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
                                     local isBoss = m.Name:lower():match("boss")
-                                    
                                     local allow = false
-                                    if TargetBosses == "SoloBoss" then
-                                        if isBoss then allow = true end
-                                    elseif TargetBosses == "Ignorar" then
-                                        if not isBoss then allow = true end
+                                    if ScannedTargetName then
+                                        if m.Name == ScannedTargetName then allow = true end
                                     else
-                                        allow = true
+                                        if TargetBosses == "SoloBoss" then
+                                            if isBoss then allow = true end
+                                        elseif TargetBosses == "Ignorar" then
+                                            if not isBoss then allow = true end
+                                        else
+                                            allow = true
+                                        end
                                     end
                                     
-                                    if not isDummy and allow then
+                                    if allow then
                                         local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
                                         if dist < 150 then
                                             table.insert(sorted, {m, dist})
@@ -1835,7 +1149,7 @@ BtnScan.MouseButton1Click:Connect(function()
         for _, child in pairs(Workspace:GetChildren()) do
             if child:IsA("Folder") or child:IsA("Model") then
                 local n = child.Name:lower()
-                if n:match("npc") or n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") then
+                if n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") or n:match("boss") then
                     if child ~= NPCsFolder then
                         table.insert(folders, child)
                     end
@@ -1848,7 +1162,7 @@ BtnScan.MouseButton1Click:Connect(function()
         pcall(function()
             for _, mob in pairs(folder:GetDescendants()) do
                 if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-                    if not mob.Name:lower():match("dummy") then
+                    if not mob.Name:lower():match("dummy") and not mob.Name:lower():match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
                         local isBoss = mob.Name:lower():match("boss")
                         local hp = mob.Humanoid.Health
                         local maxHp = mob.Humanoid.MaxHealth
