@@ -17,6 +17,8 @@ local OfsY, OfsZ = 10, 0
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
 local TargetBosses = "Normal" -- "Normal", "Ignorar", "SoloBoss"
+local LimitSearchRange = false
+local SearchRangeMax = 3000
 local SpyEnabled = false
 local SpyFileName = ""
 local PanicThreshold = 0.20
@@ -243,6 +245,31 @@ local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
 local BtnSkill  = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
 local BtnBoss   = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 
+local BtnLimitRange = ToggleButton(FarmPage, "📍 Limite Búsqueda: OFF (Mapa Entero)", 7)
+local RangeLabel = Instance.new("TextLabel", FarmPage)
+RangeLabel.Size = UDim2.new(0.95, 0, 0, 16)
+RangeLabel.BackgroundTransparency = 1
+RangeLabel.TextColor3 = C.muted
+RangeLabel.Font = Enum.Font.Gotham
+RangeLabel.TextSize = 12
+RangeLabel.Text = "  📏 Distancia Máxima: 3000 Studs"
+RangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+RangeLabel.LayoutOrder = 8
+
+local RangeSliderBg = Instance.new("TextButton", FarmPage)
+RangeSliderBg.Size = UDim2.new(0.95, 0, 0, 12)
+RangeSliderBg.BackgroundColor3 = Color3.fromRGB(40, 42, 55)
+RangeSliderBg.Text = ""
+RangeSliderBg.LayoutOrder = 9
+Instance.new("UICorner", RangeSliderBg).CornerRadius = UDim.new(1, 0)
+
+local RangeSliderFill = Instance.new("Frame", RangeSliderBg)
+RangeSliderFill.Size = UDim2.new(3000 / 15000, 0, 1, 0)
+RangeSliderFill.BackgroundColor3 = Color3.fromRGB(80, 180, 255)
+RangeSliderFill.BorderSizePixel = 0
+Instance.new("UICorner", RangeSliderFill).CornerRadius = UDim.new(1, 0)
+
+
 SectionLabel(FarmPage, "DEFENSA", 10)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -305,16 +332,22 @@ local function SafeTravel(targetVector3, destinationName)
                         StatusLabel.Text = "🏁 Llegada a " .. destinationName
                         char:PivotTo(CFrame.new(targetVector3))
                     else
-                        local step = math.clamp(30 / dist, 0, 1)
+                        -- Vuelo ultrarrápido y dinámico al límite pre-band (150 m/s)
+                        local step = math.clamp(150 / dist, 0, 1) 
                         local wave = math.sin(os.clock() * 6) * 2
-                        local targetLerp = hrp.CFrame:Lerp(CFrame.new(targetVector3), step)
-                        char:PivotTo(targetLerp * CFrame.new(0, wave, 0))
+                        local tLerp = hrp.CFrame:Lerp(CFrame.new(targetVector3), step)
+                        char:PivotTo(tLerp * CFrame.new(0, wave, 0))
                     end
                 end
             end)
-            task.wait(0.2)
+            task.wait(0.05) -- Actualiza rapidísimo para un viaje smooth
         end
     end)
+end
+
+local function CancelTravel()
+    IsTraveling = false
+    StatusLabel.Text = "Status: Viaje Cancelado"
 end
 
 local tpOrder = 0
@@ -338,7 +371,7 @@ local function TPButton(text, color, mode, target)
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
     btn.MouseButton1Click:Connect(function()
         if mode == "V3" then
-            game.Players.LocalPlayer.Character:PivotTo(CFrame.new(target))
+            SafeTravel(target, text)
         elseif mode == "NPC" then
             local obj = nil
             for _, v in pairs(Workspace:GetDescendants()) do
@@ -348,7 +381,7 @@ local function TPButton(text, color, mode, target)
             end
             if obj then
                 local p = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
-                game.Players.LocalPlayer.Character:PivotTo(CFrame.new(p))
+                SafeTravel(p, text)
             else StatusLabel.Text = "❌ NPC no cargado aún." end
         elseif mode == "Cancel" then CancelTravel()
         elseif mode == "Snipe" then
@@ -402,7 +435,9 @@ local function NPCGuideEntry(npcName, desc, pos, order)
     goBtn.TextSize = 12
     goBtn.BorderSizePixel = 0
     Instance.new("UICorner", goBtn).CornerRadius = UDim.new(0, 4)
-    goBtn.MouseButton1Click:Connect(function() game.Players.LocalPlayer.Character:PivotTo(CFrame.new(pos)) end)
+    goBtn.MouseButton1Click:Connect(function() 
+        SafeTravel(pos, npcName)
+    end)
 end
 
 -- —————————— ISLAS ——————————
@@ -1368,9 +1403,11 @@ local function GetNearestMob()
                 
                 if allow and mob.Humanoid.Health > 0 then
                     local dist = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestMob = mob
+                    if not LimitSearchRange or dist <= SearchRangeMax then
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            nearestMob = mob
+                        end
                     end
                 end
             end
@@ -1703,10 +1740,34 @@ BtnBoss.MouseButton1Click:Connect(function()
     end
 end)
 
+BtnLimitRange.MouseButton1Click:Connect(function()
+    LimitSearchRange = not LimitSearchRange
+    if LimitSearchRange then
+        BtnLimitRange.BackgroundColor3 = C.accentOn
+        BtnLimitRange.Text = "  📍 Limitar Búsqueda: ON"
+    else
+        BtnLimitRange.BackgroundColor3 = C.card
+        BtnLimitRange.Text = "  📍 Limite Búsqueda: OFF (Mapa Entero)"
+    end
+end)
+
+local rSliderCon = nil
+RangeSliderBg.MouseButton1Down:Connect(function()
+    local Mouse = LP:GetMouse()
+    if rSliderCon then rSliderCon:Disconnect() end
+    rSliderCon = game:GetService("RunService").RenderStepped:Connect(function()
+        local relativeX = Mouse.X - RangeSliderBg.AbsolutePosition.X
+        local pos = math.clamp(relativeX / RangeSliderBg.AbsoluteSize.X, 0.05, 1)
+        SearchRangeMax = math.floor(pos * 15000)
+        RangeSliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        RangeLabel.Text = "  📏 Distancia Máxima: " .. SearchRangeMax .. " Studs"
+    end)
+end)
+
 uis.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and sliderCon then
-        sliderCon:Disconnect()
-        sliderCon = nil
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if sliderCon then sliderCon:Disconnect(); sliderCon = nil end
+        if rSliderCon then rSliderCon:Disconnect(); rSliderCon = nil end
     end
 end)
 
@@ -1724,62 +1785,6 @@ BtnHeight.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==============================================================================
--- AUTO-DUNGEON MISION (POR ORDEN)
--- ==============================================================================
-local BtnAutoDungeon = Instance.new("TextButton", TPPage)
-BtnAutoDungeon.Size = UDim2.new(0.95, 0, 0, 36)
-BtnAutoDungeon.BackgroundColor3 = Color3.fromRGB(30, 90, 70)
-BtnAutoDungeon.TextColor3 = Color3.new(1,1,1)
-BtnAutoDungeon.Font = Enum.Font.GothamMedium
-BtnAutoDungeon.TextSize = 12
-BtnAutoDungeon.Text = "  🧩 Auto-Dungeon (Teleport AntiCheat Seguro)"
-BtnAutoDungeon.TextXAlignment = Enum.TextXAlignment.Left
-BtnAutoDungeon.LayoutOrder = 1000
-BtnAutoDungeon.BorderSizePixel = 0
-Instance.new("UICorner", BtnAutoDungeon).CornerRadius = UDim.new(0, 5)
-
-BtnAutoDungeon.MouseButton1Click:Connect(function()
-    BtnAutoDungeon.Text = "  🔴 Buscando 6 Piezas en orden rápido..."
-    task.spawn(function()
-        local IslasSecuencia = {
-            "Starter",
-            "Jungle",
-            "Desert",
-            "Snow",
-            "Shibuya",
-            "Hollow"
-        }
-        local player = game.Players.LocalPlayer
-        local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-        
-        pcall(function()
-            for i, islandName in ipairs(IslasSecuencia) do
-                -- USA LA RUTA NATIVA DEL JUEGO PARA ANTI-CHEAT
-                Remotes.TeleportToPortal:FireServer(islandName)
-                task.wait(3.5) -- Tiempo suficiente para que los datos carguen a la perfección
-                
-                local hallado = false
-                -- Al usar el Teleport Oficial del juego, nos evitamos desyncs
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and obj.Name == "DungeonPuzzlePiece" then
-                        local p = obj:FindFirstChildOfClass("ProximityPrompt")
-                        if p then
-                            player.Character:PivotTo(obj.CFrame)
-                            task.wait(1.5)
-                            pcall(function() fireproximityprompt(p, 1) end)
-                            pcall(function() fireproximityprompt(p) end)
-                            task.wait(1)
-                            hallado = true
-                            break -- Para y continua con la sig isla
-                        end
-                    end
-                end
-            end
-        end)
-        BtnAutoDungeon.Text = "  ✅ Auto-Misión Terminada"
-    end)
-end)
 
 -- Lógica para Ocultar/Mostrar (Minimizar)
 local function ToggleUI()
