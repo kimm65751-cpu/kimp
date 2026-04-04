@@ -56,10 +56,11 @@ local C = {
 }
 
 -- ======================== CONTENEDOR PRINCIPAL ========================
+local uis = game:GetService("UserInputService")
 local MF = Instance.new("Frame", SG)
 MF.Name = "MainFrame"
-MF.Size = UDim2.new(0, 460, 0, 420)
-MF.Position = UDim2.new(0.5, -230, 0.5, -210)
+MF.Size = UDim2.new(0, 560, 0, 520)
+MF.Position = UDim2.new(0.5, -280, 0.5, -260)
 MF.BackgroundColor3 = C.bg
 MF.BorderSizePixel = 0
 MF.Active = true
@@ -97,7 +98,7 @@ Title.BackgroundTransparency = 1
 Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
 local BtnMin = Instance.new("TextButton", TitleBar)
@@ -116,13 +117,13 @@ StatusLabel.Position = UDim2.new(0, 10, 0, 38)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Status: Inactivo"
 StatusLabel.TextColor3 = C.muted
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 11
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 -- ======================== SIDEBAR (PESTAÑAS) ========================
 local Sidebar = Instance.new("Frame", MF)
-Sidebar.Size = UDim2.new(0, 52, 1, -60)
+Sidebar.Size = UDim2.new(0, 56, 1, -60)
 Sidebar.Position = UDim2.new(0, 0, 0, 58)
 Sidebar.BackgroundColor3 = C.sidebar
 Sidebar.BorderSizePixel = 0
@@ -139,10 +140,10 @@ local TabFrames = {}
 
 local function MakeTabBtn(icon, tabName, order)
     local tb = Instance.new("TextButton", Sidebar)
-    tb.Size = UDim2.new(0, 40, 0, 40)
+    tb.Size = UDim2.new(0, 44, 0, 44)
     tb.BackgroundColor3 = (tabName == "Farm") and C.accent or C.accentOff
     tb.Text = icon
-    tb.TextSize = 18
+    tb.TextSize = 20
     tb.Font = Enum.Font.GothamBold
     tb.TextColor3 = Color3.new(1,1,1)
     tb.LayoutOrder = order
@@ -158,8 +159,8 @@ local TabLogs = MakeTabBtn("📋", "Logs", 3)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel = Instance.new("Frame", MF)
-ContentPanel.Size = UDim2.new(1, -58, 1, -60)
-ContentPanel.Position = UDim2.new(0, 56, 0, 58)
+ContentPanel.Size = UDim2.new(1, -62, 1, -60)
+ContentPanel.Position = UDim2.new(0, 60, 0, 58)
 ContentPanel.BackgroundColor3 = C.panel
 ContentPanel.BorderSizePixel = 0
 Instance.new("UICorner", ContentPanel).CornerRadius = UDim.new(0, 8)
@@ -203,11 +204,11 @@ TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
-    l.Size = UDim2.new(1, -10, 0, 22)
+    l.Size = UDim2.new(1, -10, 0, 26)
     l.BackgroundTransparency = 1
     l.TextColor3 = C.accent
     l.Font = Enum.Font.GothamBold
-    l.TextSize = 11
+    l.TextSize = 13
     l.Text = "  " .. text
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.LayoutOrder = order or 0
@@ -215,11 +216,11 @@ end
 
 local function ToggleButton(parent, text, order, defaultColor)
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.Size = UDim2.new(0.95, 0, 0, 36)
     btn.BackgroundColor3 = defaultColor or C.card
     btn.TextColor3 = C.text
     btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
+    btn.TextSize = 13
     btn.Text = "  " .. text
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.LayoutOrder = order or 0
@@ -235,7 +236,7 @@ local FarmPage = MakeScrollPage("Farm")
 
 SectionLabel(FarmPage, "COMBATE", 1)
 local BtnToggle = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
-BtnToggle.TextSize = 13
+BtnToggle.TextSize = 15
 BtnToggle.Font = Enum.Font.GothamBold
 local BtnHeight = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
 local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
@@ -248,7 +249,7 @@ PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
 PanicLabel.BackgroundTransparency = 1
 PanicLabel.TextColor3 = C.muted
 PanicLabel.Font = Enum.Font.Gotham
-PanicLabel.TextSize = 10
+PanicLabel.TextSize = 12
 PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
 PanicLabel.TextXAlignment = Enum.TextXAlignment.Left
 PanicLabel.LayoutOrder = 11
@@ -325,11 +326,11 @@ end
 local function TPButton(text, color, mode, target)
     tpOrder = tpOrder + 1
     local btn = Instance.new("TextButton", TPPage)
-    btn.Size = UDim2.new(0.95, 0, 0, 28)
+    btn.Size = UDim2.new(0.95, 0, 0, 32)
     btn.BackgroundColor3 = color or C.card
     btn.TextColor3 = C.text
     btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 10
+    btn.TextSize = 12
     btn.Text = "  " .. text
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.LayoutOrder = tpOrder * 100
@@ -371,34 +372,34 @@ local function NPCGuideEntry(npcName, desc, pos, order)
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 6)
     
     local nameL = Instance.new("TextLabel", card)
-    nameL.Size = UDim2.new(0.65, 0, 0, 20)
-    nameL.Position = UDim2.new(0, 8, 0, 4)
+    nameL.Size = UDim2.new(0.65, 0, 0, 22)
+    nameL.Position = UDim2.new(0, 10, 0, 4)
     nameL.BackgroundTransparency = 1
     nameL.Text = npcName
     nameL.TextColor3 = Color3.fromRGB(170, 200, 255)
     nameL.Font = Enum.Font.GothamBold
-    nameL.TextSize = 10
+    nameL.TextSize = 12
     nameL.TextXAlignment = Enum.TextXAlignment.Left
     
     local descL = Instance.new("TextLabel", card)
-    descL.Size = UDim2.new(1, -16, 0, 18)
-    descL.Position = UDim2.new(0, 8, 0, 26)
+    descL.Size = UDim2.new(1, -16, 0, 20)
+    descL.Position = UDim2.new(0, 10, 0, 28)
     descL.BackgroundTransparency = 1
     descL.Text = desc
     descL.TextColor3 = C.muted
     descL.Font = Enum.Font.Gotham
-    descL.TextSize = 9
+    descL.TextSize = 11
     descL.TextXAlignment = Enum.TextXAlignment.Left
     descL.TextWrapped = true
     
     local goBtn = Instance.new("TextButton", card)
-    goBtn.Size = UDim2.new(0, 40, 0, 20)
-    goBtn.Position = UDim2.new(1, -48, 0, 4)
+    goBtn.Size = UDim2.new(0, 46, 0, 24)
+    goBtn.Position = UDim2.new(1, -54, 0, 4)
     goBtn.BackgroundColor3 = C.accent
     goBtn.Text = "IR"
     goBtn.TextColor3 = Color3.new(1,1,1)
     goBtn.Font = Enum.Font.GothamBold
-    goBtn.TextSize = 10
+    goBtn.TextSize = 12
     goBtn.BorderSizePixel = 0
     Instance.new("UICorner", goBtn).CornerRadius = UDim.new(0, 4)
     goBtn.MouseButton1Click:Connect(function() SafeTravel(pos, npcName) end)
@@ -450,8 +451,8 @@ TPButton("📜 Quest 19 (Lvl 12000+)", C.card, "V3", Vector3.new(67,-2,1758))
 
 -- —————————— FRUTAS ——————————
 TPSection("🍎 FRUTAS")
-TPButton("💎 Vendedor de Frutas (Gemas)", Color3.fromRGB(55, 35, 45), "NPC", "GemFruitDealer")
-TPButton("🪙 Vendedor de Frutas (Monedas)", Color3.fromRGB(55, 45, 35), "NPC", "CoinFruitDealer")
+TPButton("💎 Vendedor Frutas (Gemas) — Sailor", Color3.fromRGB(55, 35, 45), "V3", Vector3.new(400,2,752))
+TPButton("🪙 Vendedor Frutas (Monedas) — Sailor", Color3.fromRGB(55, 45, 35), "V3", Vector3.new(408,2,802))
 TPButton("🍏 Auto-Recolector (Sniper): OFF", Color3.fromRGB(30, 60, 40), "Snipe", "")
 TPButton("🛑 DETENER VUELO", C.red, "Cancel", "")
 
@@ -478,27 +479,522 @@ NPCGuideEntry("😈 Demonite Quest (Anos)", "Quest especial del Demonite. Academ
 NPCGuideEntry("💠 Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
 
 -- =======================================================================================
--- ========== TAB 3: LOGS ==========
+-- ========== TAB 3: LOGS — OMNI-ANALYZER (NPCs + ROLLS + GUIs) ==========
 -- =======================================================================================
 local LogsPage = MakeScrollPage("Logs")
-SectionLabel(LogsPage, "📋 REGISTRO DE EVENTOS", 1)
+SectionLabel(LogsPage, "🔬 OMNI-ANALYZER — NPCs, Rolls & GUIs", 1)
 
-local LogPlaceholder = Instance.new("TextLabel", LogsPage)
-LogPlaceholder.Size = UDim2.new(0.95, 0, 0, 60)
-LogPlaceholder.BackgroundColor3 = C.card
-LogPlaceholder.TextColor3 = C.muted
-LogPlaceholder.Font = Enum.Font.Gotham
-LogPlaceholder.TextSize = 11
-LogPlaceholder.Text = "Los registros de actividad aparecerán aquí.\nPróximamente: historial de combate, frutas encontradas, y más."
-LogPlaceholder.TextWrapped = true
-LogPlaceholder.LayoutOrder = 2
-LogPlaceholder.BorderSizePixel = 0
-Instance.new("UICorner", LogPlaceholder).CornerRadius = UDim.new(0, 6)
+local AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
+local AnalyzerActive = false
+local AnalyzerConns = {}
+local ALogCount = 0
+local WriteBuf = {} -- Buffer para escritura batched (anti-lag)
+
+local ALogScroll = Instance.new("ScrollingFrame", LogsPage)
+ALogScroll.Size = UDim2.new(0.95, 0, 0, 240)
+ALogScroll.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+ALogScroll.BorderSizePixel = 0
+ALogScroll.ScrollBarThickness = 3
+ALogScroll.ScrollBarImageColor3 = C.accent
+ALogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+ALogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ALogScroll.LayoutOrder = 2
+Instance.new("UICorner", ALogScroll).CornerRadius = UDim.new(0, 6)
+local ALogLayout = Instance.new("UIListLayout", ALogScroll)
+ALogLayout.Padding = UDim.new(0, 2)
+ALogLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function ALog(text, color)
+    ALogCount = ALogCount + 1
+    local l = Instance.new("TextLabel", ALogScroll)
+    l.Size = UDim2.new(1, -8, 0, 18)
+    l.BackgroundTransparency = 1
+    l.TextColor3 = color or C.text
+    l.TextSize = 11
+    l.Font = Enum.Font.Code
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Text = "  " .. text
+    l.TextWrapped = true
+    l.LayoutOrder = ALogCount
+    task.defer(function() ALogScroll.CanvasPosition = Vector2.new(0, 99999) end)
+    if ALogCount > 250 then
+        local first = ALogScroll:FindFirstChildWhichIsA("TextLabel")
+        if first then first:Destroy() end
+    end
+end
+
+-- === SISTEMA DE ESCRITURA BATCHED (Anti-Lag) ===
+-- Acumula lineas en buffer y las escribe cada 3 segundos
+local function QueueWrite(line)
+    table.insert(WriteBuf, line)
+end
+
+local function FlushBuf()
+    if #WriteBuf == 0 then return end
+    local chunk = table.concat(WriteBuf, "\n") .. "\n"
+    WriteBuf = {}
+    pcall(function()
+        if appendfile then
+            appendfile(AnalyzerFileName, chunk)
+        elseif writefile then
+            local prev = ""
+            pcall(function() prev = readfile(AnalyzerFileName) end)
+            writefile(AnalyzerFileName, prev .. chunk)
+        end
+    end)
+end
+
+-- === SERIALIZACIÓN PROFUNDA ===
+local function Ser(v, depth)
+    depth = depth or 0
+    if depth > 3 then return "..." end
+    local t = typeof(v)
+    if t == "table" then
+        local sub = {}
+        local count = 0
+        for k2, v2 in pairs(v) do
+            count = count + 1
+            if count > 20 then table.insert(sub, "..+" .. (count) .. " más") break end
+            table.insert(sub, tostring(k2) .. "=" .. Ser(v2, depth + 1))
+        end
+        return "{" .. table.concat(sub, ", ") .. "}"
+    elseif t == "Instance" then
+        return v.ClassName .. ":" .. v:GetFullName()
+    elseif t == "Vector3" then
+        return string.format("V3(%.0f,%.0f,%.0f)", v.X, v.Y, v.Z)
+    elseif t == "CFrame" then
+        return string.format("CF(%.0f,%.0f,%.0f)", v.X, v.Y, v.Z)
+    elseif t == "EnumItem" then
+        return tostring(v)
+    else
+        return tostring(v)
+    end
+end
+
+local function SerArgs(...)
+    local args = {...}
+    local parts = {}
+    for _, v in ipairs(args) do table.insert(parts, Ser(v)) end
+    return table.concat(parts, " | ")
+end
+
+-- === BOTONES ===
+local BtnAnalyzer = Instance.new("TextButton", LogsPage)
+BtnAnalyzer.Size = UDim2.new(0.95, 0, 0, 40)
+BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
+BtnAnalyzer.TextColor3 = C.text
+BtnAnalyzer.Font = Enum.Font.GothamBold
+BtnAnalyzer.TextSize = 14
+BtnAnalyzer.Text = "  🔬 INICIAR OMNI-ANALYZER"
+BtnAnalyzer.TextXAlignment = Enum.TextXAlignment.Left
+BtnAnalyzer.LayoutOrder = 3
+BtnAnalyzer.BorderSizePixel = 0
+Instance.new("UICorner", BtnAnalyzer).CornerRadius = UDim.new(0, 6)
+
+local BtnDump = Instance.new("TextButton", LogsPage)
+BtnDump.Size = UDim2.new(0.95, 0, 0, 34)
+BtnDump.BackgroundColor3 = Color3.fromRGB(40, 55, 70)
+BtnDump.TextColor3 = C.text
+BtnDump.Font = Enum.Font.GothamMedium
+BtnDump.TextSize = 12
+BtnDump.Text = "  📊 DUMP CONFIGS (Fruit, Rarity, Rolls, Settings)"
+BtnDump.TextXAlignment = Enum.TextXAlignment.Left
+BtnDump.LayoutOrder = 4
+BtnDump.BorderSizePixel = 0
+Instance.new("UICorner", BtnDump).CornerRadius = UDim.new(0, 6)
+
+SectionLabel(LogsPage, "📋 QUÉ CAPTURA EL ANALYZER", 5)
+
+local InfoBox = Instance.new("TextLabel", LogsPage)
+InfoBox.Size = UDim2.new(0.95, 0, 0, 130)
+InfoBox.BackgroundColor3 = C.card
+InfoBox.TextColor3 = C.muted
+InfoBox.Font = Enum.Font.Code
+InfoBox.TextSize = 10
+InfoBox.Text = "Al activar, captura EN VIVO sin lag:\n" ..
+    "🤖 NPC TOUCH — Detecta ProximityPrompt al hablar\n" ..
+    "📺 GUI OPEN — Detecta ventanas nuevas en PlayerGui\n" ..
+    "📡 REMOTES — 60+ RemoteEvents (Rolls, Traits,\n" ..
+    "   Powers, Stats, Fruits, Quests, Shop, Artifacts,\n" ..
+    "   Haki, Blessing, Trade, Skills, Ascension...)\n" ..
+    "💾 AUTO-SAVE cada 3s en .txt (batched)\n" ..
+    "Abre NPCs, haz Rolls, compra — todo queda capturado.\n" ..
+    "Clanes: Voldigoat, Pride, Monarch • Razas: Epic+Leg"
+InfoBox.TextWrapped = true
+InfoBox.TextXAlignment = Enum.TextXAlignment.Left
+InfoBox.TextYAlignment = Enum.TextYAlignment.Top
+InfoBox.LayoutOrder = 6
+InfoBox.BorderSizePixel = 0
+Instance.new("UICorner", InfoBox).CornerRadius = UDim.new(0, 6)
+Instance.new("UIPadding", InfoBox).PaddingLeft = UDim.new(0, 8)
+
+-- === LISTA COMPLETA DE REMOTES A HOOKEAR ===
+local AllRemotes = {
+    -- Rolls / Rerolls / Spins
+    "TraitReroll", "TraitConfirm", "TraitUpdateFilters", "TraitUpdateAutoSkip",
+    "TraitGetData", "TraitDataUpdate", "TraitAutoReroll", "OpenTraitUI",
+    "PowerReroll", "PowerConfirm", "PowerUpdateAutoSkip", "PowerDataUpdate",
+    "PowerGetData", "PowerUnlock", "OpenPowerUI", "PowerShowConfirm",
+    "PowerToggleAutoRoll", "PowerUpdateFilters",
+    "StatRerollUpdate", "StatRerollUpdateAutoSkip", "StatRerollAutoRoll",
+    "OpenStatRerollUI", "StatUpdateAutoSkip",
+    "SpecPassiveReroll", "SpecPassiveConfirm", "SpecPassiveUpdateAutoSkip",
+    "SpecPassiveDataUpdate", "OpenSpecPassiveUI", "SpecPassiveShowConfirm",
+    "SpecPassiveUnlock", "SpecPassiveGetData", "SpecPassiveToggleAutoRoll",
+    -- Frutas
+    "FruitReroll", "FruitAction", "DropFruit", "FruitPowerRemote", "FruitPowerResponse",
+    "FruitClearWarning",
+    -- Stats / Perfil
+    "UpdatePlayerStats", "DataChanged", "ProfileLoaded", "AllocateStat",
+    "ResetStats", "ToggleStatsPanel", "LevelUp", "UpdateCurrency", "GetPlayerStats",
+    -- Quests
+    "QuestAccept", "QuestAbandon", "QuestProgress", "QuestComplete", "QuestUIUpdate",
+    "QuestRepeat",
+    -- Haki
+    "HakiRemote", "HakiStateUpdate", "HakiQuestUpdate", "HakiProgressionUpdate",
+    "ObservationHakiRemote", "ObservationHakiStateUpdate",
+    "ConquerorHakiRemote",
+    -- Artefactos
+    "ArtifactUpgrade", "ArtifactEquip", "ArtifactUnequip", "ArtifactDataSync",
+    "ArtifactOpenUI", "ArtifactCloseUI", "ArtifactUnlockSystem",
+    "ArtifactMilestoneOpenUI", "ArtifactMilestoneDataSync",
+    -- Shop / Compras
+    "OpenBossRushShop", "BossRushShopSync",
+    "OpenInfiniteTowerShop", "InfiniteTowerShopSync",
+    -- Skills / Ascension
+    "OpenSkillTreeUI", "SkillTreeUnlock", "SkillTreeUpgrade", "SkillTreeReset",
+    "SkillTreeUpdate", "GetSkillTreeData",
+    "OpenAscendUI", "GetAscendData", "RequestAscend", "AscendDataUpdate",
+    -- Títulos / Settings
+    "TitleEquip", "TitleUnequip", "TitleUnlocked", "TitleDataSync",
+    "SettingsToggle", "SettingsSync",
+    -- Loadouts / Storage
+    "LoadoutSave", "LoadoutLoad", "LoadoutSync",
+    "OpenStorageUI",
+    -- NPCs / Rewards
+    "NPCReward", "SetSpawnEvent",
+    -- Codes
+    "CodeRedeem",
+    -- Especiales (F Moves)
+    "CheckShadowFUnlocked", "ShadowFUnlockUpdate",
+    "CheckSukunaFUnlocked", "SukunaFUnlockUpdate",
+    "CheckGojoFUnlocked", "GojoFUnlockUpdate",
+    "CheckBlessedMaidenFUnlocked", "BlessedMaidenFUnlockUpdate",
+    "CheckSaberAlterFUnlocked", "SaberAlterFUnlockUpdate",
+    "CheckAtomicFUnlocked", "AtomicFUnlockUpdate",
+    "CheckMoonSlayerFUnlocked", "MoonSlayerFUnlockUpdate",
+    "CheckStrongestShinobiFUnlocked", "StrongestShinobiFUnlockUpdate",
+    "CheckRimuruFUnlocked", "RimuruFUnlockUpdate",
+    "CheckShadowMonarchFUnlocked", "ShadowMonarchFUnlockUpdate",
+    "CheckAizenFUnlocked", "AizenFUnlockUpdate",
+    -- Bosses invocables
+    "RequestSpawnRimuru", "RimuruBossResult",
+    "RequestSpawnTrueAizen", "TrueAizenBossResult",
+    "RequestSpawnAtomic", "AtomicBossResult",
+    -- Slime / Craft
+    "OpenSlimeCraftUI", "SlimeCraftUpdate",
+    "OpenGrailCraftUI",
+    -- Dungeon
+    "DungeonPortalSpawn", "DungeonUIUpdate",
+}
+
+-- === COLORES POR CATEGORÍA ===
+local function RemoteColor(name)
+    local n = name:lower()
+    if n:match("trait") or n:match("race") then return Color3.fromRGB(255, 180, 100) end
+    if n:match("power") then return Color3.fromRGB(180, 130, 255) end
+    if n:match("stat") or n:match("reroll") then return Color3.fromRGB(100, 200, 255) end
+    if n:match("spec") or n:match("passive") then return Color3.fromRGB(255, 150, 200) end
+    if n:match("fruit") then return Color3.fromRGB(150, 255, 150) end
+    if n:match("quest") then return Color3.fromRGB(255, 255, 130) end
+    if n:match("haki") or n:match("conqueror") then return Color3.fromRGB(200, 100, 100) end
+    if n:match("artifact") then return Color3.fromRGB(180, 220, 255) end
+    if n:match("shop") or n:match("purchase") then return Color3.fromRGB(255, 200, 50) end
+    if n:match("skill") or n:match("ascend") then return Color3.fromRGB(200, 255, 200) end
+    if n:match("title") then return Color3.fromRGB(220, 200, 255) end
+    if n:match("unlock") or n:match("check") then return Color3.fromRGB(255, 180, 180) end
+    return Color3.fromRGB(180, 190, 210)
+end
+
+-- === LÓGICA PRINCIPAL DEL ANALYZER ===
+BtnAnalyzer.MouseButton1Click:Connect(function()
+    AnalyzerActive = not AnalyzerActive
+    if AnalyzerActive then
+        BtnAnalyzer.BackgroundColor3 = C.accentOn
+        BtnAnalyzer.Text = "  🛑 DETENER OMNI-ANALYZER"
+        
+        AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
+        pcall(function()
+            if writefile then
+                writefile(AnalyzerFileName, "=== OMNI-ANALYZER — " .. os.date() .. " ===\n" ..
+                    "Captura: NPCs, GUIs, RemoteEvents, Rolls, Shops\n\n")
+            end
+        end)
+        
+        local ts = function() return os.date("%H:%M:%S") end
+        local hookCount = 0
+        
+        -- ========== HOOK 1: TODOS LOS REMOTE EVENTS ==========
+        local RE_Folder = ReplicatedStorage:FindFirstChild("RemoteEvents")
+        if RE_Folder then
+            for _, remoteName in ipairs(AllRemotes) do
+                local remote = RE_Folder:FindFirstChild(remoteName)
+                if remote and remote:IsA("RemoteEvent") then
+                    local conn = remote.OnClientEvent:Connect(function(...)
+                        local data = SerArgs(...)
+                        local line = "[" .. ts() .. "] 📡 " .. remoteName .. " → " .. data
+                        ALog(line, RemoteColor(remoteName))
+                        QueueWrite(line)
+                    end)
+                    table.insert(AnalyzerConns, conn)
+                    hookCount = hookCount + 1
+                end
+            end
+        end
+        
+        -- También hookear Remotes (carpeta secundaria)
+        pcall(function()
+            local Remotes2 = ReplicatedStorage:FindFirstChild("Remotes")
+            if Remotes2 then
+                for _, remote in pairs(Remotes2:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                        if remote:IsA("RemoteEvent") then
+                            local conn = remote.OnClientEvent:Connect(function(...)
+                                local data = SerArgs(...)
+                                local line = "[" .. ts() .. "] 📡 R/" .. remote.Name .. " → " .. data
+                                ALog(line, Color3.fromRGB(200, 180, 150))
+                                QueueWrite(line)
+                            end)
+                            table.insert(AnalyzerConns, conn)
+                            hookCount = hookCount + 1
+                        end
+                    end
+                end
+            end
+        end)
+        
+        -- ========== HOOK 2: PROXIMTY PROMPT (NPC INTERACT) ==========
+        -- Detecta cuando el jugador habla con un NPC
+        local promptsHooked = {}
+        local function HookPrompt(prompt)
+            if promptsHooked[prompt] then return end
+            promptsHooked[prompt] = true
+            local conn = prompt.Triggered:Connect(function(playerWhoTriggered)
+                if playerWhoTriggered ~= LP then return end
+                local parent = prompt.Parent
+                local npcName = parent and parent.Name or "?"
+                local objText = prompt.ObjectText or ""
+                local actionText = prompt.ActionText or ""
+                local pos = "?"
+                pcall(function()
+                    if parent:IsA("Model") and parent.PrimaryPart then
+                        local p = parent.PrimaryPart.Position
+                        pos = string.format("%.0f,%.0f,%.0f", p.X, p.Y, p.Z)
+                    elseif parent.Parent and parent.Parent:IsA("Model") then
+                        local pp = parent.Parent
+                        npcName = pp.Name
+                        if pp.PrimaryPart then
+                            local p = pp.PrimaryPart.Position
+                            pos = string.format("%.0f,%.0f,%.0f", p.X, p.Y, p.Z)
+                        end
+                    end
+                end)
+                local line = "[" .. ts() .. "] 🤖 NPC INTERACT: " .. npcName ..
+                    " | Acción: " .. actionText ..
+                    " | Texto: " .. objText ..
+                    " | Pos: " .. pos ..
+                    " | Ruta: " .. prompt:GetFullName()
+                ALog(line, Color3.fromRGB(255, 220, 100))
+                QueueWrite(line)
+            end)
+            table.insert(AnalyzerConns, conn)
+        end
+        
+        -- Hookear prompts existentes
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("ProximityPrompt") then HookPrompt(v) end
+        end
+        -- Hookear prompts nuevos (streaming)
+        local conn_pp = Workspace.DescendantAdded:Connect(function(v)
+            if v:IsA("ProximityPrompt") then task.wait(0.1) HookPrompt(v) end
+        end)
+        table.insert(AnalyzerConns, conn_pp)
+        
+        -- ========== HOOK 3: GUI CHANGES (PlayerGui) ==========
+        -- Detecta cuando se abren nuevas ventanas (Reroll UI, Shop, etc.)
+        local guiLogged = {}
+        local conn_gui = LP.PlayerGui.DescendantAdded:Connect(function(child)
+            task.wait(0.05) -- Deja que se complete el render
+            if not child or not child.Parent then return end
+            -- Solo logear Frames/ScrollingFrames que sean pantallas grandes
+            if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+                local fullName = child:GetFullName()
+                -- Filtrar: ignorar nuestro propio GUI y cosas muy chicas
+                if fullName:match("OmniAutoFarm") then return end
+                -- Solo logear pantallas "raíz" (hijos directos de ScreenGui)
+                if child.Parent and child.Parent:IsA("ScreenGui") then
+                    local key = child.Parent.Name .. "/" .. child.Name
+                    if guiLogged[key] then return end
+                    guiLogged[key] = true
+                    -- Analizar contenido de la GUI
+                    local childInfo = {}
+                    for _, sub in pairs(child:GetDescendants()) do
+                        if sub:IsA("TextLabel") and sub.Text ~= "" and #sub.Text < 100 then
+                            table.insert(childInfo, sub.Name .. "='" .. sub.Text .. "'")
+                        elseif sub:IsA("TextButton") and sub.Text ~= "" then
+                            table.insert(childInfo, "BTN:" .. sub.Name .. "='" .. sub.Text .. "'")
+                        end
+                        if #childInfo >= 15 then break end
+                    end
+                    local line = "[" .. ts() .. "] 📺 GUI OPEN: " .. key ..
+                        " | Size: " .. tostring(child.Size) ..
+                        " | Contenido: " .. table.concat(childInfo, " • ")
+                    ALog(line, Color3.fromRGB(100, 220, 255))
+                    QueueWrite(line)
+                    -- Resetear para capturar reaperturas después de 2s
+                    task.delay(2, function() guiLogged[key] = nil end)
+                end
+            end
+        end)
+        table.insert(AnalyzerConns, conn_gui)
+        
+        -- ========== HOOK 4: VISIBILITY CHANGES (detecta UIs que se muestran) ==========
+        local visLogged = {}
+        pcall(function()
+            for _, sg in pairs(LP.PlayerGui:GetChildren()) do
+                if sg:IsA("ScreenGui") and sg.Name ~= "OmniAutoFarm" then
+                    for _, frame in pairs(sg:GetChildren()) do
+                        if (frame:IsA("Frame") or frame:IsA("ScrollingFrame")) then
+                            pcall(function()
+                                local conn_vis = frame:GetPropertyChangedSignal("Visible"):Connect(function()
+                                    if not frame.Visible then return end
+                                    local key = sg.Name .. "/" .. frame.Name
+                                    if visLogged[key] then return end
+                                    visLogged[key] = true
+                                    local labels = {}
+                                    for _, sub in pairs(frame:GetDescendants()) do
+                                        if sub:IsA("TextLabel") and sub.Text ~= "" and #sub.Text < 80 then
+                                            table.insert(labels, sub.Name .. "='" .. sub.Text .. "'")
+                                        end
+                                        if #labels >= 10 then break end
+                                    end
+                                    local line = "[" .. ts() .. "] 👁️ GUI SHOW: " .. key .. " | " .. table.concat(labels, " • ")
+                                    ALog(line, Color3.fromRGB(150, 200, 255))
+                                    QueueWrite(line)
+                                    task.delay(1.5, function() visLogged[key] = nil end)
+                                end)
+                                table.insert(AnalyzerConns, conn_vis)
+                            end)
+                        end
+                    end
+                end
+            end
+        end)
+        
+        -- ========== AUTO-FLUSH TIMER (cada 3 segundos) ==========
+        local flushConn = game:GetService("RunService").Heartbeat:Connect(function()
+            -- Flush cada ~3 segundos (180 frames aprox a 60fps)
+        end)
+        table.insert(AnalyzerConns, flushConn)
+        task.spawn(function()
+            while AnalyzerActive do
+                task.wait(3)
+                FlushBuf()
+            end
+        end)
+        
+        ALog("🟢 OMNI-ANALYZER ACTIVO — " .. hookCount .. " remotes + NPC prompts + GUIs", C.accentOn)
+        QueueWrite("[INICIO] " .. hookCount .. " hooks conectados — " .. os.date())
+        QueueWrite("[INFO] Captura: RemoteEvents, ProximityPrompts, GUI changes")
+        FlushBuf()
+    else
+        -- DETENER
+        BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
+        BtnAnalyzer.Text = "  🔬 INICIAR OMNI-ANALYZER"
+        for _, conn in pairs(AnalyzerConns) do pcall(function() conn:Disconnect() end) end
+        AnalyzerConns = {}
+        FlushBuf()
+        ALog("🔴 OMNI-ANALYZER DETENIDO — Archivo: " .. AnalyzerFileName, C.red)
+        QueueWrite("[FIN] Detenido — " .. os.date())
+        FlushBuf()
+    end
+end)
+
+-- === DUMP ESTÁTICO DE CONFIGS ===
+BtnDump.MouseButton1Click:Connect(function()
+    ALog("📊 Dumpeando módulos...", Color3.fromRGB(255, 200, 100))
+    local dumpFile = "ConfigDump_" .. tostring(math.floor(os.clock())) .. ".txt"
+    local d = "=== CONFIG DUMP — " .. os.date() .. " ===\n\n"
+    
+    pcall(function()
+        local fc = require(ReplicatedStorage:WaitForChild("FruitConfig", 3))
+        if fc then
+            d = d .. "[FRUIT CONFIG]\n"
+            if fc.Rarities then for r, w in pairs(fc.Rarities) do d = d .. "  " .. r .. " = " .. w .. "%\n" end end
+            if fc.Fruits then for _, f in ipairs(fc.Fruits) do d = d .. "  - " .. f.Name .. " [" .. f.Rarity .. "]\n" end end
+            ALog("✅ FruitConfig", C.accentOn)
+        end
+    end)
+    pcall(function()
+        local irc = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemRarityConfig", 3))
+        if irc and irc.RarityOrder then
+            d = d .. "\n[ITEM RARITY ORDER]\n"
+            for i, r in ipairs(irc.RarityOrder) do d = d .. "  " .. i .. ". " .. r .. "\n" end
+            ALog("✅ ItemRarity", C.accentOn)
+        end
+    end)
+    pcall(function()
+        local sc = require(ReplicatedStorage:WaitForChild("SettingsConfig", 3))
+        if sc and sc.Settings then
+            d = d .. "\n[SETTINGS — ROLL/REROLL]\n"
+            for _, s in ipairs(sc.Settings) do
+                local cat = s.Category or ""
+                if cat:match("Reroll") or cat:match("Filter") or cat:match("Clan") or cat:match("Race") or cat:match("Skill") or cat:match("Haki") then
+                    d = d .. "  [" .. cat .. "] " .. (s.Key or "?") .. " = " .. (s.Label or "?") .. "\n"
+                end
+            end
+            if sc.CategoryOrder then
+                d = d .. "  Categorías:\n"
+                for cat, ord in pairs(sc.CategoryOrder) do d = d .. "    " .. cat .. " = " .. ord .. "\n" end
+            end
+            ALog("✅ SettingsConfig", C.accentOn)
+        end
+    end)
+    
+    -- Dump TODOS los RemoteEvents
+    d = d .. "\n[TODOS LOS REMOTE EVENTS]\n"
+    pcall(function()
+        local RE = ReplicatedStorage:FindFirstChild("RemoteEvents")
+        if RE then for _, c in pairs(RE:GetChildren()) do d = d .. "  " .. c.ClassName .. ": " .. c.Name .. "\n" end end
+    end)
+    pcall(function()
+        local R2 = ReplicatedStorage:FindFirstChild("Remotes")
+        if R2 then for _, c in pairs(R2:GetDescendants()) do
+            if c:IsA("RemoteEvent") or c:IsA("RemoteFunction") then d = d .. "  " .. c.ClassName .. ": " .. c:GetFullName() .. "\n" end
+        end end
+    end)
+    
+    -- Dump NPCs con ProximityPrompt en la zona actual
+    d = d .. "\n[NPCs CON PROXIMITY PROMPT (ZONA CARGADA)]\n"
+    pcall(function()
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("ProximityPrompt") then
+                local p = v.Parent
+                local pp = p and p.Parent
+                local npcName = (pp and pp:IsA("Model") and pp.Name) or (p and p.Name) or "?"
+                local objText = v.ObjectText or ""
+                local actionText = v.ActionText or ""
+                d = d .. "  🤖 " .. npcName .. " | Action: " .. actionText .. " | Text: " .. objText .. " | Path: " .. v:GetFullName() .. "\n"
+            end
+        end
+    end)
+    
+    pcall(function() if writefile then writefile(dumpFile, d) end end)
+    ALog("💾 " .. dumpFile, Color3.fromRGB(255, 255, 100))
+end)
 
 -- ========== VARIABLES OCULTAS PARA COMPATIBILIDAD BACKEND ==========
--- Estos elementos ya no se pintan en la GUI pero se mantienen para que
--- las conexiones de línea 831+ y el Fruit ESP sigan compilando sin error.
-local BtnSpy = Instance.new("TextButton") -- fantasma, sin Parent
+local BtnSpy = Instance.new("TextButton")
 BtnSpy.Visible = false
 local BtnAutoTour = Instance.new("TextButton")
 BtnAutoTour.Visible = false
@@ -513,8 +1009,21 @@ LogFrame.Visible = false
 local LogScroll = Instance.new("ScrollingFrame")
 local LogLayout = Instance.new("UIListLayout", LogScroll)
 LogLayout.Padding = UDim.new(0, 3)
-local function AddLog(text, color) end -- stub silencioso
-local TScroll = Instance.new("ScrollingFrame") -- fantasma
+local function AddLog(text, color) end
+local TScroll = Instance.new("ScrollingFrame")
+
+-- ========== HOTKEY: Tecla * para Toggle GUI ==========
+uis.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.KeypadMultiply or input.KeyCode == Enum.KeyCode.Eight then
+        -- KeypadMultiply = tecla * del numpad, Eight+Shift = * en teclado normal
+        if input.KeyCode == Enum.KeyCode.Eight and not uis:IsKeyDown(Enum.KeyCode.LeftShift) and not uis:IsKeyDown(Enum.KeyCode.RightShift) then return end
+        MF.Visible = not MF.Visible
+        if not MF.Visible then
+            if CodesFrame then pcall(function() CodesFrame.Visible = false end) end
+        end
+    end
+end)
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -1178,7 +1687,6 @@ end)
 
 -- Sistema de interaccion Slider
 local sliderCon = nil
-local uis = game:GetService("UserInputService")
 
 SliderBg.MouseButton1Down:Connect(function()
     local Mouse = LP:GetMouse()
