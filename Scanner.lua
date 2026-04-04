@@ -95,7 +95,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM 2"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FAR 4M"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -156,6 +156,7 @@ end
 local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
 local TabTP   = MakeTabBtn("🗺️", "Teleport", 2)
 local TabLogs = MakeTabBtn("📋", "Logs", 3)
+local TabSnipe = MakeTabBtn("🎰", "Sniper", 4)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel = Instance.new("Frame", MF)
@@ -201,6 +202,7 @@ end
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabTP.MouseButton1Click:Connect(function() SwitchTab("Teleport") end)
 TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
+TabSnipe.MouseButton1Click:Connect(function() SwitchTab("Sniper") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
