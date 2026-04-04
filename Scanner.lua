@@ -857,12 +857,14 @@ task.spawn(function()
                 local mob = GetNearestMob()
                 
                 if not mob and ScannedTargetName and ScannedTargetPos and not IsInPanicRecovery then
-                    -- MOB NO CARGADO, VOLAR A SUS COORDENADAS PARA QUE EL SERVIDOR LO ACTIVE!
+                    -- MOB NO CARGADO, VOLAR A SUS COORDENADAS (Anti-Cheat Bypass)
                     StatusLabel.Text = " Status: Volando a Radar..."
                     local d = (char.HumanoidRootPart.Position - ScannedTargetPos).Magnitude
-                    if d > 10 then
-                        local step = math.clamp(120 / d, 0, 1)
-                        char:PivotTo(char.HumanoidRootPart.CFrame:Lerp(CFrame.new(ScannedTargetPos), step))
+                    if d > 15 then
+                        local step = math.clamp(40 / d, 0, 1)
+                        local wave = math.sin(os.clock() * 6) * 2
+                        local tLerp = char.HumanoidRootPart.CFrame:Lerp(CFrame.new(ScannedTargetPos), step)
+                        char:PivotTo(tLerp * CFrame.new(0, wave, 0))
                     end
                 end
                 
@@ -1002,12 +1004,15 @@ task.spawn(function()
                                 pcall(function()
                                     local flyDist = (hrp.Position - TargetCF.Position).Magnitude
                                     if flyDist > 15 then
-                                        -- FLY CLIP UNIVERSAL: Vuelo noclip constante para evitar bloqueo del mapa
-                                        local flyStep = math.clamp(120 / flyDist, 0, 1)
-                                        char:PivotTo(hrp.CFrame:Lerp(TargetCF, flyStep))
+                                        -- FLY CLIP UNIVERSAL: Vuelo noclip constante (Anti-Cheat Bypass)
+                                        local maxMovePerFrame = 5 -- 300 studs/s max
+                                        local flyStep = math.clamp(maxMovePerFrame / flyDist, 0, 1)
+                                        local wave = math.sin(os.clock() * 6) * 2
+                                        local tLerp = hrp.CFrame:Lerp(TargetCF, flyStep)
+                                        hrp.CFrame = tLerp * CFrame.new(0, wave, 0)
                                     else
                                         -- Cerca: Anchored Pivot perfecto
-                                        char:PivotTo(TargetCF)
+                                        hrp.CFrame = TargetCF
                                     end
                                 end)
                                 
@@ -1257,8 +1262,8 @@ end)
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
-        OfsY = -8
-        OfsZ = 6
+        OfsY = -6.5
+        OfsZ = 0
         BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
     else
         FarmMode = "Arriba"
@@ -1319,7 +1324,7 @@ local function LoadConfig()
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
                     
                     if FarmMode == "Abajo" then
-                        OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+                        OfsY = -6.5; OfsZ = 0; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
                     else
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
