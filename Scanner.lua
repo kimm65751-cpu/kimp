@@ -1,6 +1,6 @@
 -- ==============================================================================
--- âš”ï¸ OMNI-AUTO FARMER V1.0 - [AURA KILL + HOVER NOCLIP]
--- DiseÃ±ado para explotar: ReplicatedStorage.CombatSystem.Remotes.RequestHit
+-- ⚔️ OMNI-AUTO FARMER V1.0 - [AURA KILL + HOVER NOCLIP]
+-- Diseñado para explotar: ReplicatedStorage.CombatSystem.Remotes.RequestHit
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -27,12 +27,12 @@ local IsInPanicRecovery = false
 local GlobalMagnetTarget = nil
 local VIM = game:GetService("VirtualInputManager")
 
--- Endpoints CrÃ­ticos (Sacados del Scanner)
+-- Endpoints Críticos (Sacados del Scanner)
 local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
 local NPCsFolder = Workspace:WaitForChild("NPCs")
 
 -- ==============================================================================
--- GUI V2.0 â€” DISEÃ‘O PREMIUM TABBED (COLORES SUAVES, MINIMALISTA)
+-- GUI V2.0 — DISEÑO PREMIUM TABBED (COLORES SUAVES, MINIMALISTA)
 -- ==============================================================================
 local TargetGui = pcall(function() return CoreGui.Name end) and CoreGui or LP:WaitForChild("PlayerGui")
 for _, v in pairs(TargetGui:GetChildren()) do if v.Name == "OmniAutoFarm" then pcall(function() v:Destroy() end) end end
@@ -74,12 +74,29 @@ local MFStroke = Instance.new("UIStroke", MF)
 MFStroke.Color = C.border
 MFStroke.Thickness = 1.5
 
--- ========== BOTÃ“N FLOTANTE ==========
+-- ========== GUARDAR/CARGAR CONFIGURACIÓN ==========
+local function SaveConfig()
+    if writefile then
+        local data = {
+            ScannedTargetName = ScannedTargetName,
+            ScannedTargetPos = ScannedTargetPos and {X=ScannedTargetPos.X, Y=ScannedTargetPos.Y, Z=ScannedTargetPos.Z} or nil,
+            PanicThreshold = PanicThreshold,
+            ReturnHealthThreshold = ReturnHealthThreshold,
+            MobMagnetEnabled = MobMagnetEnabled,
+            AutoSkillEnabled = AutoSkillEnabled,
+            TargetBosses = TargetBosses,
+            FarmMode = FarmMode
+        }
+        pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
+    end
+end
+
+-- ========== BOTÓN FLOTANTE ==========
 local BtnFloat = Instance.new("TextButton", SG)
 BtnFloat.Size = UDim2.new(0, 40, 0, 40)
 BtnFloat.Position = UDim2.new(0, 15, 0, 15)
 BtnFloat.BackgroundColor3 = C.sidebar
-BtnFloat.Text = "âš”ï¸"
+BtnFloat.Text = "⚔️"
 BtnFloat.TextSize = 18
 BtnFloat.Active = true
 BtnFloat.Draggable = true
@@ -87,7 +104,7 @@ BtnFloat.BorderSizePixel = 0
 Instance.new("UICorner", BtnFloat).CornerRadius = UDim.new(0, 20)
 Instance.new("UIStroke", BtnFloat).Color = C.accent
 
--- ========== BARRA DE TÃTULO ==========
+-- ========== BARRA DE TÍTULO ==========
 local TitleBar = Instance.new("Frame", MF)
 TitleBar.Size = UDim2.new(1, 0, 0, 36)
 TitleBar.BackgroundColor3 = C.sidebar
@@ -98,7 +115,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "âš”ï¸  SAILOR PIECE â€” AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -108,7 +125,7 @@ local BtnMin = Instance.new("TextButton", TitleBar)
 BtnMin.Size = UDim2.new(0, 36, 0, 36)
 BtnMin.Position = UDim2.new(1, -36, 0, 0)
 BtnMin.BackgroundTransparency = 1
-BtnMin.Text = "â€”"
+BtnMin.Text = "—"
 BtnMin.TextColor3 = C.muted
 BtnMin.TextSize = 18
 BtnMin.Font = Enum.Font.GothamBold
@@ -124,7 +141,7 @@ StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.TextSize = 13
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- ======================== SIDEBAR (PESTAÃ‘AS) ========================
+-- ======================== SIDEBAR (PESTAÑAS) ========================
 local Sidebar = Instance.new("Frame", MF)
 Sidebar.Size = UDim2.new(0, 56, 1, -60)
 Sidebar.Position = UDim2.new(0, 0, 0, 58)
@@ -156,10 +173,10 @@ local function MakeTabBtn(icon, tabName, order)
     return tb
 end
 
-local TabFarm = MakeTabBtn("âš”ï¸", "Farm", 1)
-local TabTP   = MakeTabBtn("ðŸ—ºï¸", "Teleport", 2)
-local TabLogs = MakeTabBtn("ðŸ“‹", "Logs", 3)
-local TabSnipe = MakeTabBtn("ðŸŽ°", "Sniper", 4)
+local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
+local TabTP   = MakeTabBtn("🗺️", "Teleport", 2)
+local TabLogs = MakeTabBtn("📋", "Logs", 3)
+local TabSnipe = MakeTabBtn("🎯", "Sniper", 4)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel = Instance.new("Frame", MF)
@@ -204,6 +221,8 @@ end
 
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabTP.MouseButton1Click:Connect(function() SwitchTab("Teleport") end)
+TabLogs.MouseButton1Click:Connect(function() SwitchTab("Logs") end)
+TabSnipe.MouseButton1Click:Connect(function() SwitchTab("Sniper") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -238,13 +257,13 @@ end
 local FarmPage = MakeScrollPage("Farm")
 
 SectionLabel(FarmPage, "COMBATE", 1)
-local BtnToggle = ToggleButton(FarmPage, "â–º Iniciar Auto-Farm", 2, C.red)
+local BtnToggle = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
 BtnToggle.TextSize = 15
 BtnToggle.Font = Enum.Font.GothamBold
-local BtnHeight = ToggleButton(FarmPage, "PosiciÃ³n: â˜ï¸ Arriba", 3)
-local BtnMagnet = ToggleButton(FarmPage, "ðŸ§² ImÃ¡n de Mobs", 4)
-local BtnSkill  = ToggleButton(FarmPage, "ðŸ”¥ Auto Skill (X)", 5)
-local BtnBoss   = ToggleButton(FarmPage, "ðŸŽ¯ Cazar Bosses: Normal", 6)
+local BtnHeight = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
+local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
+local BtnSkill  = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
+local BtnBoss   = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 
 SectionLabel(FarmPage, "ESCÁNER OBJETIVO", 7)
 local BtnScan = Instance.new("TextButton", FarmPage)
@@ -285,15 +304,15 @@ PanicLabel.BackgroundTransparency = 1
 PanicLabel.TextColor3 = C.muted
 PanicLabel.Font = Enum.Font.Gotham
 PanicLabel.TextSize = 12
-PanicLabel.Text = "  ðŸ›¡ï¸ Escudo PÃ¡nico â€” Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
+PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
 PanicLabel.TextXAlignment = Enum.TextXAlignment.Left
-PanicLabel.LayoutOrder = 11
+PanicLabel.LayoutOrder = 12
 
 local SliderBg = Instance.new("TextButton", FarmPage)
 SliderBg.Size = UDim2.new(0.95, 0, 0, 12)
 SliderBg.BackgroundColor3 = Color3.fromRGB(40, 42, 55)
 SliderBg.Text = ""
-SliderBg.LayoutOrder = 12
+SliderBg.LayoutOrder = 13
 SliderBg.BorderSizePixel = 0
 Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(0, 6)
 
@@ -303,8 +322,32 @@ SliderFill.BackgroundColor3 = C.accentOn
 SliderFill.BorderSizePixel = 0
 Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(0, 6)
 
+local ReturnHealthLabel = Instance.new("TextLabel", FarmPage)
+ReturnHealthLabel.Size = UDim2.new(0.95, 0, 0, 16)
+ReturnHealthLabel.BackgroundTransparency = 1
+ReturnHealthLabel.TextColor3 = C.muted
+ReturnHealthLabel.Font = Enum.Font.Gotham
+ReturnHealthLabel.TextSize = 12
+ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
+ReturnHealthLabel.TextXAlignment = Enum.TextXAlignment.Left
+ReturnHealthLabel.LayoutOrder = 14
+
+local ReturnSliderBg = Instance.new("TextButton", FarmPage)
+ReturnSliderBg.Size = UDim2.new(0.95, 0, 0, 12)
+ReturnSliderBg.BackgroundColor3 = Color3.fromRGB(40, 42, 55)
+ReturnSliderBg.Text = ""
+ReturnSliderBg.LayoutOrder = 15
+ReturnSliderBg.BorderSizePixel = 0
+Instance.new("UICorner", ReturnSliderBg).CornerRadius = UDim.new(0, 6)
+
+local ReturnSliderFill = Instance.new("Frame", ReturnSliderBg)
+ReturnSliderFill.Size = UDim2.new(ReturnHealthThreshold, 0, 1, 0)
+ReturnSliderFill.BackgroundColor3 = Color3.fromRGB(80, 255, 120)
+ReturnSliderFill.BorderSizePixel = 0
+Instance.new("UICorner", ReturnSliderFill).CornerRadius = UDim.new(0, 6)
+
 SectionLabel(FarmPage, "UTILIDADES", 20)
-local BtnCodes = ToggleButton(FarmPage, "ðŸ“‹ Gestor de CÃ³digos", 21, Color3.fromRGB(35, 55, 75))
+local BtnCodes = ToggleButton(FarmPage, "📋 Gestor de Códigos", 21, Color3.fromRGB(35, 55, 75))
 
 -- =======================================================================================
 -- ========== TAB 2: TELEPORT ==========
@@ -327,8 +370,8 @@ local function SafeTravel(targetVector3, destinationName)
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     AutoFarm = false
     BtnToggle.BackgroundColor3 = C.red
-    BtnToggle.Text = "  â–º Iniciar Auto-Farm"
-    StatusLabel.Text = "âœˆï¸ Viajando a: " .. destinationName
+    BtnToggle.Text = "  ► Iniciar Auto-Farm"
+    StatusLabel.Text = "✈️ Viajando a: " .. destinationName
     task.spawn(function()
         while IsTraveling do
             pcall(function()
@@ -337,10 +380,10 @@ local function SafeTravel(targetVector3, destinationName)
                     local dist = (hrp.Position - targetVector3).Magnitude
                     if dist <= 15 then
                         IsTraveling = false
-                        StatusLabel.Text = "ðŸ Llegada a " .. destinationName
+                        StatusLabel.Text = "✅ Llegada a " .. destinationName
                         char:PivotTo(CFrame.new(targetVector3))
                     else
-                        -- Vuelo ultrarrÃ¡pido y dinÃ¡mico al lÃ­mite pre-band (150 m/s)
+                        -- Vuelo ultrarrápido y dinámico al límite pre-band (150 m/s)
                         local step = math.clamp(150 / dist, 0, 1) 
                         local wave = math.sin(os.clock() * 6) * 2
                         local tLerp = hrp.CFrame:Lerp(CFrame.new(targetVector3), step)
@@ -348,15 +391,11 @@ local function SafeTravel(targetVector3, destinationName)
                     end
                 end
             end)
-            task.wait(0.05) -- Actualiza rapidÃ­simo para un viaje smooth
+            task.wait(0.05) -- Actualiza rapidísimo para un viaje smooth
         end
     end)
 end
 
-local function CancelTravel()
-    IsTraveling = false
-    StatusLabel.Text = "Status: Viaje Cancelado"
-end
 
 local tpOrder = 0
 local function TPSection(text)
@@ -390,14 +429,14 @@ local function TPButton(text, color, mode, target)
             if obj then
                 local p = obj.PrimaryPart and obj.PrimaryPart.Position or obj:FindFirstChild("HumanoidRootPart").Position
                 SafeTravel(p, text)
-            else StatusLabel.Text = "âŒ NPC no cargado aÃºn." end
+            else StatusLabel.Text = "❌ NPC no cargado aún." end
         elseif mode == "Cancel" then CancelTravel()
         elseif mode == "Snipe" then
             AutoSnipeFruit = not AutoSnipeFruit
             if AutoSnipeFruit then
-                btn.BackgroundColor3 = C.accentOn; btn.Text = "  ðŸ Auto-Recolector: ACTIVO"
+                btn.BackgroundColor3 = C.accentOn; btn.Text = "  ✅ Auto-Recolector: ACTIVO"
             else
-                btn.BackgroundColor3 = C.card; btn.Text = "  ðŸ Auto-Recolector (Sniper): OFF"
+                btn.BackgroundColor3 = C.card; btn.Text = "  ✅ Auto-Recolector (Sniper): OFF"
             end
         end
     end)
@@ -448,84 +487,84 @@ local function NPCGuideEntry(npcName, desc, pos, order)
     end)
 end
 
--- â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” ISLAS â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
-TPSection("ðŸŒ ISLAS")
-TPButton("ðŸŒ€ Starter Island", Color3.fromRGB(35,45,65), "V3", Vector3.new(-71,-2,-299))
-TPButton("ðŸ–ï¸ Sand Island", Color3.fromRGB(65,55,35), "V3", Vector3.new(17,-6,-305))
-TPButton("ðŸŒ´ Jungle Island", Color3.fromRGB(30,65,35), "V3", Vector3.new(-392,-2,407))
-TPButton("ðŸª Desert Island", Color3.fromRGB(75,55,30), "V3", Vector3.new(-688,-1,-287))
-TPButton("â„ï¸ Snow Island", Color3.fromRGB(55,65,85), "V3", Vector3.new(-182,-1,-998))
-TPButton("âš“ Sailor Island", Color3.fromRGB(35,45,75), "V3", Vector3.new(182,5,669))
-TPButton("ðŸ‘» Hollow Island", Color3.fromRGB(55,35,65), "V3", Vector3.new(-542,-1,872))
-TPButton("â›©ï¸ Shibuya Island", Color3.fromRGB(50,45,55), "V3", Vector3.new(1269,13,233))
-TPButton("ðŸ™ï¸ Shinjuku Island", Color3.fromRGB(55,40,45), "V3", Vector3.new(189,-1,-1643))
-TPButton("ðŸ« Academy Island", Color3.fromRGB(55,55,35), "V3", Vector3.new(962,-2,1053))
-TPButton("ðŸ—¡ï¸ Lawless Island", Color3.fromRGB(40,40,60), "V3", Vector3.new(209,-4,1673))
-TPButton("ðŸ§ª Slime Island", Color3.fromRGB(35,60,60), "V3", Vector3.new(-982,-2,275))
-TPButton("ðŸ¥· Ninja Island", Color3.fromRGB(55,35,50), "V3", Vector3.new(-1621,10,-575))
+-- ———————————————— ISLAS ————————————————
+TPSection("🌍 ISLAS")
+TPButton("🌀 Starter Island", Color3.fromRGB(35,45,65), "V3", Vector3.new(-71,-2,-299))
+TPButton("🏖️ Sand Island", Color3.fromRGB(65,55,35), "V3", Vector3.new(17,-6,-305))
+TPButton("🌴 Jungle Island", Color3.fromRGB(30,65,35), "V3", Vector3.new(-392,-2,407))
+TPButton("🌵 Desert Island", Color3.fromRGB(75,55,30), "V3", Vector3.new(-688,-1,-287))
+TPButton("❄️ Snow Island", Color3.fromRGB(55,65,85), "V3", Vector3.new(-182,-1,-998))
+TPButton("⚓ Sailor Island", Color3.fromRGB(35,45,75), "V3", Vector3.new(182,5,669))
+TPButton("👻 Hollow Island", Color3.fromRGB(55,35,65), "V3", Vector3.new(-542,-1,872))
+TPButton("🏔️ Shibuya Island", Color3.fromRGB(50,45,55), "V3", Vector3.new(1269,13,233))
+TPButton("🏙️ Shinjuku Island", Color3.fromRGB(55,40,45), "V3", Vector3.new(189,-1,-1643))
+TPButton("🏫 Academy Island", Color3.fromRGB(55,55,35), "V3", Vector3.new(962,-2,1053))
+TPButton("🗡️ Lawless Island", Color3.fromRGB(40,40,60), "V3", Vector3.new(209,-4,1673))
+TPButton("🧪 Slime Island", Color3.fromRGB(35,60,60), "V3", Vector3.new(-982,-2,275))
+TPButton("🥷 Ninja Island", Color3.fromRGB(55,35,50), "V3", Vector3.new(-1621,10,-575))
 
--- â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” DUNGEONS â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
-TPSection("ðŸ”¥ DUNGEONS & EVENTOS")
-TPButton("ðŸ‘¹ Boss Rush", Color3.fromRGB(75,35,35), "V3", Vector3.new(106,6,840))
-TPButton("âš–ï¸ Judgement", Color3.fromRGB(60,30,45), "V3", Vector3.new(-1029,-2,-989))
-TPButton("ðŸ—¼ Infinite Tower", Color3.fromRGB(65,50,30), "V3", Vector3.new(1276,-4,-1474))
-TPButton("ðŸ•³ï¸ Dungeon", Color3.fromRGB(50,40,60), "V3", Vector3.new(1272,5,-897))
-TPButton("ðŸ’€ Boss MÃ¡s Fuerte", Color3.fromRGB(80,30,30), "V3", Vector3.new(593,-2,-1052))
+-- ———————————————— DUNGEONS ————————————————
+TPSection("🔥 DUNGEONS & EVENTOS")
+TPButton("👹 Boss Rush", Color3.fromRGB(75,35,35), "V3", Vector3.new(106,6,840))
+TPButton("⚖️ Judgement", Color3.fromRGB(60,30,45), "V3", Vector3.new(-1029,-2,-989))
+TPButton("🧱 Infinite Tower", Color3.fromRGB(65,50,30), "V3", Vector3.new(1276,-4,-1474))
+TPButton("⏳ Dungeon", Color3.fromRGB(50,40,60), "V3", Vector3.new(1272,5,-897))
+TPButton("💀 Boss Más Fuerte", Color3.fromRGB(80,30,30), "V3", Vector3.new(593,-2,-1052))
 
--- â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” NPCs TELEPORT DIRECTO â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
-TPSection("ðŸ¤– NPCs â€” TELEPORT DIRECTO")
-TPButton("ðŸ“œ Quest 1 (Lvl 0-99)", C.card, "V3", Vector3.new(171,16,-215))
-TPButton("ðŸ“œ Quest 2 (Lvl 100-249)", C.card, "V3", Vector3.new(-8,-3,-203))
-TPButton("ðŸ“œ Quest 3 (Lvl 250-499)", C.card, "V3", Vector3.new(-520,-2,434))
-TPButton("ðŸ“œ Quest 4 (Lvl 500-749)", C.card, "V3", Vector3.new(-468,18,480))
-TPButton("ðŸ“œ Quest 5 (Lvl 750-999)", C.card, "V3", Vector3.new(-688,-3,-461))
-TPButton("ðŸ“œ Quest 6 (Lvl 1000-1499)", C.card, "V3", Vector3.new(-864,-5,-386))
-TPButton("ðŸ“œ Quest 7 (Lvl 1500-1999)", C.card, "V3", Vector3.new(-389,-2,-946))
-TPButton("ðŸ“œ Quest 8 (Lvl 2000-2999)", C.card, "V3", Vector3.new(-551,22,-1026))
-TPButton("ðŸ“œ Quest 9 (Lvl 3000-3999)", C.card, "V3", Vector3.new(1419,8,372))
-TPButton("ðŸ“œ Quest 10 (Lvl 4000-5000)", C.card, "V3", Vector3.new(1604,8,429))
-TPButton("ðŸ“œ Quest 11 (Lvl 5000-6250)", C.card, "V3", Vector3.new(-286,-4,1038))
-TPButton("ðŸ“œ Quest 12 (Lvl 6250-7000)", C.card, "V3", Vector3.new(626,1,-1610))
-TPButton("ðŸ“œ Quest 13 (Lvl 7000-8000)", C.card, "V3", Vector3.new(-20,1,-1986))
-TPButton("ðŸ“œ Quest 14 (Lvl 8000-9000)", C.card, "V3", Vector3.new(-1188,17,338))
-TPButton("ðŸ“œ Quest 15 (Lvl 9000-10000)", C.card, "V3", Vector3.new(1028,1,1241))
-TPButton("ðŸ“œ Quest 18 (Lvl 11500-12000)", C.card, "V3", Vector3.new(-1787,6,-745))
-TPButton("ðŸ“œ Quest 19 (Lvl 12000+)", C.card, "V3", Vector3.new(67,-2,1758))
+-- ———————————————— NPCs TELEPORT DIRECTO ————————————————
+TPSection("🤖 NPCs — TELEPORT DIRECTO")
+TPButton("📜 Quest 1 (Lvl 0-99)", C.card, "V3", Vector3.new(171,16,-215))
+TPButton("📜 Quest 2 (Lvl 100-249)", C.card, "V3", Vector3.new(-8,-3,-203))
+TPButton("📜 Quest 3 (Lvl 250-499)", C.card, "V3", Vector3.new(-520,-2,434))
+TPButton("📜 Quest 4 (Lvl 500-749)", C.card, "V3", Vector3.new(-468,18,480))
+TPButton("📜 Quest 5 (Lvl 750-999)", C.card, "V3", Vector3.new(-688,-3,-461))
+TPButton("📜 Quest 6 (Lvl 1000-1499)", C.card, "V3", Vector3.new(-864,-5,-386))
+TPButton("📜 Quest 7 (Lvl 1500-1999)", C.card, "V3", Vector3.new(-389,-2,-946))
+TPButton("📜 Quest 8 (Lvl 2000-2999)", C.card, "V3", Vector3.new(-551,22,-1026))
+TPButton("📜 Quest 9 (Lvl 3000-3999)", C.card, "V3", Vector3.new(1419,8,372))
+TPButton("📜 Quest 10 (Lvl 4000-5000)", C.card, "V3", Vector3.new(1604,8,429))
+TPButton("📜 Quest 11 (Lvl 5000-6250)", C.card, "V3", Vector3.new(-286,-4,1038))
+TPButton("📜 Quest 12 (Lvl 6250-7000)", C.card, "V3", Vector3.new(626,1,-1610))
+TPButton("📜 Quest 13 (Lvl 7000-8000)", C.card, "V3", Vector3.new(-20,1,-1986))
+TPButton("📜 Quest 14 (Lvl 8000-9000)", C.card, "V3", Vector3.new(-1188,17,338))
+TPButton("📜 Quest 15 (Lvl 9000-10000)", C.card, "V3", Vector3.new(1028,1,1241))
+TPButton("📜 Quest 18 (Lvl 11500-12000)", C.card, "V3", Vector3.new(-1787,6,-745))
+TPButton("📜 Quest 19 (Lvl 12000+)", C.card, "V3", Vector3.new(67,-2,1758))
 
--- â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” FRUTAS â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
-TPSection("ðŸŽ FRUTAS")
-TPButton("ðŸ’Ž Vendedor Frutas (Gemas) â€” Sailor", Color3.fromRGB(55, 35, 45), "V3", Vector3.new(400,2,752))
-TPButton("ðŸª™ Vendedor Frutas (Monedas) â€” Sailor", Color3.fromRGB(55, 45, 35), "V3", Vector3.new(408,2,802))
-TPButton("ðŸ Auto-Recolector (Sniper): OFF", Color3.fromRGB(30, 60, 40), "Snipe", "")
-TPButton("ðŸ›‘ DETENER VUELO", C.red, "Cancel", "")
+-- ———————————————— FRUTAS ————————————————
+TPSection("🍇 FRUTAS")
+TPButton("💎 Vendedor Frutas (Gemas) — Sailor", Color3.fromRGB(55, 35, 45), "V3", Vector3.new(400,2,752))
+TPButton("🪙 Vendedor Frutas (Monedas) — Sailor", Color3.fromRGB(55, 45, 35), "V3", Vector3.new(408,2,802))
+TPButton("🎯 Auto-Recolector (Sniper): OFF", Color3.fromRGB(30, 60, 40), "Snipe", "")
+TPButton("🚫 DETENER VUELO", C.red, "Cancel", "")
 
--- â€”â€”â€”â€”â€”â€”â€”â€”â€”â€” MINI-GUÃA DE NPCs â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
-TPSection("ðŸ“– MINI-GUÃA â€” NPCs IMPORTANTES")
+-- ———————————————— MINI-GUÍA DE NPCs ————————————————
+TPSection("📖 MINI-GUÍA — NPCs IMPORTANTES")
 
 local g = 9000
-NPCGuideEntry("ðŸ¥‹ Haki Master", "Te enseÃ±a Haki. Debes tener nivel suficiente. Ubicado en Snow Island. Te da el poder de Haki para golpear usuarios de Logia.", Vector3.new(-499,23,-1253), g+1)
-NPCGuideEntry("ðŸ‰ Dragon Slayer Master", "Questline de Ragna. Desbloquea buffs de Dragon Slayer al completar sus misiones. Snow Island.", Vector3.new(-273,-5,-1354), g+2)
-NPCGuideEntry("ðŸ‘¤ Shadow Master", "Questline Shadow. Desbloquea buffs de Shadow. Se encuentra en Starter Island.", Vector3.new(335,25,-378), g+3)
-NPCGuideEntry("ðŸ‘‘ Shadow Monarch Master", "Buff avanzado de Shadow Monarch. Starter Island, zona alta.", Vector3.new(243,26,-84), g+4)
-NPCGuideEntry("ðŸ§¬ Manipulator Master", "Questline Aizen. Desbloquea buffs de Manipulator. Hollow Island, zona lejana.", Vector3.new(-893,24,1229), g+5)
-NPCGuideEntry("âš¡ Atomic Master", "Questline Atomic. Desbloquea buffs atÃ³micos. Lawless Island.", Vector3.new(216,-6,2126), g+6)
-NPCGuideEntry("ðŸŒ™ Moon Slayer F Move", "Mastery de movimiento F de Moon Slayer. Zona de Boss (isla principal).", Vector3.new(831,57,-984), g+7)
-NPCGuideEntry("âœ¨ Blessed Maiden F Move", "Mastery de movimiento F de Blessed Maiden. Cerca del Portal Boss.", Vector3.new(940,5,-1067), g+8)
-NPCGuideEntry("âš”ï¸ Corrupted Excalibur F Move", "Mastery de Saber Alter. Zona profunda de Boss Island.", Vector3.new(694,1,-1227), g+9)
-NPCGuideEntry("â™¾ï¸ Strongest Of Today Domain", "Dominio de Gojo. Requiere arma especÃ­fica. Shinjuku Island.", Vector3.new(55,41,-2067), g+10)
-NPCGuideEntry("ðŸ‘¹ Strongest In History Domain", "Dominio de Sukuna. Requiere arma especÃ­fica. Shinjuku Island.", Vector3.new(598,30,-2055), g+11)
-NPCGuideEntry("ðŸ¥· Strongest Shinobi F Move", "Mastery de Shinobi. Ninja Island, zona mÃ¡s profunda.", Vector3.new(-1981,25,-374), g+12)
-NPCGuideEntry("ðŸª Boss Rush Shop", "Tienda de Boss Rush. Compra recompensas con tokens de Boss Rush.", Vector3.new(104,6,826), g+13)
-NPCGuideEntry("ðŸ’Ž Gems Fruit Dealer", "Compra frutas con Gemas. Sailor Island, cerca del puerto.", Vector3.new(400,2,752), g+14)
-NPCGuideEntry("ðŸª™ Coins Fruit Dealer", "Compra frutas con Monedas. Sailor Island, junto al Gem Dealer.", Vector3.new(408,2,802), g+15)
-NPCGuideEntry("ðŸ˜ˆ Demonite Quest (Anos)", "Quest especial del Demonite. Academy Island.", Vector3.new(727,-2,1273), g+16)
-NPCGuideEntry("ðŸ’  Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
+NPCGuideEntry("🥊 Haki Master", "Te enseña Haki. Debes tener nivel suficiente. Ubicado en Snow Island. Te da el poder de Haki para golpear usuarios de Logia.", Vector3.new(-499,23,-1253), g+1)
+NPCGuideEntry("🐉 Dragon Slayer Master", "Questline de Ragna. Desbloquea buffs de Dragon Slayer al completar sus misiones. Snow Island.", Vector3.new(-273,-5,-1354), g+2)
+NPCGuideEntry("👤 Shadow Master", "Questline Shadow. Desbloquea buffs de Shadow. Se encuentra en Starter Island.", Vector3.new(335,25,-378), g+3)
+NPCGuideEntry("👑 Shadow Monarch Master", "Buff avanzado de Shadow Monarch. Starter Island, zona alta.", Vector3.new(243,26,-84), g+4)
+NPCGuideEntry("🧬 Manipulator Master", "Questline Aizen. Desbloquea buffs de Manipulator. Hollow Island, zona lejana.", Vector3.new(-893,24,1229), g+5)
+NPCGuideEntry("⚡ Atomic Master", "Questline Atomic. Desbloquea buffs atómicos. Lawless Island.", Vector3.new(216,-6,2126), g+6)
+NPCGuideEntry("🌙 Moon Slayer F Move", "Mastery de movimiento F de Moon Slayer. Zona de Boss (isla principal).", Vector3.new(831,57,-984), g+7)
+NPCGuideEntry("✨ Blessed Maiden F Move", "Mastery de movimiento F de Blessed Maiden. Cerca del Portal Boss.", Vector3.new(940,5,-1067), g+8)
+NPCGuideEntry("⚔️ Corrupted Excalibur F Move", "Mastery de Saber Alter. Zona profunda de Boss Island.", Vector3.new(694,1,-1227), g+9)
+NPCGuideEntry("♾️ Strongest Of Today Domain", "Dominio de Gojo. Requiere arma específica. Shinjuku Island.", Vector3.new(55,41,-2067), g+10)
+NPCGuideEntry("👹 Strongest In History Domain", "Dominio de Sukuna. Requiere arma específica. Shinjuku Island.", Vector3.new(598,30,-2055), g+11)
+NPCGuideEntry("🥷 Strongest Shinobi F Move", "Mastery de Shinobi. Ninja Island, zona más profunda.", Vector3.new(-1981,25,-374), g+12)
+NPCGuideEntry("📦 Boss Rush Shop", "Tienda de Boss Rush. Compra recompensas con tokens de Boss Rush.", Vector3.new(104,6,826), g+13)
+NPCGuideEntry("💎 Gems Fruit Dealer", "Compra frutas con Gemas. Sailor Island, cerca del puerto.", Vector3.new(400,2,752), g+14)
+NPCGuideEntry("🪙 Coins Fruit Dealer", "Compra frutas con Monedas. Sailor Island, junto al Gem Dealer.", Vector3.new(408,2,802), g+15)
+NPCGuideEntry("😈 Demonite Quest (Anos)", "Quest especial del Demonite. Academy Island.", Vector3.new(727,-2,1273), g+16)
+NPCGuideEntry("🔮 Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
 
 -- =======================================================================================
--- ========== TAB 4: ðŸŽ¯ AUTO-SNIPER & HACK-TEST ==========
+-- ========== TAB 4: 🎯 AUTO-SNIPER & HACK-TEST ==========
 -- =======================================================================================
 local SnipePage = MakeScrollPage("Sniper")
-SectionLabel(SnipePage, "ðŸŽ¯ SNIPERS DE RNG (Auto-Skips)", 1)
+SectionLabel(SnipePage, "🎯 SNIPERS DE RNG (Auto-Skips)", 1)
 
 local function MakeSniperBtn(parent, text, bgColor, order)
     local btn = Instance.new("TextButton", parent)
@@ -542,26 +581,38 @@ local function MakeSniperBtn(parent, text, bgColor, order)
     return btn
 end
 
-local BtnSnipeTrait = MakeSniperBtn(SnipePage, "ðŸŽ¯ Snipear Atributo SECRETO", Color3.fromRGB(80, 40, 90), 2)
-local BtnSnipeStats = MakeSniperBtn(SnipePage, "ðŸŽ¯ Snipear Stats a A/S/SS (Sube Suerte)", Color3.fromRGB(40, 80, 90), 3)
+local BtnSnipeTrait = MakeSniperBtn(SnipePage, "🎯 Snipear Atributo SECRETO", Color3.fromRGB(80, 40, 90), 2)
+local BtnSnipeStats = MakeSniperBtn(SnipePage, "🎯 Snipear Stats a A/S/SS (Sube Suerte)", Color3.fromRGB(40, 80, 90), 3)
 
-SectionLabel(SnipePage, "ðŸ‘ï¸ VISUALES PARA EVENTOS / PUZZLES", 4)
-local BtnESPItems = MakeSniperBtn(SnipePage, "ðŸŸ¢ Activar ESP de Objetos/Puzzles", Color3.fromRGB(50, 100, 60), 5)
-local BtnAutoDungeon = MakeSniperBtn(SnipePage, "ðŸ§© Auto-MisiÃ³n Dungeon (Recolectar Todo)", Color3.fromRGB(30, 90, 70), 6)
+SectionLabel(SnipePage, "👁️ VISUALES PARA EVENTOS / PUZZLES", 4)
+local BtnESPItems = MakeSniperBtn(SnipePage, "🟢 Activar ESP de Objetos/Puzzles", Color3.fromRGB(50, 100, 60), 5)
+local BtnAutoDungeon = MakeSniperBtn(SnipePage, "🧩 Auto-Misión Dungeon (Recolectar Todo)", Color3.fromRGB(30, 90, 70), 6)
 
-SectionLabel(SnipePage, "ðŸ§¬ AUTO-USO DEL INVENTARIO (Max 15 usos)", 7)
-local BtnRaceUse = MakeSniperBtn(SnipePage, "ðŸš€ Gastar 15 Race Rerolls RÃ¡pido", Color3.fromRGB(90, 60, 30), 8)
-local BtnClanUse = MakeSniperBtn(SnipePage, "ðŸš€ Gastar 15 Clan Rerolls RÃ¡pido", Color3.fromRGB(90, 40, 40), 9)
+SectionLabel(SnipePage, "🧬 AUTO-USO DEL INVENTARIO (Max 15 usos)", 7)
+local BtnRaceUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Race Rerolls Rápido", Color3.fromRGB(90, 60, 30), 8)
+local BtnClanUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Clan Rerolls Rápido", Color3.fromRGB(90, 40, 40), 9)
 
-SectionLabel(SnipePage, "â˜¢ï¸ ANÃLISIS DE VULNERABILIDADES (ADMIN)", 10)
-local BtnAdminHack = MakeSniperBtn(SnipePage, "ðŸš¨ Ejecutar Test de Backdoor Admin", Color3.fromRGB(150, 40, 40), 11)
+SectionLabel(SnipePage, "☢️ ANÁLISIS DE VULNERABILIDADES (ADMIN)", 10)
+local BtnAdminHack = MakeSniperBtn(SnipePage, "🚨 Ejecutar Test de Backdoor Admin", Color3.fromRGB(150, 40, 40), 11)
 
 -- == LOGICA SNIPERS ==
 local Remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
 local RemotesR = ReplicatedStorage:FindFirstChild("Remotes")
 
+local ESP_Active = false
+BtnESPItems.MouseButton1Click:Connect(function()
+    ESP_Active = not ESP_Active
+    if ESP_Active then
+        BtnESPItems.BackgroundColor3 = C.accentOn
+        BtnESPItems.Text = "  🟢 ESP: ACTIVO"
+    else
+        BtnESPItems.BackgroundColor3 = Color3.fromRGB(50, 100, 60)
+        BtnESPItems.Text = "  🟢 Activar ESP de Objetos/Puzzles"
+    end
+end)
+
 BtnAutoDungeon.MouseButton1Click:Connect(function()
-    BtnAutoDungeon.Text = "  ðŸ”´ Ruteando Islas por Piezas... (AFK)"
+    BtnAutoDungeon.Text = "  🔴 Ruteando Islas por Piezas... (AFK)"
     task.spawn(function()
         local function FirePrompt(part)
             local p = part:FindFirstChildOfClass("ProximityPrompt")
@@ -599,7 +650,7 @@ BtnAutoDungeon.MouseButton1Click:Connect(function()
                 task.wait(0.5)
             end
         end
-        BtnAutoDungeon.Text = "  âœ… Auto-MisiÃ³n: Piezas Aseguradas"
+        BtnAutoDungeon.Text = "  ✅ Auto-Misión: Piezas Aseguradas"
     end)
 end)
 
@@ -613,7 +664,7 @@ end)
 
 BtnSnipeStats.MouseButton1Click:Connect(function()
     pcall(function()
-        -- Mandamos false a todo lo que SÃ QUEREMOS aceptar. A=false significa "No skipees A"
+        -- Mandamos false a todo lo que SÍ QUEREMOS aceptar. A=false significa "No skipees A"
         Remotes.StatRerollUpdateAutoSkip:FireServer({A = false, S = false, SS = false, SSS = false})
         task.wait(0.1)
         Remotes.StatRerollAutoRoll:FireServer()
@@ -624,10 +675,10 @@ local SnipeActiveRace = false
 BtnRaceUse.MouseButton1Click:Connect(function()
     SnipeActiveRace = not SnipeActiveRace
     if not SnipeActiveRace then
-        BtnRaceUse.Text = "  ðŸš€ Gastar Race Rerolls (Apagado)"
+        BtnRaceUse.Text = "  🚀 Gastar Race Rerolls (Apagado)"
         return
     end
-    BtnRaceUse.Text = "  ðŸ”´ BUSCANDO LIMITLESS/VAMPIRE... (Clic para parar)"
+    BtnRaceUse.Text = "  🔴 BUSCANDO LIMITLESS/VAMPIRE... (Clic para parar)"
 
     task.spawn(function()
         while SnipeActiveRace do
@@ -636,7 +687,7 @@ BtnRaceUse.MouseButton1Click:Connect(function()
                 if eq and eq.Race then
                     if eq.Race == "Limitless" or eq.Race == "Vampire" then
                         SnipeActiveRace = false
-                        BtnRaceUse.Text = "  âœ… Raza conseguida: " .. eq.Race
+                        BtnRaceUse.Text = "  ✅ Raza conseguida: " .. eq.Race
                         return
                     end
                 end
@@ -651,10 +702,10 @@ local SnipeActiveClan = false
 BtnClanUse.MouseButton1Click:Connect(function()
     SnipeActiveClan = not SnipeActiveClan
     if not SnipeActiveClan then
-        BtnClanUse.Text = "  ðŸš€ Gastar Clan Rerolls (Apagado)"
+        BtnClanUse.Text = "  🚀 Gastar Clan Rerolls (Apagado)"
         return
     end
-    BtnClanUse.Text = "  ðŸ”´ BUSCANDO SUPREMOS... (Clic para parar)"
+    BtnClanUse.Text = "  🔴 BUSCANDO SUPREMOS... (Clic para parar)"
 
     task.spawn(function()
         while SnipeActiveClan do
@@ -663,7 +714,7 @@ BtnClanUse.MouseButton1Click:Connect(function()
                 if eq and eq.Clan then
                     if eq.Clan == "Voldigoat" or eq.Clan == "Pride" or eq.Clan == "Monarch" then
                         SnipeActiveClan = false
-                        BtnClanUse.Text = "  âœ… Clan supremo: " .. eq.Clan
+                        BtnClanUse.Text = "  ✅ Clan supremo: " .. eq.Clan
                         return
                     end
                 end
@@ -682,21 +733,21 @@ BtnAdminHack.MouseButton1Click:Connect(function()
             -- Test 1: Verificar si somos Admin a los ojos del servidor
             local IsAdmin = R.AdminCheckAccess:InvokeServer()
             if IsAdmin then
-                print("ðŸ”¥ [HACK-TEST] Â¡ERES ADMINISTRADOR EN EL SERVER! Vulnerabilidad Encontrada.")
+                print("🔥 [HACK-TEST] ¡ERES ADMINISTRADOR EN EL SERVER! Vulnerabilidad Encontrada.")
                 local cmds = R.AdminGetCommands:InvokeServer()
-                print("ðŸ”¥ [HACK-TEST] Comandos obtenidos:", typeof(cmds))
+                print("🔥 [HACK-TEST] Comandos obtenidos:", typeof(cmds))
             else
-                print("ðŸ”’ [HACK-TEST] Servidor seguro. AdminCheckAccess retornÃ³ falso o rechazado.")
+                print("🔒 [HACK-TEST] Servidor seguro. AdminCheckAccess retornó falso o rechazado.")
             end
         end)
     end)
 end)
 
 -- =======================================================================================
--- ========== TAB 3: LOGS â€” OMNI-ANALYZER (NPCs + ROLLS + GUIs) ==========
+-- ========== TAB 3: LOGS — OMNI-ANALYZER (NPCs + ROLLS + GUIs) ==========
 -- =======================================================================================
 local LogsPage = MakeScrollPage("Logs")
-SectionLabel(LogsPage, "ðŸ”¬ OMNI-ANALYZER â€” NPCs, Rolls & GUIs", 1)
+SectionLabel(LogsPage, "🗄️ OMNI-ANALYZER — NPCs, Rolls & GUIs", 1)
 
 local AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
 local AnalyzerActive = false
@@ -758,7 +809,7 @@ local function FlushBuf()
     end)
 end
 
--- === SERIALIZACIÃ“N PROFUNDA ===
+-- === SERIALIZACIÓN PROFUNDA ===
 local function Ser(v, depth)
     depth = depth or 0
     if depth > 3 then return "..." end
@@ -768,7 +819,7 @@ local function Ser(v, depth)
         local count = 0
         for k2, v2 in pairs(v) do
             count = count + 1
-            if count > 20 then table.insert(sub, "..+" .. (count) .. " mÃ¡s") break end
+            if count > 20 then table.insert(sub, "..+" .. (count) .. " más") break end
             table.insert(sub, tostring(k2) .. "=" .. Ser(v2, depth + 1))
         end
         return "{" .. table.concat(sub, ", ") .. "}"
@@ -799,7 +850,7 @@ BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
 BtnAnalyzer.TextColor3 = C.text
 BtnAnalyzer.Font = Enum.Font.GothamBold
 BtnAnalyzer.TextSize = 14
-BtnAnalyzer.Text = "  ðŸ”¬ INICIAR OMNI-ANALYZER"
+BtnAnalyzer.Text = "  🗄️ INICIAR OMNI-ANALYZER"
 BtnAnalyzer.TextXAlignment = Enum.TextXAlignment.Left
 BtnAnalyzer.LayoutOrder = 3
 BtnAnalyzer.BorderSizePixel = 0
@@ -811,13 +862,13 @@ BtnDump.BackgroundColor3 = Color3.fromRGB(40, 55, 70)
 BtnDump.TextColor3 = C.text
 BtnDump.Font = Enum.Font.GothamMedium
 BtnDump.TextSize = 12
-BtnDump.Text = "  ðŸ“Š DUMP CONFIGS (Fruit, Rarity, Rolls, Settings)"
+BtnDump.Text = "  📊 DUMP CONFIGS (Fruit, Rarity, Rolls, Settings)"
 BtnDump.TextXAlignment = Enum.TextXAlignment.Left
 BtnDump.LayoutOrder = 4
 BtnDump.BorderSizePixel = 0
 Instance.new("UICorner", BtnDump).CornerRadius = UDim.new(0, 6)
 
-SectionLabel(LogsPage, "ðŸ“‹ QUÃ‰ CAPTURA EL ANALYZER", 5)
+SectionLabel(LogsPage, "📋 QUÉ CAPTURA EL ANALYZER", 5)
 
 local InfoBox = Instance.new("TextLabel", LogsPage)
 InfoBox.Size = UDim2.new(0.95, 0, 0, 130)
@@ -826,14 +877,14 @@ InfoBox.TextColor3 = C.muted
 InfoBox.Font = Enum.Font.Code
 InfoBox.TextSize = 10
 InfoBox.Text = "Al activar, captura EN VIVO sin lag:\n" ..
-    "ðŸ¤– NPC TOUCH â€” Detecta ProximityPrompt al hablar\n" ..
-    "ðŸ“º GUI OPEN â€” Detecta ventanas nuevas en PlayerGui\n" ..
-    "ðŸ“¡ REMOTES â€” 60+ RemoteEvents (Rolls, Traits,\n" ..
+    "🤖 NPC TOUCH — Detecta ProximityPrompt al hablar\n" ..
+    "📺 GUI OPEN — Detecta ventanas nuevas en PlayerGui\n" ..
+    "📡 REMOTES — 60+ RemoteEvents (Rolls, Traits,\n" ..
     "   Powers, Stats, Fruits, Quests, Shop, Artifacts,\n" ..
     "   Haki, Blessing, Trade, Skills, Ascension...)\n" ..
-    "ðŸ’¾ AUTO-SAVE cada 3s en .txt (batched)\n" ..
-    "Abre NPCs, haz Rolls, compra â€” todo queda capturado.\n" ..
-    "Clanes: Voldigoat, Pride, Monarch â€¢ Razas: Epic+Leg"
+    "💾 AUTO-SAVE cada 3s en .txt (batched)\n" ..
+    "Abre NPCs, haz Rolls, compra — todo queda capturado.\n" ..
+    "Clanes: Voldigoat, Pride, Monarch • Razas: Epic+Leg"
 InfoBox.TextWrapped = true
 InfoBox.TextXAlignment = Enum.TextXAlignment.Left
 InfoBox.TextYAlignment = Enum.TextYAlignment.Top
@@ -879,7 +930,7 @@ local AllRemotes = {
     "OpenSkillTreeUI", "SkillTreeUnlock", "SkillTreeUpgrade", "SkillTreeReset",
     "SkillTreeUpdate", "GetSkillTreeData",
     "OpenAscendUI", "GetAscendData", "RequestAscend", "AscendDataUpdate",
-    -- TÃ­tulos / Settings
+    -- Títulos / Settings
     "TitleEquip", "TitleUnequip", "TitleUnlocked", "TitleDataSync",
     "SettingsToggle", "SettingsSync",
     -- Loadouts / Storage
@@ -912,7 +963,7 @@ local AllRemotes = {
     "DungeonPortalSpawn", "DungeonUIUpdate",
 }
 
--- === COLORES POR CATEGORÃA ===
+-- === COLORES POR CATEGORÍA ===
 local function RemoteColor(name)
     local n = name:lower()
     if n:match("trait") or n:match("race") then return Color3.fromRGB(255, 180, 100) end
@@ -944,7 +995,7 @@ pcall(function()
                     local args = {...}
                     task.spawn(function()
                         local data = SerArgs(unpack(args))
-                        local line = "[" .. os.date("%H:%M:%S") .. "] ðŸ“¤ OUT ("..method.."): " .. n .. " â†’ " .. data
+                        local line = "[" .. os.date("%H:%M:%S") .. "] 📤 OUT ("..method.."): " .. n .. " → " .. data
                         ALog(line, Color3.fromRGB(255, 80, 80))
                         QueueWrite(line)
                     end)
@@ -956,17 +1007,17 @@ pcall(function()
     HookSuccess = true
 end)
 
--- === LÃ“GICA PRINCIPAL DEL ANALYZER ===
+-- === LÓGICA PRINCIPAL DEL ANALYZER ===
 BtnAnalyzer.MouseButton1Click:Connect(function()
     AnalyzerActive = not AnalyzerActive
     if AnalyzerActive then
         BtnAnalyzer.BackgroundColor3 = C.accentOn
-        BtnAnalyzer.Text = "  ðŸ›‘ DETENER OMNI-ANALYZER"
+        BtnAnalyzer.Text = "  🚫 DETENER OMNI-ANALYZER"
         
         AnalyzerFileName = "OmniAnalyzer_" .. tostring(math.floor(os.clock())) .. ".txt"
         pcall(function()
             if writefile then
-                writefile(AnalyzerFileName, "=== OMNI-ANALYZER â€” " .. os.date() .. " ===\n" ..
+                writefile(AnalyzerFileName, "=== OMNI-ANALYZER — " .. os.date() .. " ===\n" ..
                     "Captura: NPCs, GUIs, RemoteEvents, Rolls, Shops\n\n")
             end
         end)
@@ -982,7 +1033,7 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                 if remote and remote:IsA("RemoteEvent") then
                     local conn = remote.OnClientEvent:Connect(function(...)
                         local data = SerArgs(...)
-                        local line = "[" .. ts() .. "] ðŸ“¡ " .. remoteName .. " â†’ " .. data
+                        local line = "[" .. ts() .. "] 📡 " .. remoteName .. " → " .. data
                         ALog(line, RemoteColor(remoteName))
                         QueueWrite(line)
                     end)
@@ -992,7 +1043,7 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
             end
         end
         
-        -- TambiÃ©n hookear Remotes (carpeta secundaria)
+        -- También hookear Remotes (carpeta secundaria)
         pcall(function()
             local Remotes2 = ReplicatedStorage:FindFirstChild("Remotes")
             if Remotes2 then
@@ -1001,7 +1052,7 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                         if remote:IsA("RemoteEvent") then
                             local conn = remote.OnClientEvent:Connect(function(...)
                                 local data = SerArgs(...)
-                                local line = "[" .. ts() .. "] ðŸ“¡ R/" .. remote.Name .. " â†’ " .. data
+                                local line = "[" .. ts() .. "] 📡 R/" .. remote.Name .. " → " .. data
                                 ALog(line, Color3.fromRGB(200, 180, 150))
                                 QueueWrite(line)
                             end)
@@ -1039,8 +1090,8 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                         end
                     end
                 end)
-                local line = "[" .. ts() .. "] ðŸ¤– NPC INTERACT: " .. npcName ..
-                    " | AcciÃ³n: " .. actionText ..
+                local line = "[" .. ts() .. "] 🤖 NPC INTERACT: " .. npcName ..
+                    " | Acción: " .. actionText ..
                     " | Texto: " .. objText ..
                     " | Pos: " .. pos ..
                     " | Ruta: " .. prompt:GetFullName()
@@ -1071,7 +1122,7 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                 local fullName = child:GetFullName()
                 -- Filtrar: ignorar nuestro propio GUI y cosas muy chicas
                 if fullName:match("OmniAutoFarm") then return end
-                -- Solo logear pantallas "raÃ­z" (hijos directos de ScreenGui)
+                -- Solo logear pantallas "raíz" (hijos directos de ScreenGui)
                 if child.Parent and child.Parent:IsA("ScreenGui") then
                     local key = child.Parent.Name .. "/" .. child.Name
                     if guiLogged[key] then return end
@@ -1086,12 +1137,12 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                         end
                         if #childInfo >= 15 then break end
                     end
-                    local line = "[" .. ts() .. "] ðŸ“º GUI OPEN: " .. key ..
+                    local line = "[" .. ts() .. "] 📺 GUI OPEN: " .. key ..
                         " | Size: " .. tostring(child.Size) ..
-                        " | Contenido: " .. table.concat(childInfo, " â€¢ ")
+                        " | Contenido: " .. table.concat(childInfo, " • ")
                     ALog(line, Color3.fromRGB(100, 220, 255))
                     QueueWrite(line)
-                    -- Resetear para capturar reaperturas despuÃ©s de 2s
+                    -- Resetear para capturar reaperturas después de 2s
                     task.delay(2, function() guiLogged[key] = nil end)
                 end
             end
@@ -1118,7 +1169,7 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
                                         end
                                         if #labels >= 10 then break end
                                     end
-                                    local line = "[" .. ts() .. "] ðŸ‘ï¸ GUI SHOW: " .. key .. " | " .. table.concat(labels, " â€¢ ")
+                                    local line = "[" .. ts() .. "] 👁️ GUI SHOW: " .. key .. " | " .. table.concat(labels, " • ")
                                     ALog(line, Color3.fromRGB(150, 200, 255))
                                     QueueWrite(line)
                                     task.delay(1.5, function() visLogged[key] = nil end)
@@ -1143,28 +1194,28 @@ BtnAnalyzer.MouseButton1Click:Connect(function()
             end
         end)
         
-        ALog("ðŸŸ¢ OMNI-ANALYZER ACTIVO â€” " .. hookCount .. " remotes + NPC prompts + GUIs", C.accentOn)
-        QueueWrite("[INICIO] " .. hookCount .. " hooks conectados â€” " .. os.date())
+        ALog("🟢 OMNI-ANALYZER ACTIVO — " .. hookCount .. " remotes + NPC prompts + GUIs", C.accentOn)
+        QueueWrite("[INICIO] " .. hookCount .. " hooks conectados — " .. os.date())
         QueueWrite("[INFO] Captura: RemoteEvents, ProximityPrompts, GUI changes")
         FlushBuf()
     else
         -- DETENER
         BtnAnalyzer.BackgroundColor3 = Color3.fromRGB(55, 35, 80)
-        BtnAnalyzer.Text = "  ðŸ”¬ INICIAR OMNI-ANALYZER"
+        BtnAnalyzer.Text = "  🗄️ INICIAR OMNI-ANALYZER"
         for _, conn in pairs(AnalyzerConns) do pcall(function() conn:Disconnect() end) end
         AnalyzerConns = {}
         FlushBuf()
-        ALog("ðŸ”´ OMNI-ANALYZER DETENIDO â€” Archivo: " .. AnalyzerFileName, C.red)
-        QueueWrite("[FIN] Detenido â€” " .. os.date())
+        ALog("🔴 OMNI-ANALYZER DETENIDO — Archivo: " .. AnalyzerFileName, C.red)
+        QueueWrite("[FIN] Detenido — " .. os.date())
         FlushBuf()
     end
 end)
 
--- === DUMP ESTÃTICO DE CONFIGS ===
+-- === DUMP ESTÁTICO DE CONFIGS ===
 BtnDump.MouseButton1Click:Connect(function()
-    ALog("ðŸ“Š Dumpeando mÃ³dulos...", Color3.fromRGB(255, 200, 100))
+    ALog("📊 Dumpeando módulos...", Color3.fromRGB(255, 200, 100))
     local dumpFile = "ConfigDump_" .. tostring(math.floor(os.clock())) .. ".txt"
-    local d = "=== CONFIG DUMP â€” " .. os.date() .. " ===\n\n"
+    local d = "=== CONFIG DUMP — " .. os.date() .. " ===\n\n"
     
     pcall(function()
         local fc = require(ReplicatedStorage:WaitForChild("FruitConfig", 3))
@@ -1172,7 +1223,7 @@ BtnDump.MouseButton1Click:Connect(function()
             d = d .. "[FRUIT CONFIG]\n"
             if fc.Rarities then for r, w in pairs(fc.Rarities) do d = d .. "  " .. r .. " = " .. w .. "%\n" end end
             if fc.Fruits then for _, f in ipairs(fc.Fruits) do d = d .. "  - " .. f.Name .. " [" .. f.Rarity .. "]\n" end end
-            ALog("âœ… FruitConfig", C.accentOn)
+            ALog("✅ FruitConfig", C.accentOn)
         end
     end)
     pcall(function()
@@ -1180,13 +1231,13 @@ BtnDump.MouseButton1Click:Connect(function()
         if irc and irc.RarityOrder then
             d = d .. "\n[ITEM RARITY ORDER]\n"
             for i, r in ipairs(irc.RarityOrder) do d = d .. "  " .. i .. ". " .. r .. "\n" end
-            ALog("âœ… ItemRarity", C.accentOn)
+            ALog("✅ ItemRarity", C.accentOn)
         end
     end)
     pcall(function()
         local sc = require(ReplicatedStorage:WaitForChild("SettingsConfig", 3))
         if sc and sc.Settings then
-            d = d .. "\n[SETTINGS â€” ROLL/REROLL]\n"
+            d = d .. "\n[SETTINGS — ROLL/REROLL]\n"
             for _, s in ipairs(sc.Settings) do
                 local cat = s.Category or ""
                 if cat:match("Reroll") or cat:match("Filter") or cat:match("Clan") or cat:match("Race") or cat:match("Skill") or cat:match("Haki") then
@@ -1194,10 +1245,10 @@ BtnDump.MouseButton1Click:Connect(function()
                 end
             end
             if sc.CategoryOrder then
-                d = d .. "  CategorÃ­as:\n"
+                d = d .. "  Categorías:\n"
                 for cat, ord in pairs(sc.CategoryOrder) do d = d .. "    " .. cat .. " = " .. ord .. "\n" end
             end
-            ALog("âœ… SettingsConfig", C.accentOn)
+            ALog("✅ SettingsConfig", C.accentOn)
         end
     end)
     
@@ -1224,13 +1275,13 @@ BtnDump.MouseButton1Click:Connect(function()
                 local npcName = (pp and pp:IsA("Model") and pp.Name) or (p and p.Name) or "?"
                 local objText = v.ObjectText or ""
                 local actionText = v.ActionText or ""
-                d = d .. "  ðŸ¤– " .. npcName .. " | Action: " .. actionText .. " | Text: " .. objText .. " | Path: " .. v:GetFullName() .. "\n"
+                d = d .. "  🤖 " .. npcName .. " | Action: " .. actionText .. " | Text: " .. objText .. " | Path: " .. v:GetFullName() .. "\n"
             end
         end
     end)
     
     pcall(function() if writefile then writefile(dumpFile, d) end end)
-    ALog("ðŸ’¾ " .. dumpFile, Color3.fromRGB(255, 255, 100))
+    ALog("💾 " .. dumpFile, Color3.fromRGB(255, 255, 100))
 end)
 
 -- ========== VARIABLES OCULTAS PARA COMPATIBILIDAD BACKEND ==========
@@ -1266,7 +1317,7 @@ uis.InputBegan:Connect(function(input, processed)
 end)
 
 -- ==============================================================================
--- PESTAÃ‘A DE CÃ“DIGOS (NUEVA UI)
+-- PESTAÑA DE CÓDIGOS (NUEVA UI)
 -- ==============================================================================
 local CodesFrame = Instance.new("Frame", SG)
 CodesFrame.Size = UDim2.new(0, 300, 0, 350)
@@ -1281,7 +1332,7 @@ CodesFrame.Visible = false
 local CodesTitle = Instance.new("TextLabel", CodesFrame)
 CodesTitle.Size = UDim2.new(1, 0, 0, 30)
 CodesTitle.BackgroundColor3 = Color3.fromRGB(10, 40, 60)
-CodesTitle.Text = " ðŸ’Ž CÃ“DIGOS DESCUBIERTOS"
+CodesTitle.Text = " 💎 CÓDIGOS DESCUBIERTOS"
 CodesTitle.TextColor3 = Color3.fromRGB(150, 200, 255)
 CodesTitle.Font = Enum.Font.GothamBold
 CodesTitle.TextSize = 14
@@ -1311,6 +1362,16 @@ CodesScroll.BackgroundTransparency = 1
 CodesScroll.ScrollBarThickness = 4
 CodesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 local CodesList = Instance.new("UIListLayout", CodesScroll)
+
+local AllCodesString_Global = ""
+CopyAllBtn.MouseButton1Click:Connect(function()
+    if setclipboard and AllCodesString_Global ~= "" then
+        setclipboard(AllCodesString_Global)
+        CopyAllBtn.Text = "Completado!"
+        task.wait(1.5)
+        CopyAllBtn.Text = "Copiar Todos"
+    end
+end)
 
 BtnCodes.MouseButton1Click:Connect(function()
     MF.Visible = false
@@ -1360,21 +1421,13 @@ BtnCodes.MouseButton1Click:Connect(function()
             end)
         end
         CodesScroll.CanvasSize = UDim2.new(0, 0, 0, num * 35)
-        
-        CopyAllBtn.MouseButton1Click:Connect(function()
-            if setclipboard then
-                setclipboard(allCodesStr)
-                CopyAllBtn.Text = "Completado!"
-                task.wait(1.5)
-                CopyAllBtn.Text = "Copiar Todos"
-            end
-        end)
+        AllCodesString_Global = allCodesStr
     else
         local err = Instance.new("TextLabel", CodesScroll)
         err.Size = UDim2.new(1, 0, 0, 50)
         err.BackgroundTransparency = 1
         err.TextColor3 = Color3.new(1,0,0)
-        err.Text = "No se pudieron obtener los cÃ³digos."
+        err.Text = "No se pudieron obtener los códigos."
     end
 end)
 
@@ -1426,7 +1479,7 @@ local function GetNearestMob()
     return nearestMob
 end
 
--- Anti CaÃ­das y NoClip: Para volar libremente y atravesar paredes
+-- Anti Caídas y NoClip: Para volar libremente y atravesar paredes
 RunService.Stepped:Connect(function()
     if AutoFarm and LP.Character then
         -- 1. Noclip: Apagar CanCollide para atravesar todo
@@ -1436,18 +1489,18 @@ RunService.Stepped:Connect(function()
             end
         end
         
-        -- 2. Anti Gravedad: Para que no caigas al suelo mientras estÃ¡s flotando arriba del mob
+        -- 2. Anti Gravedad: Para que no caigas al suelo mientras estás flotando arriba del mob
         local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.Velocity = Vector3.new(0,0,0)
         end
         
-        -- El ImÃ¡n MagnÃ©tico Lerp fue eliminado por buguear las fÃ­sicas. 
+        -- El Imán Magnético Lerp fue eliminado por buguear las físicas. 
         -- Ahora se usa el Aggro IA en el Motor de Ataque.
     end
 end)
 
--- Motor de ataque y persecuciÃ³n
+-- Motor de ataque y persecución
 task.spawn(function()
     local LastMobTracker = nil
     local CurrentMobHealth = -1
@@ -1457,7 +1510,7 @@ task.spawn(function()
         if AutoFarm then
             local char = LP.Character
             if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-                -- Check si el jugador muriÃ³ para reiniciar
+                -- Check si el jugador murió para reiniciar
                 if char.Humanoid.Health <= 0 then
                     StatusLabel.Text = "Status: Reviviendo..."
                     GlobalMagnetTarget = nil
@@ -1475,7 +1528,7 @@ task.spawn(function()
                             break
                         end
                     end
-                    -- Si no hay espadas, agarramos la primera herramienta que NO sea 'Combat' o 'PuÃ±os'
+                    -- Si no hay espadas, agarramos la primera herramienta que NO sea 'Combat' o 'Puños'
                     if not tool then
                         for _, t in pairs(LP.Backpack:GetChildren()) do
                             if t:IsA("Tool") and not t.Name:lower():match("combat") then
@@ -1484,7 +1537,7 @@ task.spawn(function()
                             end
                         end
                     end
-                    -- Ãšltimo recurso
+                    -- Último recurso
                     if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
                     
                     if tool then char.Humanoid:EquipTool(tool) end
@@ -1504,7 +1557,7 @@ task.spawn(function()
                 
                 if mob then
                     -- ==============================================
-                    -- DETECTOR DE ATASCO DE DAÃ‘O (Despertador FÃ­sico)
+                    -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
                     -- ==============================================
                     if not IsInPanicRecovery then
                         if LastMobTracker ~= mob then
@@ -1512,7 +1565,7 @@ task.spawn(function()
                             CurrentMobHealth = mob.Humanoid.Health
                             MobHitTimer = os.clock()
                             
-                            -- ARRANCADOR INMEDIATO: Primer Click FÃ­sico al atrapar un Nuevo Mob
+                            -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
                             pcall(function()
                                 VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                                 task.wait(0.05)
@@ -1520,11 +1573,11 @@ task.spawn(function()
                             end)
                         else
                             if mob.Humanoid.Health < CurrentMobHealth then
-                                -- Confirmamos que hubo daÃ±o real, reseteamos el reloj
+                                -- Confirmamos que hubo daño real, reseteamos el reloj
                                 CurrentMobHealth = mob.Humanoid.Health
                                 MobHitTimer = os.clock()
                             elseif os.clock() - MobHitTimer >= 5.0 then
-                                -- Han pasado 5 Segundos SIN daÃ±ar al Mob. Forzamos un Click FÃ­sico en Pantalla
+                                -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
                                 pcall(function()
                                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                                     task.wait(0.05)
@@ -1534,7 +1587,7 @@ task.spawn(function()
                             end
                         end
                     else
-                        -- Si estamos en pÃ¡nico, mantener el reloj fresco para que no tire click apenas bajemos
+                        -- Si estamos en pánico, mantener el reloj fresco para que no tire click apenas bajemos
                         MobHitTimer = os.clock() 
                     end
                     
@@ -1546,7 +1599,7 @@ task.spawn(function()
                         GlobalMagnetTarget = mobHrp.Position
                         
                         -- ==============================================
-                        -- INTERCEPTOR: PROTOCOLO DE PÃNICO (HUÃDA Y CURA)
+                        -- INTERCEPTOR: PROTOCOLO DE PÁNICO (HUÍDA Y CURA)
                         -- ==============================================
                         local hpRatio = char.Humanoid.Health / char.Humanoid.MaxHealth
                         if hpRatio <= PanicThreshold and char.Humanoid.Health > 0 then
@@ -1556,7 +1609,7 @@ task.spawn(function()
                         end
                         
                         if IsInPanicRecovery then
-                            StatusLabel.Text = "Status: ðŸ›¡ï¸ PÃNICO (CURANDO " .. math.floor(hpRatio*100) .. "%)"
+                            StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio*100) .. "%)"
                             local escapeCF = CFrame.new(mobHrp.Position) * CFrame.new(0, 50, 0)
                             
                             pcall(function()
@@ -1573,7 +1626,7 @@ task.spawn(function()
                             end)
                             
                             task.wait(0.05)
-                            continue -- Salta todo el ataque sin afectar la retenciÃ³n del Mob!
+                            continue -- Salta todo el ataque sin afectar la retención del Mob!
                         end
                         -- ==============================================
                         
@@ -1604,7 +1657,7 @@ task.spawn(function()
                                 end
                             end
                             table.sort(sorted, function(a,b) return a[2] < b[2] end)
-                            -- Agarra hasta a los 4 mÃ¡s cercanos
+                            -- Agarra hasta a los 4 más cercanos
                             for i=1, math.min(4, #sorted) do
                                 table.insert(mobsToHit, sorted[i][1])
                             end
@@ -1612,12 +1665,12 @@ task.spawn(function()
                             table.insert(mobsToHit, mob)
                         end
                         
-                        -- Ataque DinÃ¡mico / Multi-Golpe para Juntar
+                        -- Ataque Dinámico / Multi-Golpe para Juntar
                         for _, targetMob in pairs(mobsToHit) do
                             local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
                             if tHrp then
-                                -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dÃ³nde mira el monstruo.
-                                -- Esto evita el bug "echado" de raÃ­z sin corromper los Ã¡ngulos X, Z.
+                                -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
+                                -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
                                 local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z).Unit
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
                                 
@@ -1635,7 +1688,7 @@ task.spawn(function()
                                 pcall(function()
                                     local flyDist = (hrp.Position - TargetCF.Position).Magnitude
                                     if TargetBosses == "SoloBoss" and flyDist > 15 then
-                                        -- FLY CLIP: Vuelo suave constante (aprÃ³x 100 studs/seg) para moverse largo sin teleports
+                                        -- FLY CLIP: Vuelo suave constante (apróx 100 studs/seg) para moverse largo sin teleports
                                         local flyStep = math.clamp(20 / flyDist, 0, 1)
                                         char:PivotTo(hrp.CFrame:Lerp(TargetCF, flyStep))
                                     else
@@ -1651,7 +1704,7 @@ task.spawn(function()
                                     end
                                 end)
                                 
-                                -- PREVENIR ATAQUE SI AUN ESTÃ EN VUELO LARGO:
+                                -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
                                 local distFinal = (hrp.Position - TargetCF.Position).Magnitude
                                 if distFinal <= 20 then
                                     pcall(function()
@@ -1670,7 +1723,7 @@ task.spawn(function()
                                     end
                                 end
                                 
-                                -- Una minÃºscula pausa entre saltos
+                                -- Una minúscula pausa entre saltos
                                 task.wait(0.05)
                             end
                         end
@@ -1695,7 +1748,7 @@ end)
 BtnToggle.MouseButton1Click:Connect(function()
     AutoFarm = not AutoFarm
     if AutoFarm then
-        BtnToggle.Text = "  â—¼ Detener Auto-Farm"
+        BtnToggle.Text = "  ◼ Detener Auto-Farm"
         BtnToggle.BackgroundColor3 = C.accentOn
         StatusLabel.TextColor3 = C.accentOn
         StatusLabel.Text = "Status: Buscando objetivos..."
@@ -1705,7 +1758,7 @@ BtnToggle.MouseButton1Click:Connect(function()
             hrp:FindFirstChildOfClass("BodyVelocity"):Destroy()
         end
     else
-        BtnToggle.Text = "  â–º Iniciar Auto-Farm"
+        BtnToggle.Text = "  ► Iniciar Auto-Farm"
         BtnToggle.BackgroundColor3 = C.red
         StatusLabel.TextColor3 = C.muted
         StatusLabel.Text = "Status: Inactivo"
@@ -1727,10 +1780,10 @@ BtnMagnet.MouseButton1Click:Connect(function()
     MobMagnetEnabled = not MobMagnetEnabled
     if MobMagnetEnabled then
         BtnMagnet.BackgroundColor3 = C.accentOn
-        BtnMagnet.Text = "  ?? Imán: ACTIVO"
+        BtnMagnet.Text = "  🧲 Imán: ACTIVO"
     else
         BtnMagnet.BackgroundColor3 = C.card
-        BtnMagnet.Text = "  ?? Imán de Mobs"
+        BtnMagnet.Text = "  🧲 Imán de Mobs"
     end
     SaveConfig()
 end)
@@ -1739,10 +1792,10 @@ BtnSkill.MouseButton1Click:Connect(function()
     AutoSkillEnabled = not AutoSkillEnabled
     if AutoSkillEnabled then
         BtnSkill.BackgroundColor3 = C.accentOn
-        BtnSkill.Text = "  ?? Skill (X): ACTIVO"
+        BtnSkill.Text = "  🔥 Skill (X): ACTIVO"
     else
         BtnSkill.BackgroundColor3 = C.card
-        BtnSkill.Text = "  ?? Auto Skill (X)"
+        BtnSkill.Text = "  🔥 Auto Skill (X)"
     end
     SaveConfig()
 end)
@@ -1751,21 +1804,126 @@ BtnBoss.MouseButton1Click:Connect(function()
     if TargetBosses == "Normal" then
         TargetBosses = "Ignorar"
         BtnBoss.BackgroundColor3 = C.accentOff
-        BtnBoss.Text = "  ?? Ignorar Bosses"
+        BtnBoss.Text = "  🛑 Ignorar Bosses"
     elseif TargetBosses == "Ignorar" then
         TargetBosses = "SoloBoss"
         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180)
-        BtnBoss.Text = "  ?? Solo Boss"
+        BtnBoss.Text = "  👹 Solo Boss"
     else
         TargetBosses = "Normal"
         BtnBoss.BackgroundColor3 = C.card
-        BtnBoss.Text = "  ?? Cazar Bosses: Normal"
+        BtnBoss.Text = "  🎯 Cazar Bosses: Normal"
     end
     SaveConfig()
 end)
 
+-- ==============================================================================
+-- ESCÁNER DE MOBS/BOSSES
+-- ==============================================================================
+BtnScan.MouseButton1Click:Connect(function()
+    BtnScan.Text = "  🔄 Escaneando..."
+    for _, c in pairs(ScanScroll:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    
+    local found = {}
+    local folders = {}
+    -- Buscar en NPCsFolder principal
+    if NPCsFolder then table.insert(folders, NPCsFolder) end
+    -- Buscar carpetas alternativas comunes
+    pcall(function()
+        for _, child in pairs(Workspace:GetChildren()) do
+            if child:IsA("Folder") or child:IsA("Model") then
+                local n = child.Name:lower()
+                if n:match("npc") or n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") then
+                    if child ~= NPCsFolder then
+                        table.insert(folders, child)
+                    end
+                end
+            end
+        end
+    end)
+    
+    for _, folder in pairs(folders) do
+        pcall(function()
+            for _, mob in pairs(folder:GetDescendants()) do
+                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                    if not mob.Name:lower():match("dummy") then
+                        local isBoss = mob.Name:lower():match("boss")
+                        local hp = mob.Humanoid.Health
+                        local maxHp = mob.Humanoid.MaxHealth
+                        local key = mob.Name
+                        if not found[key] then
+                            found[key] = {
+                                Name = mob.Name,
+                                Pos = mob.HumanoidRootPart.Position,
+                                Count = 1,
+                                IsBoss = isBoss and true or false,
+                                Alive = hp > 0 and 1 or 0,
+                                MaxHP = maxHp
+                            }
+                        else
+                            found[key].Count = found[key].Count + 1
+                            if hp > 0 then
+                                found[key].Alive = found[key].Alive + 1
+                                found[key].Pos = mob.HumanoidRootPart.Position
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    
+    local n = 0
+    for key, data in pairs(found) do
+        n = n + 1
+        local btn = Instance.new("TextButton", ScanScroll)
+        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.BackgroundColor3 = data.IsBoss and Color3.fromRGB(55, 30, 30) or Color3.fromRGB(30, 35, 50)
+        btn.BorderSizePixel = 0
+        btn.TextColor3 = data.IsBoss and Color3.fromRGB(255, 130, 130) or Color3.fromRGB(200, 210, 230)
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 11
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.Text = "  " .. (data.IsBoss and "👹 " or "🐾 ") .. key .. " (x" .. data.Count .. " | vivos:" .. data.Alive .. " | HP:" .. math.floor(data.MaxHP) .. ")"
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        
+        btn.MouseButton1Click:Connect(function()
+            ScannedTargetName = data.Name
+            ScannedTargetPos = data.Pos
+            StatusScan.Text = "  🎯 Fijado en: " .. data.Name
+            StatusScan.TextColor3 = data.IsBoss and Color3.fromRGB(255, 130, 130) or Color3.fromRGB(90, 210, 140)
+            SaveConfig()
+        end)
+    end
+    
+    -- Botón para limpiar
+    local btnClear = Instance.new("TextButton", ScanScroll)
+    btnClear.Size = UDim2.new(1, 0, 0, 28)
+    btnClear.BackgroundColor3 = Color3.fromRGB(30, 50, 35)
+    btnClear.BorderSizePixel = 0
+    btnClear.TextColor3 = Color3.fromRGB(100, 230, 130)
+    btnClear.Font = Enum.Font.GothamBold
+    btnClear.TextSize = 11
+    btnClear.Text = "  ❌ Limpiar Objetivo (Atacar a Todos)"
+    btnClear.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", btnClear).CornerRadius = UDim.new(0, 4)
+    btnClear.MouseButton1Click:Connect(function()
+        ScannedTargetName = nil
+        ScannedTargetPos = nil
+        StatusScan.Text = "  📌 Objetivo Libre (Todo)"
+        StatusScan.TextColor3 = C.muted
+        SaveConfig()
+    end)
+    
+    ScanScroll.CanvasSize = UDim2.new(0, 0, 0, (n + 1) * 28)
+    BtnScan.Text = "  🔍 Escanear Mobs/Bosses (" .. n .. " tipos)"
+end)
 
-
+-- ==============================================================================
+-- SLIDERS DE DEFENSA
+-- ==============================================================================
 local sliderCon = nil
 SliderBg.MouseButton1Down:Connect(function()
     local Mouse = LP:GetMouse()
@@ -1777,6 +1935,21 @@ SliderBg.MouseButton1Down:Connect(function()
         SliderFill.Size = UDim2.new(pos, 0, 1, 0)
         PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(pos * 100) .. "%"
     end)
+end)
+
+BtnHeight.MouseButton1Click:Connect(function()
+    if FarmMode == "Arriba" then
+        FarmMode = "Abajo"
+        OfsY = -8
+        OfsZ = 6
+        BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+    else
+        FarmMode = "Arriba"
+        OfsY = 10
+        OfsZ = 0
+        BtnHeight.Text = "  Posición: ☁️ Arriba"
+    end
+    SaveConfig()
 end)
 
 local retSliderCon = nil
@@ -1796,28 +1969,13 @@ uis.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         local saved = false
         if sliderCon then sliderCon:Disconnect(); sliderCon = nil; saved = true end
-        if rSliderCon then rSliderCon:Disconnect(); rSliderCon = nil; saved = true end
         if retSliderCon then retSliderCon:Disconnect(); retSliderCon = nil; saved = true end
         if saved then SaveConfig() end
     end
 end)
 
-BtnHeight.MouseButton1Click:Connect(function()
-    if FarmMode == "Arriba" then
-        FarmMode = "Abajo"
-        OfsY = -8
-        OfsZ = 6
-        BtnHeight.Text = "  PosiciÃ³n: ðŸ•³ï¸ SubterrÃ¡neo"
-    else
-        FarmMode = "Arriba"
-        OfsY = 10
-        OfsZ = 0
-        BtnHeight.Text = "  PosiciÃ³n: â˜ï¸ Arriba"
-    end
-end)
 
-
--- LÃ³gica para Ocultar/Mostrar (Minimizar)
+-- Logica para Ocultar/Mostrar (Minimizar)
 local function ToggleUI()
     MF.Visible = not MF.Visible
     if not MF.Visible then
@@ -1844,29 +2002,27 @@ local function LoadConfig()
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
                     
                     if FarmMode == "Abajo" then
-                        OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: ??? Subterráneo"
+                        OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
                     else
-                        OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ?? Arriba"
+                        OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
-                    if MobMagnetEnabled then BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  ?? Imán: ACTIVO" end
-                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  ?? Skill (X): ACTIVO" end
+                    if MobMagnetEnabled then BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO" end
+                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skill (X): ACTIVO" end
                     if TargetBosses == "SoloBoss" then
-                        BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  ?? Solo Boss"
+                        BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
                     elseif TargetBosses == "Ignorar" then
-                        BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  ?? Ignorar Bosses"
-                    end
-                    if LimitSearchRange then
-                        BtnLimitRange.BackgroundColor3 = C.accentOn; BtnLimitRange.Text = "  ?? Limitar Búsqueda: ON"
+                        BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  🛑 Ignorar Bosses"
                     end
                     
-                    PanicLabel.Text = "  ??? Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
+                    if ScannedTargetName then
+                        StatusScan.Text = "  🎯 Fijado en: " .. ScannedTargetName
+                    end
+                    
+                    PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
                     SliderFill.Size = UDim2.new(math.clamp(PanicThreshold,0.01,1), 0, 1, 0)
                     
-                    ReturnHealthLabel.Text = "  ?? Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
+                    ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
                     ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold,0.01,1), 0, 1, 0)
-                    
-                    RangeLabel.Text = "  ?? Distancia Máxima: " .. SearchRangeMax .. " Studs"
-                    RangeSliderFill.Size = UDim2.new(math.clamp(SearchRangeMax/15000, 0.05, 1), 0, 1, 0)
                 end
             end)
         end
