@@ -95,7 +95,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILORE EEEEE— AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -715,6 +715,32 @@ local function RemoteColor(name)
     if n:match("unlock") or n:match("check") then return Color3.fromRGB(255, 180, 180) end
     return Color3.fromRGB(180, 190, 210)
 end
+
+-- === META-HOOK: CAPTURA DE TRIGGERS ENVIADOS AL SERVIDOR (FIRESHERVER) ===
+local HookSuccess = false
+pcall(function()
+    local OldNamecall
+    OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if AnalyzerActive and not checkcaller() then
+            if method == "FireServer" or method == "InvokeServer" then
+                local n = self.Name
+                -- Ignoramos movimientos y combate directo para evitar spam
+                if not n:match("Combat") and not n:match("Dash") and not n:match("Mouse") and not n:match("Movement") then
+                    local args = {...}
+                    task.spawn(function()
+                        local data = SerArgs(unpack(args))
+                        local line = "[" .. os.date("%H:%M:%S") .. "] 📤 OUT ("..method.."): " .. n .. " → " .. data
+                        ALog(line, Color3.fromRGB(255, 80, 80))
+                        QueueWrite(line)
+                    end)
+                end
+            end
+        end
+        return OldNamecall(self, ...)
+    end)
+    HookSuccess = true
+end)
 
 -- === LÓGICA PRINCIPAL DEL ANALYZER ===
 BtnAnalyzer.MouseButton1Click:Connect(function()
