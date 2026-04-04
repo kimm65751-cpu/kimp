@@ -260,39 +260,6 @@ local BtnHeight = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
 local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
 local BtnSkill  = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
 local BtnBoss   = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
-
-SectionLabel(FarmPage, "ESCÁNER OBJETIVO", 7)
-local BtnScan = Instance.new("TextButton", FarmPage)
-BtnScan.Size = UDim2.new(0.95, 0, 0, 30)
-BtnScan.BackgroundColor3 = C.accent
-BtnScan.TextColor3 = Color3.new(1,1,1)
-BtnScan.Font = Enum.Font.GothamBold
-BtnScan.TextSize = 12
-BtnScan.Text = "  🔍 Escanear Mobs/Bosses del Mapa"
-BtnScan.TextXAlignment = Enum.TextXAlignment.Left
-BtnScan.LayoutOrder = 8
-BtnScan.BorderSizePixel = 0
-Instance.new("UICorner", BtnScan).CornerRadius = UDim.new(0, 5)
-
-local ScanScroll = Instance.new("ScrollingFrame", FarmPage)
-ScanScroll.Size = UDim2.new(0.95, 0, 0, 100)
-ScanScroll.BackgroundColor3 = C.card
-ScanScroll.BorderSizePixel = 0
-ScanScroll.LayoutOrder = 9
-ScanScroll.ScrollBarThickness = 3
-Instance.new("UICorner", ScanScroll).CornerRadius = UDim.new(0, 5)
-local ScanLayout = Instance.new("UIListLayout", ScanScroll)
-
-local StatusScan = Instance.new("TextLabel", FarmPage)
-StatusScan.Size = UDim2.new(0.95, 0, 0, 16)
-StatusScan.BackgroundTransparency = 1
-StatusScan.TextColor3 = C.muted
-StatusScan.Font = Enum.Font.Gotham
-StatusScan.TextSize = 11
-StatusScan.Text = "  📌 Objetivo Libre (Todo)"
-StatusScan.TextXAlignment = Enum.TextXAlignment.Left
-StatusScan.LayoutOrder = 10
-
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -857,8 +824,8 @@ task.spawn(function()
                 local mob = GetNearestMob()
                 
                 if not mob and ScannedTargetName and ScannedTargetPos and not IsInPanicRecovery then
-                    -- REMOVED: Escaner de coordenadas desactivado. AutoFarm esperara a que camines y el Boss/Mob cargue en el cache.
-                    StatusLabel.Text = " Esperando Carga de Entidad..."
+                    -- REMOVED: Escaner de coordenadas desactivado a petición definitiva.
+                    StatusLabel.Text = " Esperando Carga de Mobs..."
                 end
                 
                 if mob then
@@ -1128,175 +1095,7 @@ BtnBoss.MouseButton1Click:Connect(function()
     end
     SaveConfig()
 end)
-
--- ==============================================================================
--- ESCÁNER DE MOBS/BOSSES
--- ==============================================================================
-BtnScan.MouseButton1Click:Connect(function()
-    BtnScan.Text = "  🔄 Escaneando..."
-    for _, c in pairs(ScanScroll:GetChildren()) do
-        if c:IsA("TextButton") then c:Destroy() end
-    end
-    
-    local found = {}
-    local folders = {}
-    -- Buscar en NPCsFolder principal
-    if NPCsFolder then table.insert(folders, NPCsFolder) end
-    -- Buscar carpetas alternativas comunes
-    pcall(function()
-        for _, child in pairs(Workspace:GetChildren()) do
-            if child:IsA("Folder") or child:IsA("Model") then
-                local n = child.Name:lower()
-                if n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") or n:match("boss") then
-                    if child ~= NPCsFolder then
-                        table.insert(folders, child)
-                    end
-                end
-            end
-        end
-    end)
-    
-    for _, folder in pairs(folders) do
-        pcall(function()
-            for _, mob in pairs(folder:GetDescendants()) do
-                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-                    if not mob.Name:lower():match("dummy") and not mob.Name:lower():match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
-                        local isBoss = mob.Name:lower():match("boss")
-                        local hp = mob.Humanoid.Health
-                        local maxHp = mob.Humanoid.MaxHealth
-                        local key = mob.Name
-                        if not found[key] then
-                            found[key] = {
-                                Name = mob.Name,
-                                Pos = mob.HumanoidRootPart.Position,
-                                Count = 1,
-                                IsBoss = isBoss and true or false,
-                                Alive = hp > 0 and 1 or 0,
-                                MaxHP = maxHp
-                            }
-                        else
-                            found[key].Count = found[key].Count + 1
-                            if hp > 0 then
-                                found[key].Alive = found[key].Alive + 1
-                                found[key].Pos = mob.HumanoidRootPart.Position
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-    
-    local n = 0
-    for key, data in pairs(found) do
-        n = n + 1
-        local btn = Instance.new("TextButton", ScanScroll)
-        btn.Size = UDim2.new(1, 0, 0, 28)
-        btn.BackgroundColor3 = data.IsBoss and Color3.fromRGB(55, 30, 30) or Color3.fromRGB(30, 35, 50)
-        btn.BorderSizePixel = 0
-        btn.TextColor3 = data.IsBoss and Color3.fromRGB(255, 130, 130) or Color3.fromRGB(200, 210, 230)
-        btn.Font = Enum.Font.Gotham
-        btn.TextSize = 11
-        btn.TextXAlignment = Enum.TextXAlignment.Left
-        btn.Text = "  " .. (data.IsBoss and "👹 " or "🐾 ") .. key .. " (x" .. data.Count .. " | vivos:" .. data.Alive .. " | HP:" .. math.floor(data.MaxHP) .. ")"
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-        
-        btn.MouseButton1Click:Connect(function()
-            ScannedTargetName = data.Name
-            ScannedTargetPos = data.Pos
-            StatusScan.Text = "  🎯 Fijado en: " .. data.Name
-            StatusScan.TextColor3 = data.IsBoss and Color3.fromRGB(255, 130, 130) or Color3.fromRGB(90, 210, 140)
-            SaveConfig()
-        end)
-    end
-    
-    -- Botón para limpiar
-    local btnClear = Instance.new("TextButton", ScanScroll)
-    btnClear.Size = UDim2.new(1, 0, 0, 28)
-    btnClear.BackgroundColor3 = Color3.fromRGB(30, 50, 35)
-    btnClear.BorderSizePixel = 0
-    btnClear.TextColor3 = Color3.fromRGB(100, 230, 130)
-    btnClear.Font = Enum.Font.GothamBold
-    btnClear.TextSize = 11
-    btnClear.Text = "  ❌ Limpiar Objetivo (Atacar a Todos)"
-    btnClear.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", btnClear).CornerRadius = UDim.new(0, 4)
-    btnClear.MouseButton1Click:Connect(function()
-        ScannedTargetName = nil
-        ScannedTargetPos = nil
-        StatusScan.Text = "  📌 Objetivo Libre (Todo)"
-        StatusScan.TextColor3 = C.muted
-        SaveConfig()
-    end)
-    
-    ScanScroll.CanvasSize = UDim2.new(0, 0, 0, (n + 1) * 28)
-    BtnScan.Text = "  🔍 Escanear Mobs/Bosses (" .. n .. " tipos)"
-end)
-
--- ==============================================================================
--- SLIDERS DE DEFENSA
--- ==============================================================================
-local sliderCon = nil
-SliderBg.MouseButton1Down:Connect(function()
-    local Mouse = LP:GetMouse()
-    if sliderCon then sliderCon:Disconnect() end
-    sliderCon = game:GetService("RunService").RenderStepped:Connect(function()
-        local relativeX = Mouse.X - SliderBg.AbsolutePosition.X
-        local pos = math.clamp(relativeX / SliderBg.AbsoluteSize.X, 0.05, 1)
-        PanicThreshold = pos
-        SliderFill.Size = UDim2.new(pos, 0, 1, 0)
-        PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(pos * 100) .. "%"
-    end)
-end)
-
-BtnHeight.MouseButton1Click:Connect(function()
-    if FarmMode == "Arriba" then
-        FarmMode = "Abajo"
-        OfsY = -8
-        OfsZ = 6
-        BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
-    else
-        FarmMode = "Arriba"
-        OfsY = 10
-        OfsZ = 0
-        BtnHeight.Text = "  Posición: ☁️ Arriba"
-    end
-    SaveConfig()
-end)
-
-local retSliderCon = nil
-ReturnSliderBg.MouseButton1Down:Connect(function()
-    local Mouse = LP:GetMouse()
-    if retSliderCon then retSliderCon:Disconnect() end
-    retSliderCon = game:GetService("RunService").RenderStepped:Connect(function()
-        local relativeX = Mouse.X - ReturnSliderBg.AbsolutePosition.X
-        local pos = math.clamp(relativeX / ReturnSliderBg.AbsoluteSize.X, 0.05, 1)
-        ReturnHealthThreshold = pos
-        ReturnSliderFill.Size = UDim2.new(pos, 0, 1, 0)
-        ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(pos * 100) .. "%"
-    end)
-end)
-
-uis.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local saved = false
-        if sliderCon then sliderCon:Disconnect(); sliderCon = nil; saved = true end
-        if retSliderCon then retSliderCon:Disconnect(); retSliderCon = nil; saved = true end
-        if saved then SaveConfig() end
-    end
-end)
-
-
--- Logica para Ocultar/Mostrar (Minimizar)
-local function ToggleUI()
-    MF.Visible = not MF.Visible
-    if not MF.Visible then
-        if CodesFrame then CodesFrame.Visible = false end
-    end
 end
-BtnMin.MouseButton1Click:Connect(ToggleUI)
-BtnFloat.MouseButton1Click:Connect(ToggleUI)
-
 local function LoadConfig()
     if readfile then
         local success, raw = pcall(function() return readfile("OmniAutoFarmConfig.json") end)
@@ -1319,26 +1118,19 @@ local function LoadConfig()
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
                     if MobMagnetEnabled then BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO" end
-                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skill (X): ACTIVO" end
+                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  ⚔️ Auto Skill (X): ACTIVO" end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
                     elseif TargetBosses == "Ignorar" then
-                        BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  🛑 Ignorar Bosses"
+                        BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  🙈 Ignorar Bosses"
                     end
                     
-                    if ScannedTargetName then
-                        StatusScan.Text = "  🎯 Fijado en: " .. ScannedTargetName
-                    end
-                    
-                    PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
+                    PanicLabel.Text = "  🛡️ Escudo Pánico - Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
                     SliderFill.Size = UDim2.new(math.clamp(PanicThreshold,0.01,1), 0, 1, 0)
-                    
-                    ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
-                    ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold,0.01,1), 0, 1, 0)
                 end
             end)
         end
     end
 end
-task.spawn(LoadConfig)
 
+task.spawn(LoadConfig)
