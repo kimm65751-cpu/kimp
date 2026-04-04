@@ -95,7 +95,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILORE EEEEE— AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -477,6 +477,177 @@ NPCGuideEntry("💎 Gems Fruit Dealer", "Compra frutas con Gemas. Sailor Island,
 NPCGuideEntry("🪙 Coins Fruit Dealer", "Compra frutas con Monedas. Sailor Island, junto al Gem Dealer.", Vector3.new(408,2,802), g+15)
 NPCGuideEntry("😈 Demonite Quest (Anos)", "Quest especial del Demonite. Academy Island.", Vector3.new(727,-2,1273), g+16)
 NPCGuideEntry("💠 Hogyoku Quest", "Quest especial del Hogyoku. Lawless Island, zona oculta.", Vector3.new(-380,8,1529), g+17)
+
+-- =======================================================================================
+-- ========== TAB 4: 🎯 AUTO-SNIPER & HACK-TEST ==========
+-- =======================================================================================
+local SnipePage = MakeScrollPage("Sniper")
+SectionLabel(SnipePage, "🎯 SNIPERS DE RNG (Auto-Skips)", 1)
+
+local function MakeSniperBtn(parent, text, bgColor, order)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.95, 0, 0, 36)
+    btn.BackgroundColor3 = bgColor
+    btn.TextColor3 = C.text
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 12
+    btn.Text = "  " .. text
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.BorderSizePixel = 0
+    btn.LayoutOrder = order
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    return btn
+end
+
+local BtnSnipeTrait = MakeSniperBtn(SnipePage, "🎯 Snipear Atributo SECRETO", Color3.fromRGB(80, 40, 90), 2)
+local BtnSnipeStats = MakeSniperBtn(SnipePage, "🎯 Snipear Stats a A/S/SS (Sube Suerte)", Color3.fromRGB(40, 80, 90), 3)
+
+SectionLabel(SnipePage, "👁️ VISUALES PARA EVENTOS / PUZZLES", 4)
+local BtnESPItems = MakeSniperBtn(SnipePage, "🟢 Activar ESP de Objetos/Puzzles", Color3.fromRGB(50, 100, 60), 5)
+local BtnAutoDungeon = MakeSniperBtn(SnipePage, "🧩 Auto-Misión Dungeon (Recolectar Todo)", Color3.fromRGB(30, 90, 70), 6)
+
+SectionLabel(SnipePage, "🧬 AUTO-USO DEL INVENTARIO (Max 15 usos)", 7)
+local BtnRaceUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Race Rerolls Rápido", Color3.fromRGB(90, 60, 30), 8)
+local BtnClanUse = MakeSniperBtn(SnipePage, "🚀 Gastar 15 Clan Rerolls Rápido", Color3.fromRGB(90, 40, 40), 9)
+
+SectionLabel(SnipePage, "☢️ ANÁLISIS DE VULNERABILIDADES (ADMIN)", 10)
+local BtnAdminHack = MakeSniperBtn(SnipePage, "🚨 Ejecutar Test de Backdoor Admin", Color3.fromRGB(150, 40, 40), 11)
+
+-- == LOGICA SNIPERS ==
+local Remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
+local RemotesR = ReplicatedStorage:FindFirstChild("Remotes")
+
+BtnAutoDungeon.MouseButton1Click:Connect(function()
+    BtnAutoDungeon.Text = "  🔴 Ruteando Islas por Piezas... (AFK)"
+    task.spawn(function()
+        local function FirePrompt(part)
+            local p = part:FindFirstChildOfClass("ProximityPrompt")
+            if p then
+                pcall(function() fireproximityprompt(p, 1) end)
+                pcall(function() fireproximityprompt(p) end)
+            end
+        end
+
+        local IslasCentrales = {
+            Vector3.new(-71, 10, -299),   -- Starter
+            Vector3.new(-392, 10, 407),   -- Jungle
+            Vector3.new(-688, 10, -287),  -- Desert
+            Vector3.new(-182, 10, -998),  -- Snow
+            Vector3.new(1269, 30, 233),   -- Shibuya
+            Vector3.new(-542, 10, 872)    -- Hollow (Hueco Mundo)
+        }
+        
+        for i, pos in ipairs(IslasCentrales) do
+            pcall(function() SafeTravel(pos, "Isla " .. i) end)
+            task.wait(2.5)
+            
+            local hallado = false
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name == "DungeonPuzzlePiece" then
+                    pcall(function() SafeTravel(obj.Position, "Pieza Dungeon") end)
+                    task.wait(1.5)
+                    FirePrompt(obj)
+                    task.wait(0.5)
+                    hallado = true
+                end
+            end
+            
+            if not hallado then
+                task.wait(0.5)
+            end
+        end
+        BtnAutoDungeon.Text = "  ✅ Auto-Misión: Piezas Aseguradas"
+    end)
+end)
+
+BtnSnipeTrait.MouseButton1Click:Connect(function()
+    pcall(function()
+        Remotes.TraitUpdateAutoSkip:FireServer({Epic = true, Legendary = true, Mythical = true, Secret = false})
+        task.wait(0.1)
+        Remotes.TraitAutoReroll:FireServer()
+    end)
+end)
+
+BtnSnipeStats.MouseButton1Click:Connect(function()
+    pcall(function()
+        -- Mandamos false a todo lo que SÍ QUEREMOS aceptar. A=false significa "No skipees A"
+        Remotes.StatRerollUpdateAutoSkip:FireServer({A = false, S = false, SS = false, SSS = false})
+        task.wait(0.1)
+        Remotes.StatRerollAutoRoll:FireServer()
+    end)
+end)
+
+local SnipeActiveRace = false
+BtnRaceUse.MouseButton1Click:Connect(function()
+    SnipeActiveRace = not SnipeActiveRace
+    if not SnipeActiveRace then
+        BtnRaceUse.Text = "  🚀 Gastar Race Rerolls (Apagado)"
+        return
+    end
+    BtnRaceUse.Text = "  🔴 BUSCANDO LIMITLESS/VAMPIRE... (Clic para parar)"
+
+    task.spawn(function()
+        while SnipeActiveRace do
+            pcall(function()
+                local eq = RemotesR.GetEquipped:InvokeServer()
+                if eq and eq.Race then
+                    if eq.Race == "Limitless" or eq.Race == "Vampire" then
+                        SnipeActiveRace = false
+                        BtnRaceUse.Text = "  ✅ Raza conseguida: " .. eq.Race
+                        return
+                    end
+                end
+                RemotesR.UseItem:FireServer("Race Reroll")
+            end)
+            task.wait(1.2) -- Tiempo seguro para no crash del servidor
+        end
+    end)
+end)
+
+local SnipeActiveClan = false
+BtnClanUse.MouseButton1Click:Connect(function()
+    SnipeActiveClan = not SnipeActiveClan
+    if not SnipeActiveClan then
+        BtnClanUse.Text = "  🚀 Gastar Clan Rerolls (Apagado)"
+        return
+    end
+    BtnClanUse.Text = "  🔴 BUSCANDO SUPREMOS... (Clic para parar)"
+
+    task.spawn(function()
+        while SnipeActiveClan do
+            pcall(function()
+                local eq = RemotesR.GetEquipped:InvokeServer()
+                if eq and eq.Clan then
+                    if eq.Clan == "Voldigoat" or eq.Clan == "Pride" or eq.Clan == "Monarch" then
+                        SnipeActiveClan = false
+                        BtnClanUse.Text = "  ✅ Clan supremo: " .. eq.Clan
+                        return
+                    end
+                end
+                RemotesR.UseItem:FireServer("Clan Reroll")
+            end)
+            task.wait(1.2)
+        end
+    end)
+end)
+
+BtnAdminHack.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        pcall(function()
+            local R = ReplicatedStorage:FindFirstChild("Remotes")
+            if not R then return end
+            -- Test 1: Verificar si somos Admin a los ojos del servidor
+            local IsAdmin = R.AdminCheckAccess:InvokeServer()
+            if IsAdmin then
+                print("🔥 [HACK-TEST] ¡ERES ADMINISTRADOR EN EL SERVER! Vulnerabilidad Encontrada.")
+                local cmds = R.AdminGetCommands:InvokeServer()
+                print("🔥 [HACK-TEST] Comandos obtenidos:", typeof(cmds))
+            else
+                print("🔒 [HACK-TEST] Servidor seguro. AdminCheckAccess retornó falso o rechazado.")
+            end
+        end)
+    end)
+end)
 
 -- =======================================================================================
 -- ========== TAB 3: LOGS — OMNI-ANALYZER (NPCs + ROLLS + GUIs) ==========
