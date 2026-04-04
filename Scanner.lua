@@ -25,6 +25,9 @@ local PanicThreshold = 0.20
 local ReturnHealthThreshold = 0.95
 local IsInPanicRecovery = false
 local GlobalMagnetTarget = nil
+local MemoryPoint = nil
+local IsWalkingToMemory = false
+local LastRealDamageTime = os.clock()
 local VIM = game:GetService("VirtualInputManager")
 
 -- Endpoints Críticos (Sacados del Scanner)
@@ -85,7 +88,8 @@ local function SaveConfig()
             MobMagnetEnabled = MobMagnetEnabled,
             AutoSkillEnabled = AutoSkillEnabled,
             TargetBosses = TargetBosses,
-            FarmMode = FarmMode
+            FarmMode = FarmMode,
+            MemoryPoint = MemoryPoint and {X=MemoryPoint.X, Y=MemoryPoint.Y, Z=MemoryPoint.Z} or nil
         }
         pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
     end
@@ -174,6 +178,7 @@ local function MakeTabBtn(icon, tabName, order)
 end
 
 local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
+local TabMem  = MakeTabBtn("📍", "Memoria", 2)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel = Instance.new("Frame", MF)
@@ -217,6 +222,7 @@ local function SwitchTab(tabName)
 end
 
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
+TabMem.MouseButton1Click:Connect(function() SwitchTab("Memoria") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -309,6 +315,36 @@ Instance.new("UICorner", ReturnSliderFill).CornerRadius = UDim.new(0, 6)
 
 SectionLabel(FarmPage, "UTILIDADES", 20)
 local BtnCodes = ToggleButton(FarmPage, "📋 Gestor de Códigos", 21, Color3.fromRGB(35, 55, 75))
+
+-- =======================================================================================
+-- ========== TAB 2: MEMORIA (PUNTO DE RETORNO) ==========
+-- =======================================================================================
+local MemPage = MakeScrollPage("Memoria")
+
+SectionLabel(MemPage, "PUNTO DE RETORNO", 1)
+
+local MemStatusLabel = Instance.new("TextLabel", MemPage)
+MemStatusLabel.Size = UDim2.new(0.95, 0, 0, 22)
+MemStatusLabel.BackgroundTransparency = 1
+MemStatusLabel.TextColor3 = C.muted
+MemStatusLabel.Font = Enum.Font.GothamMedium
+MemStatusLabel.TextSize = 12
+MemStatusLabel.Text = "  📍 Sin punto guardado"
+MemStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+MemStatusLabel.LayoutOrder = 2
+
+local MemInfoLabel = Instance.new("TextLabel", MemPage)
+MemInfoLabel.Size = UDim2.new(0.95, 0, 0, 50)
+MemInfoLabel.BackgroundTransparency = 1
+MemInfoLabel.TextColor3 = Color3.fromRGB(90, 95, 110)
+MemInfoLabel.Font = Enum.Font.Gotham
+MemInfoLabel.TextSize = 11
+MemInfoLabel.Text = "  Presiona M para guardar tu posición actual.\n  Si mueres y no hay mobs por 10s, caminarás\n  lento hasta ese punto automáticamente."
+MemInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+MemInfoLabel.TextWrapped = true
+MemInfoLabel.LayoutOrder = 3
+
+local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
 
 -- =======================================================================================
 -- ========== VARIABLES OCULTAS PARA COMPATIBILIDAD BACKEND ==========
@@ -600,10 +636,59 @@ task.spawn(function()
 
                 local mob = GetNearestMob()
                 
-                if not mob and ScannedTargetName and ScannedTargetPos and not IsInPanicRecovery then
-                    -- REMOVED: Escaner de coordenadas desactivado a petición definitiva.
-                    StatusLabel.Text = " Esperando Carga de Mobs..."
+                -- ====== SISTEMA DE RETORNO A MEMORIA ======
+                if MemoryPoint and not IsInPanicRecovery and not mob then
+                    if os.clock() - LastRealDamageTime > 10 then
+                        IsWalkingToMemory = true
+                    end
                 end
+                
+                if IsWalkingToMemory and MemoryPoint and not IsInPanicRecovery then
+                    if mob then
+                        -- Mob real en rango = cancelar caminata, AutoFarm toma control
+                        IsWalkingToMemory = false
+                        LastRealDamageTime = os.clock()
+                    else
+                        local hrpW = char.HumanoidRootPart
+                        local distToMem = (hrpW.Position - MemoryPoint).Magnitude
+                        
+                        if distToMem <= 15 then
+                            IsWalkingToMemory = false
+                            StatusLabel.Text = "📍 Llegamos al punto guardado"
+                            LastRealDamageTime = os.clock()
+                        else
+                            StatusLabel.Text = "📍 Caminando al punto... (" .. math.floor(distToMem) .. "m)"
+                            
+                            -- Raycast al suelo para seguir el terreno
+                            local groundY = MemoryPoint.Y
+                            pcall(function()
+                                local rayOrigin = Vector3.new(hrpW.Position.X, hrpW.Position.Y + 10, hrpW.Position.Z)
+                                local rayDir = Vector3.new(0, -200, 0)
+                                local rayParams = RaycastParams.new()
+                                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                                rayParams.FilterDescendantsInstances = {char}
+                                local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
+                                if result then
+                                    groundY = result.Position.Y + 3
+                                end
+                            end)
+                            
+                            -- Movimiento lento y seguro (~16 studs/s)
+                            local targetPos = Vector3.new(MemoryPoint.X, groundY, MemoryPoint.Z)
+                            local walkSpeed = math.clamp(16 / distToMem, 0, 0.15)
+                            local walkCF = hrpW.CFrame:Lerp(CFrame.new(targetPos), walkSpeed)
+                            pcall(function() char:PivotTo(walkCF) end)
+                            
+                            pcall(function()
+                                Workspace.CurrentCamera.CameraSubject = char:FindFirstChild("Humanoid")
+                            end)
+                        end
+                        
+                        task.wait(0.05)
+                        continue
+                    end
+                end
+                -- ====== FIN SISTEMA DE RETORNO ======
                 
                 if mob then
                     -- ==============================================
@@ -614,6 +699,7 @@ task.spawn(function()
                             LastMobTracker = mob
                             CurrentMobHealth = mob.Humanoid.Health
                             MobHitTimer = os.clock()
+                            LastRealDamageTime = os.clock()
                             
                             -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
                             pcall(function()
@@ -626,6 +712,8 @@ task.spawn(function()
                                 -- Confirmamos que hubo daño real, reseteamos el reloj
                                 CurrentMobHealth = mob.Humanoid.Health
                                 MobHitTimer = os.clock()
+                                LastRealDamageTime = os.clock()
+                                IsWalkingToMemory = false
                             elseif os.clock() - MobHitTimer >= 5.0 then
                                 -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
                                 pcall(function()
@@ -818,6 +906,8 @@ local function ToggleAutoFarm()
         BtnToggle.BackgroundColor3 = C.accentOn
         StatusLabel.TextColor3 = C.accentOn
         StatusLabel.Text = "Status: Buscando objetivos..."
+        LastRealDamageTime = os.clock()
+        IsWalkingToMemory = false
         
         local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
@@ -847,6 +937,16 @@ BtnToggle.MouseButton1Click:Connect(ToggleAutoFarm)
 uis.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == Enum.KeyCode.K then ToggleAutoFarm() end
+    if input.KeyCode == Enum.KeyCode.M then
+        local char = LP.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            MemoryPoint = char.HumanoidRootPart.Position
+            IsWalkingToMemory = false
+            MemStatusLabel.Text = "  📍 Punto: " .. math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
+            StatusLabel.Text = "📍 Punto guardado!"
+            SaveConfig()
+        end
+    end
     if input.KeyCode == Enum.KeyCode.KeypadMultiply or input.KeyCode == Enum.KeyCode.Eight then
         if input.KeyCode == Enum.KeyCode.Eight and not uis:IsKeyDown(Enum.KeyCode.LeftShift) and not uis:IsKeyDown(Enum.KeyCode.RightShift) then return end
         MF.Visible = not MF.Visible
@@ -947,6 +1047,19 @@ uis_local.InputChanged:Connect(function(input)
     end
 end)
 
+BtnClearMem.MouseButton1Click:Connect(function()
+    MemoryPoint = nil
+    IsWalkingToMemory = false
+    MemStatusLabel.Text = "  📍 Sin punto guardado"
+    BtnClearMem.BackgroundColor3 = C.card
+    BtnClearMem.Text = "  ✅ Punto borrado"
+    SaveConfig()
+    task.delay(1.5, function()
+        BtnClearMem.BackgroundColor3 = C.red
+        BtnClearMem.Text = "  🗑️ Borrar Punto Guardado"
+    end)
+end)
+
 BtnMin.MouseButton1Click:Connect(function()
     MF.Visible = false
     if CodesFrame then pcall(function() CodesFrame.Visible = false end) end
@@ -972,6 +1085,10 @@ local function LoadConfig()
                     if data.AutoSkillEnabled ~= nil then AutoSkillEnabled = data.AutoSkillEnabled end
                     if data.TargetBosses ~= nil then TargetBosses = data.TargetBosses end
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
+                    if data.MemoryPoint ~= nil then
+                        MemoryPoint = Vector3.new(data.MemoryPoint.X, data.MemoryPoint.Y, data.MemoryPoint.Z)
+                        MemStatusLabel.Text = "  📍 Punto: " .. math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
+                    end
                     
                     if FarmMode == "Abajo" then
                         OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
