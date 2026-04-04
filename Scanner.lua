@@ -996,17 +996,17 @@ task.spawn(function()
                                 elseif currentFarmMode == "Detras" then
                                     TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
                                 elseif currentFarmMode == "Abajo" then
-                                    TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                                    TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
                                 end
                                 
                                 pcall(function()
                                     local flyDist = (hrp.Position - TargetCF.Position).Magnitude
-                                    if TargetBosses == "SoloBoss" and flyDist > 15 then
-                                        -- FLY CLIP: Vuelo suave constante (apróx 100 studs/seg) para moverse largo sin teleports
-                                        local flyStep = math.clamp(20 / flyDist, 0, 1)
+                                    if flyDist > 15 then
+                                        -- FLY CLIP UNIVERSAL: Vuelo noclip constante para evitar bloqueo del mapa
+                                        local flyStep = math.clamp(120 / flyDist, 0, 1)
                                         char:PivotTo(hrp.CFrame:Lerp(TargetCF, flyStep))
                                     else
-                                        -- Cerca o Modalidad Normal: Anchored Pivot
+                                        -- Cerca: Anchored Pivot perfecto
                                         char:PivotTo(TargetCF)
                                     end
                                 end)
@@ -1026,10 +1026,13 @@ task.spawn(function()
                                         if tool then tool:Activate() end
                                     end)
                                     
-                                    -- Aimbot para Skills
+                                    -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
                                     if AutoSkillEnabled then
                                         pcall(function()
-                                            hrp.CFrame = CFrame.lookAt(hrp.Position, tHrp.Position)
+                                            -- Calculamos rotación estrictamente horizontal (evita que el PJ mire hacia arriba y su cabeza traspase el piso)
+                                            local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y, tHrp.Position.Z)
+                                            hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
+                                            
                                             VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
                                             task.wait(0.01)
                                             VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
