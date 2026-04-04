@@ -1095,7 +1095,57 @@ BtnBoss.MouseButton1Click:Connect(function()
     end
     SaveConfig()
 end)
-end
+
+-- ==============================================================================
+-- CONEXIONES DE INTERFAZ RECONSTRUIDAS (ALTURA Y DEFENSA)
+-- ==============================================================================
+local uis_local = game:GetService("UserInputService")
+
+BtnHeight.MouseButton1Click:Connect(function()
+    if FarmMode == "Arriba" then
+        FarmMode = "Abajo"
+        OfsY = -8; OfsZ = 6
+        BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+    else
+        FarmMode = "Arriba"
+        OfsY = 10; OfsZ = 0
+        BtnHeight.Text = "  Posición: ☁️ Arriba"
+    end
+    SaveConfig()
+end)
+
+local isDraggingPanic = false
+SliderBg.MouseButton1Down:Connect(function() isDraggingPanic = true end)
+uis_local.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then isDraggingPanic = false end end)
+uis_local.InputChanged:Connect(function(input)
+    if isDraggingPanic and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = uis_local:GetMouseLocation().X
+        local framePos = SliderBg.AbsolutePosition.X
+        local frameSize = SliderBg.AbsoluteSize.X
+        local rel = math.clamp((mousePos - framePos) / frameSize, 0.01, 1)
+        PanicThreshold = rel
+        SliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(rel * 100) .. "%"
+        SaveConfig()
+    end
+end)
+
+local isDraggingReturn = false
+ReturnSliderBg.MouseButton1Down:Connect(function() isDraggingReturn = true end)
+uis_local.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then isDraggingReturn = false end end)
+uis_local.InputChanged:Connect(function(input)
+    if isDraggingReturn and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = uis_local:GetMouseLocation().X
+        local framePos = ReturnSliderBg.AbsolutePosition.X
+        local frameSize = ReturnSliderBg.AbsoluteSize.X
+        local rel = math.clamp((mousePos - framePos) / frameSize, 0.01, 1)
+        ReturnHealthThreshold = rel
+        ReturnSliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(rel * 100) .. "%"
+        SaveConfig()
+    end
+end)
+
 local function LoadConfig()
     if readfile then
         local success, raw = pcall(function() return readfile("OmniAutoFarmConfig.json") end)
@@ -1118,15 +1168,17 @@ local function LoadConfig()
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
                     if MobMagnetEnabled then BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO" end
-                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  ⚔️ Auto Skill (X): ACTIVO" end
+                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Auto Skill (X): ACTIVO" end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
                     elseif TargetBosses == "Ignorar" then
                         BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  🙈 Ignorar Bosses"
                     end
                     
-                    PanicLabel.Text = "  🛡️ Escudo Pánico - Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
+                    PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
                     SliderFill.Size = UDim2.new(math.clamp(PanicThreshold,0.01,1), 0, 1, 0)
+                    ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
+                    ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold,0.01,1), 0, 1, 0)
                 end
             end)
         end
