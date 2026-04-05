@@ -489,36 +489,6 @@ end
 task.spawn(function()
     while true do
         task.wait(0.5)
-        if not AutoFruitBuying then continue end
-
-        local dealer = FindCoinDealer()
-        if not dealer then
-            FruitLogLabel.Text = "  ERROR: CoinFruitDealer no encontrado"
-            AutoFruitBuying = false
-            continue
-        end
-
-        local prompt = GetFruitPrompt(dealer)
-        if not prompt then
-            FruitLogLabel.Text = "  ERROR: Prompt no encontrado"
-            AutoFruitBuying = false
-            continue
-        end
-
-        FruitLogLabel.Text = "  Comprando fruta..."
-
-        pcall(function()
-            if fireproximityprompt then
-                fireproximityprompt(prompt)
-            else
-                prompt:InputHoldBegin()
-                task.wait(prompt.HoldDuration + 0.1)
-                prompt:InputHoldEnd()
-            end
-        end)
-
-        task.wait(1.5)
-
         local foundDesired = false
         -- REVISAR INVENTARIO
         for _, tool in pairs(LP.Backpack:GetChildren()) do
@@ -957,10 +927,8 @@ task.spawn(function()
                     GlobalMagnetTarget = nil
                     ForceMemoryReturn = true
                     task.wait(2)
-                    continue
-                end
-
-                -- Funciliaridad Helper para Smart Weapon
+                else
+                    -- Funciliaridad Helper para Smart Weapon
                 local function GetSmartTool(reqType)
                     -- Zero priority: Use Exact Calibrated Names
                     if reqType == "Sword" and SmartSwordName then
@@ -1060,14 +1028,19 @@ task.spawn(function()
                 -- (Manejado en loop independiente más abajo)
                 -- ====== FIN SISTEMA DE RETORNO ======
 
-                if ForceMemoryReturn and MemoryPoint then
-                     local d = (char.HumanoidRootPart.Position - MemoryPoint).Magnitude
-                     if d <= 15 then 
-                          ForceMemoryReturn = false
+                if ForceMemoryReturn then
+                     if MemoryPoint then
+                         local d = (char.HumanoidRootPart.Position - MemoryPoint).Magnitude
+                         if d <= 15 then 
+                              ForceMemoryReturn = false
+                         else
+                              StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
+                              -- Saltar lógica de mob dejando que el AutoWalk nos mueva
+                              mob = nil 
+                         end
                      else
-                          StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
-                          -- Saltar lógica de mob dejando que el AutoWalk nos mueva
-                          mob = nil 
+                         -- Si no hay MemoryPoint guardado, no podemos forzar retorno. Apágalo.
+                         ForceMemoryReturn = false
                      end
                 end
 
@@ -1155,11 +1128,9 @@ task.spawn(function()
                             end)
 
                             task.wait(0.05)
-                            continue -- Salta TODO el bloque de ataque (ni nav, ni tp, ni click)
-                        end
-                        -- ==============================================
-
-                        -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
+                        else
+                            -- ==============================================
+                            -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
                         local mobsToHit = {}
                         if MobMagnetEnabled then
                             local sorted = {}
@@ -1292,16 +1263,15 @@ task.spawn(function()
                             end
                         end
                     end
-                else
-                    GlobalMagnetTarget = nil
-                    StatusLabel.Text = "Buscando Mobs vivos..."
                 end
             else
                 GlobalMagnetTarget = nil
-                StatusLabel.Text = "Esperando al Personaje..."
+                StatusLabel.Text = "Buscando Mobs vivos..."
+            end
             end
         else
             GlobalMagnetTarget = nil
+            StatusLabel.Text = "Esperando al Personaje..."
         end
     end
 end)
@@ -1555,12 +1525,8 @@ task.spawn(function()
         task.wait(0.1)
 
         local char = LP.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then
-            continue
-        end
-        if char.Humanoid.Health <= 0 then continue end
-
-        if MemoryPoint and not IsInPanicRecovery then
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+            if MemoryPoint and not IsInPanicRecovery then
             local mob = GetNearestMob()
             
             if ForceMemoryReturn then
@@ -1605,8 +1571,9 @@ task.spawn(function()
                 end
             end
         else
-            if IsWalkingToMemory then
-                IsWalkingToMemory = false
+                if IsWalkingToMemory then
+                    IsWalkingToMemory = false
+                end
             end
         end
     end
