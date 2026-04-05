@@ -863,18 +863,6 @@ BtnRecord.MouseButton1Click:Connect(function()
                                 bossesEnArea = bossesEnArea + 1
                                 local hp = m:FindFirstChild("Humanoid") and m.Humanoid.Health or "N/A"
                                 table.insert(RouteLogs, "      -> Boss Encontrado: " .. m.Name .. " (HP: " .. tostring(hp) .. ") en " .. tostring(m.HumanoidRootPart.Position))
-                                
-                                -- Auto inyectar en la ruta (si no existe)
-                                local existe = false
-                                for _, step in ipairs(_G.AutoHuntRoute) do
-                                    if step.Boss == m.Name and step.Island == _G.CurrentIslandContext then existe = true break end
-                                end
-                                if not existe then
-                                    table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = m.Name, DeadTime = 0, Cooldown = 300})
-                                    if HuntStatusInfo then
-                                        HuntStatusInfo.Text = "  ✅ Autoregistrado Boss: " .. m.Name .. "\n  Jefes cargados: " .. #_G.AutoHuntRoute
-                                    end
-                                end
                             end
                         end
                         if bossesEnArea == 0 then
@@ -964,10 +952,10 @@ task.spawn(function()
         local currentClock = os.time()
         for i, step in ipairs(_G.AutoHuntRoute) do
             local lbl = cachedWidgets[i]
+            -- Lógica estricta de Timer y Estado de Vida
             local dt = step.DeadTime or 0
             local cd = step.Cooldown or 300
-            local timePassed = currentClock - dt
-            local timeRemaining = cd - timePassed
+            local timeRemaining = cd - (currentClock - dt)
             
             -- Detectar boss localmente
             local isAliveHere = false
@@ -984,6 +972,28 @@ task.spawn(function()
                 end
             end)
             
+            -- Monitoreo Global de Muerte
+            if _G.CurrentIslandContext == step.Island then
+                if isAliveHere then
+                    step.WasAlive = true
+                    -- Si está vivo, reseteamos el dead time para que siempre mantenga 0 el timer mientras lo vemos vivo
+                    step.DeadTime = 0
+                    timeRemaining = 0
+                elseif not isAliveHere then
+                    if step.WasAlive then
+                        -- Acaba de morir frente a nosotros
+                        step.WasAlive = false
+                        step.DeadTime = currentClock
+                        timeRemaining = cd
+                    elseif timeRemaining <= 0 then
+                        -- Estamos en su isla, NO ESTA VIVO, y su timer dice que Debería Estarlo. Alguien lo mató o aun no reaparece.
+                        -- Forzamos inicio del contador de 5 mins
+                        step.DeadTime = currentClock
+                        timeRemaining = cd
+                    end
+                end
+            end
+            
             local statusStr = ""
             if timeRemaining > 0 then
                 statusStr = "⏳ Revive en " .. timeRemaining .. "s"
@@ -993,8 +1003,8 @@ task.spawn(function()
                     statusStr = "🟢 VIVO AQUI! " .. hpStr
                     lbl.TextColor3 = Color3.fromRGB(100, 200, 100) -- Verde (Atacar!)
                 else
-                    statusStr = "🟡 ACTIVO (En su Isla)"
-                    lbl.TextColor3 = Color3.fromRGB(200, 200, 100) -- Amarillo (Viajar)
+                    statusStr = "🟣 LISTO / Viajar a Isla"
+                    lbl.TextColor3 = Color3.fromRGB(160, 100, 200) -- Morado (Listo para ir)
                 end
             end
             
@@ -1008,6 +1018,26 @@ local RouteNameBox = Instance.new("TextBox", CazadorPage)
 RouteNameBox.Size = UDim2.new(0.95, 0, 0, 32)
 RouteNameBox.BackgroundColor3 = C.bg
 RouteNameBox.TextColor3 = C.text
+
+local BtnAddBoss = ToggleButton(CazadorPage, "➕ [REC] Guardar Objetivo del Radar a Ruta", 11.5, Color3.fromRGB(150, 100, 40))
+BtnAddBoss.MouseButton1Click:Connect(function()
+    if #ScannedTargetNames == 0 then
+        HuntStatusInfo.Text = "  Estado: ⚠️ Selecciona primero un Objetivo usando el RADAR arriba."
+        return
+    end
+    local targetName = ScannedTargetNames[1]
+    local existe = false
+    for _, step in ipairs(_G.AutoHuntRoute) do
+        if step.Boss == targetName and step.Island == _G.CurrentIslandContext then existe=true break end
+    end
+    if not existe then
+        -- Insertamos con el timer reseteado (5 mins listos para contar)
+        table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = targetName, DeadTime = os.time(), Cooldown = 300, WasAlive = false})
+        HuntStatusInfo.Text = "  ✅ Añadido a Ruta: " .. targetName .. " (" .. _G.CurrentIslandContext .. ")"
+    else
+        HuntStatusInfo.Text = "  Estado: ⚠️ Ese objetivo ya está en tu ruta de cacería."
+    end
+end)
 RouteNameBox.PlaceholderText = "💾 Nombre de tu Ruta (Ej: RutaDiaria)"
 RouteNameBox.Font = Enum.Font.Gotham
 RouteNameBox.TextSize = 12
@@ -2298,10 +2328,10 @@ task.spawn(function()
                 end
                 
                 if bossAlive then
-                    -- ================== FASE 3: Combate ==================
+                    -- Nos aseguramos de volar por ARRIBA (flotar noclip) para evitar anti-cheat kicks bajo el mapa
                     _G.GhostProtocolEnabled = true
-                    FarmMode = "Subterraneo"
-                    
+                    FarmMode = "Arriba" 
+                    OfsY = 18; OfsZ = 0 -- 18 studs encima del jefe
                     -- Limpiamos matriz de radar y definimos EXACTAMENTE a este Jefe
                     while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
                     table.insert(ScannedTargetNames, targetStep.Boss)
@@ -2328,14 +2358,76 @@ task.spawn(function()
                          task.wait(3)
                     end
                 else
-                    -- ================== FASE 2: Navegación Viajera ==================
-                    -- Forzamos Teleport Mágico (Bypass de Red) sin necesidad de GUI
-                    local rs = game:GetService("ReplicatedStorage")
-                    pcall(function()
-                        if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
-                             rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                    -- ================== FASE 2: Navegación Viajera (Simulación Física "Legit") ==================
+                    -- En lugar de enviar un remoto sospechoso desde la lejanía, buscamos el portal, VOLAMOS físicamente, lo abrimos y viajamos.
+                    local nearestPortal = nil
+                    local shortestDist = math.huge
+                    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if hrp then
+                        for _, obj in pairs(workspace:GetDescendants()) do
+                            if obj:IsA("ProximityPrompt") and (obj.ActionText:lower():match("map") or obj.Name:lower():match("portal") or obj.ActionText:lower():match("teleport")) then
+                                local pPart = obj.Parent
+                                if pPart and pPart:IsA("BasePart") then
+                                    local dist = (pPart.Position - hrp.Position).Magnitude
+                                    if dist < shortestDist then
+                                        shortestDist = dist
+                                        nearestPortal = obj
+                                    end
+                                end
+                            end
                         end
-                    end)
+                    end
+                    
+                    if nearestPortal and nearestPortal.Parent then
+                        -- Volamos suavemente con NoClip hasta el Portal
+                        _G.GhostProtocolEnabled = true
+                        local targetCF = nearestPortal.Parent.CFrame * CFrame.new(0, 3, 0)
+                        
+                        while hrp and (hrp.Position - targetCF.Position).Magnitude > 6 and _G.AutoHuntActive do
+                            task.wait()
+                            hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local flyDist = (hrp.Position - targetCF.Position).Magnitude
+                                local flyStep = math.clamp(50 / flyDist, 0, 1) -- 50 studs de velocidad suave
+                                LP.Character:PivotTo(hrp.CFrame:Lerp(targetCF, flyStep))
+                                if hrp:FindFirstChildOfClass("BodyVelocity") then
+                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0,0,0)
+                                end
+                            end
+                        end
+                        
+                        task.wait(0.5)
+                        -- Al estar físicamente en el Portal, accionamos el Prompt para abrir la UI como una persona real
+                        -- Quitamos la duración de mantener pulsado ('E') para accionar instantáneamente
+                        if nearestPortal:IsA("ProximityPrompt") then
+                            local oldHold = nearestPortal.HoldDuration
+                            nearestPortal.HoldDuration = 0
+                            task.wait(0.1)
+                            pcall(function() fireproximityprompt(nearestPortal) end)
+                            task.wait(0.1)
+                            nearestPortal.HoldDuration = oldHold
+                        else
+                            pcall(function() fireproximityprompt(nearestPortal) end)
+                        end
+                        task.wait(1.5) -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
+                        
+                        -- Simulamos el clic a la UI dándole a la Isla seleccionada (Validado desde el portal)
+                        local rs = game:GetService("ReplicatedStorage")
+                        pcall(function()
+                            if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
+                                 rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                            end
+                        end)
+                    else
+                        -- Fallback si el creador esconde el portal pero estamos en la isla (muy raro)
+                        local rs = game:GetService("ReplicatedStorage")
+                        pcall(function()
+                            if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
+                                 rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                            end
+                        end)
+                    end
                     task.wait(6) -- Esperamos pantalla de carga (6 segundos)
                     
                     -- Re-Chequeo tras 6 segundos por si recién spawnearon los modelos
