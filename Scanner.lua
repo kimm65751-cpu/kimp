@@ -617,6 +617,8 @@ CalibStatus.LayoutOrder = 2
 
 SmartCalib_Sword = 3
 SmartCalib_Fruit = 8
+SmartSwordName = nil
+SmartFruitName = nil
 local CurrentlyCalibrating = "None"
 SmartCombatEnabled = false
 SmartUseFruit = false
@@ -686,12 +688,16 @@ task.spawn(function()
                             -- Mínimo de 3 para asegurar colisión con pies aunque el vfx estalle arriba
                             if distAbajo < 3 then distAbajo = 3 end
                             
+                            local equippedTool = LP.Character:FindFirstChildOfClass("Tool")
+                            
                             if CurrentlyCalibrating == "Sword" then
                                 SmartCalib_Sword = distAbajo
+                                if equippedTool then SmartSwordName = equippedTool.Name end
                                 BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA: -" .. distAbajo .. " studs"
                                 BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                             elseif CurrentlyCalibrating == "Fruit" then
                                 SmartCalib_Fruit = distAbajo
+                                if equippedTool then SmartFruitName = equippedTool.Name end
                                 BtnCalibFruit.Text = "  🍎 Calibrado FRUTA: -" .. distAbajo .. " studs"
                                 BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                             end
@@ -956,6 +962,16 @@ task.spawn(function()
 
                 -- Funciliaridad Helper para Smart Weapon
                 local function GetSmartTool(reqType)
+                    -- Zero priority: Use Exact Calibrated Names
+                    if reqType == "Sword" and SmartSwordName then
+                        local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
+                        if t then return t end
+                    end
+                    if reqType == "Fruit" and SmartFruitName then
+                        local t = char:FindFirstChild(SmartFruitName) or LP.Backpack:FindFirstChild(SmartFruitName)
+                        if t then return t end
+                    end
+
                     -- First try strict explicitly requested names
                     for _, t in pairs(char:GetChildren()) do
                         if t:IsA("Tool") then
@@ -1050,11 +1066,12 @@ task.spawn(function()
                           ForceMemoryReturn = false
                      else
                           StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
-                          continue -- Saltamos la lógica de AutoFarm para dejar que el Walk Engine te mueva
+                          -- Saltar lógica de mob dejando que el AutoWalk nos mueva
+                          mob = nil 
                      end
                 end
 
-                if mob then
+                if mob and not ForceMemoryReturn then
                     -- ==============================================
                     -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
                     -- ==============================================
