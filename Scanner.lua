@@ -27,6 +27,7 @@ local ReturnHealthThreshold = 0.95
 local IsInPanicRecovery = false
 local GlobalMagnetTarget = nil
 local MemoryPoint = nil
+local ForceMemoryReturn = false
 local IsWalkingToMemory = false
 local LastRealDamageTime = os.clock()
 local VIM = game:GetService("VirtualInputManager")
@@ -355,6 +356,20 @@ MemInfoLabel.LayoutOrder = 3
 
 local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
 
+BlinkStepValue = 45
+local blinkOptions = {45, 25, 15, 5}
+local currentBlinkIdx = 1
+
+local BtnBlinkSpeed = ToggleButton(MemPage, "⚡ Velocidad de Regreso: 45 Studs", 5, C.card)
+BtnBlinkSpeed.MouseButton1Click:Connect(function()
+    currentBlinkIdx = currentBlinkIdx + 1
+    if currentBlinkIdx > #blinkOptions then
+        currentBlinkIdx = 1
+    end
+    BlinkStepValue = blinkOptions[currentBlinkIdx]
+    BtnBlinkSpeed.Text = "⚡ Velocidad de Regreso: " .. BlinkStepValue .. " Studs"
+end)
+
 -- =======================================================================================
 -- ========== TAB 3: EXTRAS (AUTO FRUIT BUYER) ==========
 -- =======================================================================================
@@ -604,18 +619,33 @@ SmartCalib_Sword = 3
 SmartCalib_Fruit = 8
 local CurrentlyCalibrating = "None"
 SmartCombatEnabled = false
+SmartUseFruit = false
 
 local BtnSmartHitRun = ToggleButton(CalibPage, "🧠 Activar Smart Farm (Hit & Run)", 3, C.card)
 BtnSmartHitRun.MouseButton1Click:Connect(function()
     SmartCombatEnabled = not SmartCombatEnabled
     if SmartCombatEnabled then
         BtnSmartHitRun.BackgroundColor3 = C.accentOn
-        BtnSmartHitRun.Text = "  🧠 Smart Farm: ON (Rotando armas)"
+        BtnSmartHitRun.Text = "  🧠 Smart Farm: ON"
         BtnSmartHitRun.TextColor3 = Color3.new(1,1,1)
     else
         BtnSmartHitRun.BackgroundColor3 = C.card
         BtnSmartHitRun.Text = "  🧠 Activar Smart Farm (Hit & Run)"
         BtnSmartHitRun.TextColor3 = C.text
+    end
+end)
+
+local BtnUseFruit = ToggleButton(CalibPage, "🍎 Usar Fruta en Farm: NO (Solo Espada)", 3, C.card)
+BtnUseFruit.MouseButton1Click:Connect(function()
+    SmartUseFruit = not SmartUseFruit
+    if SmartUseFruit then
+        BtnUseFruit.BackgroundColor3 = Color3.fromRGB(100, 30, 150)
+        BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: SÍ (Rotando Espada + Fruta)"
+        BtnUseFruit.TextColor3 = Color3.new(1,1,1)
+    else
+        BtnUseFruit.BackgroundColor3 = C.card
+        BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: NO (Solo Espada)"
+        BtnUseFruit.TextColor3 = C.text
     end
 end)
 
@@ -919,6 +949,7 @@ task.spawn(function()
                 if char.Humanoid.Health <= 0 then
                     StatusLabel.Text = "Status: Reviviendo..."
                     GlobalMagnetTarget = nil
+                    ForceMemoryReturn = true
                     task.wait(2)
                     continue
                 end
@@ -949,7 +980,11 @@ task.spawn(function()
 
                     if os.clock() - LastSmartSwap > 4 then 
                         LastSmartSwap = os.clock()
-                        SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                        if SmartUseFruit then
+                            SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                        else
+                            SmartCurrentWeapon = "Sword"
+                        end
                         local wTool = GetSmartTool(SmartCurrentWeapon)
                         if wTool then 
                             char.Humanoid:UnequipTools()
@@ -990,6 +1025,16 @@ task.spawn(function()
                 -- ====== SISTEMA DE RETORNO A MEMORIA ======
                 -- (Manejado en loop independiente más abajo)
                 -- ====== FIN SISTEMA DE RETORNO ======
+
+                if ForceMemoryReturn and MemoryPoint then
+                     local d = (char.HumanoidRootPart.Position - MemoryPoint).Magnitude
+                     if d <= 15 then 
+                          ForceMemoryReturn = false
+                     else
+                          StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
+                          continue -- Saltamos la lógica de AutoFarm para dejar que el Walk Engine te mueva
+                     end
+                end
 
                 if mob then
                     -- ==============================================
@@ -1132,13 +1177,20 @@ task.spawn(function()
                                 
                                 if SmartCombatEnabled then
                                     local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or SmartCalib_Fruit
-                                    -- Nos colocamos exactamente debajo de los pies de la entidad asegurando que el "rango negativo" la alcance.
                                     TargetCF = tHrp.CFrame * CFrame.new(0, -(currentOffset + 2), 0)
                                 else
                                     if currentFarmMode == "Arriba" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
+                                        if BlinkAttackEnabled then
+                                            TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
+                                        else
+                                            TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, 0)
+                                        end
                                     elseif currentFarmMode == "Detras" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                        if BlinkAttackEnabled then
+                                            TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                        else
+                                            TargetCF = tHrp.CFrame * CFrame.new(0, 0, OfsZ)
+                                        end
                                     elseif currentFarmMode == "Abajo" then
                                         TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                                     end
@@ -1475,6 +1527,10 @@ task.spawn(function()
 
         if MemoryPoint and not IsInPanicRecovery then
             local mob = GetNearestMob()
+            
+            if ForceMemoryReturn then
+                mob = nil -- Finge que no hay mobs para forzar el retorno
+            end
 
             if mob then
                 if IsWalkingToMemory then
@@ -1499,8 +1555,8 @@ task.spawn(function()
                     StatusLabel.Text = "🏃 Volviendo a Marca... (" .. math.floor(distToMem) .. "m)"
 
                     local dir = (MemoryPoint - hrpW.Position).Unit
-                    -- Pasos grandes de 45 studs (Movimiento tipo Blink/Sniper)
-                    local stepSize = math.min(45, distToMem) 
+                    -- Pasos grandes configurables (Movimiento tipo Blink/Sniper)
+                    local stepSize = math.min(BlinkStepValue or 45, distToMem) 
                     local nextPos = hrpW.Position + dir * stepSize
                     
                     -- Teletransportación forzada por tramos (Super Carga Rápida sin Kicks)
