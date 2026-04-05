@@ -83,17 +83,13 @@ MFStroke.Thickness = 1.5
 local function SaveConfig()
     if writefile then
         local data = {
-            ScannedTargetName = ScannedTargetName,
-            ScannedTargetPos = ScannedTargetPos and { X = ScannedTargetPos.X, Y = ScannedTargetPos.Y, Z =
-            ScannedTargetPos.Z } or nil,
             PanicThreshold = PanicThreshold,
             ReturnHealthThreshold = ReturnHealthThreshold,
             MobMagnetEnabled = MobMagnetEnabled,
             AutoSkillEnabled = AutoSkillEnabled,
             TargetBosses = TargetBosses,
             FarmMode = FarmMode,
-            BlinkAttackEnabled = BlinkAttackEnabled,
-            MemoryPoint = MemoryPoint and { X = MemoryPoint.X, Y = MemoryPoint.Y, Z = MemoryPoint.Z } or nil
+            BlinkAttackEnabled = BlinkAttackEnabled
         }
         pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
     end
@@ -185,6 +181,8 @@ local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
 local TabMem = MakeTabBtn("📍", "Memoria", 2)
 local TabExtras = MakeTabBtn("🍎", "Extras", 3)
 local TabCalib = MakeTabBtn("🎯", "Calibrar", 4)
+local TabCazador = MakeTabBtn("👁️", "Cazador", 5)
+local TabAnalista = MakeTabBtn("🔎", "Analizador", 6)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel                                  = Instance.new("Frame", MF)
@@ -231,6 +229,8 @@ TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabMem.MouseButton1Click:Connect(function() SwitchTab("Memoria") end)
 TabExtras.MouseButton1Click:Connect(function() SwitchTab("Extras") end)
 TabCalib.MouseButton1Click:Connect(function() SwitchTab("Calibrar") end)
+TabCazador.MouseButton1Click:Connect(function() SwitchTab("Cazador") end)
+TabAnalista.MouseButton1Click:Connect(function() SwitchTab("Analizador") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -680,6 +680,223 @@ task.spawn(function()
     end)
 end)
 
+
+-- =======================================================================================
+-- ========== TAB 5: CAZADOR (SCANNER) ==========
+-- =======================================================================================
+local CazadorPage = MakeScrollPage("Cazador")
+
+SectionLabel(CazadorPage, "RADAR DE MOBS/BOSSES", 1)
+
+local ScanStatusLabel = Instance.new("TextLabel", CazadorPage)
+ScanStatusLabel.Size = UDim2.new(0.95, 0, 0, 20)
+ScanStatusLabel.BackgroundTransparency = 1
+ScanStatusLabel.TextColor3 = C.muted
+ScanStatusLabel.Font = Enum.Font.Gotham
+ScanStatusLabel.TextSize = 12
+ScanStatusLabel.Text = "  Objetivo: " .. (ScannedTargetName or "Ninguno")
+ScanStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+ScanStatusLabel.LayoutOrder = 2
+
+local BtnScan = ToggleButton(CazadorPage, "📡 Escanear Entidades Cercanas", 3, C.accentOff)
+local BtnClearScan = ToggleButton(CazadorPage, "❌ Borrar Objetivo", 4, C.red)
+
+local MobListContainer = Instance.new("Frame", CazadorPage)
+MobListContainer.Size = UDim2.new(0.95, 0, 0, 200)
+MobListContainer.BackgroundColor3 = C.card
+MobListContainer.BorderSizePixel = 0
+MobListContainer.LayoutOrder = 5
+Instance.new("UICorner", MobListContainer).CornerRadius = UDim.new(0, 8)
+
+local MobScroll = Instance.new("ScrollingFrame", MobListContainer)
+MobScroll.Size = UDim2.new(1, -10, 1, -10)
+MobScroll.Position = UDim2.new(0, 5, 0, 5)
+MobScroll.BackgroundTransparency = 1
+MobScroll.ScrollBarThickness = 3
+MobScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+MobScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+local MobListLay = Instance.new("UIListLayout", MobScroll)
+MobListLay.Padding = UDim.new(0, 2)
+MobListLay.SortOrder = Enum.SortOrder.LayoutOrder
+
+BtnScan.MouseButton1Click:Connect(function()
+    BtnScan.Text = "📡 Escaneando..."
+    for _, child in pairs(MobScroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    local found = {}
+    local cache = GetMobCache()
+    for _, m in ipairs(cache) do
+        if m:FindFirstChild("Humanoid") and m:FindFirstChild("HumanoidRootPart") then
+            local n = m.Name
+            if not found[n] and not n:lower():match("npc") and not n:lower():match("dummy") then
+                found[n] = true
+                local isBoss = n:lower():match("boss")
+                
+                local b = Instance.new("TextButton", MobScroll)
+                b.Size = UDim2.new(1, 0, 0, 30)
+                b.BackgroundColor3 = isBoss and Color3.fromRGB(130, 80, 180) or C.bg
+                b.TextColor3 = C.text
+                b.Font = Enum.Font.GothamMedium
+                b.TextSize = 12
+                b.Text = (isBoss and "👺 " or "🦇 ") .. n
+                b.BorderSizePixel = 0
+                Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+                
+                b.MouseButton1Click:Connect(function()
+                    ScannedTargetName = n
+                    ScanStatusLabel.Text = "  Objetivo: " .. n
+                end)
+            end
+        end
+    end
+    BtnScan.Text = "📡 Escanear Entidades Cercanas"
+end)
+
+BtnClearScan.MouseButton1Click:Connect(function()
+    ScannedTargetName = nil
+    ScanStatusLabel.Text = "  Objetivo: Ninguno"
+end)
+
+-- =======================================================================================
+-- ========== TAB 6: ANALIZADOR (FORENSE DE MAZMORRAS Y MAPAS) ==========
+-- =======================================================================================
+local AnalistaPage = MakeScrollPage("Analizador")
+
+SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAZMORRAS", 1)
+
+local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
+AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
+AnalistaInfo.BackgroundTransparency = 1
+AnalistaInfo.TextColor3 = C.muted
+AnalistaInfo.Font = Enum.Font.GothamMedium
+AnalistaInfo.TextSize = 11
+AnalistaInfo.Text = "  Rastrea por qué falla el Auto-Farm en Mazmorras.\n  Detecta Bloques Invisibles, Anti-Teleports (Scripts),\n  Rutas de Red y KillBricks en el subsuelo y aire."
+AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
+AnalistaInfo.TextWrapped = true
+AnalistaInfo.LayoutOrder = 2
+
+local BtnAnalista = ToggleButton(AnalistaPage, "🧪 Ejecutar Escaneo Profundo (.txt)", 3, Color3.fromRGB(40, 20, 60))
+local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
+AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
+AnalistaLog.BackgroundTransparency = 1
+AnalistaLog.TextColor3 = Color3.fromRGB(120, 255, 120)
+AnalistaLog.Font = Enum.Font.Code
+AnalistaLog.TextSize = 12
+AnalistaLog.Text = "  Esperando Instrucción..."
+AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
+AnalistaLog.LayoutOrder = 4
+
+BtnAnalista.MouseButton1Click:Connect(function()
+    BtnAnalista.Text = "🧪 Escaneando el Entorno..."
+    AnalistaLog.Text = "  Rastreando, puede dar lag..."
+    
+    task.spawn(function()
+        local t = {}
+        local hrp = nil
+        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+            hrp = LP.Character.HumanoidRootPart
+        end
+        if not hrp then 
+            AnalistaLog.Text = "  ⚠️ Error: Necesitas estar vivo para escanear."
+            BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
+            return
+        end
+        
+        table.insert(t, "==================================================")
+        table.insert(t, " REPORTE FORENSE DE MAZMORRA/ISLA - AURA KILL V1.0")
+        table.insert(t, " FECHA: " .. os.date())
+        table.insert(t, " POSICIÓN LOCAL: " .. tostring(hrp.Position))
+        table.insert(t, "==================================================\n")
+
+        -- 1. ANALISIS DE LOCAL SCRIPTS
+        table.insert(t, "> [1] DETECCIÓN DE SCRIPTS ANTI-HACK / ANTI-OCULTAMIENTO (PlayerScripts):")
+        for _, s in pairs(LP.PlayerScripts:GetDescendants()) do
+            if s:IsA("LocalScript") or s:IsA("ModuleScript") then
+                local n = s.Name:lower()
+                if n:match("anti") or n:match("cheat") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("camera") or n:match("teleport") then
+                    table.insert(t, "  - ALARMA: Encontrado script crítico -> " .. s:GetFullName())
+                end
+            end
+        end
+        table.insert(t, "")
+
+        -- 2. INVESTIGACION DEL ESTADO MUNDIAL (AIRE Y SUBSUELO)
+        table.insert(t, "> [2] MAPEO ESTRUCTURAL CERCANO (Radio de 600 studs):")
+        local invisKills = 0
+        local boundsBlocks = 0
+        local dungeonPillars = 0
+
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                local dist = (obj.Position - hrp.Position).Magnitude
+                if dist < 600 then
+                    -- Detectar paredes invisibles que bloquean la camara o el path
+                    if obj.Transparency == 1 and obj.CanCollide == true then
+                        boundsBlocks = boundsBlocks + 1
+                    end
+                    -- Identificar KillBricks
+                    if obj:FindFirstChildOfClass("TouchTransmitter") then
+                        invisKills = invisKills + 1
+                        if obj.Position.Y > hrp.Position.Y + 20 then
+                            table.insert(t, "  - PELIGRO: KillBrick/Trigger Invisibe ARRIBA a: " .. math.floor(obj.Position.Y - hrp.Position.Y) .. " studs de altura.")
+                        elseif obj.Position.Y < hrp.Position.Y - 20 then
+                            table.insert(t, "  - PELIGRO: KillBrick/Trigger Invisible ABAJO a: " .. math.floor(hrp.Position.Y - obj.Position.Y) .. " studs de profundidad.")
+                        end
+                    end
+                    -- Buscar nombres extraños que indiquen zonas cerradas
+                    if obj.Name:lower():match("barrier") or obj.Name:lower():match("wall") or obj.Name:lower():match("tp") then
+                        dungeonPillars = dungeonPillars + 1
+                    end
+                end
+            end
+        end
+        table.insert(t, "  - Bloques Invisibles de Contención detectados: " .. boundsBlocks)
+        table.insert(t, "  - Zonas de Toque Peligrosas (TouchInterest): " .. invisKills)
+        table.insert(t, "  - Partes nombradas como Barrera/Teleport: " .. dungeonPillars)
+        table.insert(t, "")
+
+        -- 3. ANALISIS DE RED (REMOTES)
+        table.insert(t, "> [3] RASTREO DE REMOTES POTENCIALMENTE OFUSCADOS (ReplicatedStorage):")
+        for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local n = obj.Name:lower()
+                if n:match("dungeon") or n:match("damage") or n:match("hit") or n:match("zone") or n:match("kick") or n:match("ban") or n:match("kill") then
+                    table.insert(t, "  - Evento de red interesante: [" .. obj.ClassName .. "] -> " .. obj:GetFullName())
+                end
+            end
+        end
+        table.insert(t, "")
+
+        -- COMPILACION
+        table.insert(t, "================ RESUMEN DE DIAGNÓSTICO =================")
+        if invisKills > 0 then
+            table.insert(t, "Tienen TRIGGERS de daño arriba o abajo tuyo. ¡Por eso no te deja ponerte arriba o subterráneo! Trata de acercarte a nivel de suelo (OfsY=0).")
+        elseif boundsBlocks > 20 then
+            table.insert(t, "Tienen CAJAS de anti-noclip activas. El script no logra traspasarlas y choca.")
+        else
+            table.insert(t, "Es probable que haya un LocalScript que mida la altitud de la zona de forma agresiva.")
+        end
+
+        local filename = "DungeonAnalysis_" .. tostring(os.time()) .. ".txt"
+        local suc, err = pcall(function()
+            if writefile then
+                writefile(filename, table.concat(t, "\n"))
+            end
+        end)
+
+        if suc and writefile then
+            AnalistaLog.Text = "  Exito: Guardado como " .. filename
+        else
+            AnalistaLog.Text = "  ❌ Falló: Tu inyector no soporta writefile. Abre (F9) Consola."
+            for _, line in pairs(t) do
+                print(line)
+            end
+        end
+        BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
+    end)
+end)
 
 -- =======================================================================================
 -- ========== VARIABLES COMPATIBILIDAD EXTERNA ==========
@@ -1201,9 +1418,9 @@ task.spawn(function()
                                         -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
                                     end
                                     local flyDist = (hrp.Position - rootCF.Position).Magnitude
-                                    if TargetBosses == "SoloBoss" and flyDist > 15 then
+                                    if (TargetBosses == "SoloBoss" or ScannedTargetName or flyDist > 100) and flyDist > 15 then
                                         -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
-                                        local flyStep = math.clamp(20 / flyDist, 0, 1)
+                                        local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
                                         char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
                                     else
                                         -- Cerca o Modalidad Normal: Anchored Pivot
@@ -1467,9 +1684,6 @@ local function LoadConfig()
             pcall(function()
                 local data = game:GetService("HttpService"):JSONDecode(raw)
                 if type(data) == "table" then
-                    if data.ScannedTargetName ~= nil then ScannedTargetName = data.ScannedTargetName end
-                    if data.ScannedTargetPos ~= nil then ScannedTargetPos = Vector3.new(data.ScannedTargetPos.X,
-                            data.ScannedTargetPos.Y, data.ScannedTargetPos.Z) end
                     if data.PanicThreshold ~= nil then PanicThreshold = data.PanicThreshold end
                     if data.ReturnHealthThreshold ~= nil then ReturnHealthThreshold = data.ReturnHealthThreshold end
                     if data.MobMagnetEnabled ~= nil then MobMagnetEnabled = data.MobMagnetEnabled end
@@ -1477,12 +1691,6 @@ local function LoadConfig()
                     if data.TargetBosses ~= nil then TargetBosses = data.TargetBosses end
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
                     if data.BlinkAttackEnabled ~= nil then BlinkAttackEnabled = data.BlinkAttackEnabled end
-                    if data.MemoryPoint ~= nil then
-                        MemoryPoint = Vector3.new(data.MemoryPoint.X, data.MemoryPoint.Y, data.MemoryPoint.Z)
-                        MemStatusLabel.Text = "  📍 Punto: " ..
-                        math.floor(MemoryPoint.X) ..
-                        ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
-                    end
 
                     if FarmMode == "Abajo" then
                         OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
@@ -1521,51 +1729,63 @@ task.spawn(function()
 
         local char = LP.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-            if MemoryPoint and not IsInPanicRecovery then
-            local mob = GetNearestMob()
-            
-            if ForceMemoryReturn then
-                mob = nil -- Finge que no hay mobs para forzar el retorno
-            end
+            if AutoFarm and not IsInPanicRecovery then
+                local targetPoint = MemoryPoint
+                local isScanner = false
 
-            if mob then
-                if IsWalkingToMemory then
-                    IsWalkingToMemory = false
-                    LastRealDamageTime = os.clock()
+                if not targetPoint and ScannedTargetName then
+                     for _, m in pairs(GetMobCache()) do
+                         if m.Name == ScannedTargetName and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                             targetPoint = m.HumanoidRootPart.Position
+                             isScanner = true
+                             break
+                         end
+                     end
+                end
+
+                if targetPoint then
+                    local mob = GetNearestMob()
+                    if ForceMemoryReturn then mob = nil end
+
+                    if mob then
+                        if IsWalkingToMemory then
+                            IsWalkingToMemory = false
+                            LastRealDamageTime = os.clock()
+                        end
+                    else
+                        if os.clock() - LastRealDamageTime > 10 then
+                            IsWalkingToMemory = true
+                        end
+                    end
+
+                    if IsWalkingToMemory and not mob then
+                        local hrpW = char.HumanoidRootPart
+                        local distToMem = (hrpW.Position - targetPoint).Magnitude
+
+                        if distToMem <= 15 then
+                            IsWalkingToMemory = false
+                            StatusLabel.Text = isScanner and ("🎯 Objetivo Alcanzado: " .. ScannedTargetName) or "📍 Llegamos al punto guardado"
+                            LastRealDamageTime = os.clock()
+                        else
+                            StatusLabel.Text = (isScanner and "🔫 Viaje Seguro a Objetivo... (" or "🏃 Volviendo a Marca... (") .. math.floor(distToMem) .. "m)"
+
+                            local dir = (targetPoint - hrpW.Position).Unit
+                            local stepSize = math.min(BlinkStepValue or 45, distToMem) 
+                            local nextPos = hrpW.Position + dir * stepSize
+                            
+                            pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                            
+                            pcall(function()
+                                if hrpW:FindFirstChildOfClass("BodyVelocity") then
+                                     hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                                end
+                            end)
+                        end
+                    end
+                else
+                    if IsWalkingToMemory then IsWalkingToMemory = false end
                 end
             else
-                if os.clock() - LastRealDamageTime > 10 then
-                    IsWalkingToMemory = true
-                end
-            end
-
-            if IsWalkingToMemory and not mob then
-                local hrpW = char.HumanoidRootPart
-                local distToMem = (hrpW.Position - MemoryPoint).Magnitude
-
-                if distToMem <= 15 then
-                    IsWalkingToMemory = false
-                    StatusLabel.Text = "📍 Llegamos al punto guardado"
-                    LastRealDamageTime = os.clock()
-                else
-                    StatusLabel.Text = "🏃 Volviendo a Marca... (" .. math.floor(distToMem) .. "m)"
-
-                    local dir = (MemoryPoint - hrpW.Position).Unit
-                    -- Pasos grandes configurables (Movimiento tipo Blink/Sniper)
-                    local stepSize = math.min(BlinkStepValue or 45, distToMem) 
-                    local nextPos = hrpW.Position + dir * stepSize
-                    
-                    -- Teletransportación forzada por tramos (Super Carga Rápida sin Kicks)
-                    pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
-                    
-                    pcall(function()
-                        if hrpW:FindFirstChildOfClass("BodyVelocity") then
-                             hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
-                        end
-                    end)
-                end
-            end
-        else
                 if IsWalkingToMemory then
                     IsWalkingToMemory = false
                 end
