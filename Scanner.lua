@@ -30,6 +30,8 @@ local MemoryPoint = nil
 local ForceMemoryReturn = false
 local IsWalkingToMemory = false
 local LastRealDamageTime = os.clock()
+local GhostProtocolEnabled = false
+local GhostBlocksDisabled = 0
 local VIM = game:GetService("VirtualInputManager")
 
 -- Endpoints Críticos (Sacados del Scanner)
@@ -273,6 +275,7 @@ local BtnMagnet    = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
 local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
 local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 local BtnBlink     = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
+local BtnGhost     = ToggleButton(FarmPage, "👻 Ghost Protocol (Mazmorra): OFF", 8, C.card)
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -1123,6 +1126,59 @@ RunService.Stepped:Connect(function()
             local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
                 hrp.Velocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
+-- ==============================================================================
+-- 👻 GHOST PROTOCOL — Desactiva bloques invisibles CanCollide en mazmorras
+-- Solo activo cuando GhostProtocolEnabled = true
+-- No toca la lógica de combate ni el noclip del personaje
+-- ==============================================================================
+BtnGhost.MouseButton1Click:Connect(function()
+    GhostProtocolEnabled = not GhostProtocolEnabled
+    if GhostProtocolEnabled then
+        BtnGhost.BackgroundColor3 = Color3.fromRGB(80, 40, 140)
+        BtnGhost.Text = "  👻 Ghost Protocol (Mazmorra): ON"
+        BtnGhost.TextColor3 = Color3.new(1, 1, 1)
+    else
+        BtnGhost.BackgroundColor3 = C.card
+        BtnGhost.Text = "  👻 Ghost Protocol (Mazmorra): OFF"
+        BtnGhost.TextColor3 = C.text
+        GhostBlocksDisabled = 0
+    end
+end)
+
+-- Loop independiente: busca bloques invisibles CanCollide=true y los desactiva
+task.spawn(function()
+    while true do
+        task.wait(3) -- corre cada 3 segundos, no afecta FPS
+        if GhostProtocolEnabled then
+            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local count = 0
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    -- Solo bloques invisibles CanCollide sin TouchTransmitter (seguros de desactivar)
+                    if obj:IsA("BasePart")
+                        and obj.Transparency >= 0.99
+                        and obj.CanCollide == true
+                        and not obj:FindFirstChildOfClass("TouchTransmitter")
+                        and not obj:IsDescendantOf(LP.Character)
+                    then
+                        local dist = (obj.Position - hrp.Position).Magnitude
+                        if dist < 800 then
+                            obj.CanCollide = false
+                            count = count + 1
+                        end
+                    end
+                end
+                GhostBlocksDisabled = count
+                if count > 0 then
+                    BtnGhost.Text = "  👻 Ghost: ON — " .. count .. " bloques quitados"
+                else
+                    BtnGhost.Text = "  👻 Ghost: ON — Buscando..."
+                end
             end
         end
     end
