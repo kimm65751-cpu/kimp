@@ -183,7 +183,7 @@ end
 local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
 local TabMem = MakeTabBtn("📍", "Memoria", 2)
 local TabExtras = MakeTabBtn("🍎", "Extras", 3)
-local TabRadar = MakeTabBtn("🕵️", "Radar", 4)
+local TabCalib = MakeTabBtn("🎯", "Calibrar", 4)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel                                  = Instance.new("Frame", MF)
@@ -229,7 +229,7 @@ end
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabMem.MouseButton1Click:Connect(function() SwitchTab("Memoria") end)
 TabExtras.MouseButton1Click:Connect(function() SwitchTab("Extras") end)
-TabRadar.MouseButton1Click:Connect(function() SwitchTab("Radar") end)
+TabCalib.MouseButton1Click:Connect(function() SwitchTab("Calibrar") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -585,179 +585,93 @@ end)
 -- =======================================================================================
 -- ========== TAB 4: RADAR FORENSE DE BATALLA (BOSS ESP & AOE) ==========
 -- =======================================================================================
-local RadarPage = MakeScrollPage("Radar")
+local CalibPage = MakeScrollPage("Calibrar")
 
-SectionLabel(RadarPage, "MONITOR DE BATALLA (LIVE)", 1)
+SectionLabel(CalibPage, "SISTEMA SMART COMBAT", 1)
 
-local RadarStatus = Instance.new("TextLabel", RadarPage)
-RadarStatus.Size = UDim2.new(0.95, 0, 0, 30)
-RadarStatus.BackgroundTransparency = 1
-RadarStatus.TextColor3 = C.muted
-RadarStatus.Font = Enum.Font.GothamMedium
-RadarStatus.TextSize = 11
-RadarStatus.Text = "  Analizando habilidades de Bosses y Area of Effect (AoE) en tiempo real..."
-RadarStatus.TextXAlignment = Enum.TextXAlignment.Left
-RadarStatus.TextWrapped = true
-RadarStatus.LayoutOrder = 2
+local CalibStatus = Instance.new("TextLabel", CalibPage)
+CalibStatus.Size = UDim2.new(0.95, 0, 0, 45)
+CalibStatus.BackgroundTransparency = 1
+CalibStatus.TextColor3 = C.muted
+CalibStatus.Font = Enum.Font.GothamMedium
+CalibStatus.TextSize = 11
+CalibStatus.Text = "  Usa tus ataques al hacer click. El bot medirá cuántos studs bajan hacia los pies del enemigo para ajustar tu Hit & Run dinámico."
+CalibStatus.TextXAlignment = Enum.TextXAlignment.Left
+CalibStatus.TextWrapped = true
+CalibStatus.LayoutOrder = 2
 
-local BtnClearRadar = ToggleButton(RadarPage, "🗑️ Limpiar Log de Batalla", 3, C.card)
+SmartCalib_Sword = 3
+SmartCalib_Fruit = 8
+local CurrentlyCalibrating = "None"
+SmartCombatEnabled = false
 
-local RadarLogFrame = Instance.new("Frame", RadarPage)
-RadarLogFrame.Size = UDim2.new(0.95, 0, 0, 300)
-RadarLogFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 22)
-RadarLogFrame.BorderSizePixel = 0
-RadarLogFrame.LayoutOrder = 4
-Instance.new("UICorner", RadarLogFrame).CornerRadius = UDim.new(0, 6)
-
-local RadarScroll = Instance.new("ScrollingFrame", RadarLogFrame)
-RadarScroll.Size = UDim2.new(1, -10, 1, -10)
-RadarScroll.Position = UDim2.new(0, 5, 0, 5)
-RadarScroll.BackgroundTransparency = 1
-RadarScroll.ScrollBarThickness = 3
-RadarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-RadarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local RList = Instance.new("UIListLayout", RadarScroll)
-RList.Padding = UDim.new(0, 2)
-
-local BattleLogName = "BattleLog_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
-pcall(function() if writefile then writefile(BattleLogName, "=== INICIO DE LOG DE BATALLA ===\n") end end)
-
-local function AddRadarLog(text, isBossAlert)
-    pcall(function()
-        -- 1. Escribir en la UI Local
-        local lbl = Instance.new("TextLabel", RadarScroll)
-        lbl.Size = UDim2.new(1, 0, 0, 16)
-        lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.Code
-        lbl.TextSize = 11
-        lbl.Text = " " .. text
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.TextColor3 = isBossAlert and Color3.fromRGB(240, 100, 100) or Color3.fromRGB(180, 220, 255)
-        
-        task.delay(0.05, function()
-            RadarScroll.CanvasPosition = Vector2.new(0, RList.AbsoluteContentSize.Y)
-        end)
-        
-        if #RadarScroll:GetChildren() > 50 then
-            for i, child in ipairs(RadarScroll:GetChildren()) do
-                if child:IsA("TextLabel") and i < 10 then child:Destroy() end
-            end
-        end
-        
-        -- 2. Guardar permanentemente en Disco (Live)
-        if appendfile then
-            local timeStamp = "[" .. os.date("%H:%M:%S") .. "] "
-            pcall(function() appendfile(BattleLogName, timeStamp .. text .. "\n") end)
-        end
-    end)
-end
-
-BtnClearRadar.MouseButton1Click:Connect(function()
-    for _, child in pairs(RadarScroll:GetChildren()) do
-        if child:IsA("TextLabel") then child:Destroy() end
+local BtnSmartHitRun = ToggleButton(CalibPage, "🧠 Activar Smart Farm (Hit & Run)", 3, C.card)
+BtnSmartHitRun.MouseButton1Click:Connect(function()
+    SmartCombatEnabled = not SmartCombatEnabled
+    if SmartCombatEnabled then
+        BtnSmartHitRun.BackgroundColor3 = C.accentOn
+        BtnSmartHitRun.Text = "  🧠 Smart Farm: ON (Rotando armas)"
+        BtnSmartHitRun.TextColor3 = Color3.new(1,1,1)
+    else
+        BtnSmartHitRun.BackgroundColor3 = C.card
+        BtnSmartHitRun.Text = "  🧠 Activar Smart Farm (Hit & Run)"
+        BtnSmartHitRun.TextColor3 = C.text
     end
-    AddRadarLog(">>> Radar limpiado.", false)
 end)
 
-local function GetFloorY()
-    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return "Desconocido" end
-    local origin = LP.Character.HumanoidRootPart.Position
-    local dir = Vector3.new(0, -999, 0)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LP.Character}
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Rango de Espada [Actual: -" .. SmartCalib_Sword .. "]", 4, C.card)
+local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Rango de Fruta [Actual: -" .. SmartCalib_Fruit .. "]", 5, C.card)
 
-    local result = Workspace:Raycast(origin, dir, rayParams)
-    if result then
-        return math.floor(result.Position.Y)
-    else
-        return "Vacío"
-    end
-end
+BtnCalibSword.MouseButton1Click:Connect(function()
+    CurrentlyCalibrating = "Sword"
+    BtnCalibSword.Text = "  Esperando ataque de ESPADA en vivo..."
+    BtnCalibSword.BackgroundColor3 = Color3.fromRGB(150, 100, 30)
+end)
 
--- ==========================================
--- ANALIZADOR FORENSE (ENFOCADO AL JUGADOR)
--- ==========================================
+BtnCalibFruit.MouseButton1Click:Connect(function()
+    CurrentlyCalibrating = "Fruit"
+    BtnCalibFruit.Text = "  Esperando ataque de FRUTA en vivo..."
+    BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(100, 30, 150)
+end)
+
+-- Motor silencioso de Calibración
 task.spawn(function()
-    
-    local LastFloor = nil
-    
     Workspace.DescendantAdded:Connect(function(obj)
-        task.delay(0.05, function()
-            if obj:IsA("BasePart") then
-                local objPos = obj.Position
-                local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                
-                -- SI NACE EN EL JUGADOR O A MENOS DE 8 STUDS (TUS SKILLS / M1)
-                -- (Esto excluye ataques del Boss creados a 40 metros)
-                if obj:IsDescendantOf(LP.Character) or (objPos - hrp.Position).Magnitude < 10 then
-                    local name = obj.Name:lower()
-                    local isAttack = false
+        if CurrentlyCalibrating ~= "None" then
+            task.delay(0.05, function()
+                if obj:IsA("BasePart") then
+                    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                    if not hrp then return end
                     
-                    if name:match("hitbox") or name:match("slash") or name:match("explosion") or name:match("shock") or name:match("hit") or name:match("wave") or name:match("vfx") then
-                        isAttack = true
-                    end
-                    
-                    local foundParticle = obj:FindFirstChildOfClass("ParticleEmitter")
-                    if foundParticle then isAttack = true end
-                    
-                    if isAttack then
+                    if obj:IsDescendantOf(LP.Character) or (obj.Position - hrp.Position).Magnitude < 10 then
                         local size = obj.Size
                         local maxD = math.max(size.X, size.Y, size.Z)
                         
                         if maxD >= 1 then
-                            local charY = math.floor(hrp.Position.Y)
-                            local objY = math.floor(objPos.Y)
-                            local topY = math.floor(objY + (size.Y/2))
-                            local botY = math.floor(objY - (size.Y/2))
+                            local charY = hrp.Position.Y
+                            local objY = obj.Position.Y
+                            local botY = objY - (size.Y/2)
+                            local distAbajo = math.floor(charY - botY)
                             
-                            local floorY = GetFloorY()
+                            -- Mínimo de 3 para asegurar colisión con pies aunque el vfx estalle arriba
+                            if distAbajo < 3 then distAbajo = 3 end
                             
-                            AddRadarLog("=====================================", false)
-                            AddRadarLog("🟢 TU SKILL/ARMA DETECTADA: " .. obj.Name, true)
-                            AddRadarLog("  - Dimensión Física: " .. math.floor(size.X) .. " x " .. math.floor(size.Y) .. " x " .. math.floor(size.Z) .. " studs", false)
-                            AddRadarLog("  - Tu RootPart estaba en Y=" .. charY, false)
-                            AddRadarLog("  - El Suelo (Piso Real) está en Y=" .. tostring(floorY), false)
-                            AddRadarLog("  - El ataque comenzó en: Y=" .. objY .. " (Centro)", false)
-                            AddRadarLog("  - Subió hasta el Techo: Y=" .. topY, false)
-                            AddRadarLog("  - Bajó hasta el Suelo : Y=" .. botY, false)
-                            
-                            local distArriba = topY - charY
-                            local distAbajo = charY - botY
-                            
-                            if distArriba > 0 then
-                                AddRadarLog("  ▶ Alcance hacia arriba tuyo: +" .. distArriba .. " studs", true)
-                            else
-                                AddRadarLog("  ▶ Alcance hacia arriba tuyo: NINGUNO (Explotó debajo)", false)
+                            if CurrentlyCalibrating == "Sword" then
+                                SmartCalib_Sword = distAbajo
+                                BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA: -" .. distAbajo .. " studs"
+                                BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                            elseif CurrentlyCalibrating == "Fruit" then
+                                SmartCalib_Fruit = distAbajo
+                                BtnCalibFruit.Text = "  🍎 Calibrado FRUTA: -" .. distAbajo .. " studs"
+                                BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                             end
-                            
-                            if distAbajo > 0 then
-                                AddRadarLog("  ▶ Alcance hacia abajo tuyo: -" .. distAbajo .. " studs", true)
-                            else
-                                AddRadarLog("  ▶ Alcance hacia abajo tuyo: NINGUNO (Explotó encima)", false)
-                            end
-                            AddRadarLog("=====================================", false)
+                            CurrentlyCalibrating = "None"
                         end
                     end
                 end
-            end
-        end)
-    end)
-    
-    while true do
-        task.wait(1)
-        if AutoFarm or true then -- Siempre encendido para que el jugador mida
-            pcall(function()
-                local cFloor = GetFloorY()
-                local cPlayerY = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and math.floor(LP.Character.HumanoidRootPart.Position.Y)
-                if cFloor ~= LastFloor and cPlayerY then
-                    LastFloor = cFloor
-                    AddRadarLog("🌎 TERRENO: Estás parado en Y=" .. cPlayerY .. " | Nivel del Piso= " .. tostring(cFloor), false)
-                end
             end)
         end
-    end
+    end)
 end)
 
 
@@ -1009,29 +923,66 @@ task.spawn(function()
                     continue
                 end
 
-                -- Equipar espada/arma si no tenemos nada en las manos
-                local tool = char:FindFirstChildOfClass("Tool")
-                if not tool then
-                    -- Buscamos prioridad de espadas
-                    for _, t in pairs(LP.Backpack:GetChildren()) do
-                        if t:IsA("Tool") and (t.Name:lower():match("katana") or t.Name:lower():match("sword") or t.Name:lower():match("blade")) then
-                            tool = t
-                            break
+                -- Funciliaridad Helper para Smart Weapon
+                local function GetSmartTool(reqType)
+                    for _, t in pairs(char:GetChildren()) do
+                        if t:IsA("Tool") then
+                            local n = t.Name:lower()
+                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
+                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil") or (not n:match("sword") and not n:match("katana") and not n:match("blade") and not n:match("combat"))) then return t end
                         end
                     end
-                    -- Si no hay espadas, agarramos la primera herramienta que NO sea 'Combat' o 'Puños'
+                    for _, t in pairs(LP.Backpack:GetChildren()) do
+                        if t:IsA("Tool") then
+                            local n = t.Name:lower()
+                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
+                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil") or (not n:match("sword") and not n:match("katana") and not n:match("blade") and not n:match("combat"))) then return t end
+                        end
+                    end
+                    return LP.Backpack:FindFirstChildOfClass("Tool")
+                end
+
+                local tool = char:FindFirstChildOfClass("Tool")
+                if SmartCombatEnabled then
+                    if not LastSmartSwap then LastSmartSwap = os.clock() end
+                    if not SmartCurrentWeapon then SmartCurrentWeapon = "Sword" end
+
+                    if os.clock() - LastSmartSwap > 4 then 
+                        LastSmartSwap = os.clock()
+                        SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                        local wTool = GetSmartTool(SmartCurrentWeapon)
+                        if wTool then 
+                            char.Humanoid:UnequipTools()
+                            char.Humanoid:EquipTool(wTool) 
+                            tool = wTool
+                        end
+                    else
+                        local wTool = GetSmartTool(SmartCurrentWeapon)
+                        if wTool and not char:FindFirstChild(wTool.Name) then
+                            char.Humanoid:EquipTool(wTool)
+                            tool = wTool
+                        end
+                    end
+                else
+                    -- Normal Equip
                     if not tool then
                         for _, t in pairs(LP.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and not t.Name:lower():match("combat") then
+                            if t:IsA("Tool") and (t.Name:lower():match("katana") or t.Name:lower():match("sword") or t.Name:lower():match("blade")) then
                                 tool = t
                                 break
                             end
                         end
+                        if not tool then
+                            for _, t in pairs(LP.Backpack:GetChildren()) do
+                                if t:IsA("Tool") and not t.Name:lower():match("combat") then
+                                    tool = t
+                                    break
+                                end
+                            end
+                        end
+                        if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
+                        if tool then char.Humanoid:EquipTool(tool) end
                     end
-                    -- Último recurso
-                    if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
-
-                    if tool then char.Humanoid:EquipTool(tool) end
                 end
 
                 local mob = GetNearestMob()
@@ -1177,14 +1128,20 @@ task.spawn(function()
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
 
                                 local currentFarmMode = FarmMode
-
                                 local TargetCF
-                                if currentFarmMode == "Arriba" then
-                                    TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                elseif currentFarmMode == "Detras" then
-                                    TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
-                                elseif currentFarmMode == "Abajo" then
-                                    TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                                
+                                if SmartCombatEnabled then
+                                    local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or SmartCalib_Fruit
+                                    -- Nos colocamos exactamente debajo de los pies de la entidad asegurando que el "rango negativo" la alcance.
+                                    TargetCF = tHrp.CFrame * CFrame.new(0, -(currentOffset + 2), 0)
+                                else
+                                    if currentFarmMode == "Arriba" then
+                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
+                                    elseif currentFarmMode == "Detras" then
+                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                    elseif currentFarmMode == "Abajo" then
+                                        TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                                    end
                                 end
 
                                 pcall(function()
@@ -1539,30 +1496,20 @@ task.spawn(function()
                     StatusLabel.Text = "📍 Llegamos al punto guardado"
                     LastRealDamageTime = os.clock()
                 else
-                    StatusLabel.Text = "📍 Caminando... (" .. math.floor(distToMem) .. "m)"
+                    StatusLabel.Text = "🏃 Volviendo a Marca... (" .. math.floor(distToMem) .. "m)"
 
                     local dir = (MemoryPoint - hrpW.Position).Unit
-                    local stepSize = math.min(30, distToMem)
-                    local nextPos = hrpW.Position + dir * stepSize * 0.08
-
-                    local groundY = MemoryPoint.Y
+                    -- Pasos grandes de 45 studs (Movimiento tipo Blink/Sniper)
+                    local stepSize = math.min(45, distToMem) 
+                    local nextPos = hrpW.Position + dir * stepSize
+                    
+                    -- Teletransportación forzada por tramos (Super Carga Rápida sin Kicks)
+                    pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                    
                     pcall(function()
-                        local rayOrigin = Vector3.new(nextPos.X, nextPos.Y + 20, nextPos.Z)
-                        local rayDir = Vector3.new(0, -200, 0)
-                        local rayParams = RaycastParams.new()
-                        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                        rayParams.FilterDescendantsInstances = { char }
-                        local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
-                        if result then
-                            groundY = result.Position.Y + 3
+                        if hrpW:FindFirstChildOfClass("BodyVelocity") then
+                             hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
                         end
-                    end)
-
-                    local targetCF = CFrame.new(Vector3.new(nextPos.X, groundY, nextPos.Z))
-                    pcall(function() char:PivotTo(targetCF) end)
-
-                    pcall(function()
-                        Workspace.CurrentCamera.CameraSubject = char:FindFirstChild("Humanoid")
                     end)
                 end
             end
