@@ -769,6 +769,126 @@ BtnClearScan.MouseButton1Click:Connect(function()
     ScanStatusLabel.Text = "  Objetivo: Ninguno"
 end)
 
+-- =================  MODO GRABACION DE RUTA (REC) =================
+SectionLabel(CazadorPage, "AUTO-CAZA: GRABADOR LIVE", 6)
+
+local RecStatusLabel = Instance.new("TextLabel", CazadorPage)
+RecStatusLabel.Size = UDim2.new(0.95, 0, 0, 35)
+RecStatusLabel.BackgroundTransparency = 1
+RecStatusLabel.TextColor3 = C.muted
+RecStatusLabel.Font = Enum.Font.Gotham
+RecStatusLabel.TextSize = 11
+RecStatusLabel.Text = "  Usa esto para grabar cómo vas de isla en isla.\n  Capturará portales usados y teleports automáticamente."
+RecStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+RecStatusLabel.LayoutOrder = 7
+
+local BtnRecord = ToggleButton(CazadorPage, "⏺️ Iniciar Grabación de Ruta", 8, Color3.fromRGB(150, 40, 40))
+
+local IsRecordingRoute = false
+local RouteLogs = {}
+local LastPos = Vector3.new()
+local RecThread = nil
+local PromptConn = nil
+
+local oldNamecall
+pcall(function()
+    if hookmetamethod then
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if IsRecordingRoute and not checkcaller() then
+                if method == "FireServer" or method == "InvokeServer" then
+                    local sName = tostring(self):lower()
+                    if sName:match("teleport") or sName:match("travel") or sName:match("island") or sName:match("map") or sName:match("dungeon") or sName:match("door") or sName:match("portal") then
+                        local args = {...}
+                        local argStr = ""
+                        for i, v in ipairs(args) do argStr = argStr .. tostring(v) .. (i < #args and ", " or "") end
+                        table.insert(RouteLogs, "[REC-SPY] Remote Call: " .. tostring(self.Name) .. " (" .. method .. ") | Args: [" .. argStr .. "]")
+                    end
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+    end
+end)
+
+BtnRecord.MouseButton1Click:Connect(function()
+    IsRecordingRoute = not IsRecordingRoute
+    if IsRecordingRoute then
+        BtnRecord.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+        BtnRecord.Text = "⏹️ Detener y Guardar Grabación"
+        RouteLogs = {
+            "===============================================",
+            " GRABACION DE RUTA AUTO-CAZA - " .. os.date(),
+            "==============================================="
+        }
+        
+        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then LastPos = hrp.Position end
+
+        -- 1. Capturar interacciones de Portales/Prompts
+        pcall(function()
+            local PPS = game:GetService("ProximityPromptService")
+            PromptConn = PPS.PromptTriggered:Connect(function(prompt, player)
+                if player == LP then
+                    table.insert(RouteLogs, "[REC] Accionaste Prompt: " .. tostring(prompt.ActionText) .. " | Obj: " .. prompt:GetFullName())
+                    table.insert(RouteLogs, "      Coords: " .. tostring(prompt.Parent and prompt.Parent:IsA("BasePart") and prompt.Parent.Position or "N/A"))
+                    BtnRecord.Text = "⏹️ GRABANDO... (Interacción Capturada)"
+                end
+            end)
+        end)
+
+        -- 2. Detectar Teleports o saltos de coordenadas (Dungeons / Islas)
+        RecThread = task.spawn(function()
+            while IsRecordingRoute do
+                task.wait(1)
+                local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                if currentHrp then
+                    local dist = (currentHrp.Position - LastPos).Magnitude
+                    if dist > 800 then -- Teleport grande detectado
+                        table.insert(RouteLogs, "[REC] Teleport Detectado! Distancia: " .. math.floor(dist) .. " studs")
+                        table.insert(RouteLogs, "      Nueva Coordenada: " .. tostring(currentHrp.Position))
+                        
+                        -- Auto escanear bosses en esta nueva zona
+                        task.wait(1.5) -- esperar que cargue el entorno
+                        local bossesEnArea = 0
+                        local c = GetMobCache()
+                        for _, m in pairs(c) do
+                            if m.Name:lower():match("boss") and m:FindFirstChild("HumanoidRootPart") then
+                                bossesEnArea = bossesEnArea + 1
+                                local hp = m:FindFirstChild("Humanoid") and m.Humanoid.Health or "N/A"
+                                table.insert(RouteLogs, "      -> Boss Encontrado: " .. m.Name .. " (HP: " .. tostring(hp) .. ") en " .. tostring(m.HumanoidRootPart.Position))
+                            end
+                        end
+                        if bossesEnArea == 0 then
+                            table.insert(RouteLogs, "      -> No se detectaron Bosses en radar actual.")
+                        end
+                    end
+                    LastPos = currentHrp.Position
+                end
+            end
+        end)
+
+    else
+        BtnRecord.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+        BtnRecord.Text = "⏺️ Iniciar Grabación de Ruta"
+        if PromptConn then PromptConn:Disconnect(); PromptConn = nil end
+        if RecThread then task.cancel(RecThread); RecThread = nil end
+        
+        -- Guardar el log
+        table.insert(RouteLogs, "================ FIN DE GRABACION ================")
+        local filename = "AutoHuntRecord_" .. tostring(os.time()) .. ".txt"
+        pcall(function()
+            if writefile then 
+                writefile(filename, table.concat(RouteLogs, "\n"))
+                RecStatusLabel.Text = "  ✅ Ruta guardada: " .. filename
+            else
+                RecStatusLabel.Text = "  ⚠️ Sin writefile. F9 para ver ruta."
+                for _, log in ipairs(RouteLogs) do print(log) end
+            end
+        end)
+    end
+end)
+
 -- =======================================================================================
 -- ========== TAB 6: ANALIZADOR (FORENSE DE MAZMORRAS Y MAPAS) ==========
 -- =======================================================================================
@@ -801,7 +921,7 @@ AnalistaLog.LayoutOrder = 4
 BtnAnalista.MouseButton1Click:Connect(function()
 
     BtnAnalista.Text = "🧪 Escaneando el Entorno..."
-    AnalistaLog.Text = "  [1/3] Buscando scripts criticos..."
+    AnalistaLog.Text = "  [1/4] Buscando scripts criticos..."
 
     task.spawn(function()
         local t = {}
@@ -826,7 +946,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                 local n = s.Name:lower()
                 if n:match("anti") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("teleport") or n:match("wave") or n:match("safe") or n:match("camera") then
                     sCount = sCount + 1
-                    AnalistaLog.Text = "  [1/3] Script #" .. sCount .. ": " .. s.Name
+                    AnalistaLog.Text = "  [1/4] Script #" .. sCount .. ": " .. s.Name
                     table.insert(t, "  [" .. sCount .. "] " .. s:GetFullName() .. " (" .. s.ClassName .. ")")
                     -- NO require() - bloquea indefinidamente en modulos con WaitForChild
                 end
@@ -837,7 +957,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "")
 
         -- 2. MAPEO FISICO
-        AnalistaLog.Text = "  [2/3] Contando objetos..."
+        AnalistaLog.Text = "  [2/4] Contando objetos..."
         task.wait()
         local allObjs = Workspace:GetDescendants()
         local total = #allObjs
@@ -846,7 +966,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
 
         for i, obj in ipairs(allObjs) do
             if i % 200 == 0 then
-                AnalistaLog.Text = "  [2/3] " .. math.floor(i/total*100) .. "% (" .. i .. "/" .. total .. ")"
+                AnalistaLog.Text = "  [2/4] " .. math.floor(i/total*100) .. "% (" .. i .. "/" .. total .. ")"
                 task.wait()
             end
             if obj:IsA("BasePart") then
@@ -875,7 +995,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "")
 
         -- 3. REMOTES
-        AnalistaLog.Text = "  [3/3] Rastreando Remotes..."
+        AnalistaLog.Text = "  [3/4] Rastreando Remotes..."
         task.wait()
         table.insert(t, "> [3] TODOS LOS REMOTES (ReplicatedStorage):")
         local rCount = 0
@@ -884,12 +1004,57 @@ BtnAnalista.MouseButton1Click:Connect(function()
                 rCount = rCount + 1
                 table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
                 if rCount % 25 == 0 then
-                    AnalistaLog.Text = "  [3/3] Remotes: " .. rCount .. "..."
+                    AnalistaLog.Text = "  [3/4] Remotes: " .. rCount .. "..."
                     task.wait()
                 end
             end
         end
         table.insert(t, "  Total: " .. rCount)
+        table.insert(t, "")
+
+        -- 4. PORTALES Y BOSS SPAWNERS
+        AnalistaLog.Text = "  [4/4] Rastreando Portales y Bosses..."
+        task.wait()
+        table.insert(t, "> [4] PORTALES Y AUTO-CAZA BOSS:")
+        local pCount = 0
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                table.insert(t, "  [Prompt-Tecla " .. tostring(obj.KeyboardKeyCode) .. "] " .. obj:GetFullName() .. " (Accion: " .. tostring(obj.ActionText) .. ")")
+                pCount = pCount + 1
+            elseif obj:IsA("BasePart") then
+                local oname = obj.Name:lower()
+                if oname:match("portal") or oname:match("teleport") or oname:match("travel") or oname:match("puerta") then
+                    table.insert(t, "  [Portal-Part] " .. obj:GetFullName() .. " @ " .. tostring(obj.Position))
+                    pCount = pCount + 1
+                end
+            end
+            
+            -- Detectar timers o variables guardadas (Values) que delaten el respawn de un jefe
+            local oname2 = obj.Name:lower()
+            if oname2:match("spawn") or oname2:match("timer") or oname2:match("time") or oname2:match("cooldown") or oname2:match("boss") then
+                if obj:IsA("StringValue") or obj:IsA("NumberValue") or obj:IsA("IntValue") then
+                    table.insert(t, "  [Spawner/Time-Data] " .. obj:GetFullName() .. " = " .. tostring(obj.Value))
+                end
+            end
+        end
+        if pCount == 0 then table.insert(t, "  (Nungun prompt o portal 3D encontrado en workspace)") end
+        table.insert(t, "")
+
+        table.insert(t, "> [5] INTERFACES DE VIAJE Y CIUDADES (PlayerGui):")
+        local guiCount = 0
+        local function SafeText(b) pcall(function() return b.Text end) return "" end
+        for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetDescendants()) do
+            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+                 local gname = gui.Name:lower()
+                 local txt = ""
+                 if gui:IsA("TextButton") then txt = gui.Text:lower() end
+                 if gname:match("teleport") or gname:match("travel") or gname:match("map") or gname:match("island") or gname:match("select") or gname:match("city") or txt:match("teleport") or txt:match("travel") then
+                      table.insert(t, "  [Travel-Btn] " .. gui:GetFullName() .. " | Tipo: " .. gui.ClassName .. " | Text: " .. tostring(gui:IsA("TextButton") and gui.Text or "IMG"))
+                      guiCount = guiCount + 1
+                 end
+            end
+        end
+        if guiCount == 0 then table.insert(t, "  (Ningun boton de viaje detectado en UI)") end
         table.insert(t, "")
 
         -- DIAGNOSTICO
