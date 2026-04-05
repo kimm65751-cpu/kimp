@@ -930,7 +930,7 @@ task.spawn(function()
                 else
                     -- Funciliaridad Helper para Smart Weapon
                 local function GetSmartTool(reqType)
-                    -- Zero priority: Use Exact Calibrated Names
+                    -- Prioridad Cero: Nombres Exactos Calibrados
                     if reqType == "Sword" and SmartSwordName then
                         local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
                         if t then return t end
@@ -940,38 +940,30 @@ task.spawn(function()
                         if t then return t end
                     end
 
-                    -- First try strict explicitly requested names
-                    for _, t in pairs(char:GetChildren()) do
-                        if t:IsA("Tool") then
-                            local n = t.Name:lower()
-                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
-                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return t end
-                        end
-                    end
-                    for _, t in pairs(LP.Backpack:GetChildren()) do
-                        if t:IsA("Tool") then
-                            local n = t.Name:lower()
-                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
-                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return t end
-                        end
-                    end
-                    
-                    -- Second resort: Find something NOT of the opposite type
-                    local opposite = (reqType == "Sword") and "fruit" or "sword"
-                    for _, t in pairs(char:GetChildren()) do
-                        if t:IsA("Tool") then
-                            local n = t.Name:lower()
-                            if not n:match("combat") and not n:match(opposite) then return t end
-                        end
-                    end
-                    for _, t in pairs(LP.Backpack:GetChildren()) do
-                        if t:IsA("Tool") then
-                            local n = t.Name:lower()
-                            if not n:match("combat") and not n:match(opposite) then return t end
-                        end
+                    local function isForbidden(t)
+                        if reqType == "Sword" and SmartFruitName and t.Name == SmartFruitName then return true end
+                        if reqType == "Fruit" and SmartSwordName and t.Name == SmartSwordName then return true end
+                        if t.Name:lower():match("combat") then return true end
+                        return false
                     end
 
-                    return LP.Backpack:FindFirstChildOfClass("Tool")
+                    -- Primer intento: Nombres comunes (fallback estándar)
+                    local function strictMatch(t)
+                        if isForbidden(t) then return false end
+                        local n = t.Name:lower()
+                        if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return true end
+                        if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return true end
+                        return false
+                    end
+
+                    for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
+                    for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
+                    
+                    -- Segundo Intento: Cualquier cosa que NO esté prohibida (último recurso)
+                    for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
+                    for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
+
+                    return nil -- Si no hay literalmente nada seguro, mejor retornar nil para que el char no haga locuras.
                 end
 
                 local tool = char:FindFirstChildOfClass("Tool")
@@ -1261,20 +1253,23 @@ task.spawn(function()
                                 -- Una minúscula pausa entre saltos
                                 task.wait(0.05)
                             end
-                        end
-                    end
-                end
-            else
+                        end -- for targetMob
+                    end -- else IsInPanicRecovery
+                end -- if mobHrp
+            else -- else for mob and not ForceMemoryReturn
                 GlobalMagnetTarget = nil
                 StatusLabel.Text = "Buscando Mobs vivos..."
-            end
-            end
-        else
-            GlobalMagnetTarget = nil
-            StatusLabel.Text = "Esperando al Personaje..."
-        end
-    end
-end)
+            end -- if mob and not ForceMemoryReturn
+        end -- if char.Humanoid.Health <= 0
+    else -- else for char and char:FindFirstChild
+        GlobalMagnetTarget = nil
+        StatusLabel.Text = "Esperando al Personaje..."
+    end -- if char and char:FindFirstChild
+else -- else for AutoFarm
+    GlobalMagnetTarget = nil
+end -- if AutoFarm
+end -- while task.wait()
+end) -- task.spawn
 
 -- ==============================================================================
 -- CONEXIONES GUI
@@ -1580,3 +1575,7 @@ task.spawn(function()
 end)
 
 task.spawn(LoadConfig)
+
+
+
+
