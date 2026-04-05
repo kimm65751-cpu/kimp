@@ -18,7 +18,7 @@ local BlinkAttackEnabled = false
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
 local TargetBosses = "Normal"
-local ScannedTargetName = nil
+local ScannedTargetNames = {} -- tabla para multi-selección de objetivos
 local ScannedTargetPos = nil
 local SpyEnabled = false
 local SpyFileName = ""
@@ -697,7 +697,7 @@ ScanStatusLabel.BackgroundTransparency = 1
 ScanStatusLabel.TextColor3 = C.muted
 ScanStatusLabel.Font = Enum.Font.Gotham
 ScanStatusLabel.TextSize = 12
-ScanStatusLabel.Text = "  Objetivo: " .. (ScannedTargetName or "Ninguno")
+ScanStatusLabel.Text = "  Objetivo: " .. (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
 ScanStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 ScanStatusLabel.LayoutOrder = 2
 
@@ -748,8 +748,15 @@ BtnScan.MouseButton1Click:Connect(function()
                 Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
                 
                 b.MouseButton1Click:Connect(function()
-                    ScannedTargetName = n
-                    ScanStatusLabel.Text = "  Objetivo: " .. n
+                    -- Toggle: si ya está en la lista lo quita, si no lo agrega
+                    local alreadyIn = false
+                    for i, sn in ipairs(ScannedTargetNames) do
+                        if sn == n then table.remove(ScannedTargetNames, i); alreadyIn = true; break end
+                    end
+                    if not alreadyIn then table.insert(ScannedTargetNames, n) end
+                    b.BackgroundColor3 = (not alreadyIn) and C.accentOn or (isBoss and Color3.fromRGB(130, 80, 180) or C.bg)
+                    b.TextColor3 = (not alreadyIn) and Color3.new(0,0,0) or C.text
+                    ScanStatusLabel.Text = "  Objetivos: " .. (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
                 end)
             end
         end
@@ -758,7 +765,7 @@ BtnScan.MouseButton1Click:Connect(function()
 end)
 
 BtnClearScan.MouseButton1Click:Connect(function()
-    ScannedTargetName = nil
+    ScannedTargetNames = {}
     ScanStatusLabel.Text = "  Objetivo: Ninguno"
 end)
 
@@ -1085,8 +1092,10 @@ function GetNearestMob()
         local allow = false
         local isBoss = mob.Name:lower():match("boss")
 
-        if ScannedTargetName then
-            if mob.Name == ScannedTargetName then allow = true end
+        if #ScannedTargetNames > 0 then
+            for _, sn in ipairs(ScannedTargetNames) do
+                if mob.Name == sn then allow = true; break end
+            end
         else
             if TargetBosses == "SoloBoss" then
                 if isBoss then allow = true end
@@ -1104,6 +1113,22 @@ function GetNearestMob()
                 if dist < nearestDist then
                     nearestDist = dist
                     nearestMob = mob
+                end
+            end
+        end
+    end
+    -- DEFENSA: si hay objetivos marcados pero ninguno cerca, atacar cualquier mob muy cercano (<25s)
+    if nearestMob == nil and #ScannedTargetNames > 0 then
+        local defenseDist = math.huge
+        for _, mob in ipairs(cache) do
+            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                local tHrp = mob:FindFirstChild("HumanoidRootPart")
+                if tHrp then
+                    local dist = (hrp.Position - tHrp.Position).Magnitude
+                    if dist < 25 and dist < defenseDist then
+                        defenseDist = dist
+                        nearestMob = mob
+                    end
                 end
             end
         end
@@ -1404,8 +1429,10 @@ task.spawn(function()
                                 if m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
                                     local isBoss = m.Name:lower():match("boss")
                                     local allow = false
-                                    if ScannedTargetName then
-                                        if m.Name == ScannedTargetName then allow = true end
+                                    if #ScannedTargetNames > 0 then
+                                        for _, sn in ipairs(ScannedTargetNames) do
+                                            if m.Name == sn then allow = true; break end
+                                        end
                                     else
                                         if TargetBosses == "SoloBoss" then
                                             if isBoss then allow = true end
@@ -1474,7 +1501,7 @@ task.spawn(function()
                                         -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
                                     end
                                     local flyDist = (hrp.Position - rootCF.Position).Magnitude
-                                    if (TargetBosses == "SoloBoss" or ScannedTargetName or flyDist > 100) and flyDist > 15 then
+                                    if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
                                         -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
                                         local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
                                         char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
@@ -1668,12 +1695,22 @@ end)
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
-        OfsY = -8; OfsZ = 6
+        OfsY = -25; OfsZ = 0  -- 25 studs debajo del mob (subterráneo profundo)
         BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+        -- Auto-activar Ghost Protocol para quitar bloques invisibles
+        GhostProtocolEnabled = true
+        BtnGhost.BackgroundColor3 = Color3.fromRGB(80, 40, 140)
+        BtnGhost.Text = "  👻 Ghost: ON — (auto-activado)"
+        BtnGhost.TextColor3 = Color3.new(1, 1, 1)
     else
         FarmMode = "Arriba"
         OfsY = 10; OfsZ = 0
         BtnHeight.Text = "  Posición: ☁️ Arriba"
+        -- Desactivar Ghost al volver arriba
+        GhostProtocolEnabled = false
+        BtnGhost.BackgroundColor3 = C.card
+        BtnGhost.Text = "  👻 Ghost Protocol (Mazmorra): OFF"
+        BtnGhost.TextColor3 = C.text
     end
     SaveConfig()
 end)
@@ -1789,13 +1826,16 @@ task.spawn(function()
                 local targetPoint = MemoryPoint
                 local isScanner = false
 
-                if not targetPoint and ScannedTargetName then
+                if not targetPoint and #ScannedTargetNames > 0 then
                      for _, m in pairs(GetMobCache()) do
-                         if m.Name == ScannedTargetName and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                             targetPoint = m.HumanoidRootPart.Position
-                             isScanner = true
-                             break
+                         for _, sn in ipairs(ScannedTargetNames) do
+                             if m.Name == sn and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                                 targetPoint = m.HumanoidRootPart.Position
+                                 isScanner = true
+                                 break
+                             end
                          end
+                         if isScanner then break end
                      end
                 end
 
@@ -1803,44 +1843,72 @@ task.spawn(function()
                     local mob = GetNearestMob()
                     if ForceMemoryReturn then mob = nil end
 
-                    if mob then
-                        if IsWalkingToMemory then
-                            IsWalkingToMemory = false
-                            LastRealDamageTime = os.clock()
-                        end
-                    else
-                        if os.clock() - LastRealDamageTime > 10 then
-                            IsWalkingToMemory = true
-                        end
-                    end
-
-                    if IsWalkingToMemory and not mob then
-                        local hrpW = char.HumanoidRootPart
-                        local distToMem = (hrpW.Position - targetPoint).Magnitude
-
-                        if distToMem <= 15 then
-                            IsWalkingToMemory = false
-                            StatusLabel.Text = isScanner and ("🎯 Objetivo Alcanzado: " .. ScannedTargetName) or "📍 Llegamos al punto guardado"
-                            LastRealDamageTime = os.clock()
-                        else
-                            StatusLabel.Text = (isScanner and "🔫 Viaje Seguro a Objetivo... (" or "🏃 Volviendo a Marca... (") .. math.floor(distToMem) .. "m)"
-
-                            local dir = (targetPoint - hrpW.Position).Unit
-                            local stepSize = math.min(BlinkStepValue or 45, distToMem) 
-                            local nextPos = hrpW.Position + dir * stepSize
-                            
-                            pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
-                            
-                            pcall(function()
-                                if hrpW:FindFirstChildOfClass("BodyVelocity") then
-                                     hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                    if isScanner then
+                        -- ===== SCANNER: VOLAR DIRECTO AL OBJETIVO =====
+                        -- Independiente de si GetNearestMob lo encuentra o no.
+                        -- Actualizar targetPoint con posicion live del mob en cache
+                        for _, m in pairs(GetMobCache()) do
+                            local matched = false
+                            for _, sn in ipairs(ScannedTargetNames) do
+                                if m.Name == sn and m:FindFirstChild("HumanoidRootPart") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                                    targetPoint = m.HumanoidRootPart.Position
+                                    matched = true
+                                    break
                                 end
-                            end)
+                            end
+                            if matched then break end
                         end
-                    end
-                else
-                    if IsWalkingToMemory then IsWalkingToMemory = false end
-                end
+
+                        local hrpW = char.HumanoidRootPart
+                        local distToTarget = (hrpW.Position - targetPoint).Magnitude
+
+                        if distToTarget > 15 then
+                            StatusLabel.Text = "🔫 Volando a Objetivo... (" .. math.floor(distToTarget) .. "m)"
+                            local dir = (targetPoint - hrpW.Position).Unit
+                            local stepSize = math.min(BlinkStepValue or 45, distToTarget)
+                            local nextPos = hrpW.Position + dir * stepSize + Vector3.new(0, OfsY, 0)
+                            pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                        else
+                            StatusLabel.Text = "🎯 En posicion: " .. table.concat(ScannedTargetNames, "+")
+                        end
+
+                    else
+                        -- ===== MEMORIA: lógica original =====
+                        if mob then
+                            if IsWalkingToMemory then
+                                IsWalkingToMemory = false
+                                LastRealDamageTime = os.clock()
+                            end
+                        else
+                            if os.clock() - LastRealDamageTime > 10 then
+                                IsWalkingToMemory = true
+                            end
+                        end
+
+                        if IsWalkingToMemory and not mob then
+                            local hrpW = char.HumanoidRootPart
+                            local distToMem = (hrpW.Position - targetPoint).Magnitude
+
+                            if distToMem <= 15 then
+                                IsWalkingToMemory = false
+                                StatusLabel.Text = "📍 Llegamos al punto guardado"
+                                LastRealDamageTime = os.clock()
+                            else
+                                StatusLabel.Text = "🏃 Volviendo a Marca... (" .. math.floor(distToMem) .. "m)"
+                                local dir = (targetPoint - hrpW.Position).Unit
+                                local stepSize = math.min(BlinkStepValue or 45, distToMem)
+                                local nextPos = hrpW.Position + dir * stepSize
+                                pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                                pcall(function()
+                                    if hrpW:FindFirstChildOfClass("BodyVelocity") then
+                                        hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                                    end
+                                end)
+                            end
+                        end
+                    end -- end else (no isScanner)
+                end -- end if targetPoint
+
             else
                 if IsWalkingToMemory then
                     IsWalkingToMemory = false
