@@ -920,47 +920,152 @@ HuntStatusInfo.BackgroundTransparency = 1
 HuntStatusInfo.TextColor3 = C.muted
 HuntStatusInfo.Font = Enum.Font.GothamMedium
 HuntStatusInfo.TextSize = 12
-HuntStatusInfo.Text = "  Estado Cacería: Apagada\n  Jefes en Ruta Actual: 0"
+HuntStatusInfo.Text = "  Estado Cacería: Apagada"
 HuntStatusInfo.TextXAlignment = Enum.TextXAlignment.Left
 HuntStatusInfo.LayoutOrder = 10
 
--- El botón estorboso manual de '+ Boss' fue removido. ¡El sistema lo hace solo al pisar la isla!
-local BtnStartHunt = ToggleButton(CazadorPage, "▶️ Iniciar Auto-Caza Múltiple", 12, C.card)
+local RouteDashboard = Instance.new("ScrollingFrame", CazadorPage)
+RouteDashboard.Size = UDim2.new(0.95, 0, 0, 130)
+RouteDashboard.BackgroundTransparency = 0.5
+RouteDashboard.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+RouteDashboard.BorderSizePixel = 0
+RouteDashboard.ScrollBarThickness = 4
+RouteDashboard.LayoutOrder = 11
+
+local DashLayout = Instance.new("UIListLayout", RouteDashboard)
+DashLayout.SortOrder = Enum.SortOrder.LayoutOrder
+DashLayout.Padding = UDim.new(0, 2)
+
+task.spawn(function()
+    local cachedWidgets = {}
+    while true do
+        task.wait(0.5)
+        local targetNum = #_G.AutoHuntRoute
+        
+        -- Quitar frames sobrantes
+        while #cachedWidgets > targetNum do
+            cachedWidgets[#cachedWidgets]:Destroy()
+            table.remove(cachedWidgets, #cachedWidgets)
+        end
+        
+        -- Añadir frames faltantes
+        while #cachedWidgets < targetNum do
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 0, 24)
+            lbl.BackgroundTransparency = 1
+            lbl.Font = Enum.Font.GothamMedium
+            lbl.TextSize = 11
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = RouteDashboard
+            table.insert(cachedWidgets, lbl)
+        end
+        
+        -- Actualizar Data Visual
+        local currentClock = os.time()
+        for i, step in ipairs(_G.AutoHuntRoute) do
+            local lbl = cachedWidgets[i]
+            local dt = step.DeadTime or 0
+            local cd = step.Cooldown or 300
+            local timePassed = currentClock - dt
+            local timeRemaining = cd - timePassed
+            
+            -- Detectar boss localmente
+            local isAliveHere = false
+            local hpStr = ""
+            pcall(function()
+                for _, m in pairs(GetMobCache()) do
+                    if m.Name == step.Boss and m:FindFirstChild("Humanoid") then
+                        if m.Humanoid.Health > 0 then
+                            hpStr = "Hp: " .. math.floor(m.Humanoid.Health)
+                            isAliveHere = true
+                        end
+                        break
+                    end
+                end
+            end)
+            
+            local statusStr = ""
+            if timeRemaining > 0 then
+                statusStr = "⏳ Revive en " .. timeRemaining .. "s"
+                lbl.TextColor3 = Color3.fromRGB(200, 100, 100) -- Rojo (Muerto)
+            else
+                if isAliveHere then
+                    statusStr = "🟢 VIVO AQUI! " .. hpStr
+                    lbl.TextColor3 = Color3.fromRGB(100, 200, 100) -- Verde (Atacar!)
+                else
+                    statusStr = "🟡 ACTIVO (En su Isla)"
+                    lbl.TextColor3 = Color3.fromRGB(200, 200, 100) -- Amarillo (Viajar)
+                end
+            end
+            
+            lbl.Text = string.format("  [%d] %s (Isla: %s) -> %s", i, step.Boss, step.Island, statusStr)
+        end
+        RouteDashboard.CanvasSize = UDim2.new(0, 0, 0, #cachedWidgets * 26)
+    end
+end)
+
+local RouteNameBox = Instance.new("TextBox", CazadorPage)
+RouteNameBox.Size = UDim2.new(0.95, 0, 0, 32)
+RouteNameBox.BackgroundColor3 = C.bg
+RouteNameBox.TextColor3 = C.text
+RouteNameBox.PlaceholderText = "💾 Nombre de tu Ruta (Ej: RutaDiaria)"
+RouteNameBox.Font = Enum.Font.Gotham
+RouteNameBox.TextSize = 12
+RouteNameBox.Text = ""
+RouteNameBox.LayoutOrder = 12
+local uc = Instance.new("UICorner", RouteNameBox); uc.CornerRadius = UDim.new(0, 4)
+
+local BtnSaveRoute = ToggleButton(CazadorPage, "💾 Guardar Perfil de Ruta", 13, C.bg)
+BtnSaveRoute.MouseButton1Click:Connect(function()
+    pcall(function()
+        local name = RouteNameBox.Text
+        if name == "" then name = "RutaDefault" end
+        name = name .. ".json"
+        
+        local hs = game:GetService("HttpService")
+        local json = hs:JSONEncode(_G.AutoHuntRoute)
+        if writefile then writefile(name, json) end
+        HuntStatusInfo.Text = "  ✅ Perfil exportado exitosamente a:\n  " .. name
+    end)
+end)
+
+local BtnLoadRoute = ToggleButton(CazadorPage, "📂 Cargar Perfil", 14, C.bg)
+BtnLoadRoute.MouseButton1Click:Connect(function()
+    pcall(function()
+        local name = RouteNameBox.Text
+        if name == "" then name = "RutaDefault" end
+        name = name .. ".json"
+        
+        local hs = game:GetService("HttpService")
+        local data = ""
+        if readfile then data = readfile(name) end
+        local parsed = hs:JSONDecode(data)
+        if type(parsed)=="table" then
+            _G.AutoHuntRoute = parsed
+            HuntStatusInfo.Text = "  ✅ Perfil " .. name .. " cargado."
+        else
+            HuntStatusInfo.Text = "  ⚠️ Error al cargar " .. name
+        end
+    end)
+end)
+
+local BtnClearRuta = ToggleButton(CazadorPage, "🗑️ Limpiar Memoria de Ruta Visual", 15, Color3.fromRGB(120, 50, 50))
+BtnClearRuta.MouseButton1Click:Connect(function()
+    _G.AutoHuntRoute = {}
+    HuntStatusInfo.Text = "  🛑 Memoria Visual de Rutas vaciada."
+end)
+
+local BtnStartHunt = ToggleButton(CazadorPage, "▶️ Iniciar Auto-Caza Múltiple", 16, C.card)
 BtnStartHunt.MouseButton1Click:Connect(function()
     _G.AutoHuntActive = not _G.AutoHuntActive
     BtnStartHunt.Text = _G.AutoHuntActive and "⏹️ Detener Auto-Caza Múltiple" or "▶️ Iniciar Auto-Caza Múltiple"
     BtnStartHunt.BackgroundColor3 = _G.AutoHuntActive and C.accentOn or C.card
     BtnStartHunt.TextColor3 = _G.AutoHuntActive and Color3.new(0,0,0) or C.text
     if not _G.AutoHuntActive then
-        HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente.\n  Jefes cargados: " .. #_G.AutoHuntRoute
-        -- if auto farm was active by it, it will be turned off in the thread
+        HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente."
     else
         HuntStatusInfo.Text = "  Estado Cacería: Iniciando motores..."
     end
-end)
-
-local BtnSaveRoute = ToggleButton(CazadorPage, "💾 Guardar Perfil de Ruta a Disco", 13, C.bg)
-BtnSaveRoute.MouseButton1Click:Connect(function()
-    pcall(function()
-        local hs = game:GetService("HttpService")
-        local json = hs:JSONEncode(_G.AutoHuntRoute)
-        if writefile then writefile("SmartHuntRouteV1.json", json) end
-        HuntStatusInfo.Text = "  ✅ Perfil exportado a SmartHuntRouteV1.json"
-    end)
-end)
-
-local BtnLoadRoute = ToggleButton(CazadorPage, "📂 Cargar Perfil de Disco", 14, C.bg)
-BtnLoadRoute.MouseButton1Click:Connect(function()
-    pcall(function()
-        local hs = game:GetService("HttpService")
-        local data = ""
-        if readfile then data = readfile("SmartHuntRouteV1.json") end
-        local parsed = hs:JSONDecode(data)
-        if type(parsed)=="table" then
-            _G.AutoHuntRoute = parsed
-            HuntStatusInfo.Text = "  ✅ Perfil cargado exitosamente.\n  Jefes configurados: " .. #_G.AutoHuntRoute
-        end
-    end)
 end)
 
 -- =======================================================================================
