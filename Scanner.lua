@@ -956,20 +956,37 @@ task.spawn(function()
 
                 -- Funciliaridad Helper para Smart Weapon
                 local function GetSmartTool(reqType)
+                    -- First try strict explicitly requested names
                     for _, t in pairs(char:GetChildren()) do
                         if t:IsA("Tool") then
                             local n = t.Name:lower()
                             if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
-                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil") or (not n:match("sword") and not n:match("katana") and not n:match("blade") and not n:match("combat"))) then return t end
+                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return t end
                         end
                     end
                     for _, t in pairs(LP.Backpack:GetChildren()) do
                         if t:IsA("Tool") then
                             local n = t.Name:lower()
                             if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return t end
-                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil") or (not n:match("sword") and not n:match("katana") and not n:match("blade") and not n:match("combat"))) then return t end
+                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return t end
                         end
                     end
+                    
+                    -- Second resort: Find something NOT of the opposite type
+                    local opposite = (reqType == "Sword") and "fruit" or "sword"
+                    for _, t in pairs(char:GetChildren()) do
+                        if t:IsA("Tool") then
+                            local n = t.Name:lower()
+                            if not n:match("combat") and not n:match(opposite) then return t end
+                        end
+                    end
+                    for _, t in pairs(LP.Backpack:GetChildren()) do
+                        if t:IsA("Tool") then
+                            local n = t.Name:lower()
+                            if not n:match("combat") and not n:match(opposite) then return t end
+                        end
+                    end
+
                     return LP.Backpack:FindFirstChildOfClass("Tool")
                 end
 
@@ -977,26 +994,27 @@ task.spawn(function()
                 if SmartCombatEnabled then
                     if not LastSmartSwap then LastSmartSwap = os.clock() end
                     if not SmartCurrentWeapon then SmartCurrentWeapon = "Sword" end
-
-                    if os.clock() - LastSmartSwap > 4 then 
+                    
+                    -- Corrección al instante si el usuario apaga la fruta en medio de un ataque
+                    if not SmartUseFruit and SmartCurrentWeapon == "Fruit" then
+                        SmartCurrentWeapon = "Sword"
                         LastSmartSwap = os.clock()
-                        if SmartUseFruit then
-                            SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
-                        else
-                            SmartCurrentWeapon = "Sword"
-                        end
-                        local wTool = GetSmartTool(SmartCurrentWeapon)
-                        if wTool then 
+                    end
+
+                    -- Rotación Cada 4s solo si la fruta está permitida
+                    if SmartUseFruit and os.clock() - LastSmartSwap > 4 then 
+                        LastSmartSwap = os.clock()
+                        SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                    end
+
+                    local wTool = GetSmartTool(SmartCurrentWeapon)
+                    if wTool then 
+                        -- Si el arma asignada no está en la mano principal (no equipped)
+                        if not char:FindFirstChild(wTool.Name) then
                             char.Humanoid:UnequipTools()
                             char.Humanoid:EquipTool(wTool) 
-                            tool = wTool
                         end
-                    else
-                        local wTool = GetSmartTool(SmartCurrentWeapon)
-                        if wTool and not char:FindFirstChild(wTool.Name) then
-                            char.Humanoid:EquipTool(wTool)
-                            tool = wTool
-                        end
+                        tool = wTool
                     end
                 else
                     -- Normal Equip
