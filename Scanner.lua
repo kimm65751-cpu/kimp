@@ -818,19 +818,10 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     sCount = sCount + 1
                     AnalistaLog.Text = "  [1/3] Script #" .. sCount .. ": " .. s.Name
                     table.insert(t, "  [" .. sCount .. "] " .. s:GetFullName() .. " (" .. s.ClassName .. ")")
-                    if s:IsA("ModuleScript") then
-                        local ok, mod = pcall(require, s)
-                        if ok and type(mod) == "table" then
-                            local keys = {}
-                            for k in pairs(mod) do table.insert(keys, tostring(k)) end
-                            table.insert(t, "      Funciones: " .. table.concat(keys, ", "))
-                        else
-                            table.insert(t, "      (require fallo o no es tabla)")
-                        end
-                    end
-                    task.wait(0.05)
+                    -- NO require() - bloquea indefinidamente en modulos con WaitForChild
                 end
             end
+            task.wait() -- yield cada script, no solo los criticos
         end
         if sCount == 0 then table.insert(t, "  (ninguno encontrado)") end
         table.insert(t, "")
