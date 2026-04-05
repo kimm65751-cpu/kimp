@@ -407,15 +407,15 @@ local function SaveScanLog()
 end
 
 SectionLabel(ScanPage, "HERRAMIENTAS", 10)
-local BtnDeepScan    = ToggleButton(ScanPage, "\U0001F50D Escaneo Profundo (Estructura)", 11, Color3.fromRGB(30, 45, 70))
-local BtnRemoteSpy   = ToggleButton(ScanPage, "\U0001F4E1 Remote Spy (Interceptar)", 12, Color3.fromRGB(30, 45, 70))
-local BtnMoveScan    = ToggleButton(ScanPage, "\U0001F3C3 Análisis Movimiento", 13, Color3.fromRGB(30, 45, 70))
-local BtnCombatScan  = ToggleButton(ScanPage, "\u2694\uFE0F Análisis Combate", 14, Color3.fromRGB(30, 45, 70))
-local BtnSecurityScan= ToggleButton(ScanPage, "\U0001F6E1\uFE0F Análisis Seguridad", 15, Color3.fromRGB(30, 45, 70))
-local BtnNPCScan     = ToggleButton(ScanPage, "\U0001F916 Análisis NPC/Frutas/Inventario", 16, Color3.fromRGB(50, 35, 60))
-local BtnWalkDiag    = ToggleButton(ScanPage, "\U0001F4CD Diagnóstico Caminata", 17, Color3.fromRGB(60, 40, 30))
-local BtnSaveLog     = ToggleButton(ScanPage, "\U0001F4BE Guardar Log Ahora", 18, Color3.fromRGB(20, 80, 40))
-local BtnClearLog    = ToggleButton(ScanPage, "\U0001F5D1\uFE0F Limpiar Log", 19, C.red)
+local BtnDeepScan    = ToggleButton(ScanPage, "🔍 Escaneo Profundo (Estructura)", 11, Color3.fromRGB(30, 45, 70))
+local BtnRemoteSpy   = ToggleButton(ScanPage, "📡 Remote Spy (Interceptar)", 12, Color3.fromRGB(30, 45, 70))
+local BtnMoveScan    = ToggleButton(ScanPage, "🏃 Análisis Movimiento", 13, Color3.fromRGB(30, 45, 70))
+local BtnCombatScan  = ToggleButton(ScanPage, "⚔️ Análisis Combate", 14, Color3.fromRGB(30, 45, 70))
+local BtnSecurityScan= ToggleButton(ScanPage, "🛡️ Análisis Seguridad", 15, Color3.fromRGB(30, 45, 70))
+local BtnNPCScan     = ToggleButton(ScanPage, "🤖 Análisis NPC/Frutas/Inventario", 16, Color3.fromRGB(50, 35, 60))
+local BtnWalkDiag    = ToggleButton(ScanPage, "📍 Diagnóstico Caminata", 17, Color3.fromRGB(60, 40, 30))
+local BtnSaveLog     = ToggleButton(ScanPage, "💾 Guardar Log Ahora", 18, Color3.fromRGB(20, 80, 40))
+local BtnClearLog    = ToggleButton(ScanPage, "🗑️ Limpiar Log", 19, C.red)
 
 local RemoteSpyActive = false
 
@@ -511,7 +511,7 @@ BtnRemoteSpy.MouseButton1Click:Connect(function()
     RemoteSpyActive = not RemoteSpyActive
     if RemoteSpyActive then
         BtnRemoteSpy.BackgroundColor3 = C.accentOn
-        BtnRemoteSpy.Text = "  \U0001F4E1 Remote Spy: ACTIVO"
+        BtnRemoteSpy.Text = "  📡 Remote Spy: ACTIVO"
         ScanLog(">>> REMOTE SPY ACTIVADO", Color3.fromRGB(90, 255, 90))
         if hookmetamethod then
             local oldNamecall
@@ -556,7 +556,7 @@ BtnRemoteSpy.MouseButton1Click:Connect(function()
         end
     else
         BtnRemoteSpy.BackgroundColor3 = Color3.fromRGB(30, 45, 70)
-        BtnRemoteSpy.Text = "  \U0001F4E1 Remote Spy (Interceptar)"
+        BtnRemoteSpy.Text = "  📡 Remote Spy (Interceptar)"
         RemoteSpyActive = false
         ScanLog(">>> REMOTE SPY DESACTIVADO", Color3.fromRGB(255, 130, 130))
         SaveScanLog()
