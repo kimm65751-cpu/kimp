@@ -777,184 +777,128 @@ AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
 
-local BtnAnalista = ToggleButton(AnalistaPage, "🧪 Ejecutar Escaneo Profundo (.txt)", 3, Color3.fromRGB(40, 20, 60))
-local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
-AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
-AnalistaLog.BackgroundTransparency = 1
-AnalistaLog.TextColor3 = Color3.fromRGB(120, 255, 120)
-AnalistaLog.Font = Enum.Font.Code
-AnalistaLog.TextSize = 12
-AnalistaLog.Text = "  Esperando Instrucción..."
-AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
-AnalistaLog.LayoutOrder = 4
-
 BtnAnalista.MouseButton1Click:Connect(function()
     BtnAnalista.Text = "🧪 Escaneando el Entorno..."
-    AnalistaLog.Text = "  Rastreando, puede dar lag..."
-    
+    AnalistaLog.Text = "  [1/3] Buscando scripts criticos..."
+
     task.spawn(function()
         local t = {}
-        local hrp = nil
-        if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            hrp = LP.Character.HumanoidRootPart
-        end
-        if not hrp then 
-            AnalistaLog.Text = "  ⚠️ Error: Necesitas estar vivo para escanear."
+        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            AnalistaLog.Text = "  ⚠️ Necesitas estar vivo."
             BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
             return
         end
-        
+
         table.insert(t, "==================================================")
-        table.insert(t, " REPORTE FORENSE DE MAZMORRA/ISLA - AURA KILL V1.0")
+        table.insert(t, " REPORTE FORENSE - AURA KILL V2.0")
         table.insert(t, " FECHA: " .. os.date())
-        table.insert(t, " POSICIÓN LOCAL: " .. tostring(hrp.Position))
+        table.insert(t, " POSICION: " .. tostring(hrp.Position))
         table.insert(t, "==================================================\n")
 
-        -- 1. ANALISIS DE LOCAL SCRIPTS
-        table.insert(t, "> [1] DETECCIÓN DE SCRIPTS ANTI-HACK / ANTI-OCULTAMIENTO (PlayerScripts) + DUMP:")
+        -- 1. SCRIPTS CRITICOS
+        table.insert(t, "> [1] SCRIPTS CRITICOS EN PLAYERSCRIPTS:")
+        local sCount = 0
         for _, s in pairs(LP.PlayerScripts:GetDescendants()) do
             if s:IsA("LocalScript") or s:IsA("ModuleScript") then
                 local n = s.Name:lower()
-                if n:match("anti") or n:match("cheat") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("camera") or n:match("teleport") then
-                    table.insert(t, "\n  === ARCHIVO CÓDIGO/MÓDULO: " .. s:GetFullName() .. " (" .. s.ClassName .. ") ===")
-                    
-                    -- EXTRAER CONSTANTES / HUECOS (STRINGS)
-                    local constsExtracted = false
-                    pcall(function()
-                        if getgc and getconstants and type(getgc) == "function" then
-                            local foundStr = {}
-                            local added = {}
-                            for _, v in pairs(getgc(true)) do
-                                if type(v) == "function" and islclosure(v) and getfenv(v).script == s then
-                                    for _, const in pairs(getconstants(v)) do
-                                        if type(const) == "string" and const:len() > 2 then
-                                            local cl = const:lower()
-                                            if not added[const] then
-                                                if cl:match("remote") or cl:match("ban") or cl:match("kick") or cl:match("fire") or cl:match("admin") or cl:match("check") or cl:match("kill") or cl:match("dungeon") then
-                                                    table.insert(foundStr, const)
-                                                    added[const] = true
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                            if #foundStr > 0 then
-                                table.insert(t, "   [Rutas/Palabras Claves Internas Descubiertas]: " .. table.concat(foundStr, ", "))
-                                constsExtracted = true
-                            end
-                        end
-                    end)
-
-                    -- DUMP DE MODULE (SI ES MODULO)
+                if n:match("anti") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("teleport") or n:match("wave") or n:match("safe") or n:match("camera") then
+                    sCount = sCount + 1
+                    AnalistaLog.Text = "  [1/3] Script #" .. sCount .. ": " .. s.Name
+                    table.insert(t, "  [" .. sCount .. "] " .. s:GetFullName() .. " (" .. s.ClassName .. ")")
                     if s:IsA("ModuleScript") then
-                        pcall(function()
-                            local modulo = require(s)
-                            if type(modulo) == "table" then
-                                local keys = {}
-                                for k, _ in pairs(modulo) do
-                                    table.insert(keys, tostring(k))
-                                end
-                                table.insert(t, "   [Funciones que Exporta el Módulo]: " .. table.concat(keys, ", "))
-                            end
-                        end)
-                    end
-
-                    -- DECOMPILADO COMPLETO AL FINAL (SI ESTÁ DISPONIBLE)
-                    pcall(function()
-                        if decompile then
-                            local src = decompile(s)
-                            if src and type(src) == "string" and src:len() > 10 then
-                                table.insert(t, "   [Código Fuente (Descompilado)]:")
-                                table.insert(t, "--------------------------------------------------")
-                                local truncate = src:sub(1, 4000)
-                                table.insert(t, truncate .. (src:len() > 4000 and "\n... (Y MAS CODIGO)" or ""))
-                                table.insert(t, "--------------------------------------------------")
-                            else
-                                table.insert(t, "   [No se pudo descompilar el script (Protegido o Inyector sin decompile)]")
-                            end
+                        local ok, mod = pcall(require, s)
+                        if ok and type(mod) == "table" then
+                            local keys = {}
+                            for k in pairs(mod) do table.insert(keys, tostring(k)) end
+                            table.insert(t, "      Funciones: " .. table.concat(keys, ", "))
                         else
-                             if not constsExtracted then
-                                table.insert(t, "   [Decompile / GetConstants No Soportados en el Inyector]")
-                             end
+                            table.insert(t, "      (require fallo o no es tabla)")
                         end
-                    end)
+                    end
+                    task.wait(0.05)
                 end
             end
         end
+        if sCount == 0 then table.insert(t, "  (ninguno encontrado)") end
         table.insert(t, "")
 
-        -- 2. INVESTIGACION DEL ESTADO MUNDIAL (AIRE Y SUBSUELO)
-        table.insert(t, "> [2] MAPEO ESTRUCTURAL CERCANO (Radio de 600 studs):")
-        local invisKills = 0
-        local boundsBlocks = 0
-        local dungeonPillars = 0
+        -- 2. MAPEO FISICO
+        AnalistaLog.Text = "  [2/3] Contando objetos..."
+        task.wait()
+        local allObjs = Workspace:GetDescendants()
+        local total = #allObjs
+        table.insert(t, "> [2] MAPEO FISICO CERCANO (600 studs) - Total mapa: " .. total .. " objs")
+        local invisBlocks, killBricks, barriers, cerca = 0, 0, 0, 0
 
-        for _, obj in pairs(Workspace:GetDescendants()) do
+        for i, obj in ipairs(allObjs) do
+            if i % 200 == 0 then
+                AnalistaLog.Text = "  [2/3] " .. math.floor(i/total*100) .. "% (" .. i .. "/" .. total .. ")"
+                task.wait()
+            end
             if obj:IsA("BasePart") then
-                local dist = (obj.Position - hrp.Position).Magnitude
-                if dist < 600 then
-                    -- Detectar paredes invisibles que bloquean la camara o el path
-                    if obj.Transparency == 1 and obj.CanCollide == true then
-                        boundsBlocks = boundsBlocks + 1
-                    end
-                    -- Identificar KillBricks
+                if (obj.Position - hrp.Position).Magnitude < 600 then
+                    cerca = cerca + 1
+                    if obj.Transparency == 1 and obj.CanCollide then invisBlocks = invisBlocks + 1 end
                     if obj:FindFirstChildOfClass("TouchTransmitter") then
-                        invisKills = invisKills + 1
-                        if obj.Position.Y > hrp.Position.Y + 20 then
-                            table.insert(t, "  - PELIGRO: KillBrick/Trigger Invisibe ARRIBA a: " .. math.floor(obj.Position.Y - hrp.Position.Y) .. " studs de altura.")
-                        elseif obj.Position.Y < hrp.Position.Y - 20 then
-                            table.insert(t, "  - PELIGRO: KillBrick/Trigger Invisible ABAJO a: " .. math.floor(hrp.Position.Y - obj.Position.Y) .. " studs de profundidad.")
+                        killBricks = killBricks + 1
+                        local relY = obj.Position.Y - hrp.Position.Y
+                        if math.abs(relY) > 15 then
+                            table.insert(t, "  KillBrick: " .. obj.Name .. " Y_rel=" .. math.floor(relY) .. "s @ " .. tostring(obj.Position))
                         end
                     end
-                    -- Buscar nombres extraños que indiquen zonas cerradas
-                    if obj.Name:lower():match("barrier") or obj.Name:lower():match("wall") or obj.Name:lower():match("tp") then
-                        dungeonPillars = dungeonPillars + 1
+                    local nm = obj.Name:lower()
+                    if nm:match("barrier") or nm:match("bound") or nm:match("wall") or nm:match("restrict") then
+                        barriers = barriers + 1
+                        table.insert(t, "  Barrera: " .. obj:GetFullName())
                     end
                 end
             end
         end
-        table.insert(t, "  - Bloques Invisibles de Contención detectados: " .. boundsBlocks)
-        table.insert(t, "  - Zonas de Toque Peligrosas (TouchInterest): " .. invisKills)
-        table.insert(t, "  - Partes nombradas como Barrera/Teleport: " .. dungeonPillars)
+        table.insert(t, "  Partes en radio 600: " .. cerca)
+        table.insert(t, "  Invisibles CanCollide: " .. invisBlocks)
+        table.insert(t, "  KillBricks: " .. killBricks)
+        table.insert(t, "  Barreras: " .. barriers)
         table.insert(t, "")
 
-        -- 3. ANALISIS DE RED (REMOTES)
-        table.insert(t, "> [3] RASTREO DE REMOTES POTENCIALMENTE OFUSCADOS (ReplicatedStorage):")
+        -- 3. REMOTES
+        AnalistaLog.Text = "  [3/3] Rastreando Remotes..."
+        task.wait()
+        table.insert(t, "> [3] TODOS LOS REMOTES (ReplicatedStorage):")
+        local rCount = 0
         for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
             if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local n = obj.Name:lower()
-                if n:match("dungeon") or n:match("damage") or n:match("hit") or n:match("zone") or n:match("kick") or n:match("ban") or n:match("kill") then
-                    table.insert(t, "  - Evento de red interesante: [" .. obj.ClassName .. "] -> " .. obj:GetFullName())
+                rCount = rCount + 1
+                table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
+                if rCount % 25 == 0 then
+                    AnalistaLog.Text = "  [3/3] Remotes: " .. rCount .. "..."
+                    task.wait()
                 end
             end
         end
+        table.insert(t, "  Total: " .. rCount)
         table.insert(t, "")
 
-        -- COMPILACION
-        table.insert(t, "================ RESUMEN DE DIAGNÓSTICO =================")
-        if invisKills > 0 then
-            table.insert(t, "Tienen TRIGGERS de daño arriba o abajo tuyo. ¡Por eso no te deja ponerte arriba o subterráneo! Trata de acercarte a nivel de suelo (OfsY=0).")
-        elseif boundsBlocks > 20 then
-            table.insert(t, "Tienen CAJAS de anti-noclip activas. El script no logra traspasarlas y choca.")
-        else
-            table.insert(t, "Es probable que haya un LocalScript que mida la altitud de la zona de forma agresiva.")
-        end
+        -- DIAGNOSTICO
+        table.insert(t, "================ DIAGNOSTICO =================")
+        if killBricks > 0 then table.insert(t, "! KILLBRICKS detectados (" .. killBricks .. "). Causa del fallo.") end
+        if invisBlocks > 20 then table.insert(t, "! " .. invisBlocks .. " bloques invisibles CanCollide. El bot choca.") end
+        if barriers > 0 then table.insert(t, "! " .. barriers .. " barreras detectadas.") end
+        table.insert(t, "Prueba los Remotes de Seccion 3 para ataques directos.")
 
+        -- GUARDAR
+        AnalistaLog.Text = "  Guardando..."
+        task.wait()
         local filename = "DungeonAnalysis_" .. tostring(os.time()) .. ".txt"
-        local suc, err = pcall(function()
-            if writefile then
-                writefile(filename, table.concat(t, "\n"))
-            end
+        local saved = false
+        pcall(function()
+            if writefile then writefile(filename, table.concat(t, "\n")); saved = true end
         end)
-
-        if suc and writefile then
-            AnalistaLog.Text = "  Exito: Guardado como " .. filename
+        if saved then
+            AnalistaLog.Text = "  ✅ Listo: " .. filename
         else
-            AnalistaLog.Text = "  ❌ Falló: Tu inyector no soporta writefile. Abre (F9) Consola."
-            for _, line in pairs(t) do
-                print(line)
-            end
+            AnalistaLog.Text = "  ⚠️ Sin writefile - ver F9"
+            for _, line in ipairs(t) do print(line) end
         end
         BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
     end)
