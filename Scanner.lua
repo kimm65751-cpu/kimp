@@ -1204,7 +1204,8 @@ task.spawn(function()
                                 -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
                                 -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
                                 local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                .Unit
+                                if flatLookDir.Magnitude < 0.001 then flatLookDir = Vector3.new(1,0,0) end
+                                flatLookDir = flatLookDir.Unit
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
 
                                 local currentFarmMode = FarmMode
@@ -1212,22 +1213,21 @@ task.spawn(function()
                                 
                                 if SmartCombatEnabled then
                                     local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or SmartCalib_Fruit
-                                    TargetCF = tHrp.CFrame * CFrame.new(0, -(currentOffset + 2), 0)
+                                    if currentFarmMode == "Arriba" then
+                                        TargetCF = flatMobCFrame * CFrame.new(0, currentOffset + 2, 0)
+                                    elseif currentFarmMode == "Detras" then
+                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, currentOffset + 2)
+                                    else
+                                        -- Abajo por defecto si usa otra cosa
+                                        TargetCF = flatMobCFrame * CFrame.new(0, -(currentOffset + 2), 0)
+                                    end
                                 else
                                     if currentFarmMode == "Arriba" then
-                                        if BlinkAttackEnabled then
-                                            TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                        else
-                                            TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, 0)
-                                        end
+                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
                                     elseif currentFarmMode == "Detras" then
-                                        if BlinkAttackEnabled then
-                                            TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
-                                        else
-                                            TargetCF = tHrp.CFrame * CFrame.new(0, 0, OfsZ)
-                                        end
+                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
                                     elseif currentFarmMode == "Abajo" then
-                                        TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
+                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
                                     end
                                 end
 
