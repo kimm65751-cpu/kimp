@@ -647,7 +647,7 @@ local function AddRadarLog(text, isBossAlert)
         -- 2. Guardar permanentemente en Disco (Live)
         if appendfile then
             local timeStamp = "[" .. os.date("%H:%M:%S") .. "] "
-            appendfile(BattleLogName, timeStamp .. text .. "\n")
+            pcall(function() appendfile(BattleLogName, timeStamp .. text .. "\n") end)
         end
     end)
 end
@@ -659,11 +659,106 @@ BtnClearRadar.MouseButton1Click:Connect(function()
     AddRadarLog(">>> Radar limpiado.", false)
 end)
 
+local function GetFloorY()
+    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return "Desconocido" end
+    local origin = LP.Character.HumanoidRootPart.Position
+    local dir = Vector3.new(0, -999, 0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LP.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+    local result = Workspace:Raycast(origin, dir, rayParams)
+    if result then
+        return math.floor(result.Position.Y)
+    else
+        return "Vacío"
+    end
+end
+
+-- ==========================================
+-- ANALIZADOR FORENSE (ENFOCADO AL JUGADOR)
+-- ==========================================
 task.spawn(function()
-    local LastBossName = ""
-    local BossRef = nil
+    
+    local LastFloor = nil
     
     Workspace.DescendantAdded:Connect(function(obj)
+        task.delay(0.05, function()
+            if obj:IsA("BasePart") then
+                local objPos = obj.Position
+                local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                
+                -- SI NACE EN EL JUGADOR O A MENOS DE 8 STUDS (TUS SKILLS / M1)
+                -- (Esto excluye ataques del Boss creados a 40 metros)
+                if obj:IsDescendantOf(LP.Character) or (objPos - hrp.Position).Magnitude < 10 then
+                    local name = obj.Name:lower()
+                    local isAttack = false
+                    
+                    if name:match("hitbox") or name:match("slash") or name:match("explosion") or name:match("shock") or name:match("hit") or name:match("wave") or name:match("vfx") then
+                        isAttack = true
+                    end
+                    
+                    local foundParticle = obj:FindFirstChildOfClass("ParticleEmitter")
+                    if foundParticle then isAttack = true end
+                    
+                    if isAttack then
+                        local size = obj.Size
+                        local maxD = math.max(size.X, size.Y, size.Z)
+                        
+                        if maxD >= 1 then
+                            local charY = math.floor(hrp.Position.Y)
+                            local objY = math.floor(objPos.Y)
+                            local topY = math.floor(objY + (size.Y/2))
+                            local botY = math.floor(objY - (size.Y/2))
+                            
+                            local floorY = GetFloorY()
+                            
+                            AddRadarLog("=====================================", false)
+                            AddRadarLog("🟢 TU SKILL/ARMA DETECTADA: " .. obj.Name, true)
+                            AddRadarLog("  - Dimensión Física: " .. math.floor(size.X) .. " x " .. math.floor(size.Y) .. " x " .. math.floor(size.Z) .. " studs", false)
+                            AddRadarLog("  - Tu RootPart estaba en Y=" .. charY, false)
+                            AddRadarLog("  - El Suelo (Piso Real) está en Y=" .. tostring(floorY), false)
+                            AddRadarLog("  - El ataque comenzó en: Y=" .. objY .. " (Centro)", false)
+                            AddRadarLog("  - Subió hasta el Techo: Y=" .. topY, false)
+                            AddRadarLog("  - Bajó hasta el Suelo : Y=" .. botY, false)
+                            
+                            local distArriba = topY - charY
+                            local distAbajo = charY - botY
+                            
+                            if distArriba > 0 then
+                                AddRadarLog("  ▶ Alcance hacia arriba tuyo: +" .. distArriba .. " studs", true)
+                            else
+                                AddRadarLog("  ▶ Alcance hacia arriba tuyo: NINGUNO (Explotó debajo)", false)
+                            end
+                            
+                            if distAbajo > 0 then
+                                AddRadarLog("  ▶ Alcance hacia abajo tuyo: -" .. distAbajo .. " studs", true)
+                            else
+                                AddRadarLog("  ▶ Alcance hacia abajo tuyo: NINGUNO (Explotó encima)", false)
+                            end
+                            AddRadarLog("=====================================", false)
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+    
+    while true do
+        task.wait(1)
+        if AutoFarm or true then -- Siempre encendido para que el jugador mida
+            pcall(function()
+                local cFloor = GetFloorY()
+                local cPlayerY = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and math.floor(LP.Character.HumanoidRootPart.Position.Y)
+                if cFloor ~= LastFloor and cPlayerY then
+                    LastFloor = cFloor
+                    AddRadarLog("🌎 TERRENO: Estás parado en Y=" .. cPlayerY .. " | Nivel del Piso= " .. tostring(cFloor), false)
+                end
+            end)
+        end
+    end
+end)
         if not AutoFarm then return end
         
         task.delay(0.1, function()
@@ -724,47 +819,7 @@ task.spawn(function()
         end)
     end)
     
-    while true do
-        task.wait(1)
-        if AutoFarm then
-            local mob = nil
-            pcall(function()
-                if GlobalMagnetTarget then
-                    for _, c in pairs(Workspace.NPCs:GetChildren()) do
-                        if c:FindFirstChild("HumanoidRootPart") and (c.HumanoidRootPart.Position - GlobalMagnetTarget).Magnitude < 5 then
-                            mob = c
-                            break
-                        end
-                    end
-                end
-            end)
-            
-            if mob then
-                local isBoss = mob.Name:lower():match("boss")
-                if isBoss and mob.Name ~= LastBossName then
-                    LastBossName = mob.Name
-                    BossRef = mob
-                    AddRadarLog("=====================================", false)
-                    AddRadarLog("⚔️ ENGAGING BOSS: " .. mob.Name, true)
-                    local hp = mob:FindFirstChild("Humanoid") and math.floor(mob.Humanoid.MaxHealth) or "?"
-                    AddRadarLog("❤️ Salud Máxima de Boss: " .. hp, true)
-                    local tool = mob:FindFirstChildOfClass("Tool")
-                    if tool then
-                        AddRadarLog("🗡️ Arma/Estilo: " .. tool.Name, true)
-                    end
-                    AddRadarLog("-> Rastreador de Skills activado.", false)
-                    AddRadarLog("=====================================", false)
-                elseif not isBoss then
-                    BossRef = nil
-                    LastBossName = ""
-                end
-            else
-                BossRef = nil
-                LastBossName = ""
-            end
-        end
-    end
-end)
+-- [ELIMINADO: Resto del boss tracking redundante. Analizador enfocado solo en el Jugador como solicitado.]
 
 -- =======================================================================================
 -- ========== VARIABLES COMPATIBILIDAD EXTERNA ==========
