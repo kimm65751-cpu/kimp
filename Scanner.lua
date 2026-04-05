@@ -802,6 +802,12 @@ pcall(function()
                         local args = {...}
                         local argStr = ""
                         for i, v in ipairs(args) do argStr = argStr .. tostring(v) .. (i < #args and ", " or "") end
+                        
+                        -- Set context for Route Builder
+                        if args[1] and type(args[1])=="string" then
+                            _G.CurrentIslandContext = args[1]
+                        end
+                        
                         table.insert(RouteLogs, "[REC-SPY] Remote Call: " .. tostring(self.Name) .. " (" .. method .. ") | Args: [" .. argStr .. "]")
                     end
                 end
@@ -857,6 +863,18 @@ BtnRecord.MouseButton1Click:Connect(function()
                                 bossesEnArea = bossesEnArea + 1
                                 local hp = m:FindFirstChild("Humanoid") and m.Humanoid.Health or "N/A"
                                 table.insert(RouteLogs, "      -> Boss Encontrado: " .. m.Name .. " (HP: " .. tostring(hp) .. ") en " .. tostring(m.HumanoidRootPart.Position))
+                                
+                                -- Auto inyectar en la ruta (si no existe)
+                                local existe = false
+                                for _, step in ipairs(_G.AutoHuntRoute) do
+                                    if step.Boss == m.Name and step.Island == _G.CurrentIslandContext then existe = true break end
+                                end
+                                if not existe then
+                                    table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = m.Name, DeadTime = 0, Cooldown = 300})
+                                    if HuntStatusInfo then
+                                        HuntStatusInfo.Text = "  ✅ Autoregistrado Boss: " .. m.Name .. "\n  Jefes cargados: " .. #_G.AutoHuntRoute
+                                    end
+                                end
                             end
                         end
                         if bossesEnArea == 0 then
@@ -880,7 +898,7 @@ BtnRecord.MouseButton1Click:Connect(function()
         pcall(function()
             if writefile then 
                 writefile(filename, table.concat(RouteLogs, "\n"))
-                RecStatusLabel.Text = "  ✅ Ruta guardada: " .. filename
+                RecStatusLabel.Text = "  ✅ Ruta básica txt guardada: " .. filename
             else
                 RecStatusLabel.Text = "  ⚠️ Sin writefile. F9 para ver ruta."
                 for _, log in ipairs(RouteLogs) do print(log) end
@@ -889,12 +907,68 @@ BtnRecord.MouseButton1Click:Connect(function()
     end
 end)
 
+-- =================  ADMINISTRADOR DE AUTO-CAZA  =================
+SectionLabel(CazadorPage, "RUTAS: AUTO-CAZADOR DE BOSSES", 9)
+
+_G.AutoHuntActive = false
+_G.AutoHuntRoute = {}
+_G.CurrentIslandContext = "Desconocido"
+
+local HuntStatusInfo = Instance.new("TextLabel", CazadorPage)
+HuntStatusInfo.Size = UDim2.new(0.95, 0, 0, 40)
+HuntStatusInfo.BackgroundTransparency = 1
+HuntStatusInfo.TextColor3 = C.muted
+HuntStatusInfo.Font = Enum.Font.GothamMedium
+HuntStatusInfo.TextSize = 12
+HuntStatusInfo.Text = "  Estado Cacería: Apagada\n  Jefes en Ruta Actual: 0"
+HuntStatusInfo.TextXAlignment = Enum.TextXAlignment.Left
+HuntStatusInfo.LayoutOrder = 10
+
+-- El botón estorboso manual de '+ Boss' fue removido. ¡El sistema lo hace solo al pisar la isla!
+local BtnStartHunt = ToggleButton(CazadorPage, "▶️ Iniciar Auto-Caza Múltiple", 12, C.card)
+BtnStartHunt.MouseButton1Click:Connect(function()
+    _G.AutoHuntActive = not _G.AutoHuntActive
+    BtnStartHunt.Text = _G.AutoHuntActive and "⏹️ Detener Auto-Caza Múltiple" or "▶️ Iniciar Auto-Caza Múltiple"
+    BtnStartHunt.BackgroundColor3 = _G.AutoHuntActive and C.accentOn or C.card
+    BtnStartHunt.TextColor3 = _G.AutoHuntActive and Color3.new(0,0,0) or C.text
+    if not _G.AutoHuntActive then
+        HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente.\n  Jefes cargados: " .. #_G.AutoHuntRoute
+        -- if auto farm was active by it, it will be turned off in the thread
+    else
+        HuntStatusInfo.Text = "  Estado Cacería: Iniciando motores..."
+    end
+end)
+
+local BtnSaveRoute = ToggleButton(CazadorPage, "💾 Guardar Perfil de Ruta a Disco", 13, C.bg)
+BtnSaveRoute.MouseButton1Click:Connect(function()
+    pcall(function()
+        local hs = game:GetService("HttpService")
+        local json = hs:JSONEncode(_G.AutoHuntRoute)
+        if writefile then writefile("SmartHuntRouteV1.json", json) end
+        HuntStatusInfo.Text = "  ✅ Perfil exportado a SmartHuntRouteV1.json"
+    end)
+end)
+
+local BtnLoadRoute = ToggleButton(CazadorPage, "📂 Cargar Perfil de Disco", 14, C.bg)
+BtnLoadRoute.MouseButton1Click:Connect(function()
+    pcall(function()
+        local hs = game:GetService("HttpService")
+        local data = ""
+        if readfile then data = readfile("SmartHuntRouteV1.json") end
+        local parsed = hs:JSONDecode(data)
+        if type(parsed)=="table" then
+            _G.AutoHuntRoute = parsed
+            HuntStatusInfo.Text = "  ✅ Perfil cargado exitosamente.\n  Jefes configurados: " .. #_G.AutoHuntRoute
+        end
+    end)
+end)
+
 -- =======================================================================================
--- ========== TAB 6: ANALIZADOR (FORENSE DE MAZMORRAS Y MAPAS) ==========
+-- ========== TAB 6: ANALIZADOR (FORENSE DE ISLAS, MAPAS Y JEFES) ==========
 -- =======================================================================================
 local AnalistaPage = MakeScrollPage("Analizador")
 
-SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAZMORRAS", 1)
+SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAPAS Y JEFES", 1)
 
 local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
 AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
@@ -902,7 +976,7 @@ AnalistaInfo.BackgroundTransparency = 1
 AnalistaInfo.TextColor3 = C.muted
 AnalistaInfo.Font = Enum.Font.GothamMedium
 AnalistaInfo.TextSize = 11
-AnalistaInfo.Text = "  Rastrea por qué falla el Auto-Farm en Mazmorras.\n  Detecta Bloques Invisibles, Anti-Teleports (Scripts),\n  Rutas de Red y KillBricks en el subsuelo y aire."
+AnalistaInfo.Text = "  Extrae todos los scripts de las islas, remotes, posiciones,\n  portales de teletransportación y datos de Jefes (Bosses).\n  Guarda todo en un archivo txt en tu carpeta local."
 AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
@@ -1067,7 +1141,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         -- GUARDAR
         AnalistaLog.Text = "  Guardando..."
         task.wait()
-        local filename = "DungeonAnalysis_" .. tostring(os.time()) .. ".txt"
+        local filename = "IslandBossAnalysis_" .. tostring(os.time()) .. ".txt"
         local saved = false
         pcall(function()
             if writefile then writefile(filename, table.concat(t, "\n")); saved = true end
@@ -2085,6 +2159,96 @@ end)
 
 task.spawn(LoadConfig)
 
-
-
+-- =========================================================================
+-- MOTOR INTELIGENTE DE AUTO-CAZA
+-- =========================================================================
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.AutoHuntActive and _G.AutoHuntRoute and #_G.AutoHuntRoute > 0 then
+            local currentClock = os.time()
+            local targetStep = nil
+            
+            -- 1. Identificar Boss listo (cooldown 5 mins superado)
+            for _, step in ipairs(_G.AutoHuntRoute) do
+                local dt = step.DeadTime or 0
+                local cd = step.Cooldown or 300
+                if (currentClock - dt) >= cd then
+                    targetStep = step
+                    break
+                end
+            end
+            
+            if targetStep then
+                local bossAlive = false
+                local bossChar = nil
+                
+                -- Chequeo visual en el server/isla actual
+                for _, m in pairs(GetMobCache()) do
+                    if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                        bossAlive = true
+                        bossChar = m
+                        break
+                    end
+                end
+                
+                if bossAlive then
+                    -- ================== FASE 3: Combate ==================
+                    _G.GhostProtocolEnabled = true
+                    FarmMode = "Subterraneo"
+                    
+                    -- Limpiamos matriz de radar y definimos EXACTAMENTE a este Jefe
+                    while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
+                    table.insert(ScannedTargetNames, targetStep.Boss)
+                    
+                    -- Encendemos autofarm si no está encendido
+                    if not AutoFarm then pcall(ToggleAutoFarm) end
+                    
+                    -- Esperamos hasta que muera el boss
+                    while bossAlive and _G.AutoHuntActive do
+                        task.wait(1.5)
+                        bossAlive = false
+                        for _, m in pairs(GetMobCache()) do
+                            if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                                bossAlive = true
+                                break
+                            end
+                        end
+                    end
+                    
+                    -- Murió (O apagaron el cazador)
+                    if not bossAlive then
+                         targetStep.DeadTime = os.time()
+                         if AutoFarm then pcall(ToggleAutoFarm) end -- Apagamos el Autofarm estándar en transición
+                         task.wait(3)
+                    end
+                else
+                    -- ================== FASE 2: Navegación Viajera ==================
+                    -- Forzamos Teleport Mágico (Bypass de Red) sin necesidad de GUI
+                    local rs = game:GetService("ReplicatedStorage")
+                    pcall(function()
+                        if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
+                             rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                        end
+                    end)
+                    task.wait(6) -- Esperamos pantalla de carga (6 segundos)
+                    
+                    -- Re-Chequeo tras 6 segundos por si recién spawnearon los modelos
+                    local postAlive = false
+                    for _, m in pairs(GetMobCache()) do
+                        if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                            postAlive = true
+                            break
+                        end
+                    end
+                    
+                    -- Si NO está despues de viajar, otra persona en el servidor lo mató antes
+                    if not postAlive then
+                         targetStep.DeadTime = os.time()
+                    end
+                end
+            end
+        end
+    end
+end)
 
