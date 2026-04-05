@@ -811,12 +811,74 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "==================================================\n")
 
         -- 1. ANALISIS DE LOCAL SCRIPTS
-        table.insert(t, "> [1] DETECCIÓN DE SCRIPTS ANTI-HACK / ANTI-OCULTAMIENTO (PlayerScripts):")
+        table.insert(t, "> [1] DETECCIÓN DE SCRIPTS ANTI-HACK / ANTI-OCULTAMIENTO (PlayerScripts) + DUMP:")
         for _, s in pairs(LP.PlayerScripts:GetDescendants()) do
             if s:IsA("LocalScript") or s:IsA("ModuleScript") then
                 local n = s.Name:lower()
                 if n:match("anti") or n:match("cheat") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("camera") or n:match("teleport") then
-                    table.insert(t, "  - ALARMA: Encontrado script crítico -> " .. s:GetFullName())
+                    table.insert(t, "\n  === ARCHIVO CÓDIGO/MÓDULO: " .. s:GetFullName() .. " (" .. s.ClassName .. ") ===")
+                    
+                    -- EXTRAER CONSTANTES / HUECOS (STRINGS)
+                    local constsExtracted = false
+                    pcall(function()
+                        if getgc and getconstants and type(getgc) == "function" then
+                            local foundStr = {}
+                            local added = {}
+                            for _, v in pairs(getgc(true)) do
+                                if type(v) == "function" and islclosure(v) and getfenv(v).script == s then
+                                    for _, const in pairs(getconstants(v)) do
+                                        if type(const) == "string" and const:len() > 2 then
+                                            local cl = const:lower()
+                                            if not added[const] then
+                                                if cl:match("remote") or cl:match("ban") or cl:match("kick") or cl:match("fire") or cl:match("admin") or cl:match("check") or cl:match("kill") or cl:match("dungeon") then
+                                                    table.insert(foundStr, const)
+                                                    added[const] = true
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            if #foundStr > 0 then
+                                table.insert(t, "   [Rutas/Palabras Claves Internas Descubiertas]: " .. table.concat(foundStr, ", "))
+                                constsExtracted = true
+                            end
+                        end
+                    end)
+
+                    -- DUMP DE MODULE (SI ES MODULO)
+                    if s:IsA("ModuleScript") then
+                        pcall(function()
+                            local modulo = require(s)
+                            if type(modulo) == "table" then
+                                local keys = {}
+                                for k, _ in pairs(modulo) do
+                                    table.insert(keys, tostring(k))
+                                end
+                                table.insert(t, "   [Funciones que Exporta el Módulo]: " .. table.concat(keys, ", "))
+                            end
+                        end)
+                    end
+
+                    -- DECOMPILADO COMPLETO AL FINAL (SI ESTÁ DISPONIBLE)
+                    pcall(function()
+                        if decompile then
+                            local src = decompile(s)
+                            if src and type(src) == "string" and src:len() > 10 then
+                                table.insert(t, "   [Código Fuente (Descompilado)]:")
+                                table.insert(t, "--------------------------------------------------")
+                                local truncate = src:sub(1, 4000)
+                                table.insert(t, truncate .. (src:len() > 4000 and "\n... (Y MAS CODIGO)" or ""))
+                                table.insert(t, "--------------------------------------------------")
+                            else
+                                table.insert(t, "   [No se pudo descompilar el script (Protegido o Inyector sin decompile)]")
+                            end
+                        else
+                             if not constsExtracted then
+                                table.insert(t, "   [Decompile / GetConstants No Soportados en el Inyector]")
+                             end
+                        end
+                    end)
                 end
             end
         end
@@ -1035,42 +1097,33 @@ end)
 local TargetMobsCache = {}
 local LastCacheTime = 0
 
-local function GetMobCache()
+function GetMobCache()
     if os.clock() - LastCacheTime > 2.5 then
         LastCacheTime = os.clock()
-        local folders = {}
-        if NPCsFolder then table.insert(folders, NPCsFolder) end
+        local newCache = {}
+        
         pcall(function()
-            for _, child in pairs(Workspace:GetChildren()) do
-                if child:IsA("Folder") or child:IsA("Model") then
-                    local n = child.Name:lower()
-                    if n:match("mob") or n:match("enem") or n:match("monster") or n:match("living") or n:match("spawn") or n:match("boss") then
-                        if child ~= NPCsFolder then
-                            table.insert(folders, child)
+            for _, mob in pairs(Workspace:GetDescendants()) do
+                if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                    if mob.Humanoid.Health > 0 then
+                        local n = mob.Name:lower()
+                        if not n:match("dummy") and not n:match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
+                            -- Confirmar que no sea un Jugador
+                            if not game.Players:GetPlayerFromCharacter(mob) then
+                                table.insert(newCache, mob)
+                            end
                         end
                     end
                 end
             end
         end)
-
-        local newCache = {}
-        for _, folder in pairs(folders) do
-            pcall(function()
-                for _, mob in pairs(folder:GetDescendants()) do
-                    if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-                        if not mob.Name:lower():match("dummy") and not mob.Name:lower():match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
-                            table.insert(newCache, mob)
-                        end
-                    end
-                end
-            end)
-        end
+        
         TargetMobsCache = newCache
     end
     return TargetMobsCache
 end
 
-local function GetNearestMob()
+function GetNearestMob()
     local nearestDist = math.huge
     local nearestMob = nil
     local char = LP.Character
