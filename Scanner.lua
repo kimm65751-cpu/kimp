@@ -47,18 +47,18 @@ SG.Parent = TargetGui
 
 -- ======================== PALETA DE COLORES SUAVES ========================
 local C = {
-    bg       = Color3.fromRGB(22, 24, 30),
-    sidebar  = Color3.fromRGB(28, 30, 38),
-    panel    = Color3.fromRGB(30, 33, 42),
-    accent   = Color3.fromRGB(100, 130, 255),
-    accentOn = Color3.fromRGB(90, 210, 140),
-    accentOff= Color3.fromRGB(60, 65, 80),
-    red      = Color3.fromRGB(200, 80, 90),
-    title    = Color3.fromRGB(180, 190, 230),
-    text     = Color3.fromRGB(200, 205, 220),
-    muted    = Color3.fromRGB(110, 115, 135),
-    card     = Color3.fromRGB(38, 42, 55),
-    border   = Color3.fromRGB(55, 60, 80),
+    bg        = Color3.fromRGB(22, 24, 30),
+    sidebar   = Color3.fromRGB(28, 30, 38),
+    panel     = Color3.fromRGB(30, 33, 42),
+    accent    = Color3.fromRGB(100, 130, 255),
+    accentOn  = Color3.fromRGB(90, 210, 140),
+    accentOff = Color3.fromRGB(60, 65, 80),
+    red       = Color3.fromRGB(200, 80, 90),
+    title     = Color3.fromRGB(180, 190, 230),
+    text      = Color3.fromRGB(200, 205, 220),
+    muted     = Color3.fromRGB(110, 115, 135),
+    card      = Color3.fromRGB(38, 42, 55),
+    border    = Color3.fromRGB(55, 60, 80),
 }
 
 -- ======================== CONTENEDOR PRINCIPAL ========================
@@ -82,14 +82,15 @@ local function SaveConfig()
     if writefile then
         local data = {
             ScannedTargetName = ScannedTargetName,
-            ScannedTargetPos = ScannedTargetPos and {X=ScannedTargetPos.X, Y=ScannedTargetPos.Y, Z=ScannedTargetPos.Z} or nil,
+            ScannedTargetPos = ScannedTargetPos and { X = ScannedTargetPos.X, Y = ScannedTargetPos.Y, Z =
+            ScannedTargetPos.Z } or nil,
             PanicThreshold = PanicThreshold,
             ReturnHealthThreshold = ReturnHealthThreshold,
             MobMagnetEnabled = MobMagnetEnabled,
             AutoSkillEnabled = AutoSkillEnabled,
             TargetBosses = TargetBosses,
             FarmMode = FarmMode,
-            MemoryPoint = MemoryPoint and {X=MemoryPoint.X, Y=MemoryPoint.Y, Z=MemoryPoint.Z} or nil
+            MemoryPoint = MemoryPoint and { X = MemoryPoint.X, Y = MemoryPoint.Y, Z = MemoryPoint.Z } or nil
         }
         pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
     end
@@ -169,7 +170,7 @@ local function MakeTabBtn(icon, tabName, order)
     tb.Text = icon
     tb.TextSize = 20
     tb.Font = Enum.Font.GothamBold
-    tb.TextColor3 = Color3.new(1,1,1)
+    tb.TextColor3 = Color3.new(1, 1, 1)
     tb.LayoutOrder = order
     tb.BorderSizePixel = 0
     tb.Name = "Tab_" .. tabName
@@ -178,15 +179,16 @@ local function MakeTabBtn(icon, tabName, order)
 end
 
 local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
-local TabMem  = MakeTabBtn("📍", "Memoria", 2)
+local TabMem = MakeTabBtn("📍", "Memoria", 2)
 local TabExtras = MakeTabBtn("🍎", "Extras", 3)
+local TabRadar = MakeTabBtn("🕵️", "Radar", 4)
 
 -- ======================== PANEL DE CONTENIDO ========================
-local ContentPanel = Instance.new("Frame", MF)
-ContentPanel.Size = UDim2.new(1, -62, 1, -60)
-ContentPanel.Position = UDim2.new(0, 60, 0, 58)
-ContentPanel.BackgroundColor3 = C.panel
-ContentPanel.BorderSizePixel = 0
+local ContentPanel                                  = Instance.new("Frame", MF)
+ContentPanel.Size                                   = UDim2.new(1, -62, 1, -60)
+ContentPanel.Position                               = UDim2.new(0, 60, 0, 58)
+ContentPanel.BackgroundColor3                       = C.panel
+ContentPanel.BorderSizePixel                        = 0
 Instance.new("UICorner", ContentPanel).CornerRadius = UDim.new(0, 8)
 
 -- ======================== UTILIDADES DE UI ========================
@@ -225,6 +227,7 @@ end
 TabFarm.MouseButton1Click:Connect(function() SwitchTab("Farm") end)
 TabMem.MouseButton1Click:Connect(function() SwitchTab("Memoria") end)
 TabExtras.MouseButton1Click:Connect(function() SwitchTab("Extras") end)
+TabRadar.MouseButton1Click:Connect(function() SwitchTab("Radar") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -259,13 +262,13 @@ end
 local FarmPage = MakeScrollPage("Farm")
 
 SectionLabel(FarmPage, "COMBATE", 1)
-local BtnToggle = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
+local BtnToggle    = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
 BtnToggle.TextSize = 15
-BtnToggle.Font = Enum.Font.GothamBold
-local BtnHeight = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
-local BtnMagnet = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
-local BtnSkill  = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
-local BtnBoss   = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
+BtnToggle.Font     = Enum.Font.GothamBold
+local BtnHeight    = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
+local BtnMagnet    = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
+local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
+local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -341,7 +344,8 @@ MemInfoLabel.BackgroundTransparency = 1
 MemInfoLabel.TextColor3 = Color3.fromRGB(90, 95, 110)
 MemInfoLabel.Font = Enum.Font.Gotham
 MemInfoLabel.TextSize = 11
-MemInfoLabel.Text = "  Presiona M para guardar tu posición actual.\n  Si mueres y no hay mobs por 10s, caminarás\n  lento hasta ese punto automáticamente."
+MemInfoLabel.Text =
+"  Presiona M para guardar tu posición actual.\n  Si mueres y no hay mobs por 10s, caminarás\n  lento hasta ese punto automáticamente."
 MemInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
 MemInfoLabel.TextWrapped = true
 MemInfoLabel.LayoutOrder = 3
@@ -361,7 +365,8 @@ FruitStatusLabel.BackgroundTransparency = 1
 FruitStatusLabel.TextColor3 = C.muted
 FruitStatusLabel.Font = Enum.Font.GothamMedium
 FruitStatusLabel.TextSize = 11
-FruitStatusLabel.Text = "  Compra frutas con monedas hasta obtener Quake o Light.\n  Las frutas que no sirven se tiran automáticamente."
+FruitStatusLabel.Text =
+"  Compra frutas con monedas hasta obtener Quake o Light.\n  Las frutas que no sirven se tiran automáticamente."
 FruitStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 FruitStatusLabel.TextWrapped = true
 FruitStatusLabel.LayoutOrder = 2
@@ -377,7 +382,7 @@ FruitLogLabel.TextXAlignment = Enum.TextXAlignment.Left
 FruitLogLabel.LayoutOrder = 3
 
 local AutoFruitBuying = false
-local DesiredFruits = {["Quake"] = true, ["Light"] = true}
+local DesiredFruits = { ["Quake"] = true, ["Light"] = true }
 
 local BtnAutoFruit = ToggleButton(ExtrasPage, "🍎 Comprar Frutas (Monedas)", 4, Color3.fromRGB(60, 40, 20))
 local BtnStopFruit = ToggleButton(ExtrasPage, "⏹ Detener", 5, C.red)
@@ -389,7 +394,8 @@ FruitDesireInfo.BackgroundColor3 = C.card
 FruitDesireInfo.TextColor3 = C.text
 FruitDesireInfo.Font = Enum.Font.Code
 FruitDesireInfo.TextSize = 11
-FruitDesireInfo.Text = "  Buscando: Quake, Light\n  Rates: Common=50% Uncommon=30% Rare=13% Epic=5% Legendary=2%\n  Ambos dealers tienen las MISMAS frutas"
+FruitDesireInfo.Text =
+"  Buscando: Quake, Light\n  Rates: Common=50% Uncommon=30% Rare=13% Epic=5% Legendary=2%\n  Ambos dealers tienen las MISMAS frutas"
 FruitDesireInfo.TextXAlignment = Enum.TextXAlignment.Left
 FruitDesireInfo.TextWrapped = true
 FruitDesireInfo.LayoutOrder = 7
@@ -432,10 +438,11 @@ local function DropFruitTool(fruitTool)
     if not char then return end
     local hum = char:FindFirstChild("Humanoid")
     if not hum then return end
-    
+
     -- Try remote drop
     pcall(function()
-        local dropRemote = ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("DropFruit")
+        local dropRemote = ReplicatedStorage:FindFirstChild("RemoteEvents") and
+        ReplicatedStorage.RemoteEvents:FindFirstChild("DropFruit")
         if dropRemote then
             local fruitData = fruitTool:FindFirstChild("FruitData")
             if fruitData then
@@ -444,7 +451,7 @@ local function DropFruitTool(fruitTool)
         end
     end)
     task.wait(0.3)
-    
+
     -- If still in backpack, equip and try dropping again
     if fruitTool.Parent == LP.Backpack then
         hum:EquipTool(fruitTool)
@@ -465,23 +472,23 @@ task.spawn(function()
     while true do
         task.wait(0.5)
         if not AutoFruitBuying then continue end
-        
+
         local dealer = FindCoinDealer()
         if not dealer then
             FruitLogLabel.Text = "  ERROR: CoinFruitDealer no encontrado"
             AutoFruitBuying = false
             continue
         end
-        
+
         local prompt = GetFruitPrompt(dealer)
         if not prompt then
             FruitLogLabel.Text = "  ERROR: Prompt no encontrado"
             AutoFruitBuying = false
             continue
         end
-        
+
         FruitLogLabel.Text = "  Comprando fruta..."
-        
+
         pcall(function()
             if fireproximityprompt then
                 fireproximityprompt(prompt)
@@ -491,9 +498,9 @@ task.spawn(function()
                 prompt:InputHoldEnd()
             end
         end)
-        
+
         task.wait(1.5)
-        
+
         local foundDesired = false
         -- REVISAR INVENTARIO
         for _, tool in pairs(LP.Backpack:GetChildren()) do
@@ -504,7 +511,7 @@ task.spawn(function()
                     local fname = fruitModel.Value
                     local rarity = tool:FindFirstChild("Rarity")
                     local rarStr = rarity and rarity.Value or "?"
-                    
+
                     if DesiredFruits[fname] then
                         foundDesired = true
                         FruitLogLabel.Text = "  ENCONTRADA: " .. fname .. " (" .. rarStr .. ") - DETENIENDO"
@@ -520,7 +527,7 @@ task.spawn(function()
                 end
             end
         end
-        
+
         -- REVISAR HERRAMIENTA EN MANO
         if not foundDesired and LP.Character then
             for _, tool in pairs(LP.Character:GetChildren()) do
@@ -545,7 +552,7 @@ task.spawn(function()
                 end
             end
         end
-        
+
         task.wait(1)
     end
 end)
@@ -570,6 +577,188 @@ BtnStopFruit.MouseButton1Click:Connect(function()
     BtnAutoFruit.Text = "  🍎 Comprar Frutas (Monedas)"
     FruitLogLabel.Text = "  Detenido"
     FruitLogLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+end)
+
+-- =======================================================================================
+-- ========== TAB 4: RADAR FORENSE DE BATALLA (BOSS ESP & AOE) ==========
+-- =======================================================================================
+local RadarPage = MakeScrollPage("Radar")
+
+SectionLabel(RadarPage, "MONITOR DE BATALLA (LIVE)", 1)
+
+local RadarStatus = Instance.new("TextLabel", RadarPage)
+RadarStatus.Size = UDim2.new(0.95, 0, 0, 30)
+RadarStatus.BackgroundTransparency = 1
+RadarStatus.TextColor3 = C.muted
+RadarStatus.Font = Enum.Font.GothamMedium
+RadarStatus.TextSize = 11
+RadarStatus.Text = "  Analizando habilidades de Bosses y Area of Effect (AoE) en tiempo real..."
+RadarStatus.TextXAlignment = Enum.TextXAlignment.Left
+RadarStatus.TextWrapped = true
+RadarStatus.LayoutOrder = 2
+
+local BtnClearRadar = ToggleButton(RadarPage, "🗑️ Limpiar Log de Batalla", 3, C.card)
+
+local RadarLogFrame = Instance.new("Frame", RadarPage)
+RadarLogFrame.Size = UDim2.new(0.95, 0, 0, 300)
+RadarLogFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 22)
+RadarLogFrame.BorderSizePixel = 0
+RadarLogFrame.LayoutOrder = 4
+Instance.new("UICorner", RadarLogFrame).CornerRadius = UDim.new(0, 6)
+
+local RadarScroll = Instance.new("ScrollingFrame", RadarLogFrame)
+RadarScroll.Size = UDim2.new(1, -10, 1, -10)
+RadarScroll.Position = UDim2.new(0, 5, 0, 5)
+RadarScroll.BackgroundTransparency = 1
+RadarScroll.ScrollBarThickness = 3
+RadarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+RadarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local RList = Instance.new("UIListLayout", RadarScroll)
+RList.Padding = UDim.new(0, 2)
+
+local BattleLogName = "BattleLog_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
+pcall(function() if writefile then writefile(BattleLogName, "=== INICIO DE LOG DE BATALLA ===\n") end end)
+
+local function AddRadarLog(text, isBossAlert)
+    pcall(function()
+        -- 1. Escribir en la UI Local
+        local lbl = Instance.new("TextLabel", RadarScroll)
+        lbl.Size = UDim2.new(1, 0, 0, 16)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.Code
+        lbl.TextSize = 11
+        lbl.Text = " " .. text
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextColor3 = isBossAlert and Color3.fromRGB(240, 100, 100) or Color3.fromRGB(180, 220, 255)
+        
+        task.delay(0.05, function()
+            RadarScroll.CanvasPosition = Vector2.new(0, RList.AbsoluteContentSize.Y)
+        end)
+        
+        if #RadarScroll:GetChildren() > 50 then
+            for i, child in ipairs(RadarScroll:GetChildren()) do
+                if child:IsA("TextLabel") and i < 10 then child:Destroy() end
+            end
+        end
+        
+        -- 2. Guardar permanentemente en Disco (Live)
+        if appendfile then
+            local timeStamp = "[" .. os.date("%H:%M:%S") .. "] "
+            appendfile(BattleLogName, timeStamp .. text .. "\n")
+        end
+    end)
+end
+
+BtnClearRadar.MouseButton1Click:Connect(function()
+    for _, child in pairs(RadarScroll:GetChildren()) do
+        if child:IsA("TextLabel") then child:Destroy() end
+    end
+    AddRadarLog(">>> Radar limpiado.", false)
+end)
+
+task.spawn(function()
+    local LastBossName = ""
+    local BossRef = nil
+    
+    Workspace.DescendantAdded:Connect(function(obj)
+        if not AutoFarm then return end
+        
+        task.delay(0.1, function()
+            if obj:IsA("BasePart") then
+                local isAttack = false
+                local name = obj.Name:lower()
+                
+                if name:match("hitbox") or name:match("slash") or name:match("explosion") or name:match("shock") or name:match("attack") or name:match("effect") then
+                    isAttack = true
+                end
+                
+                -- Chequear ParticleEmitters para mayor precisón de los nombres "VFX"
+                local foundParticle = obj:FindFirstChildOfClass("ParticleEmitter")
+                if foundParticle and (foundParticle.Name:lower():match("flame") or foundParticle.Name:lower():match("slash") or foundParticle.Name:lower():match("shock")) then
+                    isAttack = true
+                end
+                
+                if isAttack then
+                    local size = obj.Size
+                    local maxD = math.max(size.X, size.Y, size.Z)
+                    
+                    if maxD > 5 then
+                        local charY = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and math.floor(LP.Character.HumanoidRootPart.Position.Y) or 0
+                        local objY = math.floor(obj.Position.Y)
+                        local topY = math.floor(objY + (size.Y/2))
+                        local botY = math.floor(objY - (size.Y/2))
+                        
+                        local origin = "Ambiental/NPC"
+                        if obj:IsDescendantOf(LP.Character) then
+                            origin = "PLAYER (TUS SKILLS)"
+                        elseif BossRef and (obj:IsDescendantOf(BossRef) or (BossRef:FindFirstChild("HumanoidRootPart") and (obj.Position - BossRef.HumanoidRootPart.Position).Magnitude < 30)) then
+                            origin = "BOSS: " .. BossRef.Name
+                        end
+                        
+                        local inDanger = (origin ~= "PLAYER (TUS SKILLS)") and (charY >= botY and charY <= topY)
+                        local dangerStr = ""
+                        
+                        -- Evaluando rango de la hitbox
+                        if origin == "PLAYER (TUS SKILLS)" then
+                            dangerStr = "[Tú atacas: Alcanza hasta " .. math.floor(topY - charY) .. " studs arriba de ti]"
+                        elseif inDanger then
+                            dangerStr = "[⚠ PELIGRO: Altura Cruzada]"
+                        elseif charY > topY then
+                            dangerStr = "[Seguro: Hitbox pasa " .. math.floor(charY - topY) .. " studs debajo de ti]"
+                        else
+                            dangerStr = "[Seguro: Hitbox pasa " .. math.floor(botY - charY) .. " studs arriba tuyo]"
+                        end
+                        
+                        AddRadarLog("> DETECTADO: " .. obj.Name .. " (" .. origin .. ")", inDanger)
+                        AddRadarLog("  - Dimensión Max: " .. math.floor(maxD) .. " studs", false)
+                        AddRadarLog("  - Alturas Y: Top=" .. topY .. " | Bot=" .. botY .. " | PlayerY=" .. charY, false)
+                        AddRadarLog("  - " .. dangerStr, inDanger)
+                    end
+                end
+            end
+        end)
+    end)
+    
+    while true do
+        task.wait(1)
+        if AutoFarm then
+            local mob = nil
+            pcall(function()
+                if GlobalMagnetTarget then
+                    for _, c in pairs(Workspace.NPCs:GetChildren()) do
+                        if c:FindFirstChild("HumanoidRootPart") and (c.HumanoidRootPart.Position - GlobalMagnetTarget).Magnitude < 5 then
+                            mob = c
+                            break
+                        end
+                    end
+                end
+            end)
+            
+            if mob then
+                local isBoss = mob.Name:lower():match("boss")
+                if isBoss and mob.Name ~= LastBossName then
+                    LastBossName = mob.Name
+                    BossRef = mob
+                    AddRadarLog("=====================================", false)
+                    AddRadarLog("⚔️ ENGAGING BOSS: " .. mob.Name, true)
+                    local hp = mob:FindFirstChild("Humanoid") and math.floor(mob.Humanoid.MaxHealth) or "?"
+                    AddRadarLog("❤️ Salud Máxima de Boss: " .. hp, true)
+                    local tool = mob:FindFirstChildOfClass("Tool")
+                    if tool then
+                        AddRadarLog("🗡️ Arma/Estilo: " .. tool.Name, true)
+                    end
+                    AddRadarLog("-> Rastreador de Skills activado.", false)
+                    AddRadarLog("=====================================", false)
+                elseif not isBoss then
+                    BossRef = nil
+                    LastBossName = ""
+                end
+            else
+                BossRef = nil
+                LastBossName = ""
+            end
+        end
+    end
 end)
 
 -- =======================================================================================
@@ -606,7 +795,7 @@ local CodeBackBtn = Instance.new("TextButton", CodesFrame)
 CodeBackBtn.Size = UDim2.new(0.4, 0, 0, 25)
 CodeBackBtn.Position = UDim2.new(0.05, 0, 0, 315)
 CodeBackBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 30)
-CodeBackBtn.TextColor3 = Color3.new(1,1,1)
+CodeBackBtn.TextColor3 = Color3.new(1, 1, 1)
 CodeBackBtn.Font = Enum.Font.Gotham
 CodeBackBtn.TextSize = 12
 CodeBackBtn.Text = "Cerrar"
@@ -615,7 +804,7 @@ local CopyAllBtn = Instance.new("TextButton", CodesFrame)
 CopyAllBtn.Size = UDim2.new(0.4, 0, 0, 25)
 CopyAllBtn.Position = UDim2.new(0.55, 0, 0, 315)
 CopyAllBtn.BackgroundColor3 = Color3.fromRGB(20, 100, 40)
-CopyAllBtn.TextColor3 = Color3.new(1,1,1)
+CopyAllBtn.TextColor3 = Color3.new(1, 1, 1)
 CopyAllBtn.Font = Enum.Font.Gotham
 CopyAllBtn.TextSize = 11
 CopyAllBtn.Text = "Copiar Todos"
@@ -641,11 +830,11 @@ end)
 BtnCodes.MouseButton1Click:Connect(function()
     MF.Visible = false
     CodesFrame.Visible = true
-    
+
     for _, child in pairs(CodesScroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
-    
+
     local ok, conf = pcall(function() return require(ReplicatedStorage:WaitForChild("CodesConfig", 2)) end)
     local allCodesStr = ""
     if ok and conf and conf.Codes then
@@ -653,29 +842,29 @@ BtnCodes.MouseButton1Click:Connect(function()
         for codeName, data in pairs(conf.Codes) do
             num = num + 1
             allCodesStr = allCodesStr .. codeName .. "\n"
-            
+
             local cFrame = Instance.new("Frame", CodesScroll)
             cFrame.Size = UDim2.new(1, 0, 0, 35)
             cFrame.BackgroundTransparency = 1
-            
+
             local cLabel = Instance.new("TextLabel", cFrame)
             cLabel.Size = UDim2.new(0.7, 0, 1, 0)
             cLabel.BackgroundTransparency = 1
             cLabel.Text = " " .. codeName
-            cLabel.TextColor3 = Color3.new(1,1,1)
+            cLabel.TextColor3 = Color3.new(1, 1, 1)
             cLabel.Font = Enum.Font.Code
             cLabel.TextSize = 12
             cLabel.TextXAlignment = Enum.TextXAlignment.Left
-            
+
             local cCopy = Instance.new("TextButton", cFrame)
             cCopy.Size = UDim2.new(0.25, 0, 0.7, 0)
             cCopy.Position = UDim2.new(0.7, 0, 0.15, 0)
-            cCopy.BackgroundColor3 = Color3.fromRGB(40,40,60)
-            cCopy.TextColor3 = Color3.new(1,1,1)
+            cCopy.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+            cCopy.TextColor3 = Color3.new(1, 1, 1)
             cCopy.Font = Enum.Font.Gotham
             cCopy.TextSize = 11
             cCopy.Text = "Copiar"
-            
+
             cCopy.MouseButton1Click:Connect(function()
                 if setclipboard then
                     setclipboard(codeName)
@@ -691,7 +880,7 @@ BtnCodes.MouseButton1Click:Connect(function()
         local err = Instance.new("TextLabel", CodesScroll)
         err.Size = UDim2.new(1, 0, 0, 50)
         err.BackgroundTransparency = 1
-        err.TextColor3 = Color3.new(1,0,0)
+        err.TextColor3 = Color3.new(1, 0, 0)
         err.Text = "No se pudieron obtener los códigos."
     end
 end)
@@ -726,7 +915,7 @@ local function GetMobCache()
                 end
             end
         end)
-        
+
         local newCache = {}
         for _, folder in pairs(folders) do
             pcall(function()
@@ -755,7 +944,7 @@ local function GetNearestMob()
     for _, mob in ipairs(cache) do
         local allow = false
         local isBoss = mob.Name:lower():match("boss")
-        
+
         if ScannedTargetName then
             if mob.Name == ScannedTargetName then allow = true end
         else
@@ -767,7 +956,7 @@ local function GetNearestMob()
                 allow = true
             end
         end
-        
+
         if allow and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
             local tHrp = mob:FindFirstChild("HumanoidRootPart")
             if tHrp then
@@ -791,12 +980,12 @@ RunService.Stepped:Connect(function()
                 part.CanCollide = false
             end
         end
-        
+
         -- 2. Anti Gravedad solo en AutoFarm (no durante caminata)
         if AutoFarm and not IsWalkingToMemory then
             local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                hrp.Velocity = Vector3.new(0,0,0)
+                hrp.Velocity = Vector3.new(0, 0, 0)
             end
         end
     end
@@ -807,7 +996,7 @@ task.spawn(function()
     local LastMobTracker = nil
     local CurrentMobHealth = -1
     local MobHitTimer = os.clock()
-    
+
     while task.wait() do
         if AutoFarm then
             local char = LP.Character
@@ -841,16 +1030,16 @@ task.spawn(function()
                     end
                     -- Último recurso
                     if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
-                    
+
                     if tool then char.Humanoid:EquipTool(tool) end
                 end
 
                 local mob = GetNearestMob()
-                
+
                 -- ====== SISTEMA DE RETORNO A MEMORIA ======
                 -- (Manejado en loop independiente más abajo)
                 -- ====== FIN SISTEMA DE RETORNO ======
-                
+
                 if mob then
                     -- ==============================================
                     -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
@@ -861,7 +1050,7 @@ task.spawn(function()
                             CurrentMobHealth = mob.Humanoid.Health
                             MobHitTimer = os.clock()
                             LastRealDamageTime = os.clock()
-                            
+
                             -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
                             pcall(function()
                                 VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
@@ -887,16 +1076,16 @@ task.spawn(function()
                         end
                     else
                         -- Si estamos en pánico, mantener el reloj fresco para que no tire click apenas bajemos
-                        MobHitTimer = os.clock() 
+                        MobHitTimer = os.clock()
                     end
-                    
+
                     StatusLabel.Text = "Cazando: " .. mob.Name
                     local hrp = char.HumanoidRootPart
                     local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
 
                     if mobHrp then
                         GlobalMagnetTarget = mobHrp.Position
-                        
+
                         -- ==============================================
                         -- INTERCEPTOR: PROTOCOLO DE PÁNICO (HUÍDA Y CURA)
                         -- ==============================================
@@ -908,14 +1097,14 @@ task.spawn(function()
                             IsInPanicRecovery = false -- Vuelve al combate
                             hrp:SetAttribute("PanicPos", nil)
                         end
-                        
+
                         if IsInPanicRecovery then
-                            StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio*100) .. "%)"
-                            
+                            StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio * 100) .. "%)"
+
                             -- Guardamos ancla estática para no subir infinitamente ni seguir mobs
                             local savedPos = hrp:GetAttribute("PanicPos") or hrp.Position
                             local escapeCF = CFrame.new(savedPos) * CFrame.new(0, 50, 0)
-                            
+
                             pcall(function()
                                 local d = (hrp.Position - escapeCF.Position).Magnitude
                                 if d > 1 then
@@ -925,7 +1114,7 @@ task.spawn(function()
                                     char:PivotTo(escapeCF)
                                 end
                             end)
-                            
+
                             -- Quita la cámara del Mob y la devuelve al personaje para frenar mareos visuales
                             pcall(function()
                                 local cam = Workspace.CurrentCamera
@@ -933,12 +1122,12 @@ task.spawn(function()
                                     cam.CameraSubject = char:FindFirstChild("Humanoid")
                                 end
                             end)
-                            
+
                             task.wait(0.05)
                             continue -- Salta TODO el bloque de ataque (ni nav, ni tp, ni click)
                         end
                         -- ==============================================
-                        
+
                         -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
                         local mobsToHit = {}
                         if MobMagnetEnabled then
@@ -959,35 +1148,36 @@ task.spawn(function()
                                             allow = true
                                         end
                                     end
-                                    
+
                                     if allow then
                                         local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
                                         if dist < 150 then
-                                            table.insert(sorted, {m, dist})
+                                            table.insert(sorted, { m, dist })
                                         end
                                     end
                                 end
                             end
-                            table.sort(sorted, function(a,b) return a[2] < b[2] end)
+                            table.sort(sorted, function(a, b) return a[2] < b[2] end)
                             -- Agarra hasta a los 4 más cercanos
-                            for i=1, math.min(4, #sorted) do
+                            for i = 1, math.min(4, #sorted) do
                                 table.insert(mobsToHit, sorted[i][1])
                             end
                         else
                             table.insert(mobsToHit, mob)
                         end
-                        
+
                         -- Ataque Dinámico / Multi-Golpe para Juntar
                         for _, targetMob in pairs(mobsToHit) do
                             local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
                             if tHrp then
                                 -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
                                 -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
-                                local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z).Unit
+                                local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
+                                .Unit
                                 local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
-                                
+
                                 local currentFarmMode = FarmMode
-                                                                
+
                                 local TargetCF
                                 if currentFarmMode == "Arriba" then
                                     TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
@@ -996,7 +1186,7 @@ task.spawn(function()
                                 elseif currentFarmMode == "Abajo" then
                                     TargetCF = tHrp.CFrame * CFrame.new(0, OfsY, OfsZ)
                                 end
-                                
+
                                 pcall(function()
                                     local flyDist = (hrp.Position - TargetCF.Position).Magnitude
                                     if TargetBosses == "SoloBoss" and flyDist > 15 then
@@ -1008,14 +1198,14 @@ task.spawn(function()
                                         char:PivotTo(TargetCF)
                                     end
                                 end)
-                                
+
                                 pcall(function()
                                     local cam = Workspace.CurrentCamera
                                     if cam and cam.CameraSubject ~= targetMob:FindFirstChild("Humanoid") then
                                         cam.CameraSubject = targetMob:FindFirstChild("Humanoid") or tHrp
                                     end
                                 end)
-                                
+
                                 -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
                                 local distFinal = (hrp.Position - TargetCF.Position).Magnitude
                                 if distFinal <= 20 then
@@ -1023,21 +1213,22 @@ task.spawn(function()
                                         CombatRemote:FireServer()
                                         if tool then tool:Activate() end
                                     end)
-                                    
+
                                     -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
                                     if AutoSkillEnabled then
                                         pcall(function()
                                             -- Calculamos rotación estrictamente horizontal (evita que el PJ mire hacia arriba y su cabeza traspase el piso)
-                                            local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y, tHrp.Position.Z)
+                                            local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y,
+                                                tHrp.Position.Z)
                                             hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
-                                            
+
                                             VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
                                             task.wait(0.01)
                                             VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
                                         end)
                                     end
                                 end
-                                
+
                                 -- Una minúscula pausa entre saltos
                                 task.wait(0.05)
                             end
@@ -1069,7 +1260,7 @@ local function ToggleAutoFarm()
         StatusLabel.Text = "Status: Buscando objetivos..."
         LastRealDamageTime = os.clock()
         IsWalkingToMemory = false
-        
+
         local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp and hrp:FindFirstChildOfClass("BodyVelocity") then
             hrp:FindFirstChildOfClass("BodyVelocity"):Destroy()
@@ -1079,7 +1270,7 @@ local function ToggleAutoFarm()
         BtnToggle.BackgroundColor3 = C.red
         StatusLabel.TextColor3 = C.muted
         StatusLabel.Text = "Status: Inactivo"
-        
+
         pcall(function()
             local char = LP.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -1103,7 +1294,8 @@ uis.InputBegan:Connect(function(input, processed)
         if char and char:FindFirstChild("HumanoidRootPart") then
             MemoryPoint = char.HumanoidRootPart.Position
             IsWalkingToMemory = false
-            MemStatusLabel.Text = "  📍 Punto: " .. math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
+            MemStatusLabel.Text = "  📍 Punto: " ..
+            math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
             StatusLabel.Text = "📍 Punto guardado!"
             SaveConfig()
         end
@@ -1239,7 +1431,8 @@ local function LoadConfig()
                 local data = game:GetService("HttpService"):JSONDecode(raw)
                 if type(data) == "table" then
                     if data.ScannedTargetName ~= nil then ScannedTargetName = data.ScannedTargetName end
-                    if data.ScannedTargetPos ~= nil then ScannedTargetPos = Vector3.new(data.ScannedTargetPos.X, data.ScannedTargetPos.Y, data.ScannedTargetPos.Z) end
+                    if data.ScannedTargetPos ~= nil then ScannedTargetPos = Vector3.new(data.ScannedTargetPos.X,
+                            data.ScannedTargetPos.Y, data.ScannedTargetPos.Z) end
                     if data.PanicThreshold ~= nil then PanicThreshold = data.PanicThreshold end
                     if data.ReturnHealthThreshold ~= nil then ReturnHealthThreshold = data.ReturnHealthThreshold end
                     if data.MobMagnetEnabled ~= nil then MobMagnetEnabled = data.MobMagnetEnabled end
@@ -1248,26 +1441,32 @@ local function LoadConfig()
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
                     if data.MemoryPoint ~= nil then
                         MemoryPoint = Vector3.new(data.MemoryPoint.X, data.MemoryPoint.Y, data.MemoryPoint.Z)
-                        MemStatusLabel.Text = "  📍 Punto: " .. math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
+                        MemStatusLabel.Text = "  📍 Punto: " ..
+                        math.floor(MemoryPoint.X) ..
+                        ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
                     end
-                    
+
                     if FarmMode == "Abajo" then
                         OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
                     else
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
-                    if MobMagnetEnabled then BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO" end
-                    if AutoSkillEnabled then BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Auto Skill (X): ACTIVO" end
+                    if MobMagnetEnabled then
+                        BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO"
+                    end
+                    if AutoSkillEnabled then
+                        BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Auto Skill (X): ACTIVO"
+                    end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
                     elseif TargetBosses == "Ignorar" then
                         BtnBoss.BackgroundColor3 = C.accentOff; BtnBoss.Text = "  🙈 Ignorar Bosses"
                     end
-                    
+
                     PanicLabel.Text = "  🛡️ Escudo Pánico — Escapa al " .. math.floor(PanicThreshold * 100) .. "%"
-                    SliderFill.Size = UDim2.new(math.clamp(PanicThreshold,0.01,1), 0, 1, 0)
+                    SliderFill.Size = UDim2.new(math.clamp(PanicThreshold, 0.01, 1), 0, 1, 0)
                     ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
-                    ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold,0.01,1), 0, 1, 0)
+                    ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold, 0.01, 1), 0, 1, 0)
                 end
             end)
         end
@@ -1281,16 +1480,16 @@ end
 task.spawn(function()
     while true do
         task.wait(0.1)
-        
+
         local char = LP.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then
             continue
         end
         if char.Humanoid.Health <= 0 then continue end
-        
+
         if MemoryPoint and not IsInPanicRecovery then
             local mob = GetNearestMob()
-            
+
             if mob then
                 if IsWalkingToMemory then
                     IsWalkingToMemory = false
@@ -1301,38 +1500,38 @@ task.spawn(function()
                     IsWalkingToMemory = true
                 end
             end
-            
+
             if IsWalkingToMemory and not mob then
                 local hrpW = char.HumanoidRootPart
                 local distToMem = (hrpW.Position - MemoryPoint).Magnitude
-                
+
                 if distToMem <= 15 then
                     IsWalkingToMemory = false
                     StatusLabel.Text = "📍 Llegamos al punto guardado"
                     LastRealDamageTime = os.clock()
                 else
                     StatusLabel.Text = "📍 Caminando... (" .. math.floor(distToMem) .. "m)"
-                    
+
                     local dir = (MemoryPoint - hrpW.Position).Unit
                     local stepSize = math.min(30, distToMem)
                     local nextPos = hrpW.Position + dir * stepSize * 0.08
-                    
+
                     local groundY = MemoryPoint.Y
                     pcall(function()
                         local rayOrigin = Vector3.new(nextPos.X, nextPos.Y + 20, nextPos.Z)
                         local rayDir = Vector3.new(0, -200, 0)
                         local rayParams = RaycastParams.new()
                         rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                        rayParams.FilterDescendantsInstances = {char}
+                        rayParams.FilterDescendantsInstances = { char }
                         local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
                         if result then
                             groundY = result.Position.Y + 3
                         end
                     end)
-                    
+
                     local targetCF = CFrame.new(Vector3.new(nextPos.X, groundY, nextPos.Z))
                     pcall(function() char:PivotTo(targetCF) end)
-                    
+
                     pcall(function()
                         Workspace.CurrentCamera.CameraSubject = char:FindFirstChild("Humanoid")
                     end)
