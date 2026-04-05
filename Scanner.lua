@@ -13,6 +13,7 @@ local LP = Players.LocalPlayer
 local AutoFarm = false
 local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
 local OfsY, OfsZ = 10, 0
+local BlinkAttackEnabled = false
 
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
@@ -90,6 +91,7 @@ local function SaveConfig()
             AutoSkillEnabled = AutoSkillEnabled,
             TargetBosses = TargetBosses,
             FarmMode = FarmMode,
+            BlinkAttackEnabled = BlinkAttackEnabled,
             MemoryPoint = MemoryPoint and { X = MemoryPoint.X, Y = MemoryPoint.Y, Z = MemoryPoint.Z } or nil
         }
         pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
@@ -269,6 +271,7 @@ local BtnHeight    = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
 local BtnMagnet    = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
 local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
 local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
+local BtnBlink     = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -668,13 +671,13 @@ task.spawn(function()
                 local isAttack = false
                 local name = obj.Name:lower()
                 
-                if name:match("hitbox") or name:match("slash") or name:match("explosion") or name:match("shock") or name:match("attack") or name:match("effect") then
+                if name:match("hitbox") or name:match("slash") or name:match("explosion") or name:match("shock") or name:match("attack") or name:match("effect") or name:match("wave") or name:match("beam") then
                     isAttack = true
                 end
                 
                 -- Chequear ParticleEmitters para mayor precisón de los nombres "VFX"
                 local foundParticle = obj:FindFirstChildOfClass("ParticleEmitter")
-                if foundParticle and (foundParticle.Name:lower():match("flame") or foundParticle.Name:lower():match("slash") or foundParticle.Name:lower():match("shock")) then
+                if foundParticle and (foundParticle.Name:lower():match("flame") or foundParticle.Name:lower():match("slash") or foundParticle.Name:lower():match("shock") or foundParticle.Name:lower():match("blast")) then
                     isAttack = true
                 end
                 
@@ -682,7 +685,7 @@ task.spawn(function()
                     local size = obj.Size
                     local maxD = math.max(size.X, size.Y, size.Z)
                     
-                    if maxD > 5 then
+                    if maxD >= 2 then
                         local charY = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and math.floor(LP.Character.HumanoidRootPart.Position.Y) or 0
                         local objY = math.floor(obj.Position.Y)
                         local topY = math.floor(objY + (size.Y/2))
@@ -690,29 +693,31 @@ task.spawn(function()
                         
                         local origin = "Ambiental/NPC"
                         if obj:IsDescendantOf(LP.Character) then
-                            origin = "PLAYER (TUS SKILLS)"
-                        elseif BossRef and (obj:IsDescendantOf(BossRef) or (BossRef:FindFirstChild("HumanoidRootPart") and (obj.Position - BossRef.HumanoidRootPart.Position).Magnitude < 30)) then
-                            origin = "BOSS: " .. BossRef.Name
+                            origin = "TUS SKILLS"
+                        elseif BossRef and (obj:IsDescendantOf(BossRef) or (BossRef:FindFirstChild("HumanoidRootPart") and (obj.Position - BossRef.HumanoidRootPart.Position).Magnitude < 40)) then
+                            origin = "BOSS"
                         end
                         
-                        local inDanger = (origin ~= "PLAYER (TUS SKILLS)") and (charY >= botY and charY <= topY)
+                        local inDanger = (origin ~= "TUS SKILLS") and (charY >= botY and charY <= topY)
                         local dangerStr = ""
                         
                         -- Evaluando rango de la hitbox
-                        if origin == "PLAYER (TUS SKILLS)" then
-                            dangerStr = "[Tú atacas: Alcanza hasta " .. math.floor(topY - charY) .. " studs arriba de ti]"
+                        if origin == "TUS SKILLS" then
+                            dangerStr = "[Tú M1/Skill: Toca de Y=" .. botY .. " a Y=" .. topY .. ". Cierra " .. math.floor(topY - charY) .. " studs arriba tuyo!]"
                         elseif inDanger then
-                            dangerStr = "[⚠ PELIGRO: Altura Cruzada]"
+                            dangerStr = "[⚠ PELIGRO FÍSICO: Choque Inminente]"
                         elseif charY > topY then
-                            dangerStr = "[Seguro: Hitbox pasa " .. math.floor(charY - topY) .. " studs debajo de ti]"
+                            dangerStr = "[Seguro: Hitbox esférica pasa " .. math.floor(charY - topY) .. " studs debajo de ti]"
                         else
-                            dangerStr = "[Seguro: Hitbox pasa " .. math.floor(botY - charY) .. " studs arriba tuyo]"
+                            dangerStr = "[Seguro: Hitbox esférica pasa " .. math.floor(botY - charY) .. " studs arriba tuyo]"
                         end
                         
-                        AddRadarLog("> DETECTADO: " .. obj.Name .. " (" .. origin .. ")", inDanger)
-                        AddRadarLog("  - Dimensión Max: " .. math.floor(maxD) .. " studs", false)
-                        AddRadarLog("  - Alturas Y: Top=" .. topY .. " | Bot=" .. botY .. " | PlayerY=" .. charY, false)
-                        AddRadarLog("  - " .. dangerStr, inDanger)
+                        AddRadarLog("> RADAR: " .. obj.Name .. " (" .. origin .. ")", origin == "BOSS")
+                        AddRadarLog("  - DimT (Size): " .. math.floor(maxD) .. " studs", origin == "BOSS")
+                        if origin == "BOSS" then
+                            AddRadarLog("  - ZONA FÍSICA: Techo ("..topY..") | Base ("..botY..")", true)
+                        end
+                        AddRadarLog("  - " .. dangerStr, origin == "BOSS")
                     end
                 end
             end
@@ -1188,14 +1193,19 @@ task.spawn(function()
                                 end
 
                                 pcall(function()
-                                    local flyDist = (hrp.Position - TargetCF.Position).Magnitude
+                                    local rootCF = TargetCF
+                                    if BlinkAttackEnabled then
+                                        rootCF = TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45) 
+                                        -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
+                                    end
+                                    local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                     if TargetBosses == "SoloBoss" and flyDist > 15 then
                                         -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
                                         local flyStep = math.clamp(20 / flyDist, 0, 1)
-                                        char:PivotTo(hrp.CFrame:Lerp(TargetCF, flyStep))
+                                        char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
                                     else
                                         -- Cerca o Modalidad Normal: Anchored Pivot
-                                        char:PivotTo(TargetCF)
+                                        char:PivotTo(rootCF)
                                     end
                                 end)
 
@@ -1207,11 +1217,20 @@ task.spawn(function()
                                 end)
 
                                 -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
-                                local distFinal = (hrp.Position - TargetCF.Position).Magnitude
+                                local actualLoc = BlinkAttackEnabled and (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or TargetCF
+                                local distFinal = (hrp.Position - actualLoc.Position).Magnitude
                                 if distFinal <= 20 then
                                     pcall(function()
-                                        CombatRemote:FireServer()
-                                        if tool then tool:Activate() end
+                                        if BlinkAttackEnabled then
+                                            -- Modifica CFrame Instantáneamente para el RequestHit (Blink Strike)
+                                            char:PivotTo(TargetCF)
+                                            CombatRemote:FireServer()
+                                            if tool then tool:Activate() end
+                                            char:PivotTo(actualLoc)
+                                        else
+                                            CombatRemote:FireServer()
+                                            if tool then tool:Activate() end
+                                        end
                                     end)
 
                                     -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
@@ -1355,6 +1374,20 @@ end)
 -- ==============================================================================
 local uis_local = game:GetService("UserInputService")
 
+BtnBlink.MouseButton1Click:Connect(function()
+    BlinkAttackEnabled = not BlinkAttackEnabled
+    if BlinkAttackEnabled then
+        BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
+        BtnBlink.BackgroundColor3 = C.accentOn
+        BtnBlink.TextColor3 = Color3.new(1,1,1)
+    else
+        BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): OFF"
+        BtnBlink.BackgroundColor3 = C.card
+        BtnBlink.TextColor3 = C.text
+    end
+    SaveConfig()
+end)
+
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
@@ -1439,6 +1472,7 @@ local function LoadConfig()
                     if data.AutoSkillEnabled ~= nil then AutoSkillEnabled = data.AutoSkillEnabled end
                     if data.TargetBosses ~= nil then TargetBosses = data.TargetBosses end
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
+                    if data.BlinkAttackEnabled ~= nil then BlinkAttackEnabled = data.BlinkAttackEnabled end
                     if data.MemoryPoint ~= nil then
                         MemoryPoint = Vector3.new(data.MemoryPoint.X, data.MemoryPoint.Y, data.MemoryPoint.Z)
                         MemStatusLabel.Text = "  📍 Punto: " ..
