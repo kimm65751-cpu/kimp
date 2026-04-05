@@ -119,7 +119,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM22"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -356,7 +356,7 @@ MemInfoLabel.LayoutOrder = 3
 
 local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
 
-BlinkStepValue = 45
+BlinkStepValue = BlinkStepValue or 45
 local blinkOptions = {45, 25, 15, 5}
 local currentBlinkIdx = 1
 
@@ -585,13 +585,13 @@ CalibStatus.TextXAlignment = Enum.TextXAlignment.Left
 CalibStatus.TextWrapped = true
 CalibStatus.LayoutOrder = 2
 
-SmartCalib_Sword = 3
-SmartCalib_Fruit = 8
-SmartSwordName = nil
-SmartFruitName = nil
+SmartCalib_Sword = SmartCalib_Sword or 3
+SmartCalib_Fruit = SmartCalib_Fruit or 8
+SmartSwordName = SmartSwordName or nil
+SmartFruitName = SmartFruitName or nil
 local CurrentlyCalibrating = "None"
-SmartCombatEnabled = false
-SmartUseFruit = false
+SmartCombatEnabled = SmartCombatEnabled or false
+SmartUseFruit = SmartUseFruit or false
 
 local BtnSmartHitRun = ToggleButton(CalibPage, "🧠 Activar Smart Farm (Hit & Run)", 3, C.card)
 BtnSmartHitRun.MouseButton1Click:Connect(function()
@@ -777,7 +777,19 @@ AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
 
+local BtnAnalista = ToggleButton(AnalistaPage, "🧪 Ejecutar Escaneo Profundo (.txt)", 3, Color3.fromRGB(40, 20, 60))
+local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
+AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
+AnalistaLog.BackgroundTransparency = 1
+AnalistaLog.TextColor3 = Color3.fromRGB(120, 255, 120)
+AnalistaLog.Font = Enum.Font.Code
+AnalistaLog.TextSize = 12
+AnalistaLog.Text = "  Esperando Instrucción..."
+AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
+AnalistaLog.LayoutOrder = 4
+
 BtnAnalista.MouseButton1Click:Connect(function()
+
     BtnAnalista.Text = "🧪 Escaneando el Entorno..."
     AnalistaLog.Text = "  [1/3] Buscando scripts criticos..."
 
