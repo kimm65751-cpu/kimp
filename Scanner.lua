@@ -272,7 +272,34 @@ BtnToggle.TextSize = 15
 BtnToggle.Font     = Enum.Font.GothamBold
 local BtnHeight    = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
 local BtnMagnet    = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
-local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (X)", 5)
+local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (Teclas)", 5)
+_G.AutoSkillKeys = {"Z", "X", "C", "V"}
+local SkillKeysBox = Instance.new("TextBox", FarmPage)
+SkillKeysBox.Size = UDim2.new(0.95, 0, 0, 32)
+SkillKeysBox.BackgroundColor3 = C.bg
+SkillKeysBox.TextColor3 = C.text
+SkillKeysBox.PlaceholderText = "Escribe teclas (Ej: Z, X, C)"
+SkillKeysBox.Text = "Z, X, C, V"
+SkillKeysBox.Font = Enum.Font.Gotham
+SkillKeysBox.TextSize = 12
+SkillKeysBox.LayoutOrder = 5.5
+Instance.new("UICorner", SkillKeysBox).CornerRadius = UDim.new(0, 4)
+
+SkillKeysBox.FocusLost:Connect(function()
+    _G.AutoSkillKeys = {}
+    for letter in SkillKeysBox.Text:gmatch("%a") do
+        table.insert(_G.AutoSkillKeys, letter:upper())
+    end
+    if #_G.AutoSkillKeys == 0 then
+        SkillKeysBox.Text = "Z, X, C, V"
+        _G.AutoSkillKeys = {"Z", "X", "C", "V"}
+    else
+        SkillKeysBox.Text = table.concat(_G.AutoSkillKeys, ", ")
+    end
+    if AutoSkillEnabled then
+        BtnSkill.Text = "  🔥 Skills: ON (" .. SkillKeysBox.Text .. ")"
+    end
+end)
 local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 local BtnBlink     = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
 local BtnGhost     = ToggleButton(FarmPage, "👻 Ghost Protocol (Mazmorra): OFF", 8, C.card)
@@ -2137,9 +2164,16 @@ task.spawn(function()
                                                         tHrp.Position.Z)
                                                     hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
 
-                                                    VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-                                                    task.wait(0.01)
-                                                    VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                                                    local scanKeys = _G.AutoSkillKeys or {"Z", "X", "C", "V"}
+                                                    for _, keyStr in ipairs(scanKeys) do
+                                                        local ok, keyCode = pcall(function() return Enum.KeyCode[keyStr] end)
+                                                        if ok and keyCode then
+                                                            VIM:SendKeyEvent(true, keyCode, false, game)
+                                                            task.wait(0.01)
+                                                            VIM:SendKeyEvent(false, keyCode, false, game)
+                                                            task.wait(0.01)
+                                                        end
+                                                    end
                                                 end)
                                             end
                                         end
@@ -2242,10 +2276,10 @@ BtnSkill.MouseButton1Click:Connect(function()
     AutoSkillEnabled = not AutoSkillEnabled
     if AutoSkillEnabled then
         BtnSkill.BackgroundColor3 = C.accentOn
-        BtnSkill.Text = "  🔥 Skill (X): ACTIVO"
+        BtnSkill.Text = "  🔥 Skills: ON (" .. (SkillKeysBox and SkillKeysBox.Text or "Z, X, C, V") .. ")"
     else
         BtnSkill.BackgroundColor3 = C.card
-        BtnSkill.Text = "  🔥 Auto Skill (X)"
+        BtnSkill.Text = "  🔥 Auto Skill (Teclas)"
     end
     SaveConfig()
 end)
@@ -2388,7 +2422,7 @@ local function LoadConfig()
                         BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO"
                     end
                     if AutoSkillEnabled then
-                        BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Auto Skill (X): ACTIVO"
+                        BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skills: ON (" .. table.concat(_G.AutoSkillKeys or {"Z","X","C","V"}, ", ") .. ")"
                     end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
@@ -2460,8 +2494,10 @@ task.spawn(function()
                             StatusLabel.Text = "🔫 Volando a Objetivo... (" .. math.floor(distToTarget) .. "m)"
                             local dir = (targetPoint - hrpW.Position).Unit
                             local stepSize = math.min(BlinkStepValue or 45, distToTarget)
-                            local nextPos = hrpW.Position + dir * stepSize + Vector3.new(0, OfsY, 0)
-                            pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                            -- Auto-Ruta: SIEMPRE volar por encima (+15), nunca bajo tierra
+                            local flyHeight = _G.AutoHuntActive and 15 or OfsY
+                            local nextPos = hrpW.Position + dir * stepSize + Vector3.new(0, flyHeight, 0)
+                            pcall(function() char:PivotTo(CFrame.lookAt(nextPos, nextPos + dir)) end)
                         else
                             StatusLabel.Text = "🎯 En posicion: " .. table.concat(ScannedTargetNames, "+")
                         end
@@ -2491,7 +2527,7 @@ task.spawn(function()
                                 local dir = (targetPoint - hrpW.Position).Unit
                                 local stepSize = math.min(BlinkStepValue or 45, distToMem)
                                 local nextPos = hrpW.Position + dir * stepSize
-                                pcall(function() char:PivotTo(CFrame.new(nextPos)) end)
+                                pcall(function() char:PivotTo(CFrame.lookAt(nextPos, nextPos + dir)) end)
                                 pcall(function()
                                     if hrpW:FindFirstChildOfClass("BodyVelocity") then
                                         hrpW:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
@@ -2628,7 +2664,31 @@ task.spawn(function()
                     if not bossAlive then
                         targetStep.DeadTime = os.time()
                         if AutoFarm then pcall(ToggleAutoFarm) end -- Apagamos el Autofarm estándar en transición
-                        task.wait(3)
+                        task.wait(1)
+
+                        -- ======= ATERRIZAR EN EL SUELO =======
+                        -- Buscar el piso debajo del personaje y pararse encima
+                        pcall(function()
+                            local charLand = LP.Character
+                            local hrpLand = charLand and charLand:FindFirstChild("HumanoidRootPart")
+                            if hrpLand then
+                                local rayParams = RaycastParams.new()
+                                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                                rayParams.FilterDescendantsInstances = {charLand}
+                                -- Raycast hacia abajo para encontrar el suelo
+                                local rayResult = Workspace:Raycast(hrpLand.Position, Vector3.new(0, -300, 0), rayParams)
+                                if rayResult then
+                                    -- Pararse 3 studs encima del punto de colisión
+                                    local groundPos = rayResult.Position + Vector3.new(0, 3, 0)
+                                    charLand:PivotTo(CFrame.new(groundPos))
+                                    -- Restaurar cámara al personaje
+                                    pcall(function()
+                                        Workspace.CurrentCamera.CameraSubject = charLand:FindFirstChild("Humanoid")
+                                    end)
+                                end
+                            end
+                        end)
+                        task.wait(2)
                     end
                 else
                     -- Boss no visible en el mob cache. ¿Necesitamos viajar?
