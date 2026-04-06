@@ -11,14 +11,14 @@ local CoreGui = game:GetService("CoreGui")
 
 local LP = Players.LocalPlayer
 local AutoFarm = false
-local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
+local FarmMode = "Arriba"     -- "Arriba", "Detras", "Abajo"
 local OfsY, OfsZ = 10, 0
 local BlinkAttackEnabled = false
 
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
 local TargetBosses = "Normal"
-local ScannedTargetNames = {} -- tabla para multi-selección de objetivos
+local ScannedTargetNames = {}     -- tabla para multi-selección de objetivos
 local ScannedTargetPos = nil
 local SpyEnabled = false
 local SpyFileName = ""
@@ -179,12 +179,12 @@ local function MakeTabBtn(icon, tabName, order)
     return tb
 end
 
-local TabFarm = MakeTabBtn("⚔️", "Farm", 1)
-local TabMem = MakeTabBtn("📍", "Memoria", 2)
-local TabExtras = MakeTabBtn("🍎", "Extras", 3)
-local TabCalib = MakeTabBtn("🎯", "Calibrar", 4)
-local TabCazador = MakeTabBtn("👁️", "Cazador", 5)
-local TabAnalista = MakeTabBtn("🔎", "Analizador", 6)
+local TabFarm                                       = MakeTabBtn("⚔️", "Farm", 1)
+local TabMem                                        = MakeTabBtn("📍", "Memoria", 2)
+local TabExtras                                     = MakeTabBtn("🍎", "Extras", 3)
+local TabCalib                                      = MakeTabBtn("🎯", "Calibrar", 4)
+local TabCazador                                    = MakeTabBtn("👁️", "Cazador", 5)
+local TabAnalista                                   = MakeTabBtn("🔎", "Analizador", 6)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel                                  = Instance.new("Frame", MF)
@@ -360,7 +360,7 @@ MemInfoLabel.LayoutOrder = 3
 local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
 
 BlinkStepValue = BlinkStepValue or 45
-local blinkOptions = {45, 25, 15, 5}
+local blinkOptions = { 45, 25, 15, 5 }
 local currentBlinkIdx = 1
 
 local BtnBlinkSpeed = ToggleButton(MemPage, "⚡ Velocidad de Regreso: 45 Studs", 5, C.card)
@@ -463,7 +463,7 @@ local function DropFruitTool(fruitTool)
     -- Try remote drop
     pcall(function()
         local dropRemote = ReplicatedStorage:FindFirstChild("RemoteEvents") and
-        ReplicatedStorage.RemoteEvents:FindFirstChild("DropFruit")
+            ReplicatedStorage.RemoteEvents:FindFirstChild("DropFruit")
         if dropRemote then
             local fruitData = fruitTool:FindFirstChild("FruitData")
             if fruitData then
@@ -583,7 +583,8 @@ CalibStatus.BackgroundTransparency = 1
 CalibStatus.TextColor3 = C.muted
 CalibStatus.Font = Enum.Font.GothamMedium
 CalibStatus.TextSize = 11
-CalibStatus.Text = "  Usa tus ataques al hacer click. El bot medirá cuántos studs bajan hacia los pies del enemigo para ajustar tu Hit & Run dinámico."
+CalibStatus.Text =
+"  Usa tus ataques al hacer click. El bot medirá cuántos studs bajan hacia los pies del enemigo para ajustar tu Hit & Run dinámico."
 CalibStatus.TextXAlignment = Enum.TextXAlignment.Left
 CalibStatus.TextWrapped = true
 CalibStatus.LayoutOrder = 2
@@ -602,7 +603,7 @@ BtnSmartHitRun.MouseButton1Click:Connect(function()
     if SmartCombatEnabled then
         BtnSmartHitRun.BackgroundColor3 = C.accentOn
         BtnSmartHitRun.Text = "  🧠 Smart Farm: ON"
-        BtnSmartHitRun.TextColor3 = Color3.new(1,1,1)
+        BtnSmartHitRun.TextColor3 = Color3.new(1, 1, 1)
     else
         BtnSmartHitRun.BackgroundColor3 = C.card
         BtnSmartHitRun.Text = "  🧠 Activar Smart Farm (Hit & Run)"
@@ -616,7 +617,7 @@ BtnUseFruit.MouseButton1Click:Connect(function()
     if SmartUseFruit then
         BtnUseFruit.BackgroundColor3 = Color3.fromRGB(100, 30, 150)
         BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: SÍ (Rotando Espada + Fruta)"
-        BtnUseFruit.TextColor3 = Color3.new(1,1,1)
+        BtnUseFruit.TextColor3 = Color3.new(1, 1, 1)
     else
         BtnUseFruit.BackgroundColor3 = C.card
         BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: NO (Solo Espada)"
@@ -624,8 +625,10 @@ BtnUseFruit.MouseButton1Click:Connect(function()
     end
 end)
 
-local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Rango de Espada [Actual: -" .. SmartCalib_Sword .. "]", 4, C.card)
-local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Rango de Fruta [Actual: -" .. SmartCalib_Fruit .. "]", 5, C.card)
+local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Rango de Espada [Actual: -" .. SmartCalib_Sword .. "]", 4,
+    C.card)
+local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Rango de Fruta [Actual: -" .. SmartCalib_Fruit .. "]", 5,
+    C.card)
 
 BtnCalibSword.MouseButton1Click:Connect(function()
     CurrentlyCalibrating = "Sword"
@@ -647,22 +650,22 @@ task.spawn(function()
                 if obj:IsA("BasePart") then
                     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                     if not hrp then return end
-                    
+
                     if obj:IsDescendantOf(LP.Character) or (obj.Position - hrp.Position).Magnitude < 10 then
                         local size = obj.Size
                         local maxD = math.max(size.X, size.Y, size.Z)
-                        
+
                         if maxD >= 1 then
                             local charY = hrp.Position.Y
                             local objY = obj.Position.Y
-                            local botY = objY - (size.Y/2)
+                            local botY = objY - (size.Y / 2)
                             local distAbajo = math.floor(charY - botY)
-                            
+
                             -- Mínimo de 3 para asegurar colisión con pies aunque el vfx estalle arriba
                             if distAbajo < 3 then distAbajo = 3 end
-                            
+
                             local equippedTool = LP.Character:FindFirstChildOfClass("Tool")
-                            
+
                             if CurrentlyCalibrating == "Sword" then
                                 SmartCalib_Sword = distAbajo
                                 if equippedTool then SmartSwordName = equippedTool.Name end
@@ -697,7 +700,8 @@ ScanStatusLabel.BackgroundTransparency = 1
 ScanStatusLabel.TextColor3 = C.muted
 ScanStatusLabel.Font = Enum.Font.Gotham
 ScanStatusLabel.TextSize = 12
-ScanStatusLabel.Text = "  Objetivo: " .. (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
+ScanStatusLabel.Text = "  Objetivo: " ..
+(#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
 ScanStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 ScanStatusLabel.LayoutOrder = 2
 
@@ -727,7 +731,7 @@ BtnScan.MouseButton1Click:Connect(function()
     for _, child in pairs(MobScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
-    
+
     local found = {}
     local cache = GetMobCache()
     for _, m in ipairs(cache) do
@@ -736,7 +740,7 @@ BtnScan.MouseButton1Click:Connect(function()
             if not found[n] and not n:lower():match("npc") and not n:lower():match("dummy") then
                 found[n] = true
                 local isBoss = n:lower():match("boss")
-                
+
                 local b = Instance.new("TextButton", MobScroll)
                 b.Size = UDim2.new(1, 0, 0, 30)
                 b.BackgroundColor3 = isBoss and Color3.fromRGB(130, 80, 180) or C.bg
@@ -746,17 +750,21 @@ BtnScan.MouseButton1Click:Connect(function()
                 b.Text = (isBoss and "👺 " or "🦇 ") .. n
                 b.BorderSizePixel = 0
                 Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
-                
+
                 b.MouseButton1Click:Connect(function()
                     -- Toggle: si ya está en la lista lo quita, si no lo agrega
                     local alreadyIn = false
                     for i, sn in ipairs(ScannedTargetNames) do
-                        if sn == n then table.remove(ScannedTargetNames, i); alreadyIn = true; break end
+                        if sn == n then
+                            table.remove(ScannedTargetNames, i); alreadyIn = true; break
+                        end
                     end
                     if not alreadyIn then table.insert(ScannedTargetNames, n) end
-                    b.BackgroundColor3 = (not alreadyIn) and C.accentOn or (isBoss and Color3.fromRGB(130, 80, 180) or C.bg)
-                    b.TextColor3 = (not alreadyIn) and Color3.new(0,0,0) or C.text
-                    ScanStatusLabel.Text = "  Objetivos: " .. (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
+                    b.BackgroundColor3 = (not alreadyIn) and C.accentOn or
+                    (isBoss and Color3.fromRGB(130, 80, 180) or C.bg)
+                    b.TextColor3 = (not alreadyIn) and Color3.new(0, 0, 0) or C.text
+                    ScanStatusLabel.Text = "  Objetivos: " ..
+                    (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
                 end)
             end
         end
@@ -778,7 +786,8 @@ RecStatusLabel.BackgroundTransparency = 1
 RecStatusLabel.TextColor3 = C.muted
 RecStatusLabel.Font = Enum.Font.Gotham
 RecStatusLabel.TextSize = 11
-RecStatusLabel.Text = "  Usa esto para grabar cómo vas de isla en isla.\n  Capturará portales usados y teleports automáticamente."
+RecStatusLabel.Text =
+"  Usa esto para grabar cómo vas de isla en isla.\n  Capturará portales usados y teleports automáticamente."
 RecStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 RecStatusLabel.LayoutOrder = 7
 
@@ -799,16 +808,18 @@ pcall(function()
                 if method == "FireServer" or method == "InvokeServer" then
                     local sName = tostring(self):lower()
                     if sName:match("teleport") or sName:match("travel") or sName:match("island") or sName:match("map") or sName:match("dungeon") or sName:match("door") or sName:match("portal") then
-                        local args = {...}
+                        local args = { ... }
                         local argStr = ""
                         for i, v in ipairs(args) do argStr = argStr .. tostring(v) .. (i < #args and ", " or "") end
-                        
+
                         -- Set context for Route Builder
-                        if args[1] and type(args[1])=="string" then
+                        if args[1] and type(args[1]) == "string" then
                             _G.CurrentIslandContext = args[1]
                         end
-                        
-                        table.insert(RouteLogs, "[REC-SPY] Remote Call: " .. tostring(self.Name) .. " (" .. method .. ") | Args: [" .. argStr .. "]")
+
+                        table.insert(RouteLogs,
+                            "[REC-SPY] Remote Call: " ..
+                            tostring(self.Name) .. " (" .. method .. ") | Args: [" .. argStr .. "]")
                     end
                 end
             end
@@ -827,7 +838,7 @@ BtnRecord.MouseButton1Click:Connect(function()
             " GRABACION DE RUTA AUTO-CAZA - " .. os.date(),
             "==============================================="
         }
-        
+
         local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if hrp then LastPos = hrp.Position end
 
@@ -836,8 +847,11 @@ BtnRecord.MouseButton1Click:Connect(function()
             local PPS = game:GetService("ProximityPromptService")
             PromptConn = PPS.PromptTriggered:Connect(function(prompt, player)
                 if player == LP then
-                    table.insert(RouteLogs, "[REC] Accionaste Prompt: " .. tostring(prompt.ActionText) .. " | Obj: " .. prompt:GetFullName())
-                    table.insert(RouteLogs, "      Coords: " .. tostring(prompt.Parent and prompt.Parent:IsA("BasePart") and prompt.Parent.Position or "N/A"))
+                    table.insert(RouteLogs,
+                        "[REC] Accionaste Prompt: " .. tostring(prompt.ActionText) .. " | Obj: " .. prompt:GetFullName())
+                    table.insert(RouteLogs,
+                        "      Coords: " ..
+                        tostring(prompt.Parent and prompt.Parent:IsA("BasePart") and prompt.Parent.Position or "N/A"))
                     BtnRecord.Text = "⏹️ GRABANDO... (Interacción Capturada)"
                 end
             end)
@@ -850,19 +864,22 @@ BtnRecord.MouseButton1Click:Connect(function()
                 local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if currentHrp then
                     local dist = (currentHrp.Position - LastPos).Magnitude
-                    if dist > 800 then -- Teleport grande detectado
+                    if dist > 800 then     -- Teleport grande detectado
                         table.insert(RouteLogs, "[REC] Teleport Detectado! Distancia: " .. math.floor(dist) .. " studs")
                         table.insert(RouteLogs, "      Nueva Coordenada: " .. tostring(currentHrp.Position))
-                        
+
                         -- Auto escanear bosses en esta nueva zona
-                        task.wait(1.5) -- esperar que cargue el entorno
+                        task.wait(1.5)     -- esperar que cargue el entorno
                         local bossesEnArea = 0
                         local c = GetMobCache()
                         for _, m in pairs(c) do
                             if m.Name:lower():match("boss") and m:FindFirstChild("HumanoidRootPart") then
                                 bossesEnArea = bossesEnArea + 1
                                 local hp = m:FindFirstChild("Humanoid") and m.Humanoid.Health or "N/A"
-                                table.insert(RouteLogs, "      -> Boss Encontrado: " .. m.Name .. " (HP: " .. tostring(hp) .. ") en " .. tostring(m.HumanoidRootPart.Position))
+                                table.insert(RouteLogs,
+                                    "      -> Boss Encontrado: " ..
+                                    m.Name ..
+                                    " (HP: " .. tostring(hp) .. ") en " .. tostring(m.HumanoidRootPart.Position))
                             end
                         end
                         if bossesEnArea == 0 then
@@ -873,18 +890,21 @@ BtnRecord.MouseButton1Click:Connect(function()
                 end
             end
         end)
-
     else
         BtnRecord.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
         BtnRecord.Text = "⏺️ Iniciar Grabación de Ruta"
-        if PromptConn then PromptConn:Disconnect(); PromptConn = nil end
-        if RecThread then task.cancel(RecThread); RecThread = nil end
-        
+        if PromptConn then
+            PromptConn:Disconnect(); PromptConn = nil
+        end
+        if RecThread then
+            task.cancel(RecThread); RecThread = nil
+        end
+
         -- Guardar el log
         table.insert(RouteLogs, "================ FIN DE GRABACION ================")
         local filename = "AutoHuntRecord_" .. tostring(os.time()) .. ".txt"
         pcall(function()
-            if writefile then 
+            if writefile then
                 writefile(filename, table.concat(RouteLogs, "\n"))
                 RecStatusLabel.Text = "  ✅ Ruta básica txt guardada: " .. filename
             else
@@ -929,13 +949,13 @@ task.spawn(function()
     while true do
         task.wait(0.5)
         local targetNum = #_G.AutoHuntRoute
-        
+
         -- Quitar frames sobrantes
         while #cachedWidgets > targetNum do
             cachedWidgets[#cachedWidgets]:Destroy()
             table.remove(cachedWidgets, #cachedWidgets)
         end
-        
+
         -- Añadir frames faltantes
         while #cachedWidgets < targetNum do
             local lbl = Instance.new("TextLabel")
@@ -947,10 +967,10 @@ task.spawn(function()
             lbl.Parent = RouteDashboard
             table.insert(cachedWidgets, lbl)
         end
-        
+
         -- Actualizar Data Visual
         local currentClock = os.time()
-        
+
         -- Autodetectar Isla Inicial sin necesidad de viajar
         pcall(function()
             if _G.CurrentIslandContext == "Desconocido" or _G.CurrentIslandContext == "" then
@@ -981,14 +1001,14 @@ task.spawn(function()
                 end
             end
         end)
-        
+
         for i, step in ipairs(_G.AutoHuntRoute) do
             local lbl = cachedWidgets[i]
             -- Lógica estricta de Timer y Estado de Vida
             local dt = step.DeadTime or 0
             local cd = step.Cooldown or 300
             local timeRemaining = cd - (currentClock - dt)
-            
+
             -- Detectar boss localmente
             local isAliveHere = false
             local hpStr = ""
@@ -1003,7 +1023,7 @@ task.spawn(function()
                     end
                 end
             end)
-            
+
             -- Monitoreo Global de Muerte
             if _G.CurrentIslandContext == step.Island then
                 if isAliveHere then
@@ -1025,24 +1045,24 @@ task.spawn(function()
                     end
                 end
             end
-            
+
             local statusStr = ""
             if timeRemaining > 0 then
                 statusStr = "⏳ Revive en " .. timeRemaining .. "s"
-                lbl.TextColor3 = Color3.fromRGB(200, 100, 100) -- Rojo (Muerto)
+                lbl.TextColor3 = Color3.fromRGB(200, 100, 100)     -- Rojo (Muerto)
             else
                 if isAliveHere then
                     statusStr = "🟢 VIVO AQUI! " .. hpStr
-                    lbl.TextColor3 = Color3.fromRGB(100, 200, 100) -- Verde (Atacar!)
+                    lbl.TextColor3 = Color3.fromRGB(100, 200, 100)     -- Verde (Atacar!)
                 else
                     statusStr = "🟣 LISTO / Viajar a Isla"
-                    lbl.TextColor3 = Color3.fromRGB(160, 100, 200) -- Morado (Listo para ir)
+                    lbl.TextColor3 = Color3.fromRGB(160, 100, 200)     -- Morado (Listo para ir)
                 end
             end
-            
+
             lbl.Text = string.format("  [%d] %s (Isla: %s) -> %s", i, step.Boss, step.Island, statusStr)
         end
-        
+
         -- Sync de la caja de texto visual en caso de que cambie internamente o por el network spy
         if IslandContextBox and not IslandContextBox:IsFocused() and IslandContextBox.Text ~= _G.CurrentIslandContext then
             IslandContextBox.Text = _G.CurrentIslandContext
@@ -1074,7 +1094,8 @@ IslandContextBox.FocusLost:Connect(function()
     end
 end)
 
-local BtnAddBoss = ToggleButton(CazadorPage, "➕ [REC] Guardar Objetivo(s) del Radar a Ruta", 11.5, Color3.fromRGB(150, 100, 40))
+local BtnAddBoss = ToggleButton(CazadorPage, "➕ [REC] Guardar Objetivo(s) del Radar a Ruta", 11.5,
+    Color3.fromRGB(150, 100, 40))
 BtnAddBoss.MouseButton1Click:Connect(function()
     if #ScannedTargetNames == 0 then
         HuntStatusInfo.Text = "  Estado: ⚠️ Selecciona primero un Objetivo usando el RADAR arriba."
@@ -1084,20 +1105,24 @@ BtnAddBoss.MouseButton1Click:Connect(function()
         HuntStatusInfo.Text = "  Estado: ⚠️ VIAJA por un portal O escribe el nombre de la isla en la caja verde."
         return
     end
-    
+
     local agregados = 0
     for _, targetName in ipairs(ScannedTargetNames) do
         local existe = false
         for _, step in ipairs(_G.AutoHuntRoute) do
-            if step.Boss == targetName and step.Island == _G.CurrentIslandContext then existe=true break end
+            if step.Boss == targetName and step.Island == _G.CurrentIslandContext then
+                existe = true
+                break
+            end
         end
         if not existe then
             -- Insertamos con el timer reseteado (5 mins listos para contar)
-            table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = targetName, DeadTime = os.time(), Cooldown = 300, WasAlive = false})
+            table.insert(_G.AutoHuntRoute,
+                { Island = _G.CurrentIslandContext, Boss = targetName, DeadTime = os.time(), Cooldown = 300, WasAlive = false })
             agregados = agregados + 1
         end
     end
-    
+
     if agregados > 0 then
         HuntStatusInfo.Text = "  ✅ " .. agregados .. " Objetivos añadidos a Ruta (" .. _G.CurrentIslandContext .. ")"
     else
@@ -1117,7 +1142,7 @@ BtnSaveRoute.MouseButton1Click:Connect(function()
         local name = RouteNameBox.Text
         if name == "" then name = "RutaDefault" end
         name = name .. ".json"
-        
+
         local hs = game:GetService("HttpService")
         local json = hs:JSONEncode(_G.AutoHuntRoute)
         if writefile then writefile(name, json) end
@@ -1131,12 +1156,12 @@ BtnLoadRoute.MouseButton1Click:Connect(function()
         local name = RouteNameBox.Text
         if name == "" then name = "RutaDefault" end
         name = name .. ".json"
-        
+
         local hs = game:GetService("HttpService")
         local data = ""
         if readfile then data = readfile(name) end
         local parsed = hs:JSONDecode(data)
-        if type(parsed)=="table" then
+        if type(parsed) == "table" then
             _G.AutoHuntRoute = parsed
             HuntStatusInfo.Text = "  ✅ Perfil " .. name .. " cargado."
         else
@@ -1156,7 +1181,7 @@ BtnStartHunt.MouseButton1Click:Connect(function()
     _G.AutoHuntActive = not _G.AutoHuntActive
     BtnStartHunt.Text = _G.AutoHuntActive and "⏹️ Detener Auto-Caza Múltiple" or "▶️ Iniciar Auto-Caza Múltiple"
     BtnStartHunt.BackgroundColor3 = _G.AutoHuntActive and C.accentOn or C.card
-    BtnStartHunt.TextColor3 = _G.AutoHuntActive and Color3.new(0,0,0) or C.text
+    BtnStartHunt.TextColor3 = _G.AutoHuntActive and Color3.new(0, 0, 0) or C.text
     if not _G.AutoHuntActive then
         HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente."
     else
@@ -1177,7 +1202,8 @@ AnalistaInfo.BackgroundTransparency = 1
 AnalistaInfo.TextColor3 = C.muted
 AnalistaInfo.Font = Enum.Font.GothamMedium
 AnalistaInfo.TextSize = 11
-AnalistaInfo.Text = "  Extrae todos los scripts de las islas, remotes, posiciones,\n  portales de teletransportación y datos de Jefes (Bosses).\n  Guarda todo en un archivo txt en tu carpeta local."
+AnalistaInfo.Text =
+"  Extrae todos los scripts de las islas, remotes, posiciones,\n  portales de teletransportación y datos de Jefes (Bosses).\n  Guarda todo en un archivo txt en tu carpeta local."
 AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
@@ -1194,7 +1220,6 @@ AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaLog.LayoutOrder = 4
 
 BtnAnalista.MouseButton1Click:Connect(function()
-
     BtnAnalista.Text = "🧪 Escaneando el Entorno..."
     AnalistaLog.Text = "  [1/4] Buscando scripts criticos..."
 
@@ -1226,7 +1251,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     -- NO require() - bloquea indefinidamente en modulos con WaitForChild
                 end
             end
-            task.wait() -- yield cada script, no solo los criticos
+            task.wait()     -- yield cada script, no solo los criticos
         end
         if sCount == 0 then table.insert(t, "  (ninguno encontrado)") end
         table.insert(t, "")
@@ -1241,7 +1266,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
 
         for i, obj in ipairs(allObjs) do
             if i % 200 == 0 then
-                AnalistaLog.Text = "  [2/4] " .. math.floor(i/total*100) .. "% (" .. i .. "/" .. total .. ")"
+                AnalistaLog.Text = "  [2/4] " .. math.floor(i / total * 100) .. "% (" .. i .. "/" .. total .. ")"
                 task.wait()
             end
             if obj:IsA("BasePart") then
@@ -1252,7 +1277,9 @@ BtnAnalista.MouseButton1Click:Connect(function()
                         killBricks = killBricks + 1
                         local relY = obj.Position.Y - hrp.Position.Y
                         if math.abs(relY) > 15 then
-                            table.insert(t, "  KillBrick: " .. obj.Name .. " Y_rel=" .. math.floor(relY) .. "s @ " .. tostring(obj.Position))
+                            table.insert(t,
+                                "  KillBrick: " ..
+                                obj.Name .. " Y_rel=" .. math.floor(relY) .. "s @ " .. tostring(obj.Position))
                         end
                     end
                     local nm = obj.Name:lower()
@@ -1294,7 +1321,10 @@ BtnAnalista.MouseButton1Click:Connect(function()
         local pCount = 0
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
-                table.insert(t, "  [Prompt-Tecla " .. tostring(obj.KeyboardKeyCode) .. "] " .. obj:GetFullName() .. " (Accion: " .. tostring(obj.ActionText) .. ")")
+                table.insert(t,
+                    "  [Prompt-Tecla " ..
+                    tostring(obj.KeyboardKeyCode) ..
+                    "] " .. obj:GetFullName() .. " (Accion: " .. tostring(obj.ActionText) .. ")")
                 pCount = pCount + 1
             elseif obj:IsA("BasePart") then
                 local oname = obj.Name:lower()
@@ -1303,7 +1333,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     pCount = pCount + 1
                 end
             end
-            
+
             -- Detectar timers o variables guardadas (Values) que delaten el respawn de un jefe
             local oname2 = obj.Name:lower()
             if oname2:match("spawn") or oname2:match("timer") or oname2:match("time") or oname2:match("cooldown") or oname2:match("boss") then
@@ -1317,16 +1347,23 @@ BtnAnalista.MouseButton1Click:Connect(function()
 
         table.insert(t, "> [5] INTERFACES DE VIAJE Y CIUDADES (PlayerGui):")
         local guiCount = 0
-        local function SafeText(b) pcall(function() return b.Text end) return "" end
+        local function SafeText(b)
+            pcall(function() return b.Text end)
+            return ""
+        end
         for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetDescendants()) do
             if gui:IsA("TextButton") or gui:IsA("ImageButton") then
-                 local gname = gui.Name:lower()
-                 local txt = ""
-                 if gui:IsA("TextButton") then txt = gui.Text:lower() end
-                 if gname:match("teleport") or gname:match("travel") or gname:match("map") or gname:match("island") or gname:match("select") or gname:match("city") or txt:match("teleport") or txt:match("travel") then
-                      table.insert(t, "  [Travel-Btn] " .. gui:GetFullName() .. " | Tipo: " .. gui.ClassName .. " | Text: " .. tostring(gui:IsA("TextButton") and gui.Text or "IMG"))
-                      guiCount = guiCount + 1
-                 end
+                local gname = gui.Name:lower()
+                local txt = ""
+                if gui:IsA("TextButton") then txt = gui.Text:lower() end
+                if gname:match("teleport") or gname:match("travel") or gname:match("map") or gname:match("island") or gname:match("select") or gname:match("city") or txt:match("teleport") or txt:match("travel") then
+                    table.insert(t,
+                        "  [Travel-Btn] " ..
+                        gui:GetFullName() ..
+                        " | Tipo: " ..
+                        gui.ClassName .. " | Text: " .. tostring(gui:IsA("TextButton") and gui.Text or "IMG"))
+                    guiCount = guiCount + 1
+                end
             end
         end
         if guiCount == 0 then table.insert(t, "  (Ningun boton de viaje detectado en UI)") end
@@ -1345,7 +1382,9 @@ BtnAnalista.MouseButton1Click:Connect(function()
         local filename = "IslandBossAnalysis_" .. tostring(os.time()) .. ".txt"
         local saved = false
         pcall(function()
-            if writefile then writefile(filename, table.concat(t, "\n")); saved = true end
+            if writefile then
+                writefile(filename, table.concat(t, "\n")); saved = true
+            end
         end)
         if saved then
             AnalistaLog.Text = "  ✅ Listo: " .. filename
@@ -1498,7 +1537,7 @@ function GetMobCache()
     if os.clock() - LastCacheTime > 2.5 then
         LastCacheTime = os.clock()
         local newCache = {}
-        
+
         pcall(function()
             for _, mob in pairs(Workspace:GetDescendants()) do
                 if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
@@ -1514,7 +1553,7 @@ function GetMobCache()
                 end
             end
         end)
-        
+
         TargetMobsCache = newCache
     end
     return TargetMobsCache
@@ -1534,7 +1573,9 @@ function GetNearestMob()
 
         if #ScannedTargetNames > 0 then
             for _, sn in ipairs(ScannedTargetNames) do
-                if mob.Name == sn then allow = true; break end
+                if mob.Name == sn then
+                    allow = true; break
+                end
             end
         else
             if TargetBosses == "SoloBoss" then
@@ -1618,7 +1659,7 @@ end)
 -- Loop independiente: busca bloques invisibles CanCollide=true y los desactiva
 task.spawn(function()
     while true do
-        task.wait(3) -- corre cada 3 segundos, no afecta FPS
+        task.wait(3)     -- corre cada 3 segundos, no afecta FPS
         if GhostProtocolEnabled then
             local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -1667,349 +1708,358 @@ task.spawn(function()
                     task.wait(2)
                 else
                     -- Funciliaridad Helper para Smart Weapon
-                local function GetSmartTool(reqType)
-                    -- Prioridad Cero: Nombres Exactos Calibrados
-                    if reqType == "Sword" and SmartSwordName then
-                        local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
-                        if t then return t end
-                    end
-                    if reqType == "Fruit" and SmartFruitName then
-                        local t = char:FindFirstChild(SmartFruitName) or LP.Backpack:FindFirstChild(SmartFruitName)
-                        if t then return t end
-                    end
-
-                    local function isForbidden(t)
-                        if reqType == "Sword" and SmartFruitName and t.Name == SmartFruitName then return true end
-                        if reqType == "Fruit" and SmartSwordName and t.Name == SmartSwordName then return true end
-                        if t.Name:lower():match("combat") then return true end
-                        return false
-                    end
-
-                    -- Primer intento: Nombres comunes (fallback estándar)
-                    local function strictMatch(t)
-                        if isForbidden(t) then return false end
-                        local n = t.Name:lower()
-                        if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return true end
-                        if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return true end
-                        return false
-                    end
-
-                    for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
-                    for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
-                    
-                    -- Segundo Intento: Cualquier cosa que NO esté prohibida (último recurso)
-                    for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
-                    for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
-
-                    return nil -- Si no hay literalmente nada seguro, mejor retornar nil para que el char no haga locuras.
-                end
-
-                local tool = char:FindFirstChildOfClass("Tool")
-                if SmartCombatEnabled then
-                    if not LastSmartSwap then LastSmartSwap = os.clock() end
-                    if not SmartCurrentWeapon then SmartCurrentWeapon = "Sword" end
-                    
-                    -- Corrección al instante si el usuario apaga la fruta en medio de un ataque
-                    if not SmartUseFruit and SmartCurrentWeapon == "Fruit" then
-                        SmartCurrentWeapon = "Sword"
-                        LastSmartSwap = os.clock()
-                    end
-
-                    -- Rotación Cada 4s solo si la fruta está permitida
-                    if SmartUseFruit and os.clock() - LastSmartSwap > 4 then 
-                        LastSmartSwap = os.clock()
-                        SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
-                    end
-
-                    local wTool = GetSmartTool(SmartCurrentWeapon)
-                    if wTool then 
-                        -- Si el arma asignada no está en la mano principal (no equipped)
-                        if not char:FindFirstChild(wTool.Name) then
-                            char.Humanoid:UnequipTools()
-                            char.Humanoid:EquipTool(wTool) 
+                    local function GetSmartTool(reqType)
+                        -- Prioridad Cero: Nombres Exactos Calibrados
+                        if reqType == "Sword" and SmartSwordName then
+                            local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
+                            if t then return t end
                         end
-                        tool = wTool
+                        if reqType == "Fruit" and SmartFruitName then
+                            local t = char:FindFirstChild(SmartFruitName) or LP.Backpack:FindFirstChild(SmartFruitName)
+                            if t then return t end
+                        end
+
+                        local function isForbidden(t)
+                            if reqType == "Sword" and SmartFruitName and t.Name == SmartFruitName then return true end
+                            if reqType == "Fruit" and SmartSwordName and t.Name == SmartSwordName then return true end
+                            if t.Name:lower():match("combat") then return true end
+                            return false
+                        end
+
+                        -- Primer intento: Nombres comunes (fallback estándar)
+                        local function strictMatch(t)
+                            if isForbidden(t) then return false end
+                            local n = t.Name:lower()
+                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return true end
+                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return true end
+                            return false
+                        end
+
+                        for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
+                        for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
+
+                        -- Segundo Intento: Cualquier cosa que NO esté prohibida (último recurso)
+                        for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
+                        for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return
+                                t end end
+
+                        return nil -- Si no hay literalmente nada seguro, mejor retornar nil para que el char no haga locuras.
                     end
-                else
-                    -- Normal Equip
-                    if not tool then
-                        for _, t in pairs(LP.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and (t.Name:lower():match("katana") or t.Name:lower():match("sword") or t.Name:lower():match("blade")) then
-                                tool = t
-                                break
+
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if SmartCombatEnabled then
+                        if not LastSmartSwap then LastSmartSwap = os.clock() end
+                        if not SmartCurrentWeapon then SmartCurrentWeapon = "Sword" end
+
+                        -- Corrección al instante si el usuario apaga la fruta en medio de un ataque
+                        if not SmartUseFruit and SmartCurrentWeapon == "Fruit" then
+                            SmartCurrentWeapon = "Sword"
+                            LastSmartSwap = os.clock()
+                        end
+
+                        -- Rotación Cada 4s solo si la fruta está permitida
+                        if SmartUseFruit and os.clock() - LastSmartSwap > 4 then
+                            LastSmartSwap = os.clock()
+                            SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                        end
+
+                        local wTool = GetSmartTool(SmartCurrentWeapon)
+                        if wTool then
+                            -- Si el arma asignada no está en la mano principal (no equipped)
+                            if not char:FindFirstChild(wTool.Name) then
+                                char.Humanoid:UnequipTools()
+                                char.Humanoid:EquipTool(wTool)
                             end
+                            tool = wTool
                         end
+                    else
+                        -- Normal Equip
                         if not tool then
                             for _, t in pairs(LP.Backpack:GetChildren()) do
-                                if t:IsA("Tool") and not t.Name:lower():match("combat") then
+                                if t:IsA("Tool") and (t.Name:lower():match("katana") or t.Name:lower():match("sword") or t.Name:lower():match("blade")) then
                                     tool = t
                                     break
                                 end
                             end
+                            if not tool then
+                                for _, t in pairs(LP.Backpack:GetChildren()) do
+                                    if t:IsA("Tool") and not t.Name:lower():match("combat") then
+                                        tool = t
+                                        break
+                                    end
+                                end
+                            end
+                            if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
+                            if tool then char.Humanoid:EquipTool(tool) end
                         end
-                        if not tool then tool = LP.Backpack:FindFirstChildOfClass("Tool") end
-                        if tool then char.Humanoid:EquipTool(tool) end
                     end
-                end
 
-                local mob = GetNearestMob()
+                    local mob = GetNearestMob()
 
-                -- ====== SISTEMA DE RETORNO A MEMORIA ======
-                -- (Manejado en loop independiente más abajo)
-                -- ====== FIN SISTEMA DE RETORNO ======
+                    -- ====== SISTEMA DE RETORNO A MEMORIA ======
+                    -- (Manejado en loop independiente más abajo)
+                    -- ====== FIN SISTEMA DE RETORNO ======
 
-                if ForceMemoryReturn then
-                     if MemoryPoint then
-                         local d = (char.HumanoidRootPart.Position - MemoryPoint).Magnitude
-                         if d <= 15 then 
-                              ForceMemoryReturn = false
-                         else
-                              StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
-                              -- Saltar lógica de mob dejando que el AutoWalk nos mueva
-                              mob = nil 
-                         end
-                     else
-                         -- Si no hay MemoryPoint guardado, no podemos forzar retorno. Apágalo.
-                         ForceMemoryReturn = false
-                     end
-                end
-
-                if mob and not ForceMemoryReturn then
-                    -- ==============================================
-                    -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
-                    -- ==============================================
-                    if not IsInPanicRecovery then
-                        if LastMobTracker ~= mob then
-                            LastMobTracker = mob
-                            CurrentMobHealth = mob.Humanoid.Health
-                            MobHitTimer = os.clock()
-                            LastRealDamageTime = os.clock()
-
-                            -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
-                            pcall(function()
-                                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                                task.wait(0.05)
-                                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                            end)
+                    if ForceMemoryReturn then
+                        if MemoryPoint then
+                            local d = (char.HumanoidRootPart.Position - MemoryPoint).Magnitude
+                            if d <= 15 then
+                                ForceMemoryReturn = false
+                            else
+                                StatusLabel.Text = "🏃 Forzando retorno a Memoria..."
+                                -- Saltar lógica de mob dejando que el AutoWalk nos mueva
+                                mob = nil
+                            end
                         else
-                            if mob.Humanoid.Health < CurrentMobHealth then
-                                -- Confirmamos que hubo daño real, reseteamos el reloj
+                            -- Si no hay MemoryPoint guardado, no podemos forzar retorno. Apágalo.
+                            ForceMemoryReturn = false
+                        end
+                    end
+
+                    if mob and not ForceMemoryReturn then
+                        -- ==============================================
+                        -- DETECTOR DE ATASCO DE DAÑO (Despertador Físico)
+                        -- ==============================================
+                        if not IsInPanicRecovery then
+                            if LastMobTracker ~= mob then
+                                LastMobTracker = mob
                                 CurrentMobHealth = mob.Humanoid.Health
                                 MobHitTimer = os.clock()
                                 LastRealDamageTime = os.clock()
-                                IsWalkingToMemory = false
-                            elseif os.clock() - MobHitTimer >= 5.0 then
-                                -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
+
+                                -- ARRANCADOR INMEDIATO: Primer Click Físico al atrapar un Nuevo Mob
                                 pcall(function()
                                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                                     task.wait(0.05)
                                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                                 end)
-                                MobHitTimer = os.clock() -- Refrescamos para intentar de nuevo
+                            else
+                                if mob.Humanoid.Health < CurrentMobHealth then
+                                    -- Confirmamos que hubo daño real, reseteamos el reloj
+                                    CurrentMobHealth = mob.Humanoid.Health
+                                    MobHitTimer = os.clock()
+                                    LastRealDamageTime = os.clock()
+                                    IsWalkingToMemory = false
+                                elseif os.clock() - MobHitTimer >= 5.0 then
+                                    -- Han pasado 5 Segundos SIN dañar al Mob. Forzamos un Click Físico en Pantalla
+                                    pcall(function()
+                                        VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                        task.wait(0.05)
+                                        VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                                    end)
+                                    MobHitTimer = os.clock() -- Refrescamos para intentar de nuevo
+                                end
                             end
-                        end
-                    else
-                        -- Si estamos en pánico, mantener el reloj fresco para que no tire click apenas bajemos
-                        MobHitTimer = os.clock()
-                    end
-
-                    StatusLabel.Text = "Cazando: " .. mob.Name
-                    local hrp = char.HumanoidRootPart
-                    local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
-
-                    if mobHrp then
-                        GlobalMagnetTarget = mobHrp.Position
-
-                        -- ==============================================
-                        -- INTERCEPTOR: PROTOCOLO DE PÁNICO (HUÍDA Y CURA)
-                        -- ==============================================
-                        local hpRatio = char.Humanoid.Health / char.Humanoid.MaxHealth
-                        if hpRatio <= PanicThreshold and char.Humanoid.Health > 0 and not IsInPanicRecovery then
-                            IsInPanicRecovery = true
-                            hrp:SetAttribute("PanicPos", hrp.Position)
-                        elseif IsInPanicRecovery and hpRatio >= ReturnHealthThreshold then
-                            IsInPanicRecovery = false -- Vuelve al combate
-                            hrp:SetAttribute("PanicPos", nil)
-                        end
-
-                        if IsInPanicRecovery then
-                            StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio * 100) .. "%)"
-
-                            -- Guardamos ancla estática para no subir infinitamente ni seguir mobs
-                            local savedPos = hrp:GetAttribute("PanicPos") or hrp.Position
-                            local escapeCF = CFrame.new(savedPos) * CFrame.new(0, 50, 0)
-
-                            pcall(function()
-                                local d = (hrp.Position - escapeCF.Position).Magnitude
-                                if d > 1 then
-                                    local step = math.clamp(20 / d, 0, 1)
-                                    char:PivotTo(hrp.CFrame:Lerp(escapeCF, step))
-                                else
-                                    char:PivotTo(escapeCF)
-                                end
-                            end)
-
-                            -- Quita la cámara del Mob y la devuelve al personaje para frenar mareos visuales
-                            pcall(function()
-                                local cam = Workspace.CurrentCamera
-                                if cam.CameraSubject ~= char:FindFirstChild("Humanoid") then
-                                    cam.CameraSubject = char:FindFirstChild("Humanoid")
-                                end
-                            end)
-
-                            task.wait(0.05)
                         else
+                            -- Si estamos en pánico, mantener el reloj fresco para que no tire click apenas bajemos
+                            MobHitTimer = os.clock()
+                        end
+
+                        StatusLabel.Text = "Cazando: " .. mob.Name
+                        local hrp = char.HumanoidRootPart
+                        local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
+
+                        if mobHrp then
+                            GlobalMagnetTarget = mobHrp.Position
+
                             -- ==============================================
-                            -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
-                        local mobsToHit = {}
-                        if MobMagnetEnabled then
-                            local sorted = {}
-                            local cache = GetMobCache()
-                            for _, m in ipairs(cache) do
-                                if m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                                    local isBoss = m.Name:lower():match("boss")
-                                    local allow = false
-                                    if #ScannedTargetNames > 0 then
-                                        for _, sn in ipairs(ScannedTargetNames) do
-                                            if m.Name == sn then allow = true; break end
-                                        end
-                                    else
-                                        if TargetBosses == "SoloBoss" then
-                                            if isBoss then allow = true end
-                                        elseif TargetBosses == "Ignorar" then
-                                            if not isBoss then allow = true end
-                                        else
-                                            allow = true
-                                        end
-                                    end
-
-                                    if allow then
-                                        local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
-                                        if dist < 150 then
-                                            table.insert(sorted, { m, dist })
-                                        end
-                                    end
-                                end
+                            -- INTERCEPTOR: PROTOCOLO DE PÁNICO (HUÍDA Y CURA)
+                            -- ==============================================
+                            local hpRatio = char.Humanoid.Health / char.Humanoid.MaxHealth
+                            if hpRatio <= PanicThreshold and char.Humanoid.Health > 0 and not IsInPanicRecovery then
+                                IsInPanicRecovery = true
+                                hrp:SetAttribute("PanicPos", hrp.Position)
+                            elseif IsInPanicRecovery and hpRatio >= ReturnHealthThreshold then
+                                IsInPanicRecovery = false -- Vuelve al combate
+                                hrp:SetAttribute("PanicPos", nil)
                             end
-                            table.sort(sorted, function(a, b) return a[2] < b[2] end)
-                            -- Agarra hasta a los 4 más cercanos
-                            for i = 1, math.min(4, #sorted) do
-                                table.insert(mobsToHit, sorted[i][1])
-                            end
-                        else
-                            table.insert(mobsToHit, mob)
-                        end
 
-                        -- Ataque Dinámico / Multi-Golpe para Juntar
-                        for _, targetMob in pairs(mobsToHit) do
-                            local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
-                            if tHrp then
-                                -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
-                                -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
-                                local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                if flatLookDir.Magnitude < 0.001 then flatLookDir = Vector3.new(1,0,0) end
-                                flatLookDir = flatLookDir.Unit
-                                local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
+                            if IsInPanicRecovery then
+                                StatusLabel.Text = "Status: 🛡️ PÁNICO (CURANDO " .. math.floor(hpRatio * 100) .. "%)"
 
-                                local currentFarmMode = FarmMode
-                                local TargetCF
-                                
-                                if SmartCombatEnabled then
-                                    local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or SmartCalib_Fruit
-                                    if currentFarmMode == "Arriba" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, currentOffset + 2, 0)
-                                    elseif currentFarmMode == "Detras" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, currentOffset + 2)
-                                    else
-                                        -- Abajo por defecto si usa otra cosa
-                                        TargetCF = flatMobCFrame * CFrame.new(0, -(currentOffset + 2), 0)
-                                    end
-                                else
-                                    if currentFarmMode == "Arriba" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                    elseif currentFarmMode == "Detras" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
-                                    elseif currentFarmMode == "Abajo" then
-                                        TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
-                                    end
-                                end
+                                -- Guardamos ancla estática para no subir infinitamente ni seguir mobs
+                                local savedPos = hrp:GetAttribute("PanicPos") or hrp.Position
+                                local escapeCF = CFrame.new(savedPos) * CFrame.new(0, 50, 0)
 
                                 pcall(function()
-                                    local rootCF = TargetCF
-                                    if BlinkAttackEnabled then
-                                        rootCF = TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45) 
-                                        -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
-                                    end
-                                    local flyDist = (hrp.Position - rootCF.Position).Magnitude
-                                    if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
-                                        -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
-                                        local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
-                                        char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
+                                    local d = (hrp.Position - escapeCF.Position).Magnitude
+                                    if d > 1 then
+                                        local step = math.clamp(20 / d, 0, 1)
+                                        char:PivotTo(hrp.CFrame:Lerp(escapeCF, step))
                                     else
-                                        -- Cerca o Modalidad Normal: Anchored Pivot
-                                        char:PivotTo(rootCF)
+                                        char:PivotTo(escapeCF)
                                     end
                                 end)
 
+                                -- Quita la cámara del Mob y la devuelve al personaje para frenar mareos visuales
                                 pcall(function()
                                     local cam = Workspace.CurrentCamera
-                                    if cam and cam.CameraSubject ~= targetMob:FindFirstChild("Humanoid") then
-                                        cam.CameraSubject = targetMob:FindFirstChild("Humanoid") or tHrp
+                                    if cam.CameraSubject ~= char:FindFirstChild("Humanoid") then
+                                        cam.CameraSubject = char:FindFirstChild("Humanoid")
                                     end
                                 end)
 
-                                -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
-                                local actualLoc = BlinkAttackEnabled and (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or TargetCF
-                                local distFinal = (hrp.Position - actualLoc.Position).Magnitude
-                                if distFinal <= 20 then
-                                    pcall(function()
-                                        if BlinkAttackEnabled then
-                                            -- Modifica CFrame Instantáneamente para el RequestHit (Blink Strike)
-                                            char:PivotTo(TargetCF)
-                                            CombatRemote:FireServer()
-                                            if tool then tool:Activate() end
-                                            char:PivotTo(actualLoc)
-                                        else
-                                            CombatRemote:FireServer()
-                                            if tool then tool:Activate() end
+                                task.wait(0.05)
+                            else
+                                -- ==============================================
+                                -- Generar Lista de Multi-Targets (Para Juntar Mobs mediante IA Aggro)
+                                local mobsToHit = {}
+                                if MobMagnetEnabled then
+                                    local sorted = {}
+                                    local cache = GetMobCache()
+                                    for _, m in ipairs(cache) do
+                                        if m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                                            local isBoss = m.Name:lower():match("boss")
+                                            local allow = false
+                                            if #ScannedTargetNames > 0 then
+                                                for _, sn in ipairs(ScannedTargetNames) do
+                                                    if m.Name == sn then
+                                                        allow = true; break
+                                                    end
+                                                end
+                                            else
+                                                if TargetBosses == "SoloBoss" then
+                                                    if isBoss then allow = true end
+                                                elseif TargetBosses == "Ignorar" then
+                                                    if not isBoss then allow = true end
+                                                else
+                                                    allow = true
+                                                end
+                                            end
+
+                                            if allow then
+                                                local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
+                                                if dist < 150 then
+                                                    table.insert(sorted, { m, dist })
+                                                end
+                                            end
                                         end
-                                    end)
-
-                                    -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
-                                    if AutoSkillEnabled then
-                                        pcall(function()
-                                            -- Calculamos rotación estrictamente horizontal (evita que el PJ mire hacia arriba y su cabeza traspase el piso)
-                                            local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y,
-                                                tHrp.Position.Z)
-                                            hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
-
-                                            VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-                                            task.wait(0.01)
-                                            VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
-                                        end)
                                     end
+                                    table.sort(sorted, function(a, b) return a[2] < b[2] end)
+                                    -- Agarra hasta a los 4 más cercanos
+                                    for i = 1, math.min(4, #sorted) do
+                                        table.insert(mobsToHit, sorted[i][1])
+                                    end
+                                else
+                                    table.insert(mobsToHit, mob)
                                 end
 
-                                -- Una minúscula pausa entre saltos
-                                task.wait(0.05)
-                            end
-                        end -- for targetMob
-                    end -- else IsInPanicRecovery
-                end -- if mobHrp
-            else -- else for mob and not ForceMemoryReturn
+                                -- Ataque Dinámico / Multi-Golpe para Juntar
+                                for _, targetMob in pairs(mobsToHit) do
+                                    local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
+                                    if tHrp then
+                                        -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
+                                        -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
+                                        local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0,
+                                            tHrp.CFrame.LookVector.Z)
+                                        if flatLookDir.Magnitude < 0.001 then flatLookDir = Vector3.new(1, 0, 0) end
+                                        flatLookDir = flatLookDir.Unit
+                                        local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
+
+                                        local currentFarmMode = FarmMode
+                                        local TargetCF
+
+                                        if SmartCombatEnabled then
+                                            local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or
+                                            SmartCalib_Fruit
+                                            if currentFarmMode == "Arriba" then
+                                                TargetCF = flatMobCFrame * CFrame.new(0, currentOffset + 2, 0)
+                                            elseif currentFarmMode == "Detras" then
+                                                TargetCF = flatMobCFrame * CFrame.new(0, 0, currentOffset + 2)
+                                            else
+                                                -- Abajo por defecto si usa otra cosa
+                                                TargetCF = flatMobCFrame * CFrame.new(0, -(currentOffset + 2), 0)
+                                            end
+                                        else
+                                            if currentFarmMode == "Arriba" then
+                                                TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
+                                            elseif currentFarmMode == "Detras" then
+                                                TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                            elseif currentFarmMode == "Abajo" then
+                                                TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
+                                            end
+                                        end
+
+                                        pcall(function()
+                                            local rootCF = TargetCF
+                                            if BlinkAttackEnabled then
+                                                rootCF = TargetCF *
+                                                CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
+                                                    FarmMode == "Abajo" and -12 or 45)
+                                                -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
+                                            end
+                                            local flyDist = (hrp.Position - rootCF.Position).Magnitude
+                                            if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
+                                                -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
+                                                local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
+                                                char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
+                                            else
+                                                -- Cerca o Modalidad Normal: Anchored Pivot
+                                                char:PivotTo(rootCF)
+                                            end
+                                        end)
+
+                                        pcall(function()
+                                            local cam = Workspace.CurrentCamera
+                                            if cam and cam.CameraSubject ~= targetMob:FindFirstChild("Humanoid") then
+                                                cam.CameraSubject = targetMob:FindFirstChild("Humanoid") or tHrp
+                                            end
+                                        end)
+
+                                        -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
+                                        local actualLoc = BlinkAttackEnabled and
+                                        (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or
+                                        TargetCF
+                                        local distFinal = (hrp.Position - actualLoc.Position).Magnitude
+                                        if distFinal <= 20 then
+                                            pcall(function()
+                                                if BlinkAttackEnabled then
+                                                    -- Modifica CFrame Instantáneamente para el RequestHit (Blink Strike)
+                                                    char:PivotTo(TargetCF)
+                                                    CombatRemote:FireServer()
+                                                    if tool then tool:Activate() end
+                                                    char:PivotTo(actualLoc)
+                                                else
+                                                    CombatRemote:FireServer()
+                                                    if tool then tool:Activate() end
+                                                end
+                                            end)
+
+                                            -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
+                                            if AutoSkillEnabled then
+                                                pcall(function()
+                                                    -- Calculamos rotación estrictamente horizontal (evita que el PJ mire hacia arriba y su cabeza traspase el piso)
+                                                    local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y,
+                                                        tHrp.Position.Z)
+                                                    hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
+
+                                                    VIM:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                                                    task.wait(0.01)
+                                                    VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                                                end)
+                                            end
+                                        end
+
+                                        -- Una minúscula pausa entre saltos
+                                        task.wait(0.05)
+                                    end
+                                end -- for targetMob
+                            end -- else IsInPanicRecovery
+                        end     -- if mobHrp
+                    else        -- else for mob and not ForceMemoryReturn
+                        GlobalMagnetTarget = nil
+                        StatusLabel.Text = "Buscando Mobs vivos..."
+                    end -- if mob and not ForceMemoryReturn
+                end -- if char.Humanoid.Health <= 0
+            else    -- else for char and char:FindFirstChild
                 GlobalMagnetTarget = nil
-                StatusLabel.Text = "Buscando Mobs vivos..."
-            end -- if mob and not ForceMemoryReturn
-        end -- if char.Humanoid.Health <= 0
-    else -- else for char and char:FindFirstChild
-        GlobalMagnetTarget = nil
-        StatusLabel.Text = "Esperando al Personaje..."
-    end -- if char and char:FindFirstChild
-else -- else for AutoFarm
-    GlobalMagnetTarget = nil
-end -- if AutoFarm
-end -- while task.wait()
-end) -- task.spawn
+                StatusLabel.Text = "Esperando al Personaje..."
+            end -- if char and char:FindFirstChild
+        else -- else for AutoFarm
+            GlobalMagnetTarget = nil
+        end -- if AutoFarm
+    end     -- while task.wait()
+end)        -- task.spawn
 
 -- ==============================================================================
 -- CONEXIONES GUI
@@ -2058,7 +2108,7 @@ uis.InputBegan:Connect(function(input, processed)
             MemoryPoint = char.HumanoidRootPart.Position
             IsWalkingToMemory = false
             MemStatusLabel.Text = "  📍 Punto: " ..
-            math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
+                math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
             StatusLabel.Text = "📍 Punto guardado!"
             SaveConfig()
         end
@@ -2123,7 +2173,7 @@ BtnBlink.MouseButton1Click:Connect(function()
     if BlinkAttackEnabled then
         BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
         BtnBlink.BackgroundColor3 = C.accentOn
-        BtnBlink.TextColor3 = Color3.new(1,1,1)
+        BtnBlink.TextColor3 = Color3.new(1, 1, 1)
     else
         BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): OFF"
         BtnBlink.BackgroundColor3 = C.card
@@ -2135,7 +2185,7 @@ end)
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
-        OfsY = -25; OfsZ = 0  -- 25 studs debajo del mob (subterráneo profundo)
+        OfsY = -25; OfsZ = 0     -- 25 studs debajo del mob (subterráneo profundo)
         BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
         -- Auto-activar Ghost Protocol para quitar bloques invisibles
         GhostProtocolEnabled = true
@@ -2267,16 +2317,16 @@ task.spawn(function()
                 local isScanner = false
 
                 if not targetPoint and #ScannedTargetNames > 0 then
-                     for _, m in pairs(GetMobCache()) do
-                         for _, sn in ipairs(ScannedTargetNames) do
-                             if m.Name == sn and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
-                                 targetPoint = m.HumanoidRootPart.Position
-                                 isScanner = true
-                                 break
-                             end
-                         end
-                         if isScanner then break end
-                     end
+                    for _, m in pairs(GetMobCache()) do
+                        for _, sn in ipairs(ScannedTargetNames) do
+                            if m.Name == sn and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                                targetPoint = m.HumanoidRootPart.Position
+                                isScanner = true
+                                break
+                            end
+                        end
+                        if isScanner then break end
+                    end
                 end
 
                 if targetPoint then
@@ -2311,7 +2361,6 @@ task.spawn(function()
                         else
                             StatusLabel.Text = "🎯 En posicion: " .. table.concat(ScannedTargetNames, "+")
                         end
-
                     else
                         -- ===== MEMORIA: lógica original =====
                         if mob then
@@ -2346,9 +2395,8 @@ task.spawn(function()
                                 end)
                             end
                         end
-                    end -- end else (no isScanner)
-                end -- end if targetPoint
-
+                    end     -- end else (no isScanner)
+                end         -- end if targetPoint
             else
                 if IsWalkingToMemory then
                     IsWalkingToMemory = false
@@ -2369,7 +2417,7 @@ task.spawn(function()
         if _G.AutoHuntActive and _G.AutoHuntRoute and #_G.AutoHuntRoute > 0 then
             local currentClock = os.time()
             local targetStep = nil
-            
+
             -- 1. Identificar Boss listo (cooldown 5 mins superado)
             for _, step in ipairs(_G.AutoHuntRoute) do
                 local dt = step.DeadTime or 0
@@ -2379,11 +2427,11 @@ task.spawn(function()
                     break
                 end
             end
-            
+
             if targetStep then
                 local bossAlive = false
                 local bossChar = nil
-                
+
                 -- Chequeo visual en el server/isla actual
                 for _, m in pairs(GetMobCache()) do
                     if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
@@ -2392,7 +2440,7 @@ task.spawn(function()
                         break
                     end
                 end
-                
+
                 if bossAlive then
                     -- ================== FASE 3: ACERCAMIENTO CUIDADOSO ==================
                     -- Mantener la cámara anclada al jugador para evitar mareos (El AutoFarm Nativo roba la cámara)
@@ -2400,10 +2448,11 @@ task.spawn(function()
                     if hrp and bossChar and bossChar:FindFirstChild("HumanoidRootPart") then
                         _G.GhostProtocolEnabled = true
                         pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
-                        
+
                         local bossPos = bossChar.HumanoidRootPart.Position
-                        local destination = CFrame.new(bossPos) * CFrame.new(0, 5, 20) -- 20 studs frente a su cara un poco alzado
-                        
+                        local destination = CFrame.new(bossPos) *
+                        CFrame.new(0, 5, 20)                                               -- 20 studs frente a su cara un poco alzado
+
                         -- Vuelo moderado y controlado (Evita glitch subterráneo)
                         while hrp and bossChar:FindFirstChild("Humanoid") and bossChar.Humanoid.Health > 0 and (hrp.Position - destination.Position).Magnitude > 8 and _G.AutoHuntActive do
                             task.wait()
@@ -2411,26 +2460,33 @@ task.spawn(function()
                             pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
                             if hrp then
                                 local flyDist = (hrp.Position - destination.Position).Magnitude
-                                local flyStep = math.clamp(30 / flyDist, 0, 1) -- 30 studs continuos sin brincos bruscos
+                                local flyStep = math.clamp(30 / flyDist, 0, 1)     -- 30 studs continuos sin brincos bruscos
                                 LP.Character:PivotTo(hrp.CFrame:Lerp(destination, flyStep))
                                 if hrp:FindFirstChildOfClass("BodyVelocity") then
-                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0,0,0)
+                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
                                 end
                             end
                         end
-                        
+
                         -- Aterrizaje y Confirmación
                         _G.GhostProtocolEnabled = false
-                        task.wait(1.5) -- Pie en piso, listos.
+                        task.wait(1.5)     -- Pie en piso, listos.
                     end
-                
+
                     -- ================== FASE 4: COMBATE / AutoFarm Nativo ==================
-                    FarmMode = "Arriba" 
-                    OfsY = 18; OfsZ = 0 -- 18 studs encima del jefe
+                    -- (El AutoFarm peleará respetando el modo {Abajo/Arriba/Detras} que tengas seleccionado en la UI)
                     while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
                     table.insert(ScannedTargetNames, targetStep.Boss)
-                    if not AutoFarm then pcall(ToggleAutoFarm) end
                     
+                    -- Prevenir el glitch de "vuelta a memoria" forzando reseteo
+                    LastRealDamageTime = os.clock()
+                    IsWalkingToMemory = false
+                    if bossChar and bossChar:FindFirstChild("HumanoidRootPart") then
+                        MemoryPoint = bossChar.HumanoidRootPart.Position
+                    end
+                    
+                    if not AutoFarm then pcall(ToggleAutoFarm) end
+
                     -- Esperamos hasta que muera el boss
                     while bossAlive and _G.AutoHuntActive do
                         task.wait(1.5)
@@ -2442,12 +2498,12 @@ task.spawn(function()
                             end
                         end
                     end
-                    
+
                     -- Murió (O apagaron el cazador)
                     if not bossAlive then
-                         targetStep.DeadTime = os.time()
-                         if AutoFarm then pcall(ToggleAutoFarm) end -- Apagamos el Autofarm estándar en transición
-                         task.wait(3)
+                        targetStep.DeadTime = os.time()
+                        if AutoFarm then pcall(ToggleAutoFarm) end     -- Apagamos el Autofarm estándar en transición
+                        task.wait(3)
                     end
                 else
                     -- ================== FASE 2: Navegación Viajera (Simulación Física "Legit") ==================
@@ -2455,7 +2511,7 @@ task.spawn(function()
                     local nearestPortal = nil
                     local shortestDist = math.huge
                     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                    
+
                     if hrp then
                         for _, obj in pairs(workspace:GetDescendants()) do
                             if obj:IsA("ProximityPrompt") and (obj.ActionText:lower():match("map") or obj.Name:lower():match("portal") or obj.ActionText:lower():match("teleport")) then
@@ -2470,25 +2526,25 @@ task.spawn(function()
                             end
                         end
                     end
-                    
+
                     if nearestPortal and nearestPortal.Parent then
                         -- Volamos suavemente con NoClip hasta el Portal
                         _G.GhostProtocolEnabled = true
                         local targetCF = nearestPortal.Parent.CFrame * CFrame.new(0, 3, 0)
-                        
+
                         while hrp and (hrp.Position - targetCF.Position).Magnitude > 6 and _G.AutoHuntActive do
                             task.wait()
                             hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                             if hrp then
                                 local flyDist = (hrp.Position - targetCF.Position).Magnitude
-                                local flyStep = math.clamp(50 / flyDist, 0, 1) -- 50 studs de velocidad suave
+                                local flyStep = math.clamp(50 / flyDist, 0, 1)     -- 50 studs de velocidad suave
                                 LP.Character:PivotTo(hrp.CFrame:Lerp(targetCF, flyStep))
                                 if hrp:FindFirstChildOfClass("BodyVelocity") then
-                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0,0,0)
+                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
                                 end
                             end
                         end
-                        
+
                         task.wait(0.5)
                         -- Al estar físicamente en el Portal, accionamos el Prompt para abrir la UI como una persona real
                         -- Quitamos la duración de mantener pulsado ('E') para accionar instantáneamente
@@ -2502,13 +2558,13 @@ task.spawn(function()
                         else
                             pcall(function() fireproximityprompt(nearestPortal) end)
                         end
-                        task.wait(1.5) -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
-                        
+                        task.wait(1.5)     -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
+
                         -- Simulamos el clic a la UI dándole a la Isla seleccionada (Validado desde el portal)
                         local rs = game:GetService("ReplicatedStorage")
                         pcall(function()
                             if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
-                                 rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                                rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
                             end
                         end)
                     else
@@ -2516,12 +2572,12 @@ task.spawn(function()
                         local rs = game:GetService("ReplicatedStorage")
                         pcall(function()
                             if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
-                                 rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                                rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
                             end
                         end)
                     end
-                    task.wait(3) -- Esperamos pantalla de carga
-                    
+                    task.wait(3)     -- Esperamos pantalla de carga
+
                     -- Forzamos ocultación de un submenú "Cancelar" o "X" por si la UI se queda bug visualmente al viajar
                     pcall(function()
                         local playerGui = LP.PlayerGui
@@ -2538,10 +2594,10 @@ task.spawn(function()
                             end
                         end
                     end)
-                    
+
                     -- Espera OBLIGATORIA de 5 SEGUNDOS al lado del portal recién llegados a la nueva isla
                     task.wait(5)
-                    
+
                     -- Re-Chequeo tras 6 segundos por si recién spawnearon los modelos
                     local postAlive = false
                     for _, m in pairs(GetMobCache()) do
@@ -2550,14 +2606,13 @@ task.spawn(function()
                             break
                         end
                     end
-                    
+
                     -- Si NO está despues de viajar, otra persona en el servidor lo mató antes
                     if not postAlive then
-                         targetStep.DeadTime = os.time()
+                        targetStep.DeadTime = os.time()
                     end
                 end
             end
         end
     end
 end)
-
