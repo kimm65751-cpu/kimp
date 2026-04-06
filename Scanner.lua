@@ -121,7 +121,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARME"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1146,6 +1146,7 @@ BtnSaveRoute.MouseButton1Click:Connect(function()
         local hs = game:GetService("HttpService")
         local json = hs:JSONEncode(_G.AutoHuntRoute)
         if writefile then writefile(name, json) end
+        _G.AutoHopRouteName = name
         HuntStatusInfo.Text = "  ✅ Perfil exportado exitosamente a:\n  " .. name
     end)
 end)
@@ -1163,6 +1164,7 @@ BtnLoadRoute.MouseButton1Click:Connect(function()
         local parsed = hs:JSONDecode(data)
         if type(parsed) == "table" then
             _G.AutoHuntRoute = parsed
+            _G.AutoHopRouteName = name
             HuntStatusInfo.Text = "  ✅ Perfil " .. name .. " cargado."
         else
             HuntStatusInfo.Text = "  ⚠️ Error al cargar " .. name
@@ -1188,6 +1190,98 @@ BtnStartHunt.MouseButton1Click:Connect(function()
         HuntStatusInfo.Text = "  Estado Cacería: Iniciando motores..."
     end
 end)
+
+-- ===================== AUTO-HOP (Cambio de Servidor) =====================
+_G.AutoHopEnabled = false
+_G.AutoHopWithRoute = false
+_G.AutoHopRouteName = ""
+
+local BtnAutoHop = ToggleButton(CazadorPage, "🔄 Auto-Hop (Cambiar Servidor): OFF", 17, C.card)
+BtnAutoHop.MouseButton1Click:Connect(function()
+    _G.AutoHopEnabled = not _G.AutoHopEnabled
+    BtnAutoHop.Text = _G.AutoHopEnabled and "🔄 Auto-Hop: ON" or "🔄 Auto-Hop (Cambiar Servidor): OFF"
+    BtnAutoHop.BackgroundColor3 = _G.AutoHopEnabled and Color3.fromRGB(60, 120, 180) or C.card
+    BtnAutoHop.TextColor3 = _G.AutoHopEnabled and Color3.new(1, 1, 1) or C.text
+end)
+
+local BtnHopRoute = ToggleButton(CazadorPage, "🔗 Vincular Hop + Auto-Ruta: OFF", 18, C.card)
+BtnHopRoute.MouseButton1Click:Connect(function()
+    _G.AutoHopWithRoute = not _G.AutoHopWithRoute
+    BtnHopRoute.Text = _G.AutoHopWithRoute and "🔗 Vincular Hop + Auto-Ruta: ON" or "🔗 Vincular Hop + Auto-Ruta: OFF"
+    BtnHopRoute.BackgroundColor3 = _G.AutoHopWithRoute and Color3.fromRGB(120, 60, 180) or C.card
+    BtnHopRoute.TextColor3 = _G.AutoHopWithRoute and Color3.new(1, 1, 1) or C.text
+end)
+
+-- ===================== LISTADO DE RUTAS GUARDADAS =====================
+SectionLabel(CazadorPage, "📁 RUTAS GUARDADAS", 19)
+
+local RouteListFrame = Instance.new("ScrollingFrame", CazadorPage)
+RouteListFrame.Size = UDim2.new(0.95, 0, 0, 90)
+RouteListFrame.BackgroundTransparency = 0.5
+RouteListFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+RouteListFrame.BorderSizePixel = 0
+RouteListFrame.ScrollBarThickness = 4
+RouteListFrame.LayoutOrder = 20
+
+local RouteListLayout = Instance.new("UIListLayout", RouteListFrame)
+RouteListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+RouteListLayout.Padding = UDim.new(0, 2)
+
+local function RefreshRouteFileList()
+    for _, child in pairs(RouteListFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    pcall(function()
+        if listfiles then
+            local files = listfiles(".")
+            local order = 0
+            for _, fpath in ipairs(files) do
+                local fname = fpath:match("([^/\\]+)$") or fpath
+                if fname:match("%.json$") and fname ~= "OmniAutoFarmConfig.json" and fname ~= "AutoHopState.json" then
+                    order = order + 1
+                    local btn = Instance.new("TextButton")
+                    btn.Size = UDim2.new(1, 0, 0, 22)
+                    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+                    btn.TextColor3 = Color3.fromRGB(180, 180, 220)
+                    btn.Font = Enum.Font.GothamMedium
+                    btn.TextSize = 11
+                    btn.TextXAlignment = Enum.TextXAlignment.Left
+                    btn.Text = "  📄 " .. fname
+                    btn.LayoutOrder = order
+                    btn.Parent = RouteListFrame
+                    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+                    btn.MouseButton1Click:Connect(function()
+                        pcall(function()
+                            local hs = game:GetService("HttpService")
+                            local data = readfile(fname)
+                            local parsed = hs:JSONDecode(data)
+                            if type(parsed) == "table" then
+                                _G.AutoHuntRoute = parsed
+                                RouteNameBox.Text = fname:gsub("%.json$", "")
+                                _G.AutoHopRouteName = fname
+                                HuntStatusInfo.Text = "  ✅ Ruta '" .. fname .. "' cargada."
+                            end
+                        end)
+                    end)
+                end
+            end
+            RouteListFrame.CanvasSize = UDim2.new(0, 0, 0, order * 24)
+            if order == 0 then
+                HuntStatusInfo.Text = "  ⚠️ No se encontraron rutas .json guardadas."
+            else
+                HuntStatusInfo.Text = "  📁 " .. order .. " rutas encontradas."
+            end
+        end
+    end)
+end
+
+local BtnRefreshRoutes = ToggleButton(CazadorPage, "🔍 Refrescar Lista de Rutas", 19.5, C.bg)
+BtnRefreshRoutes.MouseButton1Click:Connect(function()
+    RefreshRouteFileList()
+end)
+
+-- Cargar lista al inicio (tras breve delay para dar tiempo al executor)
+task.delay(2, RefreshRouteFileList)
 
 -- =======================================================================================
 -- ========== TAB 6: ANALIZADOR (FORENSE DE ISLAS, MAPAS Y JEFES) ==========
@@ -1543,11 +1637,20 @@ function GetMobCache()
                 if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
                     if mob.Humanoid.Health > 0 then
                         local n = mob.Name:lower()
-                        if not n:match("dummy") and not n:match("npc") and not mob:FindFirstChildOfClass("ProximityPrompt", true) then
-                            -- Confirmar que no sea un Jugador
-                            if not game.Players:GetPlayerFromCharacter(mob) then
-                                table.insert(newCache, mob)
-                            end
+                        -- Filtro 1: Nombre contiene palabras clave de NPC
+                        local isNPC = n:match("npc") or n:match("dummy") or n:match("merchant") or n:match("vendor")
+                            or n:match("shop") or n:match("quest") or n:match("guard") or n:match("villager")
+
+                        -- Filtro 2: Tiene ProximityPrompt o Dialog (interactivos = NPC)
+                        if not isNPC then
+                            isNPC = mob:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
+                                or mob:FindFirstChildOfClass("Dialog") ~= nil
+                                or mob:FindFirstChildWhichIsA("ClickDetector", true) ~= nil
+                        end
+
+                        -- Filtro 3: No sea un Jugador
+                        if not isNPC and not game.Players:GetPlayerFromCharacter(mob) then
+                            table.insert(newCache, mob)
                         end
                     end
                 end
@@ -2409,6 +2512,46 @@ end)
 task.spawn(LoadConfig)
 
 -- =========================================================================
+-- DETECCIÓN DE AUTO-HOP AL ARRANCAR
+-- Si venimos de un server hop con ruta vinculada, auto-cargar y activar.
+-- =========================================================================
+task.delay(4, function()
+    pcall(function()
+        if readfile and isfile and isfile("AutoHopState.json") then
+            local hs = game:GetService("HttpService")
+            local raw = readfile("AutoHopState.json")
+            local state = hs:JSONDecode(raw)
+            if type(state) == "table" and state.RouteName and state.AutoStart then
+                -- Cargar la ruta guardada
+                local routeRaw = readfile(state.RouteName)
+                local parsedRoute = hs:JSONDecode(routeRaw)
+                if type(parsedRoute) == "table" then
+                    _G.AutoHuntRoute = parsedRoute
+                    -- Resetear todos los DeadTime para empezar fresco en nuevo servidor
+                    for _, step in ipairs(_G.AutoHuntRoute) do
+                        step.DeadTime = 0
+                        step.WasAlive = false
+                    end
+                    _G.AutoHuntActive = true
+                    _G.AutoHopEnabled = true
+                    _G.AutoHopWithRoute = true
+                    _G.AutoHopRouteName = state.RouteName
+                    BtnStartHunt.Text = "⏹️ Detener Auto-Caza Múltiple"
+                    BtnStartHunt.BackgroundColor3 = C.accentOn
+                    BtnAutoHop.Text = "🔄 Auto-Hop: ON"
+                    BtnAutoHop.BackgroundColor3 = Color3.fromRGB(60, 120, 180)
+                    BtnHopRoute.Text = "🔗 Vincular Hop + Auto-Ruta: ON"
+                    BtnHopRoute.BackgroundColor3 = Color3.fromRGB(120, 60, 180)
+                    HuntStatusInfo.Text = "  🔄 Auto-Hop: Ruta '" .. state.RouteName .. "' cargada automáticamente."
+                end
+            end
+            -- Borrar el archivo para no repetir en caso de crash
+            pcall(function() delfile("AutoHopState.json") end)
+        end
+    end)
+end)
+
+-- =========================================================================
 -- MOTOR INTELIGENTE DE AUTO-CAZA
 -- =========================================================================
 task.spawn(function()
@@ -2579,18 +2722,107 @@ task.spawn(function()
                     -- Espera OBLIGATORIA de 5 SEGUNDOS al lado del portal recién llegados a la nueva isla
                     task.wait(5)
 
-                    -- Re-Chequeo tras 6 segundos por si recién spawnearon los modelos
+                    -- Re-Chequeo tras espera por si recién spawnearon los modelos
                     local postAlive = false
+                    local postBossModel = nil
                     for _, m in pairs(GetMobCache()) do
                         if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
                             postAlive = true
+                            if m:FindFirstChild("HumanoidRootPart") then postBossModel = m end
                             break
                         end
                     end
 
-                    -- Si NO está despues de viajar, otra persona en el servidor lo mató antes
-                    if not postAlive then
+                    if postAlive and postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
+                        -- ========= FASE 3: Acercamiento Segmentado (post-viaje) =========
+                        -- Volar en tramos de ~80 studs con pausa de 2s en el piso entre cada uno
+                        local hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        if hrpA then
+                            local bossPos = postBossModel.HumanoidRootPart.Position
+                            local totalDist = (hrpA.Position - bossPos).Magnitude
+                            local segmentSize = 80
+
+                            while totalDist > 35 and _G.AutoHuntActive do
+                                local dir = (bossPos - hrpA.Position).Unit
+                                local hopLen = math.min(segmentSize, totalDist - 25)
+                                local nextPt = hrpA.Position + dir * hopLen
+                                local dest = CFrame.new(nextPt + Vector3.new(0, 8, 0))
+
+                                -- Vuelo corto con NoClip
+                                _G.GhostProtocolEnabled = true
+                                while hrpA and (hrpA.Position - dest.Position).Magnitude > 6 and _G.AutoHuntActive do
+                                    task.wait()
+                                    hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                                    pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
+                                    if hrpA then
+                                        local fd = (hrpA.Position - dest.Position).Magnitude
+                                        local fs = math.clamp(40 / fd, 0, 1)
+                                        LP.Character:PivotTo(hrpA.CFrame:Lerp(dest, fs))
+                                        if hrpA:FindFirstChildOfClass("BodyVelocity") then
+                                            hrpA:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                                        end
+                                    end
+                                end
+
+                                -- Aterrizar y pausar 2 segundos (simular humano)
+                                _G.GhostProtocolEnabled = false
+                                task.wait(2)
+
+                                -- Recalcular distancia con posición live del boss
+                                hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                                if not hrpA then break end
+                                pcall(function()
+                                    if postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
+                                        bossPos = postBossModel.HumanoidRootPart.Position
+                                    end
+                                end)
+                                totalDist = (hrpA.Position - bossPos).Magnitude
+                            end
+                            _G.GhostProtocolEnabled = false
+                        end
+                    elseif not postAlive then
+                        -- Si NO está después de viajar, otra persona en el servidor lo mató antes
                         targetStep.DeadTime = os.time()
+                    end
+                end
+            else
+                -- ============ AUTO-HOP: Todos los bosses en cooldown ============
+                if _G.AutoHopEnabled and _G.AutoHuntActive then
+                    -- Verificar que TODOS estén en cooldown
+                    local allOnCooldown = true
+                    for _, step in ipairs(_G.AutoHuntRoute) do
+                        local dt = step.DeadTime or 0
+                        local cd = step.Cooldown or 300
+                        if (currentClock - dt) >= cd then
+                            allOnCooldown = false
+                            break
+                        end
+                    end
+
+                    if allOnCooldown then
+                        HuntStatusInfo.Text = "  🔄 Todos en cooldown. Cambiando de servidor en 5s..."
+                        task.wait(5)
+
+                        pcall(function()
+                            -- Guardar estado para el próximo servidor
+                            if _G.AutoHopWithRoute and writefile then
+                                local hs = game:GetService("HttpService")
+                                local routeName = _G.AutoHopRouteName
+                                if routeName == "" then routeName = "RutaDefault.json" end
+                                if not routeName:match("%.json$") then routeName = routeName .. ".json" end
+                                local state = { RouteName = routeName, AutoStart = true }
+                                writefile("AutoHopState.json", hs:JSONEncode(state))
+                            end
+
+                            -- Re-ejecutar script tras teleport (si el executor lo soporta)
+                            if queue_on_teleport then
+                                queue_on_teleport('-- Auto-Hop re-exec placeholder')
+                            end
+
+                            -- Teleport a nuevo servidor del mismo juego
+                            local TS = game:GetService("TeleportService")
+                            TS:Teleport(game.PlaceId)
+                        end)
                     end
                 end
             end
