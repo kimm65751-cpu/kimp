@@ -104,7 +104,8 @@ local function SaveConfig()
             SmartCalib_Melee_Z = SmartCalib_Melee_Z,
             SmartSwordName = SmartSwordName,
             SmartFruitName = SmartFruitName,
-            SmartMeleeName = SmartMeleeName
+            SmartMeleeName = SmartMeleeName,
+            AutoSkillKeys = _G.AutoSkillKeys
         }
         pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
     end
@@ -312,6 +313,7 @@ SkillKeysBox.FocusLost:Connect(function()
     if AutoSkillEnabled then
         BtnSkill.Text = "  🔥 Skills: ON (" .. SkillKeysBox.Text .. ")"
     end
+    SaveConfig()
 end)
 local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
 local BtnBlink     = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
@@ -679,18 +681,21 @@ BtnUseMelee.MouseButton1Click:Connect(function()
     SmartUseMelee = not SmartUseMelee
     BtnUseMelee.BackgroundColor3 = SmartUseMelee and Color3.fromRGB(180, 80, 50) or C.card
     BtnUseMelee.Text = "  👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SÍ" or "NO")
+    SaveConfig()
 end)
 
 BtnUseSword.MouseButton1Click:Connect(function()
     SmartUseSword = not SmartUseSword
     BtnUseSword.BackgroundColor3 = SmartUseSword and Color3.fromRGB(40, 150, 200) or C.card
     BtnUseSword.Text = "  ⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SÍ" or "NO")
+    SaveConfig()
 end)
 
 BtnUseFruit.MouseButton1Click:Connect(function()
     SmartUseFruit = not SmartUseFruit
     BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
     BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SÍ" or "NO")
+    SaveConfig()
 end)
 
 local BtnCalibMelee = ToggleButton(CalibPage, "👊 Calibrar Combate [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]", 4, C.card)
@@ -801,6 +806,7 @@ task.spawn(function()
                     end
                     btn.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                     CurrentlyCalibrating = "None"
+                    SaveConfig()
                 end
             end
         end
@@ -1306,7 +1312,13 @@ BtnStartHunt.MouseButton1Click:Connect(function()
     BtnStartHunt.BackgroundColor3 = _G.AutoHuntActive and C.accentOn or C.card
     BtnStartHunt.TextColor3 = _G.AutoHuntActive and Color3.new(0, 0, 0) or C.text
     if not _G.AutoHuntActive then
-        HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente."
+        HuntStatusInfo.Text = "  Estado Cacería: Detenida manualmente. Memoria Limpia."
+        -- Limpiar Scanner y Memoria para que el AutoFarm normal quede liberado
+        ScannedTargetNames = {}
+        MemoryPoint = nil
+        IsWalkingToMemory = false
+        pcall(function() if ScanStatusLabel then ScanStatusLabel.Text = "  Objetivo: Ninguno" end end)
+        pcall(function() if MemStatusLabel then MemStatusLabel.Text = "  📍 Sin punto guardado" end end)
     else
         HuntStatusInfo.Text = "  Estado Cacería: Iniciando motores..."
     end
@@ -1812,7 +1824,20 @@ function GetNearestMob()
             local tHrp = mob:FindFirstChild("HumanoidRootPart")
             if tHrp then
                 local dist = (hrp.Position - tHrp.Position).Magnitude
-                if dist < nearestDist then
+                
+                -- RESTRICCIÓN DE ISLA / ÁREA LOCAL (Para que no cruce el océano buscando otro Boss/Mob)
+                local isValidDistance = true
+                if #ScannedTargetNames == 0 then
+                    local maxRadius = 1500 -- Studs maximos de una isla
+                    if MemoryPoint then
+                        local memDist = (MemoryPoint - tHrp.Position).Magnitude
+                        if memDist > maxRadius then isValidDistance = false end
+                    else
+                        if dist > maxRadius then isValidDistance = false end
+                    end
+                end
+
+                if isValidDistance and dist < nearestDist then
                     nearestDist = dist
                     nearestMob = mob
                 end
@@ -2543,6 +2568,13 @@ local function LoadConfig()
                     if data.SmartSwordName ~= nil then SmartSwordName = data.SmartSwordName end
                     if data.SmartFruitName ~= nil then SmartFruitName = data.SmartFruitName end
                     if data.SmartMeleeName ~= nil then SmartMeleeName = data.SmartMeleeName end
+                    if data.AutoSkillKeys ~= nil and type(data.AutoSkillKeys) == "table" then
+                        _G.AutoSkillKeys = data.AutoSkillKeys
+                        SkillKeysBox.Text = table.concat(_G.AutoSkillKeys, ", ")
+                        if AutoSkillEnabled then
+                            BtnSkill.Text = "  🔥 Skills: ON (" .. SkillKeysBox.Text .. ")"
+                        end
+                    end
 
                     if FarmMode == "Abajo" then
                         OfsY = -25; OfsZ = 0; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
