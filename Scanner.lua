@@ -11,14 +11,14 @@ local CoreGui = game:GetService("CoreGui")
 
 local LP = Players.LocalPlayer
 local AutoFarm = false
-local FarmMode = "Arriba"     -- "Arriba", "Detras", "Abajo"
+local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
 local OfsY, OfsZ = 10, 0
 local BlinkAttackEnabled = false
 
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
 local TargetBosses = "Normal"
-local ScannedTargetNames = {}     -- tabla para multi-selección de objetivos
+local ScannedTargetNames = {} -- tabla para multi-selección de objetivos
 local ScannedTargetPos = nil
 local SpyEnabled = false
 local SpyFileName = ""
@@ -701,7 +701,7 @@ ScanStatusLabel.TextColor3 = C.muted
 ScanStatusLabel.Font = Enum.Font.Gotham
 ScanStatusLabel.TextSize = 12
 ScanStatusLabel.Text = "  Objetivo: " ..
-(#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
+    (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
 ScanStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 ScanStatusLabel.LayoutOrder = 2
 
@@ -761,10 +761,10 @@ BtnScan.MouseButton1Click:Connect(function()
                     end
                     if not alreadyIn then table.insert(ScannedTargetNames, n) end
                     b.BackgroundColor3 = (not alreadyIn) and C.accentOn or
-                    (isBoss and Color3.fromRGB(130, 80, 180) or C.bg)
+                        (isBoss and Color3.fromRGB(130, 80, 180) or C.bg)
                     b.TextColor3 = (not alreadyIn) and Color3.new(0, 0, 0) or C.text
                     ScanStatusLabel.Text = "  Objetivos: " ..
-                    (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
+                        (#ScannedTargetNames > 0 and table.concat(ScannedTargetNames, " + ") or "Ninguno")
                 end)
             end
         end
@@ -864,12 +864,12 @@ BtnRecord.MouseButton1Click:Connect(function()
                 local currentHrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                 if currentHrp then
                     local dist = (currentHrp.Position - LastPos).Magnitude
-                    if dist > 800 then     -- Teleport grande detectado
+                    if dist > 800 then -- Teleport grande detectado
                         table.insert(RouteLogs, "[REC] Teleport Detectado! Distancia: " .. math.floor(dist) .. " studs")
                         table.insert(RouteLogs, "      Nueva Coordenada: " .. tostring(currentHrp.Position))
 
                         -- Auto escanear bosses en esta nueva zona
-                        task.wait(1.5)     -- esperar que cargue el entorno
+                        task.wait(1.5) -- esperar que cargue el entorno
                         local bossesEnArea = 0
                         local c = GetMobCache()
                         for _, m in pairs(c) do
@@ -1049,14 +1049,14 @@ task.spawn(function()
             local statusStr = ""
             if timeRemaining > 0 then
                 statusStr = "⏳ Revive en " .. timeRemaining .. "s"
-                lbl.TextColor3 = Color3.fromRGB(200, 100, 100)     -- Rojo (Muerto)
+                lbl.TextColor3 = Color3.fromRGB(200, 100, 100) -- Rojo (Muerto)
             else
                 if isAliveHere then
                     statusStr = "🟢 VIVO AQUI! " .. hpStr
-                    lbl.TextColor3 = Color3.fromRGB(100, 200, 100)     -- Verde (Atacar!)
+                    lbl.TextColor3 = Color3.fromRGB(100, 200, 100) -- Verde (Atacar!)
                 else
                     statusStr = "🟣 LISTO / Viajar a Isla"
-                    lbl.TextColor3 = Color3.fromRGB(160, 100, 200)     -- Morado (Listo para ir)
+                    lbl.TextColor3 = Color3.fromRGB(160, 100, 200) -- Morado (Listo para ir)
                 end
             end
 
@@ -1345,7 +1345,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     -- NO require() - bloquea indefinidamente en modulos con WaitForChild
                 end
             end
-            task.wait()     -- yield cada script, no solo los criticos
+            task.wait() -- yield cada script, no solo los criticos
         end
         if sCount == 0 then table.insert(t, "  (ninguno encontrado)") end
         table.insert(t, "")
@@ -1441,10 +1441,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
 
         table.insert(t, "> [5] INTERFACES DE VIAJE Y CIUDADES (PlayerGui):")
         local guiCount = 0
-        local function SafeText(b)
-            pcall(function() return b.Text end)
-            return ""
-        end
+
         for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetDescendants()) do
             if gui:IsA("TextButton") or gui:IsA("ImageButton") then
                 local gname = gui.Name:lower()
@@ -1762,7 +1759,7 @@ end)
 -- Loop independiente: busca bloques invisibles CanCollide=true y los desactiva
 task.spawn(function()
     while true do
-        task.wait(3)     -- corre cada 3 segundos, no afecta FPS
+        task.wait(3) -- corre cada 3 segundos, no afecta FPS
         if GhostProtocolEnabled then
             local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
@@ -1843,8 +1840,12 @@ task.spawn(function()
 
                         -- Segundo Intento: Cualquier cosa que NO esté prohibida (último recurso)
                         for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
-                        for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return
-                                t end end
+                        for _, t in pairs(LP.Backpack:GetChildren()) do
+                            if t:IsA("Tool") and not isForbidden(t) then
+                                return
+                                    t
+                            end
+                        end
 
                         return nil -- Si no hay literalmente nada seguro, mejor retornar nil para que el char no haga locuras.
                     end
@@ -2064,7 +2065,7 @@ task.spawn(function()
 
                                         if SmartCombatEnabled then
                                             local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or
-                                            SmartCalib_Fruit
+                                                SmartCalib_Fruit
                                             if currentFarmMode == "Arriba" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, currentOffset + 2, 0)
                                             elseif currentFarmMode == "Detras" then
@@ -2087,8 +2088,8 @@ task.spawn(function()
                                             local rootCF = TargetCF
                                             if BlinkAttackEnabled then
                                                 rootCF = TargetCF *
-                                                CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
-                                                    FarmMode == "Abajo" and -12 or 45)
+                                                    CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
+                                                        FarmMode == "Abajo" and -12 or 45)
                                                 -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
                                             end
                                             local flyDist = (hrp.Position - rootCF.Position).Magnitude
@@ -2111,8 +2112,8 @@ task.spawn(function()
 
                                         -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
                                         local actualLoc = BlinkAttackEnabled and
-                                        (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or
-                                        TargetCF
+                                            (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or
+                                            TargetCF
                                         local distFinal = (hrp.Position - actualLoc.Position).Magnitude
                                         if distFinal <= 20 then
                                             pcall(function()
@@ -2147,22 +2148,22 @@ task.spawn(function()
                                         task.wait(0.05)
                                     end
                                 end -- for targetMob
-                            end -- else IsInPanicRecovery
-                        end     -- if mobHrp
-                    else        -- else for mob and not ForceMemoryReturn
+                            end     -- else IsInPanicRecovery
+                        end         -- if mobHrp
+                    else            -- else for mob and not ForceMemoryReturn
                         GlobalMagnetTarget = nil
                         StatusLabel.Text = "Buscando Mobs vivos..."
                     end -- if mob and not ForceMemoryReturn
-                end -- if char.Humanoid.Health <= 0
-            else    -- else for char and char:FindFirstChild
+                end     -- if char.Humanoid.Health <= 0
+            else        -- else for char and char:FindFirstChild
                 GlobalMagnetTarget = nil
                 StatusLabel.Text = "Esperando al Personaje..."
             end -- if char and char:FindFirstChild
-        else -- else for AutoFarm
+        else    -- else for AutoFarm
             GlobalMagnetTarget = nil
-        end -- if AutoFarm
-    end     -- while task.wait()
-end)        -- task.spawn
+        end     -- if AutoFarm
+    end         -- while task.wait()
+end)            -- task.spawn
 
 -- ==============================================================================
 -- CONEXIONES GUI
@@ -2288,7 +2289,7 @@ end)
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
-        OfsY = -25; OfsZ = 0     -- 25 studs debajo del mob (subterráneo profundo)
+        OfsY = -25; OfsZ = 0 -- 25 studs debajo del mob (subterráneo profundo)
         BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
         -- Auto-activar Ghost Protocol para quitar bloques invisibles
         GhostProtocolEnabled = true
@@ -2379,7 +2380,7 @@ local function LoadConfig()
                     if data.BlinkAttackEnabled ~= nil then BlinkAttackEnabled = data.BlinkAttackEnabled end
 
                     if FarmMode == "Abajo" then
-                        OfsY = -8; OfsZ = 6; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+                        OfsY = -25; OfsZ = 0; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
                     else
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
@@ -2498,8 +2499,8 @@ task.spawn(function()
                                 end)
                             end
                         end
-                    end     -- end else (no isScanner)
-                end         -- end if targetPoint
+                    end -- end else (no isScanner)
+                end     -- end if targetPoint
             else
                 if IsWalkingToMemory then
                     IsWalkingToMemory = false
@@ -2601,14 +2602,14 @@ task.spawn(function()
                     -- El AutoFarm nativo ya maneja el vuelo/movimiento al mob. Solo configuramos el objetivo.
                     while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
                     table.insert(ScannedTargetNames, targetStep.Boss)
-                    
+
                     -- Prevenir el glitch de "vuelta a memoria" forzando reseteo
                     LastRealDamageTime = os.clock()
                     IsWalkingToMemory = false
                     if bossChar and bossChar:FindFirstChild("HumanoidRootPart") then
                         MemoryPoint = bossChar.HumanoidRootPart.Position
                     end
-                    
+
                     if not AutoFarm then pcall(ToggleAutoFarm) end
 
                     -- Esperamos hasta que muera el boss
@@ -2626,12 +2627,40 @@ task.spawn(function()
                     -- Murió (O apagaron el cazador)
                     if not bossAlive then
                         targetStep.DeadTime = os.time()
-                        if AutoFarm then pcall(ToggleAutoFarm) end     -- Apagamos el Autofarm estándar en transición
+                        if AutoFarm then pcall(ToggleAutoFarm) end -- Apagamos el Autofarm estándar en transición
                         task.wait(3)
                     end
                 else
-                    -- ================== FASE 2: Navegación Viajera (Simulación Física "Legit") ==================
-                    -- En lugar de enviar un remoto sospechoso desde la lejanía, buscamos el portal, VOLAMOS físicamente, lo abrimos y viajamos.
+                    -- Boss no visible en el mob cache. ¿Necesitamos viajar?
+                    local needTravel = true
+
+                    -- Detectar si ya estamos en la isla del boss
+                    if targetStep.Island and targetStep.Island ~= "" then
+                        if _G.CurrentIslandContext == targetStep.Island then
+                            -- Ya estamos en esta isla, no viajar
+                            needTravel = false
+                        elseif _G.CurrentIslandContext == "Desconocido" or _G.CurrentIslandContext == "" then
+                            -- Isla desconocida: buscar si el modelo del boss existe en workspace
+                            -- (aunque esté muerto). Si existe, estamos en la isla correcta.
+                            pcall(function()
+                                for _, obj in pairs(Workspace:GetDescendants()) do
+                                    if obj:IsA("Model") and obj.Name == targetStep.Boss then
+                                        needTravel = false
+                                        -- Bonus: auto-detectar la isla
+                                        _G.CurrentIslandContext = targetStep.Island
+                                        break
+                                    end
+                                end
+                            end)
+                        end
+                    end
+
+                    if not needTravel then
+                        -- Ya estamos en la isla correcta, boss muerto o fuera de rango
+                        targetStep.DeadTime = os.time()
+                    else
+                    -- ================== FASE 2: Navegación Viajera ==================
+                    -- Solo viajamos si confirmamos que el boss está en OTRA isla
                     local nearestPortal = nil
                     local shortestDist = math.huge
                     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -2661,7 +2690,7 @@ task.spawn(function()
                             hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                             if hrp then
                                 local flyDist = (hrp.Position - targetCF.Position).Magnitude
-                                local flyStep = math.clamp(50 / flyDist, 0, 1)     -- 50 studs de velocidad suave
+                                local flyStep = math.clamp(50 / flyDist, 0, 1) -- 50 studs de velocidad suave
                                 LP.Character:PivotTo(hrp.CFrame:Lerp(targetCF, flyStep))
                                 if hrp:FindFirstChildOfClass("BodyVelocity") then
                                     hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
@@ -2682,7 +2711,7 @@ task.spawn(function()
                         else
                             pcall(function() fireproximityprompt(nearestPortal) end)
                         end
-                        task.wait(1.5)     -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
+                        task.wait(1.5) -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
 
                         -- Simulamos el clic a la UI dándole a la Isla seleccionada (Validado desde el portal)
                         local rs = game:GetService("ReplicatedStorage")
@@ -2700,7 +2729,7 @@ task.spawn(function()
                             end
                         end)
                     end
-                    task.wait(3)     -- Esperamos pantalla de carga
+                    task.wait(3) -- Esperamos pantalla de carga
 
                     -- Forzamos ocultación de un submenú "Cancelar" o "X" por si la UI se queda bug visualmente al viajar
                     pcall(function()
@@ -2784,47 +2813,48 @@ task.spawn(function()
                         -- Si NO está después de viajar, otra persona en el servidor lo mató antes
                         targetStep.DeadTime = os.time()
                     end
-                end
-            else
-                -- ============ AUTO-HOP: Todos los bosses en cooldown ============
-                if _G.AutoHopEnabled and _G.AutoHuntActive then
-                    -- Verificar que TODOS estén en cooldown
-                    local allOnCooldown = true
-                    for _, step in ipairs(_G.AutoHuntRoute) do
-                        local dt = step.DeadTime or 0
-                        local cd = step.Cooldown or 300
-                        if (currentClock - dt) >= cd then
-                            allOnCooldown = false
-                            break
-                        end
-                    end
-
-                    if allOnCooldown then
-                        HuntStatusInfo.Text = "  🔄 Todos en cooldown. Cambiando de servidor en 5s..."
-                        task.wait(5)
-
-                        pcall(function()
-                            -- Guardar estado para el próximo servidor
-                            if _G.AutoHopWithRoute and writefile then
-                                local hs = game:GetService("HttpService")
-                                local routeName = _G.AutoHopRouteName
-                                if routeName == "" then routeName = "RutaDefault.json" end
-                                if not routeName:match("%.json$") then routeName = routeName .. ".json" end
-                                local state = { RouteName = routeName, AutoStart = true }
-                                writefile("AutoHopState.json", hs:JSONEncode(state))
-                            end
-
-                            -- Re-ejecutar script tras teleport (si el executor lo soporta)
-                            if queue_on_teleport then
-                                queue_on_teleport('-- Auto-Hop re-exec placeholder')
-                            end
-
-                            -- Teleport a nuevo servidor del mismo juego
-                            local TS = game:GetService("TeleportService")
-                            TS:Teleport(game.PlaceId)
-                        end)
                     end
                 end
+            end
+        end
+
+        -- ============ AUTO-HOP: INDEPENDIENTE (funciona con o sin Auto-Caza) ============
+        if _G.AutoHopEnabled and _G.AutoHuntRoute and #_G.AutoHuntRoute > 0 then
+            local hopClock = os.time()
+            local allOnCooldown = true
+            for _, step in ipairs(_G.AutoHuntRoute) do
+                local dt = step.DeadTime or 0
+                local cd = step.Cooldown or 300
+                if (hopClock - dt) >= cd then
+                    allOnCooldown = false
+                    break
+                end
+            end
+
+            if allOnCooldown then
+                HuntStatusInfo.Text = "  🔄 Todos en cooldown. Cambiando de servidor en 5s..."
+                task.wait(5)
+
+                pcall(function()
+                    -- Guardar estado para el próximo servidor
+                    if _G.AutoHopWithRoute and writefile then
+                        local hs = game:GetService("HttpService")
+                        local routeName = _G.AutoHopRouteName
+                        if routeName == "" then routeName = "RutaDefault.json" end
+                        if not routeName:match("%.json$") then routeName = routeName .. ".json" end
+                        local state = { RouteName = routeName, AutoStart = true }
+                        writefile("AutoHopState.json", hs:JSONEncode(state))
+                    end
+
+                    -- Re-ejecutar script tras teleport (si el executor lo soporta)
+                    if queue_on_teleport then
+                        queue_on_teleport('-- Auto-Hop re-exec placeholder')
+                    end
+
+                    -- Teleport a nuevo servidor del mismo juego
+                    local TS = game:GetService("TeleportService")
+                    TS:Teleport(game.PlaceId)
+                end)
             end
         end
     end
