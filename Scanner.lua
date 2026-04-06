@@ -702,7 +702,6 @@ local function startCalib(mode, btn, text)
     TempCalibMaxY = 3
     TempCalibMaxZ = 4
     CalibrationEndTime = os.clock() + 6
-    btn.Text = "  " .. text .. " (Spamea tus skills ahora! 6s)"
     btn.BackgroundColor3 = Color3.fromRGB(150, 100, 30)
 end
 
@@ -710,23 +709,33 @@ BtnCalibMelee.MouseButton1Click:Connect(function() startCalib("Melee", BtnCalibM
 BtnCalibSword.MouseButton1Click:Connect(function() startCalib("Sword", BtnCalibSword, "⚔️") end)
 BtnCalibFruit.MouseButton1Click:Connect(function() startCalib("Fruit", BtnCalibFruit, "🍎") end)
 
-task.spawn(function()
-    Workspace.DescendantAdded:Connect(function(obj)
-        if CurrentlyCalibrating ~= "None" and os.clock() <= CalibrationEndTime then
-            task.delay(0.05, function()
+local function ProcessCalibrationObj(obj)
+    if CurrentlyCalibrating ~= "None" and os.clock() <= CalibrationEndTime then
+        task.delay(0.05, function()
+            pcall(function()
+                local pos = nil
+                local size = nil
+
                 if obj:IsA("BasePart") then
+                    pos = obj.Position
+                    size = obj.Size
+                elseif obj:IsA("Model") and obj.PrimaryPart then
+                    pos = obj.PrimaryPart.Position
+                    size = obj.PrimaryPart.Size
+                end
+
+                if pos and size then
                     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                     if not hrp then return end
 
-                    if obj:IsDescendantOf(LP.Character) or (obj.Position - hrp.Position).Magnitude < 30 then
-                        local size = obj.Size
+                    if obj:IsDescendantOf(LP.Character) or (pos - hrp.Position).Magnitude < 150 then
                         local maxD = math.max(size.X, size.Y, size.Z)
 
-                        if maxD >= 1 then
+                        if maxD >= 0.5 then
                             local charY = hrp.Position.Y
-                            local objY = obj.Position.Y
-                            local diffX = obj.Position.X - hrp.Position.X
-                            local diffZ = obj.Position.Z - hrp.Position.Z
+                            local objY = pos.Y
+                            local diffX = pos.X - hrp.Position.X
+                            local diffZ = pos.Z - hrp.Position.Z
                             
                             local botY = objY - (size.Y / 2)
                             local distAbajo = math.floor(math.abs(charY - botY))
@@ -740,45 +749,60 @@ task.spawn(function()
                             if distHorizontal > TempCalibMaxZ then TempCalibMaxZ = distHorizontal end
 
                             local equippedTool = LP.Character:FindFirstChildOfClass("Tool")
-                            if CurrentlyCalibrating == "Melee" then
-                                SmartCalib_Melee_Y = TempCalibMaxY
-                                SmartCalib_Melee_Z = TempCalibMaxZ
-                                if equippedTool then SmartMeleeName = equippedTool.Name end
-                                BtnCalibMelee.Text = "  👊 [Y: -" .. TempCalibMaxY .. " | Z: " .. TempCalibMaxZ .. "]"
-                            elseif CurrentlyCalibrating == "Sword" then
-                                SmartCalib_Sword_Y = TempCalibMaxY
-                                SmartCalib_Sword_Z = TempCalibMaxZ
-                                if equippedTool then SmartSwordName = equippedTool.Name end
-                                BtnCalibSword.Text = "  ⚔️ [Y: -" .. TempCalibMaxY .. " | Z: " .. TempCalibMaxZ .. "]"
-                            elseif CurrentlyCalibrating == "Fruit" then
-                                SmartCalib_Fruit_Y = TempCalibMaxY
-                                SmartCalib_Fruit_Z = TempCalibMaxZ
-                                if equippedTool then SmartFruitName = equippedTool.Name end
-                                BtnCalibFruit.Text = "  🍎 [Y: -" .. TempCalibMaxY .. " | Z: " .. TempCalibMaxZ .. "]"
+                            if CurrentlyCalibrating == "Melee" and equippedTool then
+                                SmartMeleeName = equippedTool.Name
+                            elseif CurrentlyCalibrating == "Sword" and equippedTool then
+                                SmartSwordName = equippedTool.Name
+                            elseif CurrentlyCalibrating == "Fruit" and equippedTool then
+                                SmartFruitName = equippedTool.Name
                             end
                         end
                     end
                 end
             end)
-        end
+        end)
+    end
+end
+
+task.spawn(function()
+    Workspace.DescendantAdded:Connect(ProcessCalibrationObj)
+    pcall(function()
+        Workspace.CurrentCamera.DescendantAdded:Connect(ProcessCalibrationObj)
     end)
 end)
 
 task.spawn(function()
     while true do
-        task.wait(0.5)
-        if CurrentlyCalibrating ~= "None" and os.clock() > CalibrationEndTime then
-            if CurrentlyCalibrating == "Melee" then
-                BtnCalibMelee.Text = "  👊 Calibrado COMBATE [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
-                BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
-            elseif CurrentlyCalibrating == "Sword" then
-                BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
-                BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
-            elseif CurrentlyCalibrating == "Fruit" then
-                BtnCalibFruit.Text = "  🍎 Calibrado FRUTA [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
-                BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+        task.wait(0.1)
+        if CurrentlyCalibrating ~= "None" then
+            local timeLeft = CalibrationEndTime - os.clock()
+            local btn = nil
+            local icon = ""
+            if CurrentlyCalibrating == "Melee" then btn = BtnCalibMelee; icon = "👊"
+            elseif CurrentlyCalibrating == "Sword" then btn = BtnCalibSword; icon = "⚔️"
+            elseif CurrentlyCalibrating == "Fruit" then btn = BtnCalibFruit; icon = "🍎" end
+
+            if btn then
+                if timeLeft > 0 then
+                    btn.Text = string.format("  %s Midiendo radar... (%.1fs) [Y: -%d | Z: %d]", icon, timeLeft, TempCalibMaxY, TempCalibMaxZ)
+                else
+                    if CurrentlyCalibrating == "Melee" then
+                        SmartCalib_Melee_Y = TempCalibMaxY
+                        SmartCalib_Melee_Z = TempCalibMaxZ
+                        btn.Text = "  👊 Calibrado COMBATE [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                    elseif CurrentlyCalibrating == "Sword" then
+                        SmartCalib_Sword_Y = TempCalibMaxY
+                        SmartCalib_Sword_Z = TempCalibMaxZ
+                        btn.Text = "  ⚔️ Calibrado ESPADA [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                    elseif CurrentlyCalibrating == "Fruit" then
+                        SmartCalib_Fruit_Y = TempCalibMaxY
+                        SmartCalib_Fruit_Z = TempCalibMaxZ
+                        btn.Text = "  🍎 Calibrado FRUTA [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                    end
+                    btn.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                    CurrentlyCalibrating = "None"
+                end
             end
-            CurrentlyCalibrating = "None"
         end
     end
 end)
