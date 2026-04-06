@@ -950,6 +950,38 @@ task.spawn(function()
         
         -- Actualizar Data Visual
         local currentClock = os.time()
+        
+        -- Autodetectar Isla Inicial sin necesidad de viajar
+        pcall(function()
+            if _G.CurrentIslandContext == "Desconocido" or _G.CurrentIslandContext == "" then
+                local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local nearestPortal = nil
+                    local shortestDist = math.huge
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("ProximityPrompt") and (obj.ActionText:lower():match("map") or obj.Name:lower():match("portal") or obj.ActionText:lower():match("teleport")) then
+                            local pPart = obj.Parent
+                            if pPart and pPart:IsA("BasePart") then
+                                local dist = (pPart.Position - hrp.Position).Magnitude
+                                if dist < shortestDist then
+                                    shortestDist = dist
+                                    nearestPortal = obj
+                                end
+                            end
+                        end
+                    end
+                    if nearestPortal then
+                        local nameStr = nearestPortal.Parent.Name
+                        if nameStr:match("Portal_") then
+                            _G.CurrentIslandContext = nameStr:gsub("Portal_", "")
+                        elseif nearestPortal.Parent.Parent and nearestPortal.Parent.Parent ~= workspace then
+                            _G.CurrentIslandContext = nearestPortal.Parent.Parent.Name
+                        end
+                    end
+                end
+            end
+        end)
+        
         for i, step in ipairs(_G.AutoHuntRoute) do
             local lbl = cachedWidgets[i]
             -- Lógica estricta de Timer y Estado de Vida
@@ -1010,6 +1042,11 @@ task.spawn(function()
             
             lbl.Text = string.format("  [%d] %s (Isla: %s) -> %s", i, step.Boss, step.Island, statusStr)
         end
+        
+        -- Sync de la caja de texto visual en caso de que cambie internamente o por el network spy
+        if IslandContextBox and not IslandContextBox:IsFocused() and IslandContextBox.Text ~= _G.CurrentIslandContext then
+            IslandContextBox.Text = _G.CurrentIslandContext
+        end
         RouteDashboard.CanvasSize = UDim2.new(0, 0, 0, #cachedWidgets * 26)
     end
 end)
@@ -1019,23 +1056,52 @@ RouteNameBox.Size = UDim2.new(0.95, 0, 0, 32)
 RouteNameBox.BackgroundColor3 = C.bg
 RouteNameBox.TextColor3 = C.text
 
-local BtnAddBoss = ToggleButton(CazadorPage, "➕ [REC] Guardar Objetivo del Radar a Ruta", 11.5, Color3.fromRGB(150, 100, 40))
+local IslandContextBox = Instance.new("TextBox", CazadorPage)
+IslandContextBox.Size = UDim2.new(0.95, 0, 0, 24)
+IslandContextBox.BackgroundColor3 = C.bg
+IslandContextBox.TextColor3 = Color3.fromRGB(150, 200, 150)
+IslandContextBox.LayoutOrder = 11.2
+IslandContextBox.PlaceholderText = "📝 Nombre de Isla Actual (Auto/Manual)"
+IslandContextBox.Text = _G.CurrentIslandContext
+IslandContextBox.Font = Enum.Font.Gotham
+IslandContextBox.TextSize = 11
+
+IslandContextBox.FocusLost:Connect(function()
+    if IslandContextBox.Text ~= "" then
+        _G.CurrentIslandContext = IslandContextBox.Text
+    else
+        IslandContextBox.Text = _G.CurrentIslandContext
+    end
+end)
+
+local BtnAddBoss = ToggleButton(CazadorPage, "➕ [REC] Guardar Objetivo(s) del Radar a Ruta", 11.5, Color3.fromRGB(150, 100, 40))
 BtnAddBoss.MouseButton1Click:Connect(function()
     if #ScannedTargetNames == 0 then
         HuntStatusInfo.Text = "  Estado: ⚠️ Selecciona primero un Objetivo usando el RADAR arriba."
         return
     end
-    local targetName = ScannedTargetNames[1]
-    local existe = false
-    for _, step in ipairs(_G.AutoHuntRoute) do
-        if step.Boss == targetName and step.Island == _G.CurrentIslandContext then existe=true break end
+    if _G.CurrentIslandContext == "Desconocido" or _G.CurrentIslandContext == "" then
+        HuntStatusInfo.Text = "  Estado: ⚠️ VIAJA por un portal O escribe el nombre de la isla en la caja verde."
+        return
     end
-    if not existe then
-        -- Insertamos con el timer reseteado (5 mins listos para contar)
-        table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = targetName, DeadTime = os.time(), Cooldown = 300, WasAlive = false})
-        HuntStatusInfo.Text = "  ✅ Añadido a Ruta: " .. targetName .. " (" .. _G.CurrentIslandContext .. ")"
+    
+    local agregados = 0
+    for _, targetName in ipairs(ScannedTargetNames) do
+        local existe = false
+        for _, step in ipairs(_G.AutoHuntRoute) do
+            if step.Boss == targetName and step.Island == _G.CurrentIslandContext then existe=true break end
+        end
+        if not existe then
+            -- Insertamos con el timer reseteado (5 mins listos para contar)
+            table.insert(_G.AutoHuntRoute, {Island = _G.CurrentIslandContext, Boss = targetName, DeadTime = os.time(), Cooldown = 300, WasAlive = false})
+            agregados = agregados + 1
+        end
+    end
+    
+    if agregados > 0 then
+        HuntStatusInfo.Text = "  ✅ " .. agregados .. " Objetivos añadidos a Ruta (" .. _G.CurrentIslandContext .. ")"
     else
-        HuntStatusInfo.Text = "  Estado: ⚠️ Ese objetivo ya está en tu ruta de cacería."
+        HuntStatusInfo.Text = "  Estado: ⚠️ Ninguno añadido. (Ya existen o error)"
     end
 end)
 RouteNameBox.PlaceholderText = "💾 Nombre de tu Ruta (Ej: RutaDiaria)"
