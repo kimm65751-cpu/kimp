@@ -121,7 +121,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARME"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -2419,12 +2419,24 @@ task.spawn(function()
             local targetStep = nil
 
             -- 1. Identificar Boss listo (cooldown 5 mins superado)
+            -- PASADA 1: Priorizar bosses EN LA ISLA ACTUAL (evita viajar innecesariamente)
             for _, step in ipairs(_G.AutoHuntRoute) do
                 local dt = step.DeadTime or 0
                 local cd = step.Cooldown or 300
-                if (currentClock - dt) >= cd then
+                if (currentClock - dt) >= cd and step.Island == _G.CurrentIslandContext then
                     targetStep = step
                     break
+                end
+            end
+            -- PASADA 2: Si no hay boss local disponible, buscar en OTRAS islas
+            if not targetStep then
+                for _, step in ipairs(_G.AutoHuntRoute) do
+                    local dt = step.DeadTime or 0
+                    local cd = step.Cooldown or 300
+                    if (currentClock - dt) >= cd then
+                        targetStep = step
+                        break
+                    end
                 end
             end
 
@@ -2442,39 +2454,8 @@ task.spawn(function()
                 end
 
                 if bossAlive then
-                    -- ================== FASE 3: ACERCAMIENTO CUIDADOSO ==================
-                    -- Mantener la cámara anclada al jugador para evitar mareos (El AutoFarm Nativo roba la cámara)
-                    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp and bossChar and bossChar:FindFirstChild("HumanoidRootPart") then
-                        _G.GhostProtocolEnabled = true
-                        pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
-
-                        local bossPos = bossChar.HumanoidRootPart.Position
-                        local destination = CFrame.new(bossPos) *
-                        CFrame.new(0, 5, 20)                                               -- 20 studs frente a su cara un poco alzado
-
-                        -- Vuelo moderado y controlado (Evita glitch subterráneo)
-                        while hrp and bossChar:FindFirstChild("Humanoid") and bossChar.Humanoid.Health > 0 and (hrp.Position - destination.Position).Magnitude > 8 and _G.AutoHuntActive do
-                            task.wait()
-                            hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                            pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
-                            if hrp then
-                                local flyDist = (hrp.Position - destination.Position).Magnitude
-                                local flyStep = math.clamp(30 / flyDist, 0, 1)     -- 30 studs continuos sin brincos bruscos
-                                LP.Character:PivotTo(hrp.CFrame:Lerp(destination, flyStep))
-                                if hrp:FindFirstChildOfClass("BodyVelocity") then
-                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
-                                end
-                            end
-                        end
-
-                        -- Aterrizaje y Confirmación
-                        _G.GhostProtocolEnabled = false
-                        task.wait(1.5)     -- Pie en piso, listos.
-                    end
-
                     -- ================== FASE 4: COMBATE / AutoFarm Nativo ==================
-                    -- (El AutoFarm peleará respetando el modo {Abajo/Arriba/Detras} que tengas seleccionado en la UI)
+                    -- El AutoFarm nativo ya maneja el vuelo/movimiento al mob. Solo configuramos el objetivo.
                     while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
                     table.insert(ScannedTargetNames, targetStep.Boss)
                     
