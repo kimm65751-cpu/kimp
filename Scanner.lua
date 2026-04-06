@@ -2394,15 +2394,41 @@ task.spawn(function()
                 end
                 
                 if bossAlive then
-                    -- Nos aseguramos de volar por ARRIBA (flotar noclip) para evitar anti-cheat kicks bajo el mapa
-                    _G.GhostProtocolEnabled = true
+                    -- ================== FASE 3: ACERCAMIENTO CUIDADOSO ==================
+                    -- Mantener la cámara anclada al jugador para evitar mareos (El AutoFarm Nativo roba la cámara)
+                    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and bossChar and bossChar:FindFirstChild("HumanoidRootPart") then
+                        _G.GhostProtocolEnabled = true
+                        pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
+                        
+                        local bossPos = bossChar.HumanoidRootPart.Position
+                        local destination = CFrame.new(bossPos) * CFrame.new(0, 5, 20) -- 20 studs frente a su cara un poco alzado
+                        
+                        -- Vuelo moderado y controlado (Evita glitch subterráneo)
+                        while hrp and bossChar:FindFirstChild("Humanoid") and bossChar.Humanoid.Health > 0 and (hrp.Position - destination.Position).Magnitude > 8 and _G.AutoHuntActive do
+                            task.wait()
+                            hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                            pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
+                            if hrp then
+                                local flyDist = (hrp.Position - destination.Position).Magnitude
+                                local flyStep = math.clamp(30 / flyDist, 0, 1) -- 30 studs continuos sin brincos bruscos
+                                LP.Character:PivotTo(hrp.CFrame:Lerp(destination, flyStep))
+                                if hrp:FindFirstChildOfClass("BodyVelocity") then
+                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0,0,0)
+                                end
+                            end
+                        end
+                        
+                        -- Aterrizaje y Confirmación
+                        _G.GhostProtocolEnabled = false
+                        task.wait(1.5) -- Pie en piso, listos.
+                    end
+                
+                    -- ================== FASE 4: COMBATE / AutoFarm Nativo ==================
                     FarmMode = "Arriba" 
                     OfsY = 18; OfsZ = 0 -- 18 studs encima del jefe
-                    -- Limpiamos matriz de radar y definimos EXACTAMENTE a este Jefe
                     while #ScannedTargetNames > 0 do table.remove(ScannedTargetNames, 1) end
                     table.insert(ScannedTargetNames, targetStep.Boss)
-                    
-                    -- Encendemos autofarm si no está encendido
                     if not AutoFarm then pcall(ToggleAutoFarm) end
                     
                     -- Esperamos hasta que muera el boss
@@ -2494,7 +2520,27 @@ task.spawn(function()
                             end
                         end)
                     end
-                    task.wait(6) -- Esperamos pantalla de carga (6 segundos)
+                    task.wait(3) -- Esperamos pantalla de carga
+                    
+                    -- Forzamos ocultación de un submenú "Cancelar" o "X" por si la UI se queda bug visualmente al viajar
+                    pcall(function()
+                        local playerGui = LP.PlayerGui
+                        for _, btn in pairs(playerGui:GetDescendants()) do
+                            if btn:IsA("TextButton") or btn:IsA("ImageButton") then
+                                local btnText = (btn:IsA("TextButton") and btn.Text:lower()) or btn.Name:lower()
+                                if btnText:match("cancel") or btnText:match("close") or btnText:match("cerrar") or btnText == "x" then
+                                    local parent = btn
+                                    while parent and parent.ClassName ~= "ScreenGui" do
+                                        if type(parent) == "userdata" and parent:IsA("Frame") then parent.Visible = false end
+                                        parent = parent.Parent
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    
+                    -- Espera OBLIGATORIA de 5 SEGUNDOS al lado del portal recién llegados a la nueva isla
+                    task.wait(5)
                     
                     -- Re-Chequeo tras 6 segundos por si recién spawnearon los modelos
                     local postAlive = false
