@@ -134,7 +134,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1931,6 +1931,10 @@ task.spawn(function()
                     -- Funciliaridad Helper para Smart Weapon
                     local function GetSmartTool(reqType)
                         -- Prioridad Cero: Nombres Exactos Calibrados
+                        if reqType == "Melee" and SmartMeleeName then
+                            local t = char:FindFirstChild(SmartMeleeName) or LP.Backpack:FindFirstChild(SmartMeleeName)
+                            if t then return t end
+                        end
                         if reqType == "Sword" and SmartSwordName then
                             local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
                             if t then return t end
@@ -1942,8 +1946,11 @@ task.spawn(function()
 
                         local function isForbidden(t)
                             if reqType == "Sword" and SmartFruitName and t.Name == SmartFruitName then return true end
+                            if reqType == "Sword" and SmartMeleeName and t.Name == SmartMeleeName then return true end
                             if reqType == "Fruit" and SmartSwordName and t.Name == SmartSwordName then return true end
-                            if t.Name:lower():match("combat") then return true end
+                            if reqType == "Fruit" and SmartMeleeName and t.Name == SmartMeleeName then return true end
+                            if reqType == "Melee" and SmartSwordName and t.Name == SmartSwordName then return true end
+                            if reqType == "Melee" and SmartFruitName and t.Name == SmartFruitName then return true end
                             return false
                         end
 
@@ -1953,22 +1960,22 @@ task.spawn(function()
                             local n = t.Name:lower()
                             if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return true end
                             if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return true end
+                            if reqType == "Melee" and (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style")) then return true end
                             return false
                         end
 
                         for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
                         for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
 
-                        -- Segundo Intento: Cualquier cosa que NO esté prohibida (último recurso)
+                        -- Segundo Intento: Cualquier cosa que NO esté prohibida
                         for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
                         for _, t in pairs(LP.Backpack:GetChildren()) do
                             if t:IsA("Tool") and not isForbidden(t) then
-                                return
-                                    t
+                                return t
                             end
                         end
 
-                        return nil -- Si no hay literalmente nada seguro, mejor retornar nil para que el char no haga locuras.
+                        return nil -- Si no hay literalmente nada seguro, mejor retornar nil
                     end
 
                     local tool = char:FindFirstChildOfClass("Tool")
