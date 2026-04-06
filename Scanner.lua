@@ -618,11 +618,18 @@ CalibStatus.LayoutOrder = 2
 
 SmartCalib_Sword = SmartCalib_Sword or 3
 SmartCalib_Fruit = SmartCalib_Fruit or 8
+SmartCalib_Melee = SmartCalib_Melee or 3
 SmartSwordName = SmartSwordName or nil
 SmartFruitName = SmartFruitName or nil
+SmartMeleeName = SmartMeleeName or nil
 local CurrentlyCalibrating = "None"
+local CalibrationEndTime = 0
+local TempCalibMax = 3
+
 SmartCombatEnabled = SmartCombatEnabled or false
+SmartUseSword = SmartUseSword == nil and true or SmartUseSword
 SmartUseFruit = SmartUseFruit or false
+SmartUseMelee = SmartUseMelee or false
 
 local BtnSmartHitRun = ToggleButton(CalibPage, "🧠 Activar Smart Farm (Hit & Run)", 3, C.card)
 BtnSmartHitRun.MouseButton1Click:Connect(function()
@@ -638,47 +645,62 @@ BtnSmartHitRun.MouseButton1Click:Connect(function()
     end
 end)
 
-local BtnUseFruit = ToggleButton(CalibPage, "🍎 Usar Fruta en Farm: NO (Solo Espada)", 3, C.card)
+local WeaponSelectFrame = Instance.new("Frame", CalibPage)
+WeaponSelectFrame.Size = UDim2.new(0.95, 0, 0, 115)
+WeaponSelectFrame.BackgroundTransparency = 1
+WeaponSelectFrame.LayoutOrder = 3.5
+
+local uiList = Instance.new("UIListLayout", WeaponSelectFrame)
+uiList.Padding = UDim.new(0, 4)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local BtnUseMelee = ToggleButton(WeaponSelectFrame, "👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SÍ" or "NO"), 1, SmartUseMelee and C.accentOn or C.card)
+local BtnUseSword = ToggleButton(WeaponSelectFrame, "⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SÍ" or "NO"), 2, SmartUseSword and C.accentOn or C.card)
+local BtnUseFruit = ToggleButton(WeaponSelectFrame, "🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SÍ" or "NO"), 3, SmartUseFruit and C.accentOn or C.card)
+
+BtnUseMelee.MouseButton1Click:Connect(function()
+    SmartUseMelee = not SmartUseMelee
+    BtnUseMelee.BackgroundColor3 = SmartUseMelee and Color3.fromRGB(180, 80, 50) or C.card
+    BtnUseMelee.Text = "  👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SÍ" or "NO")
+end)
+
+BtnUseSword.MouseButton1Click:Connect(function()
+    SmartUseSword = not SmartUseSword
+    BtnUseSword.BackgroundColor3 = SmartUseSword and Color3.fromRGB(40, 150, 200) or C.card
+    BtnUseSword.Text = "  ⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SÍ" or "NO")
+end)
+
 BtnUseFruit.MouseButton1Click:Connect(function()
     SmartUseFruit = not SmartUseFruit
-    if SmartUseFruit then
-        BtnUseFruit.BackgroundColor3 = Color3.fromRGB(100, 30, 150)
-        BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: SÍ (Rotando Espada + Fruta)"
-        BtnUseFruit.TextColor3 = Color3.new(1, 1, 1)
-    else
-        BtnUseFruit.BackgroundColor3 = C.card
-        BtnUseFruit.Text = "  🍎 Usar Fruta en Farm: NO (Solo Espada)"
-        BtnUseFruit.TextColor3 = C.text
-    end
+    BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
+    BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SÍ" or "NO")
 end)
 
-local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Rango de Espada [Actual: -" .. SmartCalib_Sword .. "]", 4,
-    C.card)
-local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Rango de Fruta [Actual: -" .. SmartCalib_Fruit .. "]", 5,
-    C.card)
+local BtnCalibMelee = ToggleButton(CalibPage, "👊 Calibrar Combate [Actual: -" .. SmartCalib_Melee .. "]", 4, C.card)
+local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Espada [Actual: -" .. SmartCalib_Sword .. "]", 5, C.card)
+local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Fruta [Actual: -" .. SmartCalib_Fruit .. "]", 6, C.card)
 
-BtnCalibSword.MouseButton1Click:Connect(function()
-    CurrentlyCalibrating = "Sword"
-    BtnCalibSword.Text = "  Esperando ataque de ESPADA en vivo..."
-    BtnCalibSword.BackgroundColor3 = Color3.fromRGB(150, 100, 30)
-end)
+local function startCalib(mode, btn, text)
+    CurrentlyCalibrating = mode
+    TempCalibMax = 3
+    CalibrationEndTime = os.clock() + 6
+    btn.Text = "  " .. text .. " (Spamea tus skills ahora! 6s)"
+    btn.BackgroundColor3 = Color3.fromRGB(150, 100, 30)
+end
 
-BtnCalibFruit.MouseButton1Click:Connect(function()
-    CurrentlyCalibrating = "Fruit"
-    BtnCalibFruit.Text = "  Esperando ataque de FRUTA en vivo..."
-    BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(100, 30, 150)
-end)
+BtnCalibMelee.MouseButton1Click:Connect(function() startCalib("Melee", BtnCalibMelee, "👊") end)
+BtnCalibSword.MouseButton1Click:Connect(function() startCalib("Sword", BtnCalibSword, "⚔️") end)
+BtnCalibFruit.MouseButton1Click:Connect(function() startCalib("Fruit", BtnCalibFruit, "🍎") end)
 
--- Motor silencioso de Calibración
 task.spawn(function()
     Workspace.DescendantAdded:Connect(function(obj)
-        if CurrentlyCalibrating ~= "None" then
+        if CurrentlyCalibrating ~= "None" and os.clock() <= CalibrationEndTime then
             task.delay(0.05, function()
                 if obj:IsA("BasePart") then
                     local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
                     if not hrp then return end
 
-                    if obj:IsDescendantOf(LP.Character) or (obj.Position - hrp.Position).Magnitude < 10 then
+                    if obj:IsDescendantOf(LP.Character) or (obj.Position - hrp.Position).Magnitude < 30 then
                         local size = obj.Size
                         local maxD = math.max(size.X, size.Y, size.Z)
 
@@ -688,29 +710,50 @@ task.spawn(function()
                             local botY = objY - (size.Y / 2)
                             local distAbajo = math.floor(charY - botY)
 
-                            -- Mínimo de 3 para asegurar colisión con pies aunque el vfx estalle arriba
                             if distAbajo < 3 then distAbajo = 3 end
 
-                            local equippedTool = LP.Character:FindFirstChildOfClass("Tool")
-
-                            if CurrentlyCalibrating == "Sword" then
-                                SmartCalib_Sword = distAbajo
-                                if equippedTool then SmartSwordName = equippedTool.Name end
-                                BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA: -" .. distAbajo .. " studs"
-                                BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
-                            elseif CurrentlyCalibrating == "Fruit" then
-                                SmartCalib_Fruit = distAbajo
-                                if equippedTool then SmartFruitName = equippedTool.Name end
-                                BtnCalibFruit.Text = "  🍎 Calibrado FRUTA: -" .. distAbajo .. " studs"
-                                BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                            if distAbajo > TempCalibMax then
+                                TempCalibMax = distAbajo
+                                local equippedTool = LP.Character:FindFirstChildOfClass("Tool")
+                                if CurrentlyCalibrating == "Melee" then
+                                    SmartCalib_Melee = TempCalibMax
+                                    if equippedTool then SmartMeleeName = equippedTool.Name end
+                                    BtnCalibMelee.Text = "  👊 Grabando... Máx: -" .. TempCalibMax .. " studs"
+                                elseif CurrentlyCalibrating == "Sword" then
+                                    SmartCalib_Sword = TempCalibMax
+                                    if equippedTool then SmartSwordName = equippedTool.Name end
+                                    BtnCalibSword.Text = "  ⚔️ Grabando... Máx: -" .. TempCalibMax .. " studs"
+                                elseif CurrentlyCalibrating == "Fruit" then
+                                    SmartCalib_Fruit = TempCalibMax
+                                    if equippedTool then SmartFruitName = equippedTool.Name end
+                                    BtnCalibFruit.Text = "  🍎 Grabando... Máx: -" .. TempCalibMax .. " studs"
+                                end
                             end
-                            CurrentlyCalibrating = "None"
                         end
                     end
                 end
             end)
         end
     end)
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if CurrentlyCalibrating ~= "None" and os.clock() > CalibrationEndTime then
+            if CurrentlyCalibrating == "Melee" then
+                BtnCalibMelee.Text = "  👊 Calibrado COMBATE: -" .. SmartCalib_Melee .. " studs"
+                BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+            elseif CurrentlyCalibrating == "Sword" then
+                BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA: -" .. SmartCalib_Sword .. " studs"
+                BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+            elseif CurrentlyCalibrating == "Fruit" then
+                BtnCalibFruit.Text = "  🍎 Calibrado FRUTA: -" .. SmartCalib_Fruit .. " studs"
+                BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+            end
+            CurrentlyCalibrating = "None"
+        end
+    end
 end)
 
 
@@ -1880,18 +1923,26 @@ task.spawn(function()
                     local tool = char:FindFirstChildOfClass("Tool")
                     if SmartCombatEnabled then
                         if not LastSmartSwap then LastSmartSwap = os.clock() end
-                        if not SmartCurrentWeapon then SmartCurrentWeapon = "Sword" end
+                        if not SmartCurrentWeapon then SmartCurrentWeapon = "Melee" end
 
-                        -- Corrección al instante si el usuario apaga la fruta en medio de un ataque
-                        if not SmartUseFruit and SmartCurrentWeapon == "Fruit" then
-                            SmartCurrentWeapon = "Sword"
+                        local activeWeapons = {}
+                        if SmartUseMelee then table.insert(activeWeapons, "Melee") end
+                        if SmartUseSword then table.insert(activeWeapons, "Sword") end
+                        if SmartUseFruit then table.insert(activeWeapons, "Fruit") end
+
+                        if #activeWeapons == 0 then table.insert(activeWeapons, "Melee") end
+
+                        if not table.find(activeWeapons, SmartCurrentWeapon) then
+                            SmartCurrentWeapon = activeWeapons[1]
                             LastSmartSwap = os.clock()
                         end
 
-                        -- Rotación Cada 4s solo si la fruta está permitida
-                        if SmartUseFruit and os.clock() - LastSmartSwap > 4 then
+                        if #activeWeapons > 1 and os.clock() - LastSmartSwap > 4 then
                             LastSmartSwap = os.clock()
-                            SmartCurrentWeapon = (SmartCurrentWeapon == "Sword") and "Fruit" or "Sword"
+                            local idx = table.find(activeWeapons, SmartCurrentWeapon) or 1
+                            idx = idx + 1
+                            if idx > #activeWeapons then idx = 1 end
+                            SmartCurrentWeapon = activeWeapons[idx]
                         end
 
                         local wTool = GetSmartTool(SmartCurrentWeapon)
@@ -2091,8 +2142,10 @@ task.spawn(function()
                                         local TargetCF
 
                                         if SmartCombatEnabled then
-                                            local currentOffset = (SmartCurrentWeapon == "Sword") and SmartCalib_Sword or
-                                                SmartCalib_Fruit
+                                            local currentOffset = SmartCalib_Melee
+                                            if SmartCurrentWeapon == "Sword" then currentOffset = SmartCalib_Sword
+                                            elseif SmartCurrentWeapon == "Fruit" then currentOffset = SmartCalib_Fruit end
+
                                             if currentFarmMode == "Arriba" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, currentOffset + 2, 0)
                                             elseif currentFarmMode == "Detras" then
