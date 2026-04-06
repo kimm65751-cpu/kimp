@@ -134,7 +134,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -701,7 +701,7 @@ local function startCalib(mode, btn, text)
     CurrentlyCalibrating = mode
     TempCalibMaxY = 3
     TempCalibMaxZ = 4
-    CalibrationEndTime = os.clock() + 6
+    CalibrationEndTime = os.clock() + 12
     btn.BackgroundColor3 = Color3.fromRGB(150, 100, 30)
 end
 
