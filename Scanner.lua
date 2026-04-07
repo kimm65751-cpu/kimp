@@ -2359,8 +2359,9 @@ task.spawn(function()
                                                         FarmMode == "Abajo" and -12 or 45)
                                             end
                                             if currentFarmMode == "Mazmorra" then
-                                                -- En Mazmorra: NO mover al jugador, solo apuntar al boss
-                                                hrp.CFrame = CFrame.lookAt(hrp.Position, mobPos, Vector3.new(0, 1, 0))
+                                                -- En Mazmorra: NO mover X/Z pero FORZAR Y minimo para no hundirse bajo tierra
+                                                local safeY = math.max(hrp.Position.Y, mobPos.Y + 1.5)
+                                                hrp.CFrame = CFrame.lookAt(Vector3.new(hrp.Position.X, safeY, hrp.Position.Z), mobPos, Vector3.new(0, 1, 0))
                                             else
                                                 local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                                 if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
