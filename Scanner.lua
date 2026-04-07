@@ -228,6 +228,7 @@ local TabExtras                                     = MakeTabBtn("🍎", "Extras
 local TabCalib                                      = MakeTabBtn("🎯", "Calibrar", 4)
 local TabCazador                                    = MakeTabBtn("👁️", "Cazador", 5)
 local TabAnalista                                   = MakeTabBtn("🔎", "Analizador", 6)
+local TabInjector                                   = MakeTabBtn("💉", "Inyector", 7)
 
 -- ======================== PANEL DE CONTENIDO ========================
 local ContentPanel                                  = Instance.new("Frame", MF)
@@ -276,6 +277,7 @@ TabExtras.MouseButton1Click:Connect(function() SwitchTab("Extras") end)
 TabCalib.MouseButton1Click:Connect(function() SwitchTab("Calibrar") end)
 TabCazador.MouseButton1Click:Connect(function() SwitchTab("Cazador") end)
 TabAnalista.MouseButton1Click:Connect(function() SwitchTab("Analizador") end)
+TabInjector.MouseButton1Click:Connect(function() SwitchTab("Inyector") end)
 
 local function SectionLabel(parent, text, order)
     local l = Instance.new("TextLabel", parent)
@@ -1479,7 +1481,7 @@ task.delay(2, RefreshRouteFileList)
 -- =======================================================================================
 local AnalistaPage = MakeScrollPage("Analizador")
 
-SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAPAx Y JEFES", 1)
+SectionLabel(AnalistaPage, "ESCÁNER P2W Y VULNERABILIDADES", 1)
 
 local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
 AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
@@ -1488,7 +1490,7 @@ AnalistaInfo.TextColor3 = C.muted
 AnalistaInfo.Font = Enum.Font.GothamMedium
 AnalistaInfo.TextSize = 11
 AnalistaInfo.Text =
-"  Extrae todos los scripts de las islas, remotes, posiciones,\n  portales de teletransportación y datos de Jefes (Bosses).\n  Guarda todo en un archivo txt en tu carpeta local."
+"  Extrae todas las configuraciones de Tienda (ShopConfig),\n  Gamepasses, Conqueror Haki, remotes y multiplicadores.\n  Guarda los datos profundos en un archivo txt."
 AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
@@ -1505,204 +1507,141 @@ AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaLog.LayoutOrder = 4
 
 BtnAnalista.MouseButton1Click:Connect(function()
-    BtnAnalista.Text = "🧪 Escaneando el Entorno..."
-    AnalistaLog.Text = "  [1/5] Buscando scripts criticos..."
+    BtnAnalista.Text = "🧪 Escaneando Economía..."
+    AnalistaLog.Text = "  [1/4] Buscando módulos ShopConfig..."
 
     task.spawn(function()
         local t = {}
-        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then
-            AnalistaLog.Text = "  ⚠️ Necesitas estar vivo."
-            BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
-            return
-        end
-
+        
         table.insert(t, "==================================================")
-        table.insert(t, " REPORTE FORENSE - AURA KILL V2.0")
+        table.insert(t, " REPORTE P2W Y ECONOMIA - AURA KILL V3.0 ")
         table.insert(t, " FECHA: " .. os.date())
-        table.insert(t, " POSICION: " .. tostring(hrp.Position))
         table.insert(t, "==================================================\n")
 
-        -- 1. SCRIPTS CRITICOS
-        table.insert(t, "> [1] SCRIPTS CRITICOS EN PLAYERSCRIPTS:")
-        local sCount = 0
-        for _, s in pairs(LP.PlayerScripts:GetDescendants()) do
-            if s:IsA("LocalScript") or s:IsA("ModuleScript") then
-                local n = s.Name:lower()
-                if n:match("anti") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("teleport") or n:match("wave") or n:match("safe") or n:match("camera") then
-                    sCount = sCount + 1
-                    AnalistaLog.Text = "  [1/5] Script #" .. sCount .. ": " .. s.Name
-                    table.insert(t, "  [" .. sCount .. "] " .. s:GetFullName() .. " (" .. s.ClassName .. ")")
-                    -- NO require() - bloquea indefinidamente en modulos con WaitForChild
-                end
-            end
-            task.wait() -- yield cada script, no solo los criticos
-        end
-        if sCount == 0 then table.insert(t, "  (ninguno encontrado)") end
-        table.insert(t, "")
-
-        -- 2. MAPEO FISICO
-        AnalistaLog.Text = "  [2/5] Contando objetos..."
-        task.wait()
-        local allObjs = Workspace:GetDescendants()
-        local total = #allObjs
-        table.insert(t, "> [2] MAPEO FISICO CERCANO (600 studs) - Total mapa: " .. total .. " objs")
-        local invisBlocks, killBricks, barriers, cerca = 0, 0, 0, 0
-
-        for i, obj in ipairs(allObjs) do
-            if i % 200 == 0 then
-                AnalistaLog.Text = "  [2/5] " .. math.floor(i / total * 100) .. "% (" .. i .. "/" .. total .. ")"
-                task.wait()
-            end
-            if obj:IsA("BasePart") then
-                if (obj.Position - hrp.Position).Magnitude < 600 then
-                    cerca = cerca + 1
-                    if obj.Transparency == 1 and obj.CanCollide then invisBlocks = invisBlocks + 1 end
-                    if obj:FindFirstChildOfClass("TouchTransmitter") then
-                        killBricks = killBricks + 1
-                        local relY = obj.Position.Y - hrp.Position.Y
-                        if math.abs(relY) > 15 then
-                            table.insert(t,
-                                "  KillBrick: " ..
-                                obj.Name .. " Y_rel=" .. math.floor(relY) .. "s @ " .. tostring(obj.Position))
-                        end
-                    end
-                    local nm = obj.Name:lower()
-                    if nm:match("barrier") or nm:match("bound") or nm:match("wall") or nm:match("restrict") then
-                        barriers = barriers + 1
-                        table.insert(t, "  Barrera: " .. obj:GetFullName())
-                    end
-                end
-            end
-        end
-        table.insert(t, "  Partes en radio 600: " .. cerca)
-        table.insert(t, "  Invisibles CanCollide: " .. invisBlocks)
-        table.insert(t, "  KillBricks: " .. killBricks)
-        table.insert(t, "  Barreras: " .. barriers)
-        table.insert(t, "")
-
-        -- 3. REMOTES
-        AnalistaLog.Text = "  [3/5] Rastreando Remotes..."
-        task.wait()
-        table.insert(t, "> [3] TODOS LOS REMOTES (ReplicatedStorage):")
-        local rCount = 0
-        for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                rCount = rCount + 1
-                table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
-                if rCount % 25 == 0 then
-                    AnalistaLog.Text = "  [3/5] Remotes: " .. rCount .. "..."
-                    task.wait()
-                end
-            end
-        end
-        table.insert(t, "  Total: " .. rCount)
-        table.insert(t, "")
-
-        -- 4. PORTALES Y BOSS SPAWNERS
-        AnalistaLog.Text = "  [4/5] Rastreando Portales y Bosses..."
-        task.wait()
-        table.insert(t, "> [4] PORTALES Y AUTO-CAZA BOSS:")
-        local pCount = 0
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                table.insert(t,
-                    "  [Prompt-Tecla " ..
-                    tostring(obj.KeyboardKeyCode) ..
-                    "] " .. obj:GetFullName() .. " (Accion: " .. tostring(obj.ActionText) .. ")")
-                pCount = pCount + 1
-            elseif obj:IsA("BasePart") then
-                local oname = obj.Name:lower()
-                if oname:match("portal") or oname:match("teleport") or oname:match("travel") or oname:match("puerta") then
-                    table.insert(t, "  [Portal-Part] " .. obj:GetFullName() .. " @ " .. tostring(obj.Position))
-                    pCount = pCount + 1
-                end
-            end
-
-            -- Detectar timers o variables guardadas (Values) que delaten el respawn de un jefe
-            local oname2 = obj.Name:lower()
-            if oname2:match("spawn") or oname2:match("timer") or oname2:match("time") or oname2:match("cooldown") or oname2:match("boss") then
-                if obj:IsA("StringValue") or obj:IsA("NumberValue") or obj:IsA("IntValue") then
-                    table.insert(t, "  [Spawner/Time-Data] " .. obj:GetFullName() .. " = " .. tostring(obj.Value))
-                end
-            end
-        end
-        if pCount == 0 then table.insert(t, "  (Nungun prompt o portal 3D encontrado en workspace)") end
-        table.insert(t, "")
-
-        table.insert(t, "> [5] INTERFACES DE VIAJE Y CIUDADES (PlayerGui):")
-        local guiCount = 0
-
-        for _, gui in pairs(game.Players.LocalPlayer.PlayerGui:GetDescendants()) do
-            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
-                local gname = gui.Name:lower()
-                local txt = ""
-                if gui:IsA("TextButton") then txt = gui.Text:lower() end
-                if gname:match("teleport") or gname:match("travel") or gname:match("map") or gname:match("island") or gname:match("select") or gname:match("city") or txt:match("teleport") or txt:match("travel") then
-                    table.insert(t,
-                        "  [Travel-Btn] " ..
-                        gui:GetFullName() ..
-                        " | Tipo: " ..
-                        gui.ClassName .. " | Text: " .. tostring(gui:IsA("TextButton") and gui.Text or "IMG"))
-                    guiCount = guiCount + 1
-                end
-            end
-        end
-        if guiCount == 0 then table.insert(t, "  (Ningun boton de viaje detectado en UI)") end
-        table.insert(t, "")
-
-        -- 6. GAMEPASSES, MULTIPLICADORES Y ECONOMIA PREMIUM
-        AnalistaLog.Text = "  [5/5] Buscando Gamepasses y Multiplicadores..."
-        task.wait()
-        table.insert(t, "> [6] SEGURIDAD DE MULTIPLICADORES (GAMEPASS/P2W EXPLOIT):")
-        local mgCount = 0
-        pcall(function()
-            table.insert(t, "  [*] Verificando Entorno Global local para Inyeccion _G:")
-            if type(_G.HasBoost) == "function" then 
-                table.insert(t, "   [!!] EXITOSO: La funcion '_G.HasBoost' detectada. (Se puede hacer Hooking para forzar 'true' en 2x Drops/Exp/Dinero).")
-                mgCount = mgCount + 1
-            else
-                table.insert(t, "   [INFO] _G.HasBoost no existe (aun) o no esta expuesto aqui.")
-            end
+        local RS = game:GetService("ReplicatedStorage")
+        
+        -- Función recursiva para serializar tablas leídas con require()
+        local function SerializeTable(val, name, skipnewlines, depth)
+            skipnewlines = skipnewlines or false
+            depth = depth or 0
+            if depth > 3 then return tostring(val) end -- Evitar loops infinitos
             
-            if type(_G.GlobalMultipliers) == "table" then
-                table.insert(t, "   [!!] EXITOSO: Tabla '_G.GlobalMultipliers' descubierta. (Puedes sobre-escribir sus atributos money=10 a placer).")
-                mgCount = mgCount + 1
+            local tmp = string.rep("  ", depth)
+            if name then tmp = tmp .. tostring(name) .. " = " end
+        
+            if type(val) == "table" then
+                tmp = tmp .. "{" .. (not skipnewlines and "\n" or "")
+                for k, v in pairs(val) do
+                    tmp = tmp .. SerializeTable(v, k, skipnewlines, depth + 1) .. "," .. (not skipnewlines and "\n" or "")
+                end
+                tmp = tmp .. string.rep("  ", depth) .. "}"
+            elseif type(val) == "number" or type(val) == "boolean" then
+                tmp = tmp .. tostring(val)
+            elseif type(val) == "string" then
+                tmp = tmp .. string.format("%q", val)
+            else
+                tmp = tmp .. tostring(val)
             end
+            return tmp
+        end
 
-            table.insert(t, "  [*] Rastreando Archivos/Values/Remotes dedicados a Tienda P2W:")
-            for _, obj in ipairs(game:GetDescendants()) do
-                pcall(function()
-                    local nm = obj.Name:lower()
-                    if nm:match("product") or nm:match("gamepass") or nm:match("2x") or nm:match("multiplier") or nm:match("boost") or nm:match("premium") or nm:match("shop") or nm:match("conqueror") or nm:match("limitless") or nm:match("reaper") then
-                        if obj:IsA("ModuleScript") then
-                            table.insert(t, "   [MODULO-MASCARA] " .. obj:GetFullName() .. " -> Analizalo para inyectar metodos y requerirlo.")
-                            mgCount = mgCount + 1
-                        elseif obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                            table.insert(t, "   [REMOTO-TIENDA]  " .. obj:GetFullName() .. " -> Intenta interceptar un 'Buy' o lanzar FireServer() en el loop.")
-                            mgCount = mgCount + 1
-                        elseif obj:IsA("ValueBase") then
-                            table.insert(t, "   [ATRIBUTO-VALUE] " .. obj:GetFullName() .. " = " .. tostring(obj.Value) .. " -> Forzar localmente por si es TrustClient.")
-                            mgCount = mgCount + 1
+        -- 1. ANALISIS DE MODULOS DE TIENDA
+        table.insert(t, "> [1] CONFIGURACIONES DE TIENDA (REQUIRE DUMP):")
+        local modCount = 0
+        for _, obj in ipairs(RS:GetDescendants()) do
+            local ln = obj.Name:lower()
+            if obj:IsA("ModuleScript") then
+                if ln:match("shopconfig") or ln:match("conquerorhaki") or ln:match("gamepass") or ln:match("multiplier") then
+                    modCount = modCount + 1
+                    AnalistaLog.Text = "  [1/4] Require() -> " .. obj.Name
+                    task.wait()
+                    
+                    table.insert(t, "  [+] MODULO ENCONTRADO: " .. obj:GetFullName())
+                    
+                    -- Intentar requerir el modulo para leer sus tablas de tiendas
+                    local s, req = pcall(function() return require(obj) end)
+                    if s and type(req) == "table" then
+                        table.insert(t, "      EXTRACCION EXITOSA:")
+                        -- Convertimos la tabla a string formateado
+                        local stringData = SerializeTable(req, nil, false, 3)
+                        -- Lo añadimos al log por lineas
+                        for line in stringData:gmatch("[^\r\n]+") do
+                            table.insert(t, line)
                         end
+                    elseif s then
+                        table.insert(t, "      VALOR RETORNADO: " .. tostring(req))
+                    else
+                        table.insert(t, "      ERROR AL SOLICITAR REQUIRE: " .. tostring(req))
                     end
-                end)
+                    table.insert(t, "")
+                end
+            end
+        end
+        if modCount == 0 then table.insert(t, "  (No se encontraron módulos de tienda en RS)") end
+        table.insert(t, "")
+
+        -- 2. REMOTES ESPECIFICOS P2W Y SHOP
+        AnalistaLog.Text = "  [2/4] Buscando ShopRemotes..."
+        task.wait()
+        table.insert(t, "> [2] SHOP REMOTES Y EVENTOS DE INTERACCION:")
+        local rCount = 0
+        for _, obj in pairs(RS:GetDescendants()) do
+            local ln = obj.Name:lower()
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                if ln:match("buy") or ln:match("purchase") or ln:match("shop") or ln:match("boost") or ln:match("haki") or ln:match("redeem") or ln:match("gift") then
+                    rCount = rCount + 1
+                    table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
+                end
+            end
+        end
+        table.insert(t, "  Total Interacciones P2W Encontradas: " .. rCount)
+        table.insert(t, "")
+
+        -- 3. VALIDACIONES GLOBALES
+        AnalistaLog.Text = "  [3/4] Analizando _G local..."
+        task.wait()
+        table.insert(t, "> [3] ENTORNO GLOBAL LOCAL (_G):")
+        local gScanned = false
+        pcall(function()
+            for k, v in pairs(_G) do
+                gScanned = true
+                if type(v) == "table" then
+                    table.insert(t, "  _G." .. tostring(k) .. " = [Tabla] -> " .. SerializeTable(v, nil, true, 1))
+                else
+                    table.insert(t, "  _G." .. tostring(k) .. " = " .. tostring(v) .. " (" .. type(v) .. ")")
+                end
             end
         end)
-        if mgCount == 0 then table.insert(t, "  (Sin rastros detectables de gamepasses / boosts locales)") end
+        if not gScanned then table.insert(t, "  (Entorno _G vacío o inaccesible)") end
         table.insert(t, "")
-
-        -- DIAGNOSTICO
-        table.insert(t, "================ DIAGNOSTICO =================")
-        if killBricks > 0 then table.insert(t, "! KILLBRICKS detectados (" .. killBricks .. "). Causa del fallo.") end
-        if invisBlocks > 20 then table.insert(t, "! " .. invisBlocks .. " bloques invisibles CanCollide. El bot choca.") end
-        if barriers > 0 then table.insert(t, "! " .. barriers .. " barreras detectadas.") end
-        table.insert(t, "Prueba los Remotes de Seccion 3 para ataques directos.")
+        
+        -- 4. VALORES DE JUGADOR
+        AnalistaLog.Text = "  [4/4] Buscando valores Atributos en Player..."
+        task.wait()
+        table.insert(t, "> [4] ATRIBUTOS Y VALORES EN LOCALPLAYER:")
+        local lp = game:GetService("Players").LocalPlayer
+        pcall(function()
+            if lp then
+                local attrs = lp:GetAttributes()
+                for k, v in pairs(attrs) do
+                    table.insert(t, "  [Atributo] " .. tostring(k) .. " = " .. tostring(v))
+                end
+                
+                for _, obj in pairs(lp:GetDescendants()) do
+                    if obj:IsA("ValueBase") then
+                        local nm = obj.Name:lower()
+                        if nm:match("boost") or nm:match("multiplier") or nm:match("2x") or nm:match("vip") or nm:match("premium") then
+                            table.insert(t, "  [Value] " .. obj:GetFullName() .. " (" .. obj.ClassName .. ") = " .. tostring(obj.Value))
+                        end
+                    end
+                end
+            end
+        end)
 
         -- GUARDAR
         AnalistaLog.Text = "  Guardando..."
         task.wait()
-        local filename = "IslandBossAnalysis_" .. tostring(os.time()) .. ".txt"
+        local filename = "P2WEconomyAnalysis_" .. tostring(os.time()) .. ".txt"
         local saved = false
         pcall(function()
             if writefile then
@@ -1712,10 +1651,136 @@ BtnAnalista.MouseButton1Click:Connect(function()
         if saved then
             AnalistaLog.Text = "  ✅ Listo: " .. filename
         else
-            AnalistaLog.Text = "  ⚠️ Sin writefile - ver F9"
+            AnalistaLog.Text = "  ⚠️ Sin writefile - mira la consola"
             for _, line in ipairs(t) do print(line) end
         end
-        BtnAnalista.Text = "🧪 Ejecutar Escaneo Profundo (.txt)"
+        BtnAnalista.Text = "🧪 Ejecutar Escaneo P2W Profundo (.txt)"
+    end)
+end)
+
+-- ========== TAB 7: INYECTOR P2W (VULNERABILIDADES) ==========
+-- =======================================================================================
+local InjectorPage = MakeScrollPage("Inyector")
+
+SectionLabel(InjectorPage, "INYECTOR DE MULTIPLICADORES Y GAMEPASS", 1)
+
+local InjectorInfo = Instance.new("TextLabel", InjectorPage)
+InjectorInfo.Size = UDim2.new(0.95, 0, 0, 45)
+InjectorInfo.BackgroundTransparency = 1
+InjectorInfo.TextColor3 = C.muted
+InjectorInfo.Font = Enum.Font.GothamMedium
+InjectorInfo.TextSize = 11
+InjectorInfo.Text = "  Explotación de vulnerabilidades de la tienda detectadas.\n  ADVERTENCIA: Usar con moderación, el servidor podría auditar compras falsas."
+InjectorInfo.TextXAlignment = Enum.TextXAlignment.Left
+InjectorInfo.TextWrapped = true
+InjectorInfo.LayoutOrder = 2
+
+local BtnInjectRemote = ToggleButton(InjectorPage, "💉 Inyectar Gamepasses por Remote", 3, Color3.fromRGB(180, 40, 40))
+local BtnInjectG = ToggleButton(InjectorPage, "💉 Forzar _G.GlobalMultipliers e Inyectar _G.HasBoost", 4, Color3.fromRGB(40, 180, 40))
+local BtnSpoofBoost = ToggleButton(InjectorPage, "💸 Obtener Boosts 2x (Spoof Remote)", 5, Color3.fromRGB(180, 140, 0))
+
+local InjectorStatus = Instance.new("TextLabel", InjectorPage)
+InjectorStatus.Size = UDim2.new(0.95, 0, 0, 20)
+InjectorStatus.BackgroundTransparency = 1
+InjectorStatus.TextColor3 = Color3.fromRGB(255, 255, 120)
+InjectorStatus.Font = Enum.Font.Code
+InjectorStatus.TextSize = 12
+InjectorStatus.Text = "  Status: Esperando..."
+InjectorStatus.TextXAlignment = Enum.TextXAlignment.Left
+InjectorStatus.LayoutOrder = 6
+
+BtnInjectRemote.MouseButton1Click:Connect(function()
+    InjectorStatus.Text = "  [!] Interceptando Remotes de Tienda..."
+    pcall(function()
+        local remotes = {
+            "ConquerorHakiRemote", "PurchaseProduct", "OpenBossRushShop", "InfiniteTowerShopSync"
+        }
+        local RS = game:GetService("ReplicatedStorage")
+        local found = false
+        for _, obj in ipairs(RS:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                for _, rn in ipairs(remotes) do
+                    if obj.Name:find(rn) then
+                        InjectorStatus.Text = "  [->] Enviando señales a " .. obj.Name
+                        if obj:IsA("RemoteEvent") then
+                            obj:FireServer("Buy", true)
+                            obj:FireServer(true)
+                            obj:FireServer(1)
+                        end
+                        found = true
+                    end
+                end
+            end
+        end
+        if found then
+            InjectorStatus.Text = "  ✅ Señales de Inyección Enviadas a Remotes"
+        else
+            InjectorStatus.Text = "  ❌ Remotes de tienda no encontrados en el mapa"
+        end
+    end)
+end)
+
+BtnInjectG.MouseButton1Click:Connect(function()
+    pcall(function()
+        -- Inyectando Entorno Global
+        if _G.GlobalMultipliers then
+            _G.GlobalMultipliers.money = 10
+            _G.GlobalMultipliers.exp = 10
+            _G.GlobalMultipliers.drops = 10
+            InjectorStatus.Text = "  ✅ _G.GlobalMultipliers sobrescrito a 10x"
+        else
+            _G.GlobalMultipliers = {money = 10, exp = 10, drops = 10}
+            InjectorStatus.Text = "  ✅ _G.GlobalMultipliers CREADO a 10x"
+        end
+        
+        -- Hook de Validaciones P2W
+        if _G.HasBoost then
+            local oldBoost = _G.HasBoost
+            _G.HasBoost = function(...) return true end
+            InjectorStatus.Text = "  ✅ _G.HasBoost Bypasseado a 'true'"
+        else
+            _G.HasBoost = function(...) return true end
+            InjectorStatus.Text = "  ✅ _G.HasBoost Inyectado como 'true'"
+        end
+    end)
+end)
+
+BtnSpoofBoost.MouseButton1Click:Connect(function()
+    InjectorStatus.Text = "  [!] Spoofeando ShopRemotes..."
+    pcall(function()
+        local RS = game:GetService("ReplicatedStorage")
+        -- Iterar por todas las ShopRemotes / Remotes
+        local shopRemotes = RS:FindFirstChild("ShopRemotes", true) or RS:FindFirstChild("Remotes", true)
+        
+        local found = false
+        if shopRemotes then
+            for _, rem in ipairs(shopRemotes:GetChildren()) do
+                if rem.Name:find("RedeemProduct") or rem.Name:find("GetBoosts") or rem.Name:find("RefreshBoosts") then
+                    if rem:IsA("RemoteFunction") then
+                        task.spawn(function() rem:InvokeServer() end)
+                    elseif rem:IsA("RemoteEvent") then
+                        rem:FireServer()
+                    end
+                    found = true
+                end
+            end
+        end
+        
+        -- Busqueda profunda si fallan los hijos directos
+        for _, rem in ipairs(RS:GetDescendants()) do
+            if rem.Name:find("RedeemProduct") or rem.Name:find("RefreshBoosts") or rem.Name:find("BoostsUpdated") then
+                if rem:IsA("RemoteEvent") then
+                    rem:FireServer()
+                    found = true
+                end
+            end
+        end
+        
+        if found then
+            InjectorStatus.Text = "  ✅ Boosts Remotes Disparados"
+        else
+            InjectorStatus.Text = "  ❌ ShopRemotes no encontrados"
+        end
     end)
 end)
 
