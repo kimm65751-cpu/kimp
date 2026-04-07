@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM3"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1607,28 +1607,51 @@ BtnAnalista.MouseButton1Click:Connect(function()
         task.wait()
         table.insert(t, "> [3] SPY REMOTEFUNCTIONS (Lo que el SERVER responde realmente):")
         local rfTargets = { "GetBoosts","RefreshBoosts","RedeemProduct","GetPlayerData","GetEquipped","GetAscendData","GetStorageData","GetRuneData","GetTitlesData","GetTotalStats","GetSkillTreeData","SpecPassiveGetData","PowerGetData" }
+        local RF_TIMEOUT = 3 -- segundos maximos por InvokeServer
         for _, rem in ipairs(remotesList) do
             if rem:IsA("RemoteFunction") then
+                -- Solo espiar RFs en la lista de targets O con "get" en el nombre
+                -- NO "check" porque esos requieren argumentos internos y cuelgan
                 local doSpy = false
                 for _, name in ipairs(rfTargets) do if rem.Name:find(name) then doSpy = true; break end end
-                if doSpy or rem.Name:lower():match("get") or rem.Name:lower():match("check") then
-                    AnalistaLog.Text = "  [3/5] Invocando: " .. rem.Name
+                if not doSpy and rem.Name:lower():match("^get") then doSpy = true end
+
+                if doSpy then
+                    AnalistaLog.Text = "  [3/5] Invocando (timeout " .. RF_TIMEOUT .. "s): " .. rem.Name
                     task.wait()
                     table.insert(t, "\n  [RF-SPY] " .. rem:GetFullName())
-                    local ok, result = pcall(function() return rem:InvokeServer() end)
-                    if ok then
-                        if type(result) == "table" then
-                            table.insert(t, "  [SERVER->CLIENT] Respuesta tipo TABLA:")
+
+                    -- Timeout: lanzamos el invoke en un hilo separado, esperamos maximo RF_TIMEOUT s
+                    local done     = false
+                    local rfOk     = false
+                    local rfResult = nil
+
+                    task.spawn(function()
+                        rfOk, rfResult = pcall(function() return rem:InvokeServer() end)
+                        done = true
+                    end)
+
+                    local elapsed = 0
+                    while not done and elapsed < RF_TIMEOUT do
+                        task.wait(0.1)
+                        elapsed = elapsed + 0.1
+                    end
+
+                    if not done then
+                        table.insert(t, "  [TIMEOUT] No respondio en " .. RF_TIMEOUT .. "s (bloqueante/requiere args)")
+                    elseif rfOk then
+                        if type(rfResult) == "table" then
+                            table.insert(t, "  [SERVER->CLIENT] Respuesta TABLA:")
                             visited = {}
-                            local dump = SerializeDeep(result, nil, 3)
+                            local dump = SerializeDeep(rfResult, nil, 3)
                             for line in dump:gmatch("[^\r\n]+") do table.insert(t, line) end
-                        elseif result == nil then
-                            table.insert(t, "  [SERVER->CLIENT] nil (requiere args o acceso denegado)")
+                        elseif rfResult == nil then
+                            table.insert(t, "  [SERVER->CLIENT] nil (sin datos o requiere argumentos)")
                         else
-                            table.insert(t, "  [SERVER->CLIENT] " .. tostring(result) .. " (" .. type(result) .. ")")
+                            table.insert(t, "  [SERVER->CLIENT] " .. tostring(rfResult) .. " (" .. type(rfResult) .. ")")
                         end
                     else
-                        table.insert(t, "  [ERR] InvokeServer fallo: " .. tostring(result))
+                        table.insert(t, "  [ERR] InvokeServer error: " .. tostring(rfResult))
                     end
                 end
             end
