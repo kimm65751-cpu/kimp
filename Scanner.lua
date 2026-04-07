@@ -2237,7 +2237,7 @@ task.spawn(function()
 
                                             if currentFarmMode == "Arriba" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, currentOffsetY + 2, currentOffsetZ)
-                                            elseif currentFarmMode == "Detras" then
+                                            elseif currentFarmMode == "Detras" or currentFarmMode == "Mazmorra" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, 0, currentOffsetZ + 2)
                                             else
                                                 -- Abajo por defecto si usa otra cosa
@@ -2246,7 +2246,7 @@ task.spawn(function()
                                         else
                                             if currentFarmMode == "Arriba" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                            elseif currentFarmMode == "Detras" then
+                                            elseif currentFarmMode == "Detras" or currentFarmMode == "Mazmorra" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
                                             elseif currentFarmMode == "Abajo" then
                                                 TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
@@ -2272,10 +2272,11 @@ task.spawn(function()
                                             end
                                         end)
 
+                                        -- (Cámara fija en el jugador, removido el CameraSubject a los mobs a petición del usuario para evitar mareos o desorientación)
                                         pcall(function()
                                             local cam = Workspace.CurrentCamera
-                                            if cam and cam.CameraSubject ~= targetMob:FindFirstChild("Humanoid") then
-                                                cam.CameraSubject = targetMob:FindFirstChild("Humanoid") or tHrp
+                                            if cam and cam.CameraSubject ~= char:FindFirstChild("Humanoid") then
+                                                cam.CameraSubject = char:FindFirstChild("Humanoid")
                                             end
                                         end)
 
@@ -2472,6 +2473,15 @@ BtnHeight.MouseButton1Click:Connect(function()
         BtnGhost.BackgroundColor3 = Color3.fromRGB(80, 40, 140)
         BtnGhost.Text = "  👻 Ghost: ON — (auto-activado)"
         BtnGhost.TextColor3 = Color3.new(1, 1, 1)
+    elseif FarmMode == "Abajo" then
+        FarmMode = "Mazmorra"
+        OfsY = 0; OfsZ = -8 -- Detras a nivel de piso
+        BtnHeight.Text = "  Posición: 🏰 Mazmorra (Estático)"
+        -- En mazmorra apagamos ghost por defecto pero si lo ocupa lo activa manual
+        GhostProtocolEnabled = false
+        BtnGhost.BackgroundColor3 = C.card
+        BtnGhost.Text = "  👻 Ghost Protocol (Mazmorra): OFF"
+        BtnGhost.TextColor3 = C.text
     else
         FarmMode = "Arriba"
         OfsY = 10; OfsZ = 0
@@ -2578,6 +2588,8 @@ local function LoadConfig()
 
                     if FarmMode == "Abajo" then
                         OfsY = -25; OfsZ = 0; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
+                    elseif FarmMode == "Mazmorra" then
+                        OfsY = 0; OfsZ = -8; BtnHeight.Text = "  Posición: 🏰 Mazmorra (Estático)"
                     else
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
