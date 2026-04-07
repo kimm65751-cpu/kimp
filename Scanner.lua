@@ -33,6 +33,24 @@ local LastRealDamageTime = os.clock()
 local GhostProtocolEnabled = false
 local GhostBlocksDisabled = 0
 local VIM = game:GetService("VirtualInputManager")
+local BlinkStepValue = 45  -- Studs por paso en vuelo (default, ajustable en UI)
+
+-- Smart Combat (definidos aqui para que SaveConfig no crashee si se llama temprano)
+local SmartCombatEnabled = false
+local SmartUseSword = true
+local SmartUseFruit = false
+local SmartUseMelee = false
+local SmartCurrentWeapon = "Melee"
+local LastSmartSwap = nil
+local SmartCalib_Sword_Y = 3
+local SmartCalib_Sword_Z = 4
+local SmartCalib_Fruit_Y = 8
+local SmartCalib_Fruit_Z = 10
+local SmartCalib_Melee_Y = 3
+local SmartCalib_Melee_Z = 4
+local SmartSwordName = nil
+local SmartFruitName = nil
+local SmartMeleeName = nil
 
 -- Endpoints Críticos (Sacados del Scanner)
 local CombatRemote = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
@@ -107,7 +125,15 @@ local function SaveConfig()
             SmartMeleeName = SmartMeleeName,
             AutoSkillKeys = _G.AutoSkillKeys
         }
-        pcall(function() writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data)) end)
+        pcall(function()
+            -- MemoryPoint es Vector3, no serializable directo — guardar como tabla
+            local memData = nil
+            if MemoryPoint then
+                memData = { X = MemoryPoint.X, Y = MemoryPoint.Y, Z = MemoryPoint.Z }
+            end
+            data.MemoryPoint = memData
+            writefile("OmniAutoFarmConfig.json", game:GetService("HttpService"):JSONEncode(data))
+        end)
     end
 end
 
@@ -135,7 +161,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -401,7 +427,7 @@ MemInfoLabel.LayoutOrder = 3
 
 local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
 
-BlinkStepValue = BlinkStepValue or 45
+-- BlinkStepValue ya inicializado al tope del script (= 45 por defecto)
 local blinkOptions = { 45, 25, 15, 5 }
 local currentBlinkIdx = 1
 
@@ -534,6 +560,7 @@ end
 task.spawn(function()
     while true do
         task.wait(0.5)
+        if not AutoFruitBuying then task.wait(1) continue end  -- no hacer nada si esta apagado (Luau soporta continue)
         local foundDesired = false
         -- REVISAR INVENTARIO
         for _, tool in pairs(LP.Backpack:GetChildren()) do
@@ -587,6 +614,7 @@ task.spawn(function()
         end
 
         task.wait(1)
+        ::skipFruit::
     end
 end)
 
@@ -1974,11 +2002,11 @@ task.spawn(function()
                         local function strictMatch(t)
                             local n = t.Name:lower()
                             if reqType == "Sword" then
-                                return n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru") ~= nil
+                                return (n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru")) ~= nil
                             elseif reqType == "Fruit" then
-                                return n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito") ~= nil
+                                return (n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito")) ~= nil
                             elseif reqType == "Melee" then
-                                return n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black") ~= nil
+                                return (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black")) ~= nil
                             end
                             return false
                         end
@@ -2041,6 +2069,21 @@ task.spawn(function()
                         end
 
                         local wTool = GetSmartTool(SmartCurrentWeapon)
+                        -- Si no encontro el arma actual, intentar con la siguiente en rotación
+                        if not wTool and #activeWeapons > 1 then
+                            local idx = table.find(activeWeapons, SmartCurrentWeapon) or 1
+                            for attempt = 1, #activeWeapons - 1 do
+                                idx = idx + 1
+                                if idx > #activeWeapons then idx = 1 end
+                                wTool = GetSmartTool(activeWeapons[idx])
+                                if wTool then
+                                    SmartCurrentWeapon = activeWeapons[idx]
+                                    LastSmartSwap = os.clock()
+                                    break
+                                end
+                            end
+                        end
+
                         if wTool then
                             -- Si el arma asignada no está en la mano principal (no equipped)
                             if not char:FindFirstChild(wTool.Name) then
@@ -2134,7 +2177,8 @@ task.spawn(function()
 
                         StatusLabel.Text = "Cazando: " .. mob.Name
                         local hrp = char.HumanoidRootPart
-                        local mobHrp = mob:WaitForChild("HumanoidRootPart", 1)
+                        -- Usar FindFirstChild (no WaitForChild) — el mob ya fue validado en GetNearestMob
+                                        local mobHrp = mob:FindFirstChild("HumanoidRootPart")
 
                         if mobHrp then
                             GlobalMagnetTarget = mobHrp.Position
@@ -2228,19 +2272,13 @@ task.spawn(function()
                                         local currentFarmMode = FarmMode
                                         local mobPos = tHrp.Position
 
-                                        -- Dirección horizontal desde el MOB hacia el JUGADOR (para orbitar sin retroceder)
-                                        local toPlayerFlat = Vector3.new(hrp.Position.X - mobPos.X, 0, hrp.Position.Z - mobPos.Z)
-                                        if toPlayerFlat.Magnitude < 0.5 then
-                                            toPlayerFlat = Vector3.new(0, 0, 1) -- fallback si están en la misma posición XZ
-                                        end
-                                        toPlayerFlat = toPlayerFlat.Unit
+                                        -- Distancia horizontal actual entre jugador y mob
+                                        local actualHorizVec = Vector3.new(hrp.Position.X - mobPos.X, 0, hrp.Position.Z - mobPos.Z)
+                                        local actualHorizDist = actualHorizVec.Magnitude
 
-                                        -- ================================================================
-                                        -- POSICIONAMIENTO DIAGONAL para evitar gimbal lock:
-                                        -- Arriba/Abajo: Y offset + Z horizontal para que lookAt funcione
-                                        --   a 45° aprox (no 90° exacto que causa gimbal lock)
-                                        -- Mazmorra: orbita a distancia fija usando dirección mob→jugador
-                                        -- ================================================================
+                                        -- Dirección horizontal desde el MOB hacia el JUGADOR
+                                        local toPlayerFlat = actualHorizDist > 0.5 and actualHorizVec.Unit or Vector3.new(0, 0, 1)
+
                                         local myTargetPos
 
                                         if SmartCombatEnabled then
@@ -2253,53 +2291,60 @@ task.spawn(function()
                                                 currentOffsetY = SmartCalib_Fruit_Y
                                                 currentOffsetZ = SmartCalib_Fruit_Z
                                             end
+                                            local targetHoriz = math.max(currentOffsetZ, 4)
 
                                             if currentFarmMode == "Arriba" then
-                                                -- Diagonal: arriba Y studs + atrás Z studs (evita gimbal lock 90°)
-                                                myTargetPos = mobPos
-                                                    + Vector3.new(0, currentOffsetY, 0)
-                                                    + toPlayerFlat * math.max(currentOffsetZ, 4)
+                                                -- Si ya estamos dentro del rango horizontal: NO retroceder, quedarse en XZ actual
+                                                if actualHorizDist <= targetHoriz then
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y + currentOffsetY, hrp.Position.Z)
+                                                else
+                                                    myTargetPos = mobPos + Vector3.new(0, currentOffsetY, 0) + toPlayerFlat * targetHoriz
+                                                end
                                             elseif currentFarmMode == "Abajo" then
-                                                -- Diagonal: abajo Y studs + atrás Z studs
-                                                myTargetPos = mobPos
-                                                    + Vector3.new(0, -(currentOffsetY), 0)
-                                                    + toPlayerFlat * math.max(currentOffsetZ, 4)
+                                                if actualHorizDist <= targetHoriz then
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - currentOffsetY, hrp.Position.Z)
+                                                else
+                                                    myTargetPos = mobPos + Vector3.new(0, -currentOffsetY, 0) + toPlayerFlat * targetHoriz
+                                                end
                                             elseif currentFarmMode == "Mazmorra" then
-                                                -- Orbita a distancia fija usando dirección actual mob→jugador
-                                                local dist = math.min(math.max(currentOffsetZ, 4), 7)
-                                                myTargetPos = mobPos + toPlayerFlat * dist
-                                                myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
+                                                -- ESTÁTICO: quedarse donde está, solo apuntar al boss
+                                                myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y, hrp.Position.Z)
                                             else -- Detras
                                                 myTargetPos = mobPos + toPlayerFlat * (currentOffsetZ + 2)
                                             end
                                         else
-                                            local horizDist = math.max(math.abs(OfsZ), 4) -- mínimo 4 studs para no gimbal lock
+                                            local targetHoriz = math.max(math.abs(OfsZ), 4)
                                             if currentFarmMode == "Arriba" then
-                                                -- Diagonal: arriba + atrás
-                                                myTargetPos = mobPos
-                                                    + Vector3.new(0, math.abs(OfsY), 0)
-                                                    + toPlayerFlat * horizDist
+                                                if actualHorizDist <= targetHoriz then
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y + math.abs(OfsY), hrp.Position.Z)
+                                                else
+                                                    myTargetPos = mobPos + Vector3.new(0, math.abs(OfsY), 0) + toPlayerFlat * targetHoriz
+                                                end
                                             elseif currentFarmMode == "Abajo" then
-                                                -- Diagonal: abajo + atrás
-                                                myTargetPos = mobPos
-                                                    + Vector3.new(0, -math.abs(OfsY), 0)
-                                                    + toPlayerFlat * horizDist
+                                                if actualHorizDist <= targetHoriz then
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - math.abs(OfsY), hrp.Position.Z)
+                                                else
+                                                    myTargetPos = mobPos + Vector3.new(0, -math.abs(OfsY), 0) + toPlayerFlat * targetHoriz
+                                                end
                                             elseif currentFarmMode == "Mazmorra" then
-                                                -- Orbita a 6 studs del mob, misma altura, usando dirección mob→jugador
-                                                myTargetPos = mobPos + toPlayerFlat * 6
-                                                myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
+                                                -- ESTÁTICO: quedarse donde está, solo apuntar al boss
+                                                myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y, hrp.Position.Z)
                                             else -- Detras
                                                 myTargetPos = mobPos + toPlayerFlat * math.abs(OfsZ)
                                             end
                                         end
 
-                                        -- Construir CFrame mirando directamente al mob (lookAt nunca tendrá
-                                        -- gimbal lock porque siempre hay un componente horizontal en myTargetPos)
+                                        -- Construir CFrame mirando directamente al mob
                                         local TargetCF
                                         if myTargetPos then
                                             local lookDir = mobPos - myTargetPos
+                                            -- Mazmorra: myTargetPos.Y == mobPos.Y, lookDir puede ser (0,0,0) si XZ también coinciden
+                                            -- En ese caso usar la orientacion actual del HRP para no perder el aim
                                             if lookDir.Magnitude > 0.1 then
                                                 TargetCF = CFrame.lookAt(myTargetPos, mobPos, Vector3.new(0, 1, 0))
+                                            elseif currentFarmMode == "Mazmorra" then
+                                                -- Mismo punto: mantener orientacion actual del jugador
+                                                TargetCF = hrp.CFrame
                                             else
                                                 TargetCF = CFrame.new(myTargetPos)
                                             end
@@ -2313,12 +2358,17 @@ task.spawn(function()
                                                     CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
                                                         FarmMode == "Abajo" and -12 or 45)
                                             end
-                                            local flyDist = (hrp.Position - rootCF.Position).Magnitude
-                                            if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
-                                                local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
-                                                char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
+                                            if currentFarmMode == "Mazmorra" then
+                                                -- En Mazmorra: NO mover al jugador, solo apuntar al boss
+                                                hrp.CFrame = CFrame.lookAt(hrp.Position, mobPos, Vector3.new(0, 1, 0))
                                             else
-                                                char:PivotTo(rootCF)
+                                                local flyDist = (hrp.Position - rootCF.Position).Magnitude
+                                                if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
+                                                    local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
+                                                    char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
+                                                else
+                                                    char:PivotTo(rootCF)
+                                                end
                                             end
                                         end)
 
@@ -2654,6 +2704,40 @@ local function LoadConfig()
                     SliderFill.Size = UDim2.new(math.clamp(PanicThreshold, 0.01, 1), 0, 1, 0)
                     ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
                     ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold, 0.01, 1), 0, 1, 0)
+                                    -- Restaurar UI de Smart Combat
+                                    pcall(function()
+                                        if SmartCombatEnabled then
+                                            BtnSmartHitRun.BackgroundColor3 = C.accentOn
+                                            BtnSmartHitRun.Text = "  🧠 Smart Farm: ON"
+                                            BtnSmartHitRun.TextColor3 = Color3.new(1, 1, 1)
+                                        end
+                                        BtnUseMelee.BackgroundColor3 = SmartUseMelee and Color3.fromRGB(180, 80, 50) or C.card
+                                        BtnUseMelee.Text = "  👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SI" or "NO")
+                                        BtnUseSword.BackgroundColor3 = SmartUseSword and Color3.fromRGB(40, 150, 200) or C.card
+                                        BtnUseSword.Text = "  ⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SI" or "NO")
+                                        BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
+                                        BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SI" or "NO")
+                                        BtnCalibMelee.Text = "  👊 Calibrado COMBATE [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                                        BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                                        BtnCalibFruit.Text = "  🍎 Calibrado FRUTA [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                                        BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                                        BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                                        if SmartCalib_Fruit_Y > 3 then BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80) end
+                                        if BlinkAttackEnabled then
+                                            BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
+                                            BtnBlink.BackgroundColor3 = C.accentOn
+                                        end
+                                        if data.MemoryPoint and type(data.MemoryPoint) == "table" then
+                                            MemoryPoint = Vector3.new(
+                                                data.MemoryPoint.X or 0,
+                                                data.MemoryPoint.Y or 0,
+                                                data.MemoryPoint.Z or 0)
+                                            MemStatusLabel.Text = "  📍 Punto: " ..
+                                                math.floor(MemoryPoint.X) .. ", " ..
+                                                math.floor(MemoryPoint.Y) .. ", " ..
+                                                math.floor(MemoryPoint.Z)
+                                        end
+                                    end)
                 end
             end)
         end
@@ -2715,7 +2799,7 @@ task.spawn(function()
                             local dir = (targetPoint - hrpW.Position).Unit
                             local stepSize = math.min(BlinkStepValue or 45, distToTarget)
                             -- Auto-Ruta: SIEMPRE volar por encima (+15), nunca bajo tierra
-                            local flyHeight = _G.AutoHuntActive and 15 or OfsY
+                            local flyHeight = _G.AutoHuntActive and 15 or math.abs(OfsY)
                             local nextPos = hrpW.Position + dir * stepSize + Vector3.new(0, flyHeight, 0)
                             pcall(function() char:PivotTo(CFrame.lookAt(nextPos, nextPos + dir)) end)
                         else
@@ -2963,6 +3047,7 @@ task.spawn(function()
                     if nearestPortal and nearestPortal.Parent then
                         -- Volamos suavemente con NoClip hasta el Portal
                         _G.GhostProtocolEnabled = true
+                        GhostProtocolEnabled = true  -- sincronizar con variable local del Ghost loop
                         local targetCF = nearestPortal.Parent.CFrame * CFrame.new(0, 3, 0)
 
                         while hrp and (hrp.Position - targetCF.Position).Magnitude > 6 and _G.AutoHuntActive do
@@ -3059,6 +3144,7 @@ task.spawn(function()
 
                                 -- Vuelo corto con NoClip
                                 _G.GhostProtocolEnabled = true
+                                GhostProtocolEnabled = true
                                 while hrpA and (hrpA.Position - dest.Position).Magnitude > 6 and _G.AutoHuntActive do
                                     task.wait()
                                     hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -3075,6 +3161,7 @@ task.spawn(function()
 
                                 -- Aterrizar y pausar 2 segundos (simular humano)
                                 _G.GhostProtocolEnabled = false
+                                GhostProtocolEnabled = false
                                 task.wait(2)
 
                                 -- Recalcular distancia con posición live del boss
@@ -3088,6 +3175,7 @@ task.spawn(function()
                                 totalDist = (hrpA.Position - bossPos).Magnitude
                             end
                             _G.GhostProtocolEnabled = false
+                            GhostProtocolEnabled = false
                         end
                     elseif not postAlive then
                         -- Si NO está después de viajar, otra persona en el servidor lo mató antes
