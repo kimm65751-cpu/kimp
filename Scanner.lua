@@ -2216,10 +2216,18 @@ task.spawn(function()
                                         local currentFarmMode = FarmMode
                                         local mobPos = tHrp.Position
 
+                                        -- Dirección horizontal desde el MOB hacia el JUGADOR (para orbitar sin retroceder)
+                                        local toPlayerFlat = Vector3.new(hrp.Position.X - mobPos.X, 0, hrp.Position.Z - mobPos.Z)
+                                        if toPlayerFlat.Magnitude < 0.5 then
+                                            toPlayerFlat = Vector3.new(0, 0, 1) -- fallback si están en la misma posición XZ
+                                        end
+                                        toPlayerFlat = toPlayerFlat.Unit
+
                                         -- ================================================================
-                                        -- POSICIONAMIENTO EN ESPACIO MUNDIAL: Calcula primero la posición
-                                        -- de destino, luego usa CFrame.lookAt para que el jugador SIEMPRE
-                                        -- quede mirando directamente al mob (no hereda la rotación del mob)
+                                        -- POSICIONAMIENTO DIAGONAL para evitar gimbal lock:
+                                        -- Arriba/Abajo: Y offset + Z horizontal para que lookAt funcione
+                                        --   a 45° aprox (no 90° exacto que causa gimbal lock)
+                                        -- Mazmorra: orbita a distancia fija usando dirección mob→jugador
                                         -- ================================================================
                                         local myTargetPos
 
@@ -2235,41 +2243,46 @@ task.spawn(function()
                                             end
 
                                             if currentFarmMode == "Arriba" then
-                                                -- Encima del mob: distancia calibrada hacia ARRIBA en Y mundial
-                                                myTargetPos = mobPos + Vector3.new(0, currentOffsetY + 2, 0)
+                                                -- Diagonal: arriba Y studs + atrás Z studs (evita gimbal lock 90°)
+                                                myTargetPos = mobPos
+                                                    + Vector3.new(0, currentOffsetY, 0)
+                                                    + toPlayerFlat * math.max(currentOffsetZ, 4)
                                             elseif currentFarmMode == "Abajo" then
-                                                -- Debajo del mob: distancia calibrada hacia ABAJO en Y mundial
-                                                myTargetPos = mobPos + Vector3.new(0, -(currentOffsetY + 2), 0)
+                                                -- Diagonal: abajo Y studs + atrás Z studs
+                                                myTargetPos = mobPos
+                                                    + Vector3.new(0, -(currentOffsetY), 0)
+                                                    + toPlayerFlat * math.max(currentOffsetZ, 4)
                                             elseif currentFarmMode == "Mazmorra" then
-                                                -- A nivel de piso, detrás del mob horizontal (máx 4s para no chocar paredes)
-                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
-                                                myTargetPos = mobPos + mobBack.Unit * math.min(currentOffsetZ, 4)
+                                                -- Orbita a distancia fija usando dirección actual mob→jugador
+                                                local dist = math.min(math.max(currentOffsetZ, 4), 7)
+                                                myTargetPos = mobPos + toPlayerFlat * dist
                                                 myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
                                             else -- Detras
-                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
-                                                myTargetPos = mobPos + mobBack.Unit * (currentOffsetZ + 2)
+                                                myTargetPos = mobPos + toPlayerFlat * (currentOffsetZ + 2)
                                             end
                                         else
+                                            local horizDist = math.max(math.abs(OfsZ), 4) -- mínimo 4 studs para no gimbal lock
                                             if currentFarmMode == "Arriba" then
-                                                myTargetPos = mobPos + Vector3.new(0, OfsY, 0)
+                                                -- Diagonal: arriba + atrás
+                                                myTargetPos = mobPos
+                                                    + Vector3.new(0, math.abs(OfsY), 0)
+                                                    + toPlayerFlat * horizDist
                                             elseif currentFarmMode == "Abajo" then
-                                                myTargetPos = mobPos + Vector3.new(0, OfsY, 0)
+                                                -- Diagonal: abajo + atrás
+                                                myTargetPos = mobPos
+                                                    + Vector3.new(0, -math.abs(OfsY), 0)
+                                                    + toPlayerFlat * horizDist
                                             elseif currentFarmMode == "Mazmorra" then
-                                                -- 6 studs detrás del mob en espacio mundial, misma altura
-                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
-                                                myTargetPos = mobPos + mobBack.Unit * 6
+                                                -- Orbita a 6 studs del mob, misma altura, usando dirección mob→jugador
+                                                myTargetPos = mobPos + toPlayerFlat * 6
                                                 myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
                                             else -- Detras
-                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
-                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
-                                                myTargetPos = mobPos + mobBack.Unit * math.abs(OfsZ)
+                                                myTargetPos = mobPos + toPlayerFlat * math.abs(OfsZ)
                                             end
                                         end
 
-                                        -- Construir CFrame: posición calculada, mirando directamente al mob
+                                        -- Construir CFrame mirando directamente al mob (lookAt nunca tendrá
+                                        -- gimbal lock porque siempre hay un componente horizontal en myTargetPos)
                                         local TargetCF
                                         if myTargetPos then
                                             local lookDir = mobPos - myTargetPos
