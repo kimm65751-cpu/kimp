@@ -560,61 +560,61 @@ end
 task.spawn(function()
     while true do
         task.wait(0.5)
-        if not AutoFruitBuying then task.wait(1) continue end  -- no hacer nada si esta apagado (Luau soporta continue)
-        local foundDesired = false
-        -- REVISAR INVENTARIO
-        for _, tool in pairs(LP.Backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                local isFruit = tool:FindFirstChild("IsFruitTool")
-                local fruitModel = tool:FindFirstChild("FruitModel")
-                if isFruit and fruitModel then
-                    local fname = fruitModel.Value
-                    local rarity = tool:FindFirstChild("Rarity")
-                    local rarStr = rarity and rarity.Value or "?"
-
-                    if DesiredFruits[fname] then
-                        foundDesired = true
-                        FruitLogLabel.Text = "  ENCONTRADA: " .. fname .. " (" .. rarStr .. ") - DETENIENDO"
-                        FruitLogLabel.TextColor3 = Color3.fromRGB(90, 255, 90)
-                        AutoFruitBuying = false
-                        BtnAutoFruit.BackgroundColor3 = Color3.fromRGB(60, 40, 20)
-                        BtnAutoFruit.Text = "  🍎 Comprar Frutas (Monedas)"
-                    else
-                        FruitLogLabel.Text = "  Tirando: " .. tool.Name .. " (" .. rarStr .. ")"
-                        DropFruitTool(tool)
-                        task.wait(0.5)
-                    end
-                end
-            end
-        end
-
-        -- REVISAR HERRAMIENTA EN MANO
-        if not foundDesired and LP.Character then
-            for _, tool in pairs(LP.Character:GetChildren()) do
+        if AutoFruitBuying then
+            local foundDesired = false
+            -- REVISAR INVENTARIO
+            for _, tool in pairs(LP.Backpack:GetChildren()) do
                 if tool:IsA("Tool") then
                     local isFruit = tool:FindFirstChild("IsFruitTool")
                     local fruitModel = tool:FindFirstChild("FruitModel")
                     if isFruit and fruitModel then
                         local fname = fruitModel.Value
+                        local rarity = tool:FindFirstChild("Rarity")
+                        local rarStr = rarity and rarity.Value or "?"
+
                         if DesiredFruits[fname] then
                             foundDesired = true
-                            FruitLogLabel.Text = "  ENCONTRADA: " .. fname .. " - DETENIENDO"
+                            FruitLogLabel.Text = "  ENCONTRADA: " .. fname .. " (" .. rarStr .. ") - DETENIENDO"
                             FruitLogLabel.TextColor3 = Color3.fromRGB(90, 255, 90)
                             AutoFruitBuying = false
                             BtnAutoFruit.BackgroundColor3 = Color3.fromRGB(60, 40, 20)
                             BtnAutoFruit.Text = "  🍎 Comprar Frutas (Monedas)"
                         else
-                            FruitLogLabel.Text = "  Tirando: " .. tool.Name
+                            FruitLogLabel.Text = "  Tirando: " .. tool.Name .. " (" .. rarStr .. ")"
                             DropFruitTool(tool)
                             task.wait(0.5)
                         end
                     end
                 end
             end
-        end
 
-        task.wait(1)
-        ::skipFruit::
+            -- REVISAR HERRAMIENTA EN MANO
+            if not foundDesired and LP.Character then
+                for _, tool in pairs(LP.Character:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        local isFruit = tool:FindFirstChild("IsFruitTool")
+                        local fruitModel = tool:FindFirstChild("FruitModel")
+                        if isFruit and fruitModel then
+                            local fname = fruitModel.Value
+                            if DesiredFruits[fname] then
+                                foundDesired = true
+                                FruitLogLabel.Text = "  ENCONTRADA: " .. fname .. " - DETENIENDO"
+                                FruitLogLabel.TextColor3 = Color3.fromRGB(90, 255, 90)
+                                AutoFruitBuying = false
+                                BtnAutoFruit.BackgroundColor3 = Color3.fromRGB(60, 40, 20)
+                                BtnAutoFruit.Text = "  🍎 Comprar Frutas (Monedas)"
+                            else
+                                FruitLogLabel.Text = "  Tirando: " .. tool.Name
+                                DropFruitTool(tool)
+                                task.wait(0.5)
+                            end
+                        end
+                    end
+                end
+            end
+
+            task.wait(1)
+        end -- if AutoFruitBuying
     end
 end)
 
