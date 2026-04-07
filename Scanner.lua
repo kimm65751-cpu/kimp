@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1507,151 +1507,256 @@ AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaLog.LayoutOrder = 4
 
 BtnAnalista.MouseButton1Click:Connect(function()
-    BtnAnalista.Text = "🧪 Escaneando Economía..."
-    AnalistaLog.Text = "  [1/4] Buscando módulos ShopConfig..."
+    BtnAnalista.Text = "🧪 Escaneando Economia..."
+    AnalistaLog.Text = "  [1/5] Buscando modulos ShopConfig..."
 
     task.spawn(function()
         local t = {}
-        
+
         table.insert(t, "==================================================")
-        table.insert(t, " REPORTE P2W Y ECONOMIA - AURA KILL V3.0 ")
+        table.insert(t, " REPORTE P2W FORENSE - AURA KILL V4.0")
         table.insert(t, " FECHA: " .. os.date())
+        table.insert(t, " ISLA ACTUAL: " .. tostring(_G.CurrentIslandContext or "?"))
         table.insert(t, "==================================================\n")
 
-        local RS = game:GetService("ReplicatedStorage")
-        
-        -- Función recursiva para serializar tablas leídas con require()
-        local function SerializeTable(val, name, skipnewlines, depth)
-            skipnewlines = skipnewlines or false
+        local RS  = game:GetService("ReplicatedStorage")
+        local LP2 = game:GetService("Players").LocalPlayer
+
+        -- Serializador profundo (depth 0, limite 6, deteccion circular)
+        local visited = {}
+        local function SerializeDeep(val, name, depth)
             depth = depth or 0
-            if depth > 3 then return tostring(val) end -- Evitar loops infinitos
-            
-            local tmp = string.rep("  ", depth)
-            if name then tmp = tmp .. tostring(name) .. " = " end
-        
+            if depth > 6 then return string.rep("  ", depth) .. tostring(name or "") .. " = [MAX_DEPTH]" end
+            local pad = string.rep("  ", depth)
+            local header = pad .. (name ~= nil and (tostring(name) .. " = ") or "")
             if type(val) == "table" then
-                tmp = tmp .. "{" .. (not skipnewlines and "\n" or "")
+                if visited[val] then return header .. "[CIRCULAR]" end
+                visited[val] = true
+                local lines2 = { header .. "{" }
                 for k, v in pairs(val) do
-                    tmp = tmp .. SerializeTable(v, k, skipnewlines, depth + 1) .. "," .. (not skipnewlines and "\n" or "")
+                    local child = SerializeDeep(v, k, depth + 1)
+                    if child and child ~= "" then table.insert(lines2, child .. ",") end
                 end
-                tmp = tmp .. string.rep("  ", depth) .. "}"
-            elseif type(val) == "number" or type(val) == "boolean" then
-                tmp = tmp .. tostring(val)
+                table.insert(lines2, pad .. "}")
+                visited[val] = nil
+                return table.concat(lines2, "\n")
             elseif type(val) == "string" then
-                tmp = tmp .. string.format("%q", val)
+                return header .. string.format("%q", val)
+            elseif type(val) == "number" or type(val) == "boolean" then
+                return header .. tostring(val)
+            elseif type(val) == "function" then
+                return header .. "[function]"
             else
-                tmp = tmp .. tostring(val)
+                return header .. tostring(val)
             end
-            return tmp
         end
 
-        -- 1. ANALISIS DE MODULOS DE TIENDA
-        table.insert(t, "> [1] CONFIGURACIONES DE TIENDA (REQUIRE DUMP):")
+        -- [1] DUMP DE MODULOS (serializador arreglado, depth desde 0)
+        table.insert(t, "> [1] CONFIGURACIONES DE TIENDA (REQUIRE DUMP PROFUNDO):")
         local modCount = 0
+        local modNames = { "shopconfig","conquerorhaki","gamepass","multiplier","itemconfig","productconfig" }
         for _, obj in ipairs(RS:GetDescendants()) do
             local ln = obj.Name:lower()
             if obj:IsA("ModuleScript") then
-                if ln:match("shopconfig") or ln:match("conquerorhaki") or ln:match("gamepass") or ln:match("multiplier") then
+                local match = false
+                for _, pat in ipairs(modNames) do if ln:match(pat) then match = true; break end end
+                if match then
                     modCount = modCount + 1
-                    AnalistaLog.Text = "  [1/4] Require() -> " .. obj.Name
+                    AnalistaLog.Text = "  [1/5] Require() -> " .. obj.Name
                     task.wait()
-                    
-                    table.insert(t, "  [+] MODULO ENCONTRADO: " .. obj:GetFullName())
-                    
-                    -- Intentar requerir el modulo para leer sus tablas de tiendas
+                    table.insert(t, "\n  [MOD] " .. obj:GetFullName())
+                    visited = {}
                     local s, req = pcall(function() return require(obj) end)
                     if s and type(req) == "table" then
-                        table.insert(t, "      EXTRACCION EXITOSA:")
-                        -- Convertimos la tabla a string formateado
-                        local stringData = SerializeTable(req, nil, false, 3)
-                        -- Lo añadimos al log por lineas
-                        for line in stringData:gmatch("[^\r\n]+") do
-                            table.insert(t, line)
-                        end
+                        table.insert(t, "  [OK] DATOS EXTRAIDOS:")
+                        local dump = SerializeDeep(req, nil, 2)
+                        for line in dump:gmatch("[^\r\n]+") do table.insert(t, line) end
                     elseif s then
-                        table.insert(t, "      VALOR RETORNADO: " .. tostring(req))
+                        table.insert(t, "  [INFO] Valor primitivo: " .. tostring(req))
                     else
-                        table.insert(t, "      ERROR AL SOLICITAR REQUIRE: " .. tostring(req))
+                        table.insert(t, "  [ERR] require() fallo: " .. tostring(req))
                     end
-                    table.insert(t, "")
                 end
             end
         end
-        if modCount == 0 then table.insert(t, "  (No se encontraron módulos de tienda en RS)") end
+        if modCount == 0 then table.insert(t, "  (Sin modulos de tienda accesibles)") end
         table.insert(t, "")
 
-        -- 2. REMOTES ESPECIFICOS P2W Y SHOP
-        AnalistaLog.Text = "  [2/4] Buscando ShopRemotes..."
+        -- [2] MAPA COMPLETO DE REMOTES P2W
+        AnalistaLog.Text = "  [2/5] Mapeando ShopRemotes..."
         task.wait()
-        table.insert(t, "> [2] SHOP REMOTES Y EVENTOS DE INTERACCION:")
-        local rCount = 0
+        table.insert(t, "> [2] REMOTES DE ECONOMIA (Ruta + Tipo):")
+        local keywords = { "buy","purchase","shop","boost","haki","redeem","gift","reward","products","item","conq","claim","unlock","storage" }
+        local remotesList = {}
         for _, obj in pairs(RS:GetDescendants()) do
             local ln = obj.Name:lower()
             if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                if ln:match("buy") or ln:match("purchase") or ln:match("shop") or ln:match("boost") or ln:match("haki") or ln:match("redeem") or ln:match("gift") then
-                    rCount = rCount + 1
-                    table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
+                for _, kw in ipairs(keywords) do
+                    if ln:match(kw) then table.insert(remotesList, obj); break end
                 end
             end
         end
-        table.insert(t, "  Total Interacciones P2W Encontradas: " .. rCount)
+        table.insert(t, "  Total encontrados: " .. #remotesList)
+        for _, rem in ipairs(remotesList) do
+            table.insert(t, "  [" .. rem.ClassName .. "] " .. rem:GetFullName())
+        end
         table.insert(t, "")
 
-        -- 3. VALIDACIONES GLOBALES
-        AnalistaLog.Text = "  [3/4] Analizando _G local..."
+        -- [3] SPY REMOTEFUNCTIONS: Invocar y capturar respuesta real del SERVER
+        AnalistaLog.Text = "  [3/5] Espiando RemoteFunctions (server response)..."
         task.wait()
-        table.insert(t, "> [3] ENTORNO GLOBAL LOCAL (_G):")
-        local gScanned = false
-        pcall(function()
-            for k, v in pairs(_G) do
-                gScanned = true
-                if type(v) == "table" then
-                    table.insert(t, "  _G." .. tostring(k) .. " = [Tabla] -> " .. SerializeTable(v, nil, true, 1))
-                else
-                    table.insert(t, "  _G." .. tostring(k) .. " = " .. tostring(v) .. " (" .. type(v) .. ")")
+        table.insert(t, "> [3] SPY REMOTEFUNCTIONS (Lo que el SERVER responde realmente):")
+        local rfTargets = { "GetBoosts","RefreshBoosts","RedeemProduct","GetPlayerData","GetEquipped","GetAscendData","GetStorageData","GetRuneData","GetTitlesData","GetTotalStats","GetSkillTreeData","SpecPassiveGetData","PowerGetData" }
+        for _, rem in ipairs(remotesList) do
+            if rem:IsA("RemoteFunction") then
+                local doSpy = false
+                for _, name in ipairs(rfTargets) do if rem.Name:find(name) then doSpy = true; break end end
+                if doSpy or rem.Name:lower():match("get") or rem.Name:lower():match("check") then
+                    AnalistaLog.Text = "  [3/5] Invocando: " .. rem.Name
+                    task.wait()
+                    table.insert(t, "\n  [RF-SPY] " .. rem:GetFullName())
+                    local ok, result = pcall(function() return rem:InvokeServer() end)
+                    if ok then
+                        if type(result) == "table" then
+                            table.insert(t, "  [SERVER->CLIENT] Respuesta tipo TABLA:")
+                            visited = {}
+                            local dump = SerializeDeep(result, nil, 3)
+                            for line in dump:gmatch("[^\r\n]+") do table.insert(t, line) end
+                        elseif result == nil then
+                            table.insert(t, "  [SERVER->CLIENT] nil (requiere args o acceso denegado)")
+                        else
+                            table.insert(t, "  [SERVER->CLIENT] " .. tostring(result) .. " (" .. type(result) .. ")")
+                        end
+                    else
+                        table.insert(t, "  [ERR] InvokeServer fallo: " .. tostring(result))
+                    end
                 end
             end
-        end)
-        if not gScanned then table.insert(t, "  (Entorno _G vacío o inaccesible)") end
+        end
         table.insert(t, "")
-        
-        -- 4. VALORES DE JUGADOR
-        AnalistaLog.Text = "  [4/4] Buscando valores Atributos en Player..."
+
+        -- [4] HOOK OnClientEvent: escuchar 5s lo que el server empuja sin pedir
+        AnalistaLog.Text = "  [4/5] Hookeando OnClientEvent (5s)..."
         task.wait()
-        table.insert(t, "> [4] ATRIBUTOS Y VALORES EN LOCALPLAYER:")
-        local lp = game:GetService("Players").LocalPlayer
-        pcall(function()
-            if lp then
-                local attrs = lp:GetAttributes()
-                for k, v in pairs(attrs) do
-                    table.insert(t, "  [Atributo] " .. tostring(k) .. " = " .. tostring(v))
-                end
-                
-                for _, obj in pairs(lp:GetDescendants()) do
-                    if obj:IsA("ValueBase") then
-                        local nm = obj.Name:lower()
-                        if nm:match("boost") or nm:match("multiplier") or nm:match("2x") or nm:match("vip") or nm:match("premium") then
-                            table.insert(t, "  [Value] " .. obj:GetFullName() .. " (" .. obj.ClassName .. ") = " .. tostring(obj.Value))
+        table.insert(t, "> [4] CAPTURA OnClientEvent (datos que el server envia al cliente):")
+        table.insert(t, "  [Escuchando 5 segundos...]")
+        local eventConns = {}
+        local eventLog2  = {}
+        for _, rem in ipairs(remotesList) do
+            if rem:IsA("RemoteEvent") then
+                local ok2, conn = pcall(function()
+                    return rem.OnClientEvent:Connect(function(...)
+                        local args2 = {...}
+                        local argStr = ""
+                        for i, v in ipairs(args2) do
+                            if type(v) == "table" then
+                                visited = {}
+                                argStr = argStr .. "[TABLE:" .. SerializeDeep(v, nil, 4):sub(1, 300) .. "]"
+                            else
+                                argStr = argStr .. tostring(v)
+                            end
+                            if i < #args2 then argStr = argStr .. ", " end
                         end
+                        table.insert(eventLog2, "  [EVT] " .. rem.Name .. " => [" .. argStr .. "]")
+                    end)
+                end)
+                if ok2 and conn then table.insert(eventConns, conn) end
+            end
+        end
+        task.wait(5)
+        for _, conn in ipairs(eventConns) do pcall(function() conn:Disconnect() end) end
+        if #eventLog2 == 0 then
+            table.insert(t, "  [INFO] Sin eventos del server en 5s. Muevete o habla con un NPC.")
+        else
+            for _, line in ipairs(eventLog2) do table.insert(t, line) end
+        end
+        table.insert(t, "")
+
+        -- [5] TEST DE INYECCION DE ATRIBUTOS
+        AnalistaLog.Text = "  [5/5] Test de inyeccion de Atributos..."
+        task.wait()
+        table.insert(t, "> [5] TEST DE INYECCION DE ATRIBUTOS (servidor vs cliente):")
+        table.insert(t, "  LOGICA: Escribimos valor ficticio -> esperamos 2s -> leemos resultado.")
+        table.insert(t, "  PERSISTE = CLIENTE CONTROLA (inyectable!)")
+        table.insert(t, "  RESETEO  = SERVIDOR CONTROLA (solo visual)\n")
+        local injectable = {}
+        local serverCtrl = {}
+        pcall(function()
+            local attrs3 = LP2:GetAttributes()
+            local numericTests = {
+                "RaceSpeedMulti","RaceDamageReduction","RaceMeleeDamage","RaceSwordDamage",
+                "RaceLuckBonus","RaceLifesteal","RaceJumpMulti","RaceExtraJumps",
+                "ClanMeleeDamage","ClanSwordDamage","ClanDamageReduction","ClanSpeedMulti",
+                "ClanLuckBonus","ClanLifesteal","ClanJumpMulti",
+                "BossRush_Damage","BossRush_CritChance","BossRush_Luck","BossRush_HP","BossRush_CritDamage",
+                "InfiniteTower_Damage","InfiniteTower_CritChance","InfiniteTower_Luck","InfiniteTower_HP","InfiniteTower_CritDamage",
+                "AutoSkillSlot"
+            }
+            local boolTests = {
+                "AutoConqHaki","AutoObsHaki","AutoArmHaki",
+                "DisablePvP","DisableCutscene","EnableAutoRejoin","AutoQuestRepeat","EnableQuestRepeat"
+            }
+            for _, attrName in ipairs(numericTests) do
+                if attrs3[attrName] ~= nil then
+                    local orig = LP2:GetAttribute(attrName)
+                    local test = (type(orig) == "number") and (orig + 9999) or orig
+                    pcall(function() LP2:SetAttribute(attrName, test) end)
+                    task.wait(2)
+                    local after = LP2:GetAttribute(attrName)
+                    if after == test then
+                        table.insert(injectable, string.format("  [INJECTABLE] %s: orig=%s -> test=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig), tostring(test)))
+                        pcall(function() LP2:SetAttribute(attrName, math.max(orig or 0, 100)) end)
+                    else
+                        table.insert(serverCtrl, string.format("  [SERVER] %s: orig=%s -> test=%s -> server=%s", attrName, tostring(orig), tostring(test), tostring(after)))
+                        pcall(function() LP2:SetAttribute(attrName, orig) end)
+                    end
+                end
+            end
+            for _, attrName in ipairs(boolTests) do
+                if attrs3[attrName] ~= nil then
+                    local orig = LP2:GetAttribute(attrName)
+                    local test = not orig
+                    pcall(function() LP2:SetAttribute(attrName, test) end)
+                    task.wait(2)
+                    local after = LP2:GetAttribute(attrName)
+                    if after == test then
+                        table.insert(injectable, string.format("  [INJECTABLE-BOOL] %s: orig=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig)))
+                    else
+                        table.insert(serverCtrl, string.format("  [SERVER-BOOL] %s: orig=%s -> server=%s", attrName, tostring(orig), tostring(after)))
+                        pcall(function() LP2:SetAttribute(attrName, orig) end)
                     end
                 end
             end
         end)
+        table.insert(t, "  -- INYECTABLES (cliente controla): " .. #injectable)
+        for _, line in ipairs(injectable) do table.insert(t, line) end
+        table.insert(t, "")
+        table.insert(t, "  -- BLOQUEADOS (servidor controla): " .. #serverCtrl)
+        for _, line in ipairs(serverCtrl) do table.insert(t, line) end
+        table.insert(t, "")
 
-        -- GUARDAR
-        AnalistaLog.Text = "  Guardando..."
+        table.insert(t, "> [5b] TODOS LOS ATRIBUTOS DEL PLAYER (estado actual):")
+        pcall(function()
+            local sortedAttrs = {}
+            for k, v in pairs(LP2:GetAttributes()) do table.insert(sortedAttrs, {k, v}) end
+            table.sort(sortedAttrs, function(a, b) return a[1] < b[1] end)
+            for _, pair3 in ipairs(sortedAttrs) do
+                table.insert(t, "  " .. pair3[1] .. " = " .. tostring(pair3[2]) .. " (" .. type(pair3[2]) .. ")")
+            end
+        end)
+        table.insert(t, "")
+
+        AnalistaLog.Text = "  Guardando reporte..."
         task.wait()
         local filename = "P2WEconomyAnalysis_" .. tostring(os.time()) .. ".txt"
         local saved = false
         pcall(function()
-            if writefile then
-                writefile(filename, table.concat(t, "\n")); saved = true
-            end
+            if writefile then writefile(filename, table.concat(t, "\n")); saved = true end
         end)
         if saved then
             AnalistaLog.Text = "  ✅ Listo: " .. filename
         else
-            AnalistaLog.Text = "  ⚠️ Sin writefile - mira la consola"
+            AnalistaLog.Text = "  ⚠️ Sin writefile - ver consola F9"
             for _, line in ipairs(t) do print(line) end
         end
         BtnAnalista.Text = "🧪 Ejecutar Escaneo P2W Profundo (.txt)"
