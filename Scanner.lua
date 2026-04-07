@@ -34,6 +34,9 @@ local GhostProtocolEnabled = false
 local GhostBlocksDisabled = 0
 local VIM = game:GetService("VirtualInputManager")
 local BlinkStepValue = 45  -- Studs por paso en vuelo (default, ajustable en UI)
+local ArenaAnchor = nil
+local ArenaRadius = 25
+local ArenaStatusLabel = nil
 
 -- Smart Combat (definidos aqui para que SaveConfig no crashee si se llama temprano)
 local SmartCombatEnabled = false
@@ -420,18 +423,45 @@ MemInfoLabel.TextColor3 = Color3.fromRGB(90, 95, 110)
 MemInfoLabel.Font = Enum.Font.Gotham
 MemInfoLabel.TextSize = 11
 MemInfoLabel.Text =
-"  Presiona M para guardar tu posición actual.\n  Si mueres y no hay mobs por 10s, caminarás\n  lento hasta ese punto automáticamente."
+"  [M] Guardar punto (caminata).\n  [P] Marcar ANCLA ARENA (Dungeons).\n  El Ancla te atrapa a 25 studs y no te deja salir."
 MemInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
 MemInfoLabel.TextWrapped = true
 MemInfoLabel.LayoutOrder = 3
 
-local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 4, C.red)
+ArenaStatusLabel = Instance.new("TextLabel", MemPage)
+ArenaStatusLabel.Size = UDim2.new(0.95, 0, 0, 22)
+ArenaStatusLabel.BackgroundTransparency = 1
+ArenaStatusLabel.TextColor3 = Color3.fromRGB(200, 150, 255)
+ArenaStatusLabel.Font = Enum.Font.GothamMedium
+ArenaStatusLabel.TextSize = 12
+ArenaStatusLabel.Text = "  ⭕ Ancla Arena: OFF (Presiona P)"
+ArenaStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+ArenaStatusLabel.LayoutOrder = 4
+
+local BtnClearMem = ToggleButton(MemPage, "🗑️ Borrar Punto Guardado", 5, C.red)
+BtnClearMem.MouseButton1Click:Connect(function()
+    MemoryPoint = nil
+    IsWalkingToMemory = false
+    MemStatusLabel.Text = "  📍 Sin punto guardado"
+    BtnClearMem.BackgroundColor3 = C.card
+    BtnClearMem.Text = "  ✅ Punto borrado"
+    
+    -- También limpiamos el ancla de combate por si acaso
+    ArenaAnchor = nil
+    if ArenaStatusLabel then ArenaStatusLabel.Text = "  ⭕ Ancla Arena: OFF (Presiona P)" end
+
+    SaveConfig()
+    task.delay(1.5, function()
+        BtnClearMem.BackgroundColor3 = C.red
+        BtnClearMem.Text = "  🗑️ Borrar Punto Guardado"
+    end)
+end)
 
 -- BlinkStepValue ya inicializado al tope del script (= 45 por defecto)
 local blinkOptions = { 45, 25, 15, 5 }
 local currentBlinkIdx = 1
 
-local BtnBlinkSpeed = ToggleButton(MemPage, "⚡ Velocidad de Regreso: 45 Studs", 5, C.card)
+local BtnBlinkSpeed = ToggleButton(MemPage, "⚡ Velocidad de Regreso: 45 Studs", 6, C.card)
 BtnBlinkSpeed.MouseButton1Click:Connect(function()
     currentBlinkIdx = currentBlinkIdx + 1
     if currentBlinkIdx > #blinkOptions then
@@ -2359,9 +2389,23 @@ task.spawn(function()
                                                         FarmMode == "Abajo" and -12 or 45)
                                             end
                                             if currentFarmMode == "Mazmorra" then
-                                                -- En Mazmorra: NO mover X/Z pero FORZAR Y minimo para no hundirse bajo tierra
+                                                -- En Mazmorra: FORZAR Y minimo. Clamp X/Z si hay ArenaAnchor.
                                                 local safeY = math.max(hrp.Position.Y, mobPos.Y + 1.5)
-                                                hrp.CFrame = CFrame.lookAt(Vector3.new(hrp.Position.X, safeY, hrp.Position.Z), mobPos, Vector3.new(0, 1, 0))
+                                                local finalX = hrp.Position.X
+                                                local finalZ = hrp.Position.Z
+                                                
+                                                if ArenaAnchor then
+                                                    local currentFlat = Vector3.new(finalX, 0, finalZ)
+                                                    local anchorFlat = Vector3.new(ArenaAnchor.X, 0, ArenaAnchor.Z)
+                                                    local d = (currentFlat - anchorFlat).Magnitude
+                                                    if d > ArenaRadius then
+                                                        local clamped = anchorFlat + (currentFlat - anchorFlat).Unit * ArenaRadius
+                                                        finalX = clamped.X
+                                                        finalZ = clamped.Z
+                                                    end
+                                                end
+                                                
+                                                hrp.CFrame = CFrame.lookAt(Vector3.new(finalX, safeY, finalZ), mobPos, Vector3.new(0, 1, 0))
                                             else
                                                 local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                                 if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
@@ -2488,6 +2532,22 @@ uis.InputBegan:Connect(function(input, processed)
                 math.floor(MemoryPoint.X) .. ", " .. math.floor(MemoryPoint.Y) .. ", " .. math.floor(MemoryPoint.Z)
             StatusLabel.Text = "📍 Punto guardado!"
             SaveConfig()
+        end
+    end
+    if input.KeyCode == Enum.KeyCode.P then
+        local char = LP.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            if ArenaAnchor then
+                ArenaAnchor = nil
+                StatusLabel.Text = "🛑 Ancla de Arena Desactivada"
+                if ArenaStatusLabel then ArenaStatusLabel.Text = "  ⭕ Ancla Arena: OFF (Presiona P)" end
+            else
+                ArenaAnchor = char.HumanoidRootPart.Position
+                StatusLabel.Text = "⚔️ Ancla Activada (Radio: " .. ArenaRadius .. " studs)"
+                if ArenaStatusLabel then 
+                    ArenaStatusLabel.Text = "  ⭕ Ancla Arena: ON (" .. math.floor(ArenaAnchor.X) .. ", " .. math.floor(ArenaAnchor.Z) .. ")" 
+                end
+            end
         end
     end
     if input.KeyCode == Enum.KeyCode.KeypadMultiply or input.KeyCode == Enum.KeyCode.Eight then
