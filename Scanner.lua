@@ -2213,45 +2213,73 @@ task.spawn(function()
                                 for _, targetMob in pairs(mobsToHit) do
                                     local tHrp = targetMob:FindFirstChild("HumanoidRootPart")
                                     if tHrp then
-                                        -- Calculamos una postura 100% erguida copiando EXACTAMENTE a dónde mira el monstruo.
-                                        -- Esto evita el bug "echado" de raíz sin corromper los ángulos X, Z.
-                                        local flatLookDir = Vector3.new(tHrp.CFrame.LookVector.X, 0,
-                                            tHrp.CFrame.LookVector.Z)
-                                        if flatLookDir.Magnitude < 0.001 then flatLookDir = Vector3.new(1, 0, 0) end
-                                        flatLookDir = flatLookDir.Unit
-                                        local flatMobCFrame = CFrame.lookAt(tHrp.Position, tHrp.Position + flatLookDir)
-
                                         local currentFarmMode = FarmMode
-                                        local TargetCF
+                                        local mobPos = tHrp.Position
+
+                                        -- ================================================================
+                                        -- POSICIONAMIENTO EN ESPACIO MUNDIAL: Calcula primero la posición
+                                        -- de destino, luego usa CFrame.lookAt para que el jugador SIEMPRE
+                                        -- quede mirando directamente al mob (no hereda la rotación del mob)
+                                        -- ================================================================
+                                        local myTargetPos
 
                                         if SmartCombatEnabled then
                                             local currentOffsetY = SmartCalib_Melee_Y
                                             local currentOffsetZ = SmartCalib_Melee_Z
-                                            if SmartCurrentWeapon == "Sword" then 
+                                            if SmartCurrentWeapon == "Sword" then
                                                 currentOffsetY = SmartCalib_Sword_Y
                                                 currentOffsetZ = SmartCalib_Sword_Z
-                                            elseif SmartCurrentWeapon == "Fruit" then 
+                                            elseif SmartCurrentWeapon == "Fruit" then
                                                 currentOffsetY = SmartCalib_Fruit_Y
                                                 currentOffsetZ = SmartCalib_Fruit_Z
                                             end
 
                                             if currentFarmMode == "Arriba" then
-                                                TargetCF = flatMobCFrame * CFrame.new(0, currentOffsetY + 2, currentOffsetZ)
-                                            elseif currentFarmMode == "Detras" or currentFarmMode == "Mazmorra" then
-                                                TargetCF = flatMobCFrame * CFrame.new(0, 0, currentOffsetZ + 2)
-                                            else
-                                                -- Abajo por defecto si usa otra cosa
-                                                TargetCF = flatMobCFrame * CFrame.new(0, -(currentOffsetY + 2), currentOffsetZ)
+                                                -- Encima del mob: distancia calibrada hacia ARRIBA en Y mundial
+                                                myTargetPos = mobPos + Vector3.new(0, currentOffsetY + 2, 0)
+                                            elseif currentFarmMode == "Abajo" then
+                                                -- Debajo del mob: distancia calibrada hacia ABAJO en Y mundial
+                                                myTargetPos = mobPos + Vector3.new(0, -(currentOffsetY + 2), 0)
+                                            elseif currentFarmMode == "Mazmorra" then
+                                                -- A nivel de piso, detrás del mob horizontal (máx 4s para no chocar paredes)
+                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
+                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
+                                                myTargetPos = mobPos + mobBack.Unit * math.min(currentOffsetZ, 4)
+                                                myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
+                                            else -- Detras
+                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
+                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
+                                                myTargetPos = mobPos + mobBack.Unit * (currentOffsetZ + 2)
                                             end
                                         else
                                             if currentFarmMode == "Arriba" then
-                                                TargetCF = flatMobCFrame * CFrame.new(0, OfsY, 0)
-                                            elseif currentFarmMode == "Detras" or currentFarmMode == "Mazmorra" then
-                                                TargetCF = flatMobCFrame * CFrame.new(0, 0, OfsZ)
+                                                myTargetPos = mobPos + Vector3.new(0, OfsY, 0)
                                             elseif currentFarmMode == "Abajo" then
-                                                TargetCF = flatMobCFrame * CFrame.new(0, OfsY, OfsZ)
+                                                myTargetPos = mobPos + Vector3.new(0, OfsY, 0)
+                                            elseif currentFarmMode == "Mazmorra" then
+                                                -- 6 studs detrás del mob en espacio mundial, misma altura
+                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
+                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
+                                                myTargetPos = mobPos + mobBack.Unit * 6
+                                                myTargetPos = Vector3.new(myTargetPos.X, mobPos.Y, myTargetPos.Z)
+                                            else -- Detras
+                                                local mobBack = Vector3.new(tHrp.CFrame.LookVector.X, 0, tHrp.CFrame.LookVector.Z)
+                                                if mobBack.Magnitude < 0.001 then mobBack = Vector3.new(0, 0, 1) end
+                                                myTargetPos = mobPos + mobBack.Unit * math.abs(OfsZ)
                                             end
                                         end
+
+                                        -- Construir CFrame: posición calculada, mirando directamente al mob
+                                        local TargetCF
+                                        if myTargetPos then
+                                            local lookDir = mobPos - myTargetPos
+                                            if lookDir.Magnitude > 0.1 then
+                                                TargetCF = CFrame.lookAt(myTargetPos, mobPos, Vector3.new(0, 1, 0))
+                                            else
+                                                TargetCF = CFrame.new(myTargetPos)
+                                            end
+                                        end
+                                        if not TargetCF then TargetCF = CFrame.new(mobPos) end
 
                                         pcall(function()
                                             local rootCF = TargetCF
@@ -2259,20 +2287,17 @@ task.spawn(function()
                                                 rootCF = TargetCF *
                                                     CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
                                                         FarmMode == "Abajo" and -12 or 45)
-                                                -- Si está abajo queda enterrado pero movido atras/abajo. Si está arriba se empuja 45 studs atras
                                             end
                                             local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                             if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
-                                                -- FLY CLIP: Vuelo suave constante (aprox 100 studs/seg) para moverse largo sin teleports
                                                 local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
                                                 char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
                                             else
-                                                -- Cerca o Modalidad Normal: Anchored Pivot
                                                 char:PivotTo(rootCF)
                                             end
                                         end)
 
-                                        -- (Cámara fija en el jugador, removido el CameraSubject a los mobs a petición del usuario para evitar mareos o desorientación)
+                                        -- Cámara fija siempre en el jugador
                                         pcall(function()
                                             local cam = Workspace.CurrentCamera
                                             if cam and cam.CameraSubject ~= char:FindFirstChild("Humanoid") then
@@ -2280,7 +2305,6 @@ task.spawn(function()
                                             end
                                         end)
 
-                                        -- PREVENIR ATAQUE SI AUN ESTÁ EN VUELO LARGO:
                                         local actualLoc = BlinkAttackEnabled and
                                             (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or
                                             TargetCF
@@ -2288,7 +2312,6 @@ task.spawn(function()
                                         if distFinal <= 20 then
                                             pcall(function()
                                                 if BlinkAttackEnabled then
-                                                    -- Modifica CFrame Instantáneamente para el RequestHit (Blink Strike)
                                                     char:PivotTo(TargetCF)
                                                     CombatRemote:FireServer()
                                                     if tool then tool:Activate() end
@@ -2299,13 +2322,11 @@ task.spawn(function()
                                                 end
                                             end)
 
-                                            -- Aimbot para Skills (ANTI-POP SUBTERRÁNEO)
+                                            -- Aimbot: re-apuntar HRP directo al mob en 3D antes de lanzar skills
+                                            -- (TargetCF ya apunta al mob, esto refuerza el aim justo antes de cada key)
                                             if AutoSkillEnabled then
                                                 pcall(function()
-                                                    -- Calculamos rotación estrictamente horizontal (evita que el PJ mire hacia arriba y su cabeza traspase el piso)
-                                                    local flatAimPos = Vector3.new(tHrp.Position.X, hrp.Position.Y,
-                                                        tHrp.Position.Z)
-                                                    hrp.CFrame = CFrame.lookAt(hrp.Position, flatAimPos)
+                                                    hrp.CFrame = CFrame.lookAt(hrp.Position, mobPos, Vector3.new(0, 1, 0))
 
                                                     local scanKeys = _G.AutoSkillKeys or {"Z", "X", "C", "V"}
                                                     for _, keyStr in ipairs(scanKeys) do
@@ -2321,7 +2342,6 @@ task.spawn(function()
                                             end
                                         end
 
-                                        -- Una minúscula pausa entre saltos
                                         task.wait(0.05)
                                     end
                                 end -- for targetMob
@@ -2475,7 +2495,7 @@ BtnHeight.MouseButton1Click:Connect(function()
         BtnGhost.TextColor3 = Color3.new(1, 1, 1)
     elseif FarmMode == "Abajo" then
         FarmMode = "Mazmorra"
-        OfsY = 0; OfsZ = -8 -- Detras a nivel de piso
+        OfsY = 0; OfsZ = -3 -- Detras ultra-pegado a nivel de piso
         BtnHeight.Text = "  Posición: 🏰 Mazmorra (Estático)"
         -- En mazmorra apagamos ghost por defecto pero si lo ocupa lo activa manual
         GhostProtocolEnabled = false
@@ -2589,7 +2609,7 @@ local function LoadConfig()
                     if FarmMode == "Abajo" then
                         OfsY = -25; OfsZ = 0; BtnHeight.Text = "  Posición: 🕳️ Subterráneo"
                     elseif FarmMode == "Mazmorra" then
-                        OfsY = 0; OfsZ = -8; BtnHeight.Text = "  Posición: 🏰 Mazmorra (Estático)"
+                        OfsY = 0; OfsZ = -3; BtnHeight.Text = "  Posición: 🏰 Mazmorra (Estático)"
                     else
                         OfsY = 10; OfsZ = 0; BtnHeight.Text = "  Posición: ☁️ Arriba"
                     end
