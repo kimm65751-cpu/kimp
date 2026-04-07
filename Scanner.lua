@@ -1506,7 +1506,7 @@ AnalistaLog.LayoutOrder = 4
 
 BtnAnalista.MouseButton1Click:Connect(function()
     BtnAnalista.Text = "🧪 Escaneando el Entorno..."
-    AnalistaLog.Text = "  [1/4] Buscando scripts criticos..."
+    AnalistaLog.Text = "  [1/5] Buscando scripts criticos..."
 
     task.spawn(function()
         local t = {}
@@ -1531,7 +1531,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                 local n = s.Name:lower()
                 if n:match("anti") or n:match("dungeon") or n:match("zone") or n:match("bound") or n:match("teleport") or n:match("wave") or n:match("safe") or n:match("camera") then
                     sCount = sCount + 1
-                    AnalistaLog.Text = "  [1/4] Script #" .. sCount .. ": " .. s.Name
+                    AnalistaLog.Text = "  [1/5] Script #" .. sCount .. ": " .. s.Name
                     table.insert(t, "  [" .. sCount .. "] " .. s:GetFullName() .. " (" .. s.ClassName .. ")")
                     -- NO require() - bloquea indefinidamente en modulos con WaitForChild
                 end
@@ -1542,7 +1542,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "")
 
         -- 2. MAPEO FISICO
-        AnalistaLog.Text = "  [2/4] Contando objetos..."
+        AnalistaLog.Text = "  [2/5] Contando objetos..."
         task.wait()
         local allObjs = Workspace:GetDescendants()
         local total = #allObjs
@@ -1551,7 +1551,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
 
         for i, obj in ipairs(allObjs) do
             if i % 200 == 0 then
-                AnalistaLog.Text = "  [2/4] " .. math.floor(i / total * 100) .. "% (" .. i .. "/" .. total .. ")"
+                AnalistaLog.Text = "  [2/5] " .. math.floor(i / total * 100) .. "% (" .. i .. "/" .. total .. ")"
                 task.wait()
             end
             if obj:IsA("BasePart") then
@@ -1582,7 +1582,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "")
 
         -- 3. REMOTES
-        AnalistaLog.Text = "  [3/4] Rastreando Remotes..."
+        AnalistaLog.Text = "  [3/5] Rastreando Remotes..."
         task.wait()
         table.insert(t, "> [3] TODOS LOS REMOTES (ReplicatedStorage):")
         local rCount = 0
@@ -1591,7 +1591,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                 rCount = rCount + 1
                 table.insert(t, "  [" .. obj.ClassName .. "] " .. obj:GetFullName())
                 if rCount % 25 == 0 then
-                    AnalistaLog.Text = "  [3/4] Remotes: " .. rCount .. "..."
+                    AnalistaLog.Text = "  [3/5] Remotes: " .. rCount .. "..."
                     task.wait()
                 end
             end
@@ -1600,7 +1600,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         table.insert(t, "")
 
         -- 4. PORTALES Y BOSS SPAWNERS
-        AnalistaLog.Text = "  [4/4] Rastreando Portales y Bosses..."
+        AnalistaLog.Text = "  [4/5] Rastreando Portales y Bosses..."
         task.wait()
         table.insert(t, "> [4] PORTALES Y AUTO-CAZA BOSS:")
         local pCount = 0
@@ -1649,6 +1649,47 @@ BtnAnalista.MouseButton1Click:Connect(function()
             end
         end
         if guiCount == 0 then table.insert(t, "  (Ningun boton de viaje detectado en UI)") end
+        table.insert(t, "")
+
+        -- 6. GAMEPASSES, MULTIPLICADORES Y ECONOMIA PREMIUM
+        AnalistaLog.Text = "  [5/5] Buscando Gamepasses y Multiplicadores..."
+        task.wait()
+        table.insert(t, "> [6] SEGURIDAD DE MULTIPLICADORES (GAMEPASS/P2W EXPLOIT):")
+        local mgCount = 0
+        pcall(function()
+            table.insert(t, "  [*] Verificando Entorno Global local para Inyeccion _G:")
+            if type(_G.HasBoost) == "function" then 
+                table.insert(t, "   [!!] EXITOSO: La funcion '_G.HasBoost' detectada. (Se puede hacer Hooking para forzar 'true' en 2x Drops/Exp/Dinero).")
+                mgCount = mgCount + 1
+            else
+                table.insert(t, "   [INFO] _G.HasBoost no existe (aun) o no esta expuesto aqui.")
+            end
+            
+            if type(_G.GlobalMultipliers) == "table" then
+                table.insert(t, "   [!!] EXITOSO: Tabla '_G.GlobalMultipliers' descubierta. (Puedes sobre-escribir sus atributos money=10 a placer).")
+                mgCount = mgCount + 1
+            end
+
+            table.insert(t, "  [*] Rastreando Archivos/Values/Remotes dedicados a Tienda P2W:")
+            for _, obj in ipairs(game:GetDescendants()) do
+                pcall(function()
+                    local nm = obj.Name:lower()
+                    if nm:match("product") or nm:match("gamepass") or nm:match("2x") or nm:match("multiplier") or nm:match("boost") or nm:match("premium") or nm:match("shop") or nm:match("conqueror") or nm:match("limitless") or nm:match("reaper") then
+                        if obj:IsA("ModuleScript") then
+                            table.insert(t, "   [MODULO-MASCARA] " .. obj:GetFullName() .. " -> Analizalo para inyectar metodos y requerirlo.")
+                            mgCount = mgCount + 1
+                        elseif obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                            table.insert(t, "   [REMOTO-TIENDA]  " .. obj:GetFullName() .. " -> Intenta interceptar un 'Buy' o lanzar FireServer() en el loop.")
+                            mgCount = mgCount + 1
+                        elseif obj:IsA("ValueBase") then
+                            table.insert(t, "   [ATRIBUTO-VALUE] " .. obj:GetFullName() .. " = " .. tostring(obj.Value) .. " -> Forzar localmente por si es TrustClient.")
+                            mgCount = mgCount + 1
+                        end
+                    end
+                end)
+            end
+        end)
+        if mgCount == 0 then table.insert(t, "  (Sin rastros detectables de gamepasses / boosts locales)") end
         table.insert(t, "")
 
         -- DIAGNOSTICO
