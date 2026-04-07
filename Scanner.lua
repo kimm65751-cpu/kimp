@@ -1818,18 +1818,31 @@ InjectorStatus.TextXAlignment = Enum.TextXAlignment.Left
 InjectorStatus.LayoutOrder = 6
 
 BtnInjectAttrs.MouseButton1Click:Connect(function()
-    InjectorStatus.Text = "  [!] Inyectando 34 atributos al maximo..."
+    InjectorStatus.Text = "  [!] Inyectando poder absurdo..."
     pcall(function()
         local LP2 = game:GetService("Players").LocalPlayer
-        local attrs = {"RaceSpeedMulti", "RaceDamageReduction", "RaceMeleeDamage", "RaceSwordDamage", "RaceLuckBonus", "RaceLifesteal", "RaceJumpMulti", "RaceExtraJumps", "ClanMeleeDamage", "ClanSwordDamage", "ClanDamageReduction", "ClanSpeedMulti", "ClanLuckBonus", "ClanLifesteal", "ClanJumpMulti", "BossRush_Damage", "BossRush_CritChance", "BossRush_Luck", "BossRush_HP", "BossRush_CritDamage", "InfiniteTower_Damage", "InfiniteTower_CritChance", "InfiniteTower_Luck", "InfiniteTower_HP", "InfiniteTower_CritDamage", "AutoSkillSlot"}
-        for _, attr in ipairs(attrs) do
-            pcall(function() LP2:SetAttribute(attr, 100) end)
+        
+        -- Daño, Velcidad, Suerte, Lifesteal (valores extremos)
+        local opAttrs = {"RaceSpeedMulti", "RaceMeleeDamage", "RaceSwordDamage", "RaceLuckBonus", "RaceLifesteal", "RaceJumpMulti", "RaceExtraJumps", "ClanMeleeDamage", "ClanSwordDamage", "ClanSpeedMulti", "ClanLuckBonus", "ClanLifesteal", "ClanJumpMulti", "BossRush_Damage", "BossRush_CritChance", "BossRush_Luck", "BossRush_CritDamage", "InfiniteTower_Damage", "InfiniteTower_CritChance", "InfiniteTower_Luck", "InfiniteTower_CritDamage"}
+        for _, attr in ipairs(opAttrs) do
+            pcall(function() LP2:SetAttribute(attr, 99999) end)
         end
+        
+        -- Defensa (al 99% para evitar bugs de desbordamiento que te maten)
+        local defAttrs = {"RaceDamageReduction", "ClanDamageReduction"}
+        for _, attr in ipairs(defAttrs) do
+            pcall(function() LP2:SetAttribute(attr, 99) end)
+        end
+        
+        -- Salud adicional
+        pcall(function() LP2:SetAttribute("BossRush_HP", 99999) end)
+        pcall(function() LP2:SetAttribute("InfiniteTower_HP", 99999) end)
+
         local bools = {"AutoConqHaki", "AutoObsHaki", "AutoArmHaki", "DisablePvP", "DisableCutscene", "EnableAutoRejoin", "AutoQuestRepeat", "EnableQuestRepeat"}
         for _, attr in ipairs(bools) do
             pcall(function() LP2:SetAttribute(attr, true) end)
         end
-        InjectorStatus.Text = "  ✅ 34 Atributos MAXEADOS localmente!"
+        InjectorStatus.Text = "  ✅ Atributos en 99999 (Ve a pegar a algo!)"
     end)
 end)
 
