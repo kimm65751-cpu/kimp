@@ -135,7 +135,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARME"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1955,52 +1955,64 @@ task.spawn(function()
                 else
                     -- Funciliaridad Helper para Smart Weapon
                     local function GetSmartTool(reqType)
-                        -- Prioridad Cero: Nombres Exactos Calibrados
-                        if reqType == "Melee" and SmartMeleeName then
+                        -- PRIORIDAD 1: Nombre exacto calibrado por el usuario
+                        if reqType == "Melee" and SmartMeleeName and SmartMeleeName ~= "" then
                             local t = char:FindFirstChild(SmartMeleeName) or LP.Backpack:FindFirstChild(SmartMeleeName)
                             if t then return t end
                         end
-                        if reqType == "Sword" and SmartSwordName then
+                        if reqType == "Sword" and SmartSwordName and SmartSwordName ~= "" then
                             local t = char:FindFirstChild(SmartSwordName) or LP.Backpack:FindFirstChild(SmartSwordName)
                             if t then return t end
                         end
-                        if reqType == "Fruit" and SmartFruitName then
+                        if reqType == "Fruit" and SmartFruitName and SmartFruitName ~= "" then
                             local t = char:FindFirstChild(SmartFruitName) or LP.Backpack:FindFirstChild(SmartFruitName)
                             if t then return t end
                         end
 
-                        local function isForbidden(t)
-                            if reqType == "Sword" and SmartFruitName and t.Name == SmartFruitName then return true end
-                            if reqType == "Sword" and SmartMeleeName and t.Name == SmartMeleeName then return true end
-                            if reqType == "Fruit" and SmartSwordName and t.Name == SmartSwordName then return true end
-                            if reqType == "Fruit" and SmartMeleeName and t.Name == SmartMeleeName then return true end
-                            if reqType == "Melee" and SmartSwordName and t.Name == SmartSwordName then return true end
-                            if reqType == "Melee" and SmartFruitName and t.Name == SmartFruitName then return true end
-                            return false
-                        end
-
-                        -- Primer intento: Nombres comunes (fallback estándar)
+                        -- PRIORIDAD 2: Coincidencia por keywords en el nombre de la tool
+                        -- (funciona sin calibración explícita de nombres)
                         local function strictMatch(t)
-                            if isForbidden(t) then return false end
                             local n = t.Name:lower()
-                            if reqType == "Sword" and (n:match("katana") or n:match("sword") or n:match("blade")) then return true end
-                            if reqType == "Fruit" and (n:match("fruit") or n:match("devil")) then return true end
-                            if reqType == "Melee" and (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style")) then return true end
+                            if reqType == "Sword" then
+                                return n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru") ~= nil
+                            elseif reqType == "Fruit" then
+                                return n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito") ~= nil
+                            elseif reqType == "Melee" then
+                                return n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black") ~= nil
+                            end
                             return false
                         end
 
-                        for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
-                        for _, t in pairs(LP.Backpack:GetChildren()) do if t:IsA("Tool") and strictMatch(t) then return t end end
-
-                        -- Segundo Intento: Cualquier cosa que NO esté prohibida
-                        for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and not isForbidden(t) then return t end end
+                        for _, t in pairs(char:GetChildren()) do
+                            if t:IsA("Tool") and strictMatch(t) then return t end
+                        end
                         for _, t in pairs(LP.Backpack:GetChildren()) do
-                            if t:IsA("Tool") and not isForbidden(t) then
-                                return t
+                            if t:IsA("Tool") and strictMatch(t) then return t end
+                        end
+
+                        -- PRIORIDAD 3: Fallback — sólo si hay AL MENOS UN nombre calibrado
+                        -- para poder saber qué excluir. Si no hay nombres, NO devolver nada
+                        -- al azar (eso causaba que siempre se devolviera la Espada)
+                        local hasCalibration = (SmartMeleeName and SmartMeleeName ~= "")
+                            or (SmartSwordName and SmartSwordName ~= "")
+                            or (SmartFruitName and SmartFruitName ~= "")
+
+                        if hasCalibration then
+                            local function isForbiddenByName(t)
+                                if SmartSwordName and SmartSwordName ~= "" and t.Name == SmartSwordName and reqType ~= "Sword" then return true end
+                                if SmartMeleeName and SmartMeleeName ~= "" and t.Name == SmartMeleeName and reqType ~= "Melee" then return true end
+                                if SmartFruitName and SmartFruitName ~= "" and t.Name == SmartFruitName and reqType ~= "Fruit" then return true end
+                                return false
+                            end
+                            for _, t in pairs(char:GetChildren()) do
+                                if t:IsA("Tool") and not isForbiddenByName(t) then return t end
+                            end
+                            for _, t in pairs(LP.Backpack:GetChildren()) do
+                                if t:IsA("Tool") and not isForbiddenByName(t) then return t end
                             end
                         end
 
-                        return nil -- Si no hay literalmente nada seguro, mejor retornar nil
+                        return nil -- Sin calibración de nombres + sin match de keywords = no devolver nada
                     end
 
                     local tool = char:FindFirstChildOfClass("Tool")
