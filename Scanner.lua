@@ -1479,7 +1479,7 @@ task.delay(2, RefreshRouteFileList)
 -- =======================================================================================
 local AnalistaPage = MakeScrollPage("Analizador")
 
-SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAPAS Y JEFES", 1)
+SectionLabel(AnalistaPage, "ESCÁNER FORENSE DE MAPAx Y JEFES", 1)
 
 local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
 AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
