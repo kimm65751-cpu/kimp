@@ -2324,12 +2324,8 @@ task.spawn(function()
                                             local targetHoriz = math.max(currentOffsetZ, 4)
 
                                             if currentFarmMode == "Arriba" then
-                                                -- Si ya estamos dentro del rango horizontal: NO retroceder, quedarse en XZ actual
-                                                if actualHorizDist <= targetHoriz then
-                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y + currentOffsetY, hrp.Position.Z)
-                                                else
-                                                    myTargetPos = mobPos + Vector3.new(0, currentOffsetY, 0) + toPlayerFlat * targetHoriz
-                                                end
+                                                -- EXACTAMENTE encima para golpear desde arriba de cabeza
+                                                myTargetPos = Vector3.new(mobPos.X, mobPos.Y + currentOffsetY, mobPos.Z)
                                             elseif currentFarmMode == "Abajo" then
                                                 if actualHorizDist <= targetHoriz then
                                                     myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - currentOffsetY, hrp.Position.Z)
@@ -2345,11 +2341,8 @@ task.spawn(function()
                                         else
                                             local targetHoriz = math.max(math.abs(OfsZ), 4)
                                             if currentFarmMode == "Arriba" then
-                                                if actualHorizDist <= targetHoriz then
-                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y + math.abs(OfsY), hrp.Position.Z)
-                                                else
-                                                    myTargetPos = mobPos + Vector3.new(0, math.abs(OfsY), 0) + toPlayerFlat * targetHoriz
-                                                end
+                                                -- EXACTAMENTE encima a distancia corta (Cuerpo echado)
+                                                myTargetPos = Vector3.new(mobPos.X, mobPos.Y + math.abs(OfsY), mobPos.Z)
                                             elseif currentFarmMode == "Abajo" then
                                                 if actualHorizDist <= targetHoriz then
                                                     myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - math.abs(OfsY), hrp.Position.Z)
@@ -2371,7 +2364,12 @@ task.spawn(function()
                                             -- Mazmorra: myTargetPos.Y == mobPos.Y, lookDir puede ser (0,0,0) si XZ también coinciden
                                             -- En ese caso usar la orientacion actual del HRP para no perder el aim
                                             if lookDir.Magnitude > 0.1 then
-                                                TargetCF = CFrame.lookAt(myTargetPos, mobPos, Vector3.new(0, 1, 0))
+                                                if currentFarmMode == "Arriba" then
+                                                    -- Posición de Pájaro (Cuerpo echado paralelo al piso, cara viendo abajo)
+                                                    TargetCF = CFrame.lookAt(myTargetPos, mobPos, Vector3.new(0, 0, 1))
+                                                else
+                                                    TargetCF = CFrame.lookAt(myTargetPos, mobPos, Vector3.new(0, 1, 0))
+                                                end
                                             elseif currentFarmMode == "Mazmorra" then
                                                 -- Mismo punto: mantener orientacion actual del jugador
                                                 TargetCF = hrp.CFrame
