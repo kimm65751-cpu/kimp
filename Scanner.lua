@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM3"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1699,7 +1699,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
         AnalistaLog.Text = "  [5/5] Test de inyeccion de Atributos..."
         task.wait()
         table.insert(t, "> [5] TEST DE INYECCION DE ATRIBUTOS (servidor vs cliente):")
-        table.insert(t, "  LOGICA: Escribimos valor ficticio -> esperamos 2s -> leemos resultado.")
+        table.insert(t, "  LOGICA: Escribimos valor ficticio -> esperamos 0.3s -> leemos resultado.")
         table.insert(t, "  PERSISTE = CLIENTE CONTROLA (inyectable!)")
         table.insert(t, "  RESETEO  = SERVIDOR CONTROLA (solo visual)\n")
         local injectable = {}
@@ -1724,7 +1724,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     local orig = LP2:GetAttribute(attrName)
                     local test = (type(orig) == "number") and (orig + 9999) or orig
                     pcall(function() LP2:SetAttribute(attrName, test) end)
-                    task.wait(2)
+                    task.wait(0.3)
                     local after = LP2:GetAttribute(attrName)
                     if after == test then
                         table.insert(injectable, string.format("  [INJECTABLE] %s: orig=%s -> test=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig), tostring(test)))
@@ -1740,7 +1740,7 @@ BtnAnalista.MouseButton1Click:Connect(function()
                     local orig = LP2:GetAttribute(attrName)
                     local test = not orig
                     pcall(function() LP2:SetAttribute(attrName, test) end)
-                    task.wait(2)
+                    task.wait(0.3)
                     local after = LP2:GetAttribute(attrName)
                     if after == test then
                         table.insert(injectable, string.format("  [INJECTABLE-BOOL] %s: orig=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig)))
@@ -1803,9 +1803,9 @@ InjectorInfo.TextXAlignment = Enum.TextXAlignment.Left
 InjectorInfo.TextWrapped = true
 InjectorInfo.LayoutOrder = 2
 
-local BtnInjectRemote = ToggleButton(InjectorPage, "💉 Inyectar Gamepasses por Remote", 3, Color3.fromRGB(180, 40, 40))
-local BtnInjectG = ToggleButton(InjectorPage, "💉 Forzar _G.GlobalMultipliers e Inyectar _G.HasBoost", 4, Color3.fromRGB(40, 180, 40))
-local BtnSpoofBoost = ToggleButton(InjectorPage, "💸 Obtener Boosts 2x (Spoof Remote)", 5, Color3.fromRGB(180, 140, 0))
+local BtnInjectAttrs  = ToggleButton(InjectorPage, "💉 MAXEAR 34 ATRIBUTOS (CLIENTE)", 3, Color3.fromRGB(180, 40, 180))
+local BtnInjectG      = ToggleButton(InjectorPage, "💉 Forzar _G Multiplicadores", 4, Color3.fromRGB(40, 180, 40))
+local BtnSpoofBoost   = ToggleButton(InjectorPage, "💸 Obtener Boosts 2x (Hook de RED)", 5, Color3.fromRGB(180, 140, 0))
 
 local InjectorStatus = Instance.new("TextLabel", InjectorPage)
 InjectorStatus.Size = UDim2.new(0.95, 0, 0, 20)
@@ -1817,98 +1817,69 @@ InjectorStatus.Text = "  Status: Esperando..."
 InjectorStatus.TextXAlignment = Enum.TextXAlignment.Left
 InjectorStatus.LayoutOrder = 6
 
-BtnInjectRemote.MouseButton1Click:Connect(function()
-    InjectorStatus.Text = "  [!] Interceptando Remotes de Tienda..."
+BtnInjectAttrs.MouseButton1Click:Connect(function()
+    InjectorStatus.Text = "  [!] Inyectando 34 atributos al maximo..."
     pcall(function()
-        local remotes = {
-            "ConquerorHakiRemote", "PurchaseProduct", "OpenBossRushShop", "InfiniteTowerShopSync"
-        }
-        local RS = game:GetService("ReplicatedStorage")
-        local found = false
-        for _, obj in ipairs(RS:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                for _, rn in ipairs(remotes) do
-                    if obj.Name:find(rn) then
-                        InjectorStatus.Text = "  [->] Enviando señales a " .. obj.Name
-                        if obj:IsA("RemoteEvent") then
-                            obj:FireServer("Buy", true)
-                            obj:FireServer(true)
-                            obj:FireServer(1)
-                        end
-                        found = true
-                    end
-                end
-            end
+        local LP2 = game:GetService("Players").LocalPlayer
+        local attrs = {"RaceSpeedMulti", "RaceDamageReduction", "RaceMeleeDamage", "RaceSwordDamage", "RaceLuckBonus", "RaceLifesteal", "RaceJumpMulti", "RaceExtraJumps", "ClanMeleeDamage", "ClanSwordDamage", "ClanDamageReduction", "ClanSpeedMulti", "ClanLuckBonus", "ClanLifesteal", "ClanJumpMulti", "BossRush_Damage", "BossRush_CritChance", "BossRush_Luck", "BossRush_HP", "BossRush_CritDamage", "InfiniteTower_Damage", "InfiniteTower_CritChance", "InfiniteTower_Luck", "InfiniteTower_HP", "InfiniteTower_CritDamage", "AutoSkillSlot"}
+        for _, attr in ipairs(attrs) do
+            pcall(function() LP2:SetAttribute(attr, 100) end)
         end
-        if found then
-            InjectorStatus.Text = "  ✅ Señales de Inyección Enviadas a Remotes"
-        else
-            InjectorStatus.Text = "  ❌ Remotes de tienda no encontrados en el mapa"
+        local bools = {"AutoConqHaki", "AutoObsHaki", "AutoArmHaki", "DisablePvP", "DisableCutscene", "EnableAutoRejoin", "AutoQuestRepeat", "EnableQuestRepeat"}
+        for _, attr in ipairs(bools) do
+            pcall(function() LP2:SetAttribute(attr, true) end)
         end
+        InjectorStatus.Text = "  ✅ 34 Atributos MAXEADOS localmente!"
     end)
 end)
 
 BtnInjectG.MouseButton1Click:Connect(function()
     pcall(function()
-        -- Inyectando Entorno Global
-        if _G.GlobalMultipliers then
-            _G.GlobalMultipliers.money = 10
-            _G.GlobalMultipliers.exp = 10
-            _G.GlobalMultipliers.drops = 10
-            InjectorStatus.Text = "  ✅ _G.GlobalMultipliers sobrescrito a 10x"
-        else
-            _G.GlobalMultipliers = {money = 10, exp = 10, drops = 10}
-            InjectorStatus.Text = "  ✅ _G.GlobalMultipliers CREADO a 10x"
+        _G.GlobalMultipliers = {money = 10, exp = 10, drops = 10}
+        _G.HasBoost = function(...) return true end
+        _G.VIP = true
+        _G.Premium = true
+        
+        -- Override GetAttribute for LP inside scripts that cache it
+        getgenv().GetAttribute = function(self, name)
+            if self == game:GetService("Players").LocalPlayer and name:match("Damage") then return 100 end
+            return self.GetAttribute(self, name)
         end
         
-        -- Hook de Validaciones P2W
-        if _G.HasBoost then
-            local oldBoost = _G.HasBoost
-            _G.HasBoost = function(...) return true end
-            InjectorStatus.Text = "  ✅ _G.HasBoost Bypasseado a 'true'"
-        else
-            _G.HasBoost = function(...) return true end
-            InjectorStatus.Text = "  ✅ _G.HasBoost Inyectado como 'true'"
-        end
+        InjectorStatus.Text = "  ✅ _G.GlobalMultipliers = 10 / Bypasses aplicados"
     end)
 end)
 
 BtnSpoofBoost.MouseButton1Click:Connect(function()
-    InjectorStatus.Text = "  [!] Spoofeando ShopRemotes..."
+    InjectorStatus.Text = "  [!] Hookeando remotefunctions de Boosts..."
     pcall(function()
+        if _G.SpoofedNetwork then 
+            InjectorStatus.Text = "  ☑️ Network ya estaba hookeada."
+            return 
+        end
+        
         local RS = game:GetService("ReplicatedStorage")
-        -- Iterar por todas las ShopRemotes / Remotes
-        local shopRemotes = RS:FindFirstChild("ShopRemotes", true) or RS:FindFirstChild("Remotes", true)
+        local spoofedTable = { ["2xExp"] = true, ["2xGems"] = true, ["2xLuck"] = true, ["2xDrop"] = true, ["2xMoney"] = true }
         
-        local found = false
-        if shopRemotes then
-            for _, rem in ipairs(shopRemotes:GetChildren()) do
-                if rem.Name:find("RedeemProduct") or rem.Name:find("GetBoosts") or rem.Name:find("RefreshBoosts") then
-                    if rem:IsA("RemoteFunction") then
-                        task.spawn(function() rem:InvokeServer() end)
-                    elseif rem:IsA("RemoteEvent") then
-                        rem:FireServer()
-                    end
-                    found = true
-                end
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if not checkcaller() and method == "InvokeServer" and self.Name == "GetBoosts" then
+                return spoofedTable
             end
-        end
+            return oldNamecall(self, ...)
+        end)
         
-        -- Busqueda profunda si fallan los hijos directos
+        _G.SpoofedNetwork = true
+        
+        -- Disparar un update visual para que se den cuenta que esta activo (si existe)
         for _, rem in ipairs(RS:GetDescendants()) do
-            if rem.Name:find("RedeemProduct") or rem.Name:find("RefreshBoosts") or rem.Name:find("BoostsUpdated") then
-                if rem:IsA("RemoteEvent") then
-                    rem:FireServer()
-                    found = true
-                end
+            if rem:IsA("RemoteEvent") and rem.Name == "BoostsUpdated" then
+                rem:FireServer(spoofedTable) -- o FireClient local
             end
         end
         
-        if found then
-            InjectorStatus.Text = "  ✅ Boosts Remotes Disparados"
-        else
-            InjectorStatus.Text = "  ❌ ShopRemotes no encontrados"
-        end
+        InjectorStatus.Text = "  ✅ Hook '__namecall' ACTIVO (Boosts=true)"
     end)
 end)
 
