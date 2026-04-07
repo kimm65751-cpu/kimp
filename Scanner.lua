@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEA"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1784,12 +1784,6 @@ BtnSpoofBoost.MouseButton1Click:Connect(function()
     end)
 end)
 
--- =======================================================================================
--- ========== VARIABLES COMPATIBILIDAD EXTERNA ==========
--- =======================================================================================
-local function AddLog(text, color) end
-local TScroll = Instance.new("ScrollingFrame")
-
 -- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
 -- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
 
@@ -2785,19 +2779,6 @@ uis_local.InputChanged:Connect(function(input)
         ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(rel * 100) .. "%"
         SaveConfig()
     end
-end)
-
-BtnClearMem.MouseButton1Click:Connect(function()
-    MemoryPoint = nil
-    IsWalkingToMemory = false
-    MemStatusLabel.Text = "  📍 Sin punto guardado"
-    BtnClearMem.BackgroundColor3 = C.card
-    BtnClearMem.Text = "  ✅ Punto borrado"
-    SaveConfig()
-    task.delay(1.5, function()
-        BtnClearMem.BackgroundColor3 = C.red
-        BtnClearMem.Text = "  🗑️ Borrar Punto Guardado"
-    end)
 end)
 
 BtnMin.MouseButton1Click:Connect(function()
