@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMlole"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -2181,7 +2181,7 @@ BtnAtaque.MouseButton1Click:Connect(function()
             elseif r and r:IsA("RemoteFunction") then
                 logAtk("🔥 INVOKE => [" .. name .. "]\n  Payload: " .. argsStr)
                 task.spawn(function()
-                    local ok, res = pcall(function() return r:InvokeServer(table.unpack(argsT)) end)
+                    local ok, res = pcall(function() return r:InvokeServer(unpack(argsT)) end)
                     if ok then
                         logAtk("✅ RESPUESTA (" .. name .. "):\n  " .. dumpTable(res, "  "))
                     else
@@ -2216,8 +2216,9 @@ BtnAtaque.MouseButton1Click:Connect(function()
         logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA (Huérfanos / Admin bypass) ---")
         FireIf("NPCReward", "QuestNPC9")
         FireIf("QuestComplete", "Transcendent Being")
-        FireIf("AdminExecute", { Command = "GiveItem", Args = { "Chrysalis Sigil", 29 } })
-        FireIf("AddCurrency", "Gems", math.huge)
+        -- [PELIGROSO: ESTOS DISPARAN EL ANTI-CHEAT]
+        -- FireIf("AdminExecute", { Command = "GiveItem", Args = { "Chrysalis Sigil", 29 } })
+        -- FireIf("AddCurrency", "Gems", math.huge)
         FireIf("AllocateStat", "Damage", math.huge)
 
         task.wait(3)
