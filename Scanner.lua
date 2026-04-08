@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEa"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1538,6 +1538,24 @@ local function dumpTable(tbl, indent, maxDepth)
     return s
 end
 
+local function saveLogToFile(category, name, dataStr)
+    pcall(function()
+        if not writefile then return end
+        local filename = "Captured_Data_Analyst.txt"
+        local timestamp = tostring(os.date("%Y-%m-%d %H:%M:%S"))
+        local entry = "=========================\n" ..
+                      "[" .. timestamp .. "] " .. category .. ": " .. name .. "\n" ..
+                      dataStr .. "\n\n"
+        
+        if isfile and readfile and isfile(filename) then
+            local old = readfile(filename)
+            writefile(filename, old .. entry)
+        else
+            writefile(filename, entry)
+        end
+    end)
+end
+
 -- SPY Combat:
 BtnSpyDamage.MouseButton1Click:Connect(function()
     if _G.SpyingCombat then
@@ -1561,7 +1579,9 @@ BtnSpyDamage.MouseButton1Click:Connect(function()
                     if name:find("Combat") or name:find("Hit") or name:find("Damage") or name:find("M1") then
                         print("[SPY DAÑO OUT]: " .. name)
                         local args = {...}
-                        print(dumpTable(args, "  "))
+                        local dumpStr = dumpTable(args, "  ")
+                        print(dumpStr)
+                        saveLogToFile("DAÑO", name, dumpStr)
                     end
                 end
                 return _G.OldNamecallCombat(self, ...)
@@ -1595,7 +1615,9 @@ BtnSpyNPC.MouseButton1Click:Connect(function()
                         if nl:find("npc") or nl:find("merchant") or nl:find("item") or nl:find("exchange") or nl:find("trade") or nl:find("reward") or nl:find("buy") then
                             print(string.format("[SPY NPC %s]: %s", method, name))
                             local args = {...}
-                            print(dumpTable(args, "  "))
+                            local dumpStr = dumpTable(args, "  ")
+                            print(dumpStr)
+                            saveLogToFile("NPC_" .. method:upper(), name, dumpStr)
                         end
                     end
                 end
