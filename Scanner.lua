@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIeE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1498,6 +1498,7 @@ AnalistaInfo.LayoutOrder = 2
 local BtnSpyDamage = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.fromRGB(150, 40, 40))
 local BtnSpyNPC = ToggleButton(AnalistaPage, "[SPY] Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
 local BtnSpoofNPC = ToggleButton(AnalistaPage, "[HACK] Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
+local BtnModuleSpy = ToggleButton(AnalistaPage, "🔍 Extraer Datos y Módulos al Archivo", 5.5, Color3.fromRGB(140, 40, 180))
 
 local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
 AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
@@ -1618,6 +1619,12 @@ end)
 BtnSpyNPC.MouseButton1Click:Connect(function()
     if _G.SpyingNPC then
         _G.SpyingNPC = false
+        if _G.ClientEventNPCHooks then
+            for _, conn in ipairs(_G.ClientEventNPCHooks) do
+                conn:Disconnect()
+            end
+            _G.ClientEventNPCHooks = nil
+        end
         AnalistaLog.Text = "  ⛔ Spy de NPC DETENIDO."
         return
     end
@@ -1652,6 +1659,30 @@ BtnSpyNPC.MouseButton1Click:Connect(function()
                 return _G.OldNamecallNPCHook(self, ...)
             end)
         end
+        
+        -- Interceptar eventos de vuelta (OnClientEvent) para diálogos, recompensas y UI
+        if not _G.ClientEventNPCHooks then
+            _G.ClientEventNPCHooks = {}
+            for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                if v:IsA("RemoteEvent") then
+                    local vn = v.Name:lower()
+                    local isSpam = vn:find("mouse") or vn:find("camera") or vn:find("move") or vn:find("walk") or vn:find("jump")
+                                or vn:find("combat") or vn:find("hit") or vn:find("damage") or vn:find("m1") or vn:find("step")
+                                or vn:find("update") or vn:find("hover") or vn:find("ping")
+                    if not isSpam then
+                        table.insert(_G.ClientEventNPCHooks, v.OnClientEvent:Connect(function(...)
+                            if not _G.SpyingNPC then return end
+                            print("[SPY TRAFICO IN (DEL SERVER)]: " .. v.Name)
+                            local args = {...}
+                            local dumpStr = dumpTable(args, "  ")
+                            print(dumpStr)
+                            saveLogToFile("TRAFICO_RECIBIDO", v.Name, dumpStr)
+                        end))
+                    end
+                end
+            end
+        end
+        
     end)
 end)
 
@@ -1689,6 +1720,35 @@ BtnSpoofNPC.MouseButton1Click:Connect(function()
                 return _G.OldNamecallInv7(self, ...)
             end)
         end
+    end)
+end)
+
+-- SPY MODULES AND CONSTANTS
+BtnModuleSpy.MouseButton1Click:Connect(function()
+    AnalistaLog.Text = "  [!] Volcando módulos al archivo (Puede dar lag)..."
+    task.spawn(function()
+        pcall(function()
+            if getloadedmodules then
+                local modules = getloadedmodules()
+                local count = 0
+                for _, mod in ipairs(modules) do
+                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                        local nl = mod.Name:lower()
+                        if nl:find("data") or nl:find("inventory") or nl:find("item") or nl:find("config") or nl:find("setting") or nl:find("weapon") or nl:find("npc") or nl:find("shop") or nl:find("quest") then
+                            local success, result = pcall(require, mod)
+                            if success and type(result) == "table" then
+                                local dumpStr = dumpTable(result, "  ", 4)
+                                saveLogToFile("MODULE_DATA", mod.Name, dumpStr)
+                                count = count + 1
+                            end
+                        end
+                    end
+                end
+                AnalistaLog.Text = "  ✅ " .. count .. " módulos volcados a Captured_Data_Analyst.txt"
+            else
+                AnalistaLog.Text = "  ❌ Exploit no soporta getloadedmodules()"
+            end
+        end)
     end)
 end)
 
