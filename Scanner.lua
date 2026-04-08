@@ -1480,7 +1480,7 @@ task.delay(2, RefreshRouteFileList)
 -- =========================================================================================
 -- ========== TAB 6: ANALIZADOR MITM Y SPOOF NPC ==========
 -- =========================================================================================
-local AnalistaPage = MakeScrollPage("Analizador MITM")
+local AnalistaPage = MakeScrollPage("Analizador")
 
 SectionLabel(AnalistaPage, "ESCÁNER EN VIVO: DAÑO Y NPC", 1)
 
