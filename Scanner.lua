@@ -866,17 +866,17 @@ task.spawn(function()
                         SmartCalib_Melee_Y = TempCalibMaxY
                         SmartCalib_Melee_Z = TempCalibMaxZ
                         btn.Text = "  👊 Calibrado COMBATE [Y: -" ..
-                        SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                            SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
                     elseif CurrentlyCalibrating == "Sword" then
                         SmartCalib_Sword_Y = TempCalibMaxY
                         SmartCalib_Sword_Z = TempCalibMaxZ
                         btn.Text = "  ⚔️ Calibrado ESPADA [Y: -" ..
-                        SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                            SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
                     elseif CurrentlyCalibrating == "Fruit" then
                         SmartCalib_Fruit_Y = TempCalibMaxY
                         SmartCalib_Fruit_Z = TempCalibMaxZ
                         btn.Text = "  🍎 Calibrado FRUTA [Y: -" ..
-                        SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                            SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
                     end
                     btn.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                     CurrentlyCalibrating = "None"
@@ -1532,7 +1532,8 @@ local function saveLogToFile(category, name, dataStr)
     pcall(function()
         if not writefile then return end
         local ts = tostring(os.date("%Y-%m-%d %H:%M:%S"))
-        local entry = "=========================\n[" .. ts .. "] " .. category .. ": " .. tostring(name) .. "\n" .. tostring(dataStr) .. "\n\n"
+        local entry = "=========================\n[" ..
+        ts .. "] " .. category .. ": " .. tostring(name) .. "\n" .. tostring(dataStr) .. "\n\n"
         if isfile and readfile and isfile(LOGFILE) then
             writefile(LOGFILE, readfile(LOGFILE) .. entry)
         else
@@ -1593,7 +1594,7 @@ BtnMega.MouseButton1Click:Connect(function()
                 end
                 if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
                     local name = tostring(self.Name)
-                    local dump = dumpTable({...}, "  ")
+                    local dump = dumpTable({ ... }, "  ")
                     if method == "InvokeServer" then
                         saveLogToFile("INVOKE_CLIENTE->SERVER", name, dump)
                         local resp = table.pack(_G.MegaHookNC(self, ...))
@@ -1612,7 +1613,7 @@ BtnMega.MouseButton1Click:Connect(function()
             if v:IsA("RemoteEvent") then
                 local conn = v.OnClientEvent:Connect(function(...)
                     if not _G.MegaActivo then return end
-                    saveLogToFile("SERVER->CLIENTE [Event]", v.Name, dumpTable({...}, "  "))
+                    saveLogToFile("SERVER->CLIENTE [Event]", v.Name, dumpTable({ ... }, "  "))
                 end)
                 table.insert(_G.MegaConns, conn)
             end
@@ -1654,7 +1655,8 @@ end)
 -- ================================================================
 SectionLabel(AnalistaPage, "BYPASS NPC / QUEST", 10)
 
-local BtnBypassNPC = ToggleButton(AnalistaPage, "🟣  BYPASS QUEST NPC  (Transcendent Being)", 11, Color3.fromRGB(120, 20, 180))
+local BtnBypassNPC = ToggleButton(AnalistaPage, "🟣  BYPASS QUEST NPC  (Transcendent Being)", 11,
+    Color3.fromRGB(120, 20, 180))
 BtnBypassNPC.LayoutOrder = 11
 
 local BypassLog = Instance.new("TextLabel", AnalistaPage)
@@ -1670,11 +1672,11 @@ BypassLog.Text = "  ⬛ DESACTIVADO"
 
 -- Items exactos que pide la quest "Transcendent Being"
 local QUEST_ITEMS_NEEDED = {
-    ["Evolution Fragment"]  = 5,
-    ["Transcendent Core"]   = 10,
-    ["Divinity Essence"]    = 20,
-    ["Fusion Ring"]         = 30,
-    ["Chrysalis Sigil"]     = 100,
+    ["Evolution Fragment"] = 5,
+    ["Transcendent Core"]  = 10,
+    ["Divinity Essence"]   = 20,
+    ["Fusion Ring"]        = 30,
+    ["Chrysalis Sigil"]    = 100,
 }
 
 BtnBypassNPC.MouseButton1Click:Connect(function()
@@ -1753,7 +1755,8 @@ BtnBypassNPC.MouseButton1Click:Connect(function()
                         if realResp.n >= 1 then
                             local first = realResp[1]
                             if type(first) == "boolean" and not first then
-                                BypassLog.Text = "  ✅ InvokeServer interceptado: " .. tostring(self.Name) .. " → forzado TRUE"
+                                BypassLog.Text = "  ✅ InvokeServer interceptado: " ..
+                                tostring(self.Name) .. " → forzado TRUE"
                                 return true
                             elseif type(first) == "table" then
                                 if first.success == false then first.success = true end
@@ -1827,7 +1830,8 @@ end)
 -- ================================================================
 SectionLabel(AnalistaPage, "FORENSE NPC — ¿POR QUÉ FALLA?", 20)
 
-local BtnForenseNPC = ToggleButton(AnalistaPage, "🔬  FORENSE NPC  (crea reporte completo .txt)", 21, Color3.fromRGB(20, 120, 180))
+local BtnForenseNPC = ToggleButton(AnalistaPage, "🔬  FORENSE NPC  (crea reporte completo .txt)", 21,
+    Color3.fromRGB(20, 120, 180))
 BtnForenseNPC.LayoutOrder = 21
 
 local ForenseLog = Instance.new("TextLabel", AnalistaPage)
@@ -1918,7 +1922,7 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                 local method = getnamecallmethod()
                 if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
                     local rname = tostring(self.Name)
-                    local args = {...}
+                    local args = { ... }
                     local argsStr = "  Remote: " .. rname ..
                         "\n  Método: " .. method ..
                         "\n  Args enviados: " .. dumpTable(args, "  ") ..
@@ -1977,7 +1981,7 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                 local vname = v.Name
                 local conn = v.OnClientEvent:Connect(function(...)
                     if not _G.ForenseActivo then return end
-                    local args = {...}
+                    local args = { ... }
                     local dump = dumpTable(args, "  ")
 
                     -- Detección especial: ShowNotification con datos de quest
@@ -1996,7 +2000,7 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                             flog("SERVER_EVENT: " .. vname, dump)
                         end
 
-                    -- Detección: UpdateInventory — ver qué inventario mandó el server
+                        -- Detección: UpdateInventory — ver qué inventario mandó el server
                     elseif vname == "UpdateInventory" then
                         local itemStr = "  Inventario recibido del servidor:\n"
                         if type(args[1]) == "table" then
@@ -2008,7 +2012,6 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                             end
                         end
                         flog("INVENTARIO_RECIBIDO [SERVER→CLIENTE]", itemStr)
-
                     else
                         flog("SERVER_EVENT: " .. vname, dump)
                     end
@@ -2040,7 +2043,8 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                                     if type(fval) == "function" then
                                         table.insert(fnList, "    función: " .. tostring(fname))
                                     elseif type(fval) == "table" then
-                                        table.insert(fnList, "    tabla: " .. tostring(fname) .. " = " .. dumpTable(fval, "      ", 2))
+                                        table.insert(fnList,
+                                            "    tabla: " .. tostring(fname) .. " = " .. dumpTable(fval, "      ", 2))
                                     else
                                         table.insert(fnList, "    valor: " .. tostring(fname) .. " = " .. tostring(fval))
                                     end
@@ -2060,12 +2064,13 @@ BtnForenseNPC.MouseButton1Click:Connect(function()
                                                 hookfunction(origFn, function(...)
                                                     if not _G.ForenseActivo then return origFn(...) end
                                                     flog("FUNCION_INTERCEPTADA: " .. mod.Name .. "." .. fname,
-                                                        "  Args:\n" .. dumpTable({...}, "  "))
+                                                        "  Args:\n" .. dumpTable({ ... }, "  "))
                                                     local res = table.pack(origFn(...))
                                                     flog("FUNCION_RESULTADO: " .. mod.Name .. "." .. fname,
                                                         "  Retorno:\n" .. dumpTable(res, "  ") ..
                                                         "\n  ¿Retornó false/nil?: " .. tostring(
-                                                            res[1] == false or res[1] == nil and "SI — AQUÍ ESTÁ EL BLOQUEO" or "no"))
+                                                            res[1] == false or
+                                                            res[1] == nil and "SI — AQUÍ ESTÁ EL BLOQUEO" or "no"))
                                                     return table.unpack(res, 1, res.n)
                                                 end)
                                             end)
@@ -2154,20 +2159,20 @@ BtnAtaque.MouseButton1Click:Connect(function()
     _G.AtaqueActivo = true
     ataqueStep = 0
     AtaqueLog.Text = "  💣 ATACANDO Remotes (Underflow/NaN)..."
-    
+
     pcall(function()
         if writefile then
             writefile(ATK_FILE, "=== REPORTE DE ATAQUE DE VULNERABILIDAD/FUZZING ===\n" ..
                 "Fecha: " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n\n")
         end
     end)
-    
+
     task.spawn(function()
         local RS = game:GetService("ReplicatedStorage")
-        
+
         local function FireIf(name, ...)
             local r = RS:FindFirstChild(name, true)
-            local argsT = {...}
+            local argsT = { ... }
             local argsStr = dumpTable(argsT, "")
 
             if r and r:IsA("RemoteEvent") then
@@ -2176,42 +2181,45 @@ BtnAtaque.MouseButton1Click:Connect(function()
             elseif r and r:IsA("RemoteFunction") then
                 logAtk("🔥 INVOKE => [" .. name .. "]\n  Payload: " .. argsStr)
                 task.spawn(function()
-                    local ok, res = pcall(function() return r:InvokeServer(...) end)
-                    if ok then logAtk("✅ RESPUESTA (" .. name .. "):\n  " .. dumpTable(res, "  "))
-                    else logAtk("❌ ERROR/RECHAZO (" .. name .. "):\n  " .. tostring(res)) end
+                    local ok, res = pcall(function() return r:InvokeServer(table.unpack(argsT)) end)
+                    if ok then
+                        logAtk("✅ RESPUESTA (" .. name .. "):\n  " .. dumpTable(res, "  "))
+                    else
+                        logAtk("❌ ERROR/RECHAZO (" .. name .. "):\n  " .. tostring(res))
+                    end
                 end)
             else
                 logAtk("⚠️ Remote NO encontrado: [" .. name .. "]")
             end
         end
-        
+
         -- Payload 1: Underflow Allocation
         logAtk("--- 1. PROBANDO INYECCIÓN UNDERFLOW (Bypass validación con negativos) ---")
         FireIf("StorageStoreItem", "Chrysalis Sigil", -29)
         FireIf("StorageRetrieveItem", "Chrysalis Sigil", -29)
         FireIf("PurchaseItem", "Chrysalis Sigil", -999)
         FireIf("ExchangeItem", "Evolution Fragment", -1)
-        
+
         task.wait(1)
         if not _G.AtaqueActivo then return end
-        
+
         -- Payload 2: Poisoning NaN (No Es Un Número) / Infinite
         logAtk("--- 2. PROBANDO CORRUPCIÓN NaN / math.huge ---")
-        FireIf("StorageRetrieveItem", "Transcendent Core", 0/0)
-        FireIf("StorageStoreItem", "Transcendent Core", 0/0)
-        FireIf("ExchangeItem", "Transcendent Core", 0/0)
-        
+        FireIf("StorageRetrieveItem", "Transcendent Core", 0 / 0)
+        FireIf("StorageStoreItem", "Transcendent Core", 0 / 0)
+        FireIf("ExchangeItem", "Transcendent Core", 0 / 0)
+
         task.wait(1)
         if not _G.AtaqueActivo then return end
-        
+
         -- Payload 3: Direct Bypass / Bypass Recompensa
         logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA (Huérfanos / Admin bypass) ---")
         FireIf("NPCReward", "QuestNPC9")
         FireIf("QuestComplete", "Transcendent Being")
-        FireIf("AdminExecute", {Command = "GiveItem", Args={"Chrysalis Sigil", 29}})
+        FireIf("AdminExecute", { Command = "GiveItem", Args = { "Chrysalis Sigil", 29 } })
         FireIf("AddCurrency", "Gems", math.huge)
         FireIf("AllocateStat", "Damage", math.huge)
-        
+
         task.wait(3)
         logAtk("--- FINAL DE EJECUCIÓN (Verifica Data o kicks por AntiCheat) ---")
         AtaqueLog.Text = "  🛑 ATAQUE FINALIZADO. Revisa: Attack_Vulnerability_Report.txt"
@@ -2565,13 +2573,13 @@ task.spawn(function()
                             local n = t.Name:lower()
                             if reqType == "Sword" then
                                 return (n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru")) ~=
-                                nil
+                                    nil
                             elseif reqType == "Fruit" then
                                 return (n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito")) ~=
-                                nil
+                                    nil
                             elseif reqType == "Melee" then
                                 return (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black")) ~=
-                                nil
+                                    nil
                             end
                             return false
                         end
@@ -2844,7 +2852,7 @@ task.spawn(function()
 
                                         -- Dirección horizontal desde el MOB hacia el JUGADOR
                                         local toPlayerFlat = actualHorizDist > 0.5 and actualHorizVec.Unit or
-                                        Vector3.new(0, 0, 1)
+                                            Vector3.new(0, 0, 1)
 
                                         local myTargetPos
 
@@ -2869,7 +2877,7 @@ task.spawn(function()
                                                         hrp.Position.Z)
                                                 else
                                                     myTargetPos = mobPos + Vector3.new(0, -currentOffsetY, 0) +
-                                                    toPlayerFlat * targetHoriz
+                                                        toPlayerFlat * targetHoriz
                                                 end
                                             elseif currentFarmMode == "Mazmorra" then
                                                 -- ESTÁTICO: quedarse donde está, solo apuntar al boss
@@ -2888,7 +2896,7 @@ task.spawn(function()
                                                         hrp.Position.Z)
                                                 else
                                                     myTargetPos = mobPos + Vector3.new(0, -math.abs(OfsY), 0) +
-                                                    toPlayerFlat * targetHoriz
+                                                        toPlayerFlat * targetHoriz
                                                 end
                                             elseif currentFarmMode == "Mazmorra" then
                                                 -- ESTÁTICO: quedarse donde está, solo apuntar al boss
@@ -2939,7 +2947,7 @@ task.spawn(function()
                                                     local d = (currentFlat - anchorFlat).Magnitude
                                                     if d > ArenaRadius then
                                                         local clamped = anchorFlat +
-                                                        (currentFlat - anchorFlat).Unit * ArenaRadius
+                                                            (currentFlat - anchorFlat).Unit * ArenaRadius
                                                         finalX = clamped.X
                                                         finalZ = clamped.Z
                                                     end
@@ -3087,7 +3095,7 @@ uis.InputBegan:Connect(function(input, processed)
                 StatusLabel.Text = "⚔️ Ancla Activada (Radio: " .. ArenaRadius .. " studs)"
                 if ArenaStatusLabel then
                     ArenaStatusLabel.Text = "  ⭕ Ancla Arena: ON (" ..
-                    math.floor(ArenaAnchor.X) .. ", " .. math.floor(ArenaAnchor.Z) .. ")"
+                        math.floor(ArenaAnchor.X) .. ", " .. math.floor(ArenaAnchor.Z) .. ")"
                 end
             end
         end
@@ -3283,7 +3291,7 @@ local function LoadConfig()
                     end
                     if AutoSkillEnabled then
                         BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skills: ON (" ..
-                        table.concat(_G.AutoSkillKeys or { "Z", "X", "C", "V" }, ", ") .. ")"
+                            table.concat(_G.AutoSkillKeys or { "Z", "X", "C", "V" }, ", ") .. ")"
                     end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
@@ -3309,11 +3317,11 @@ local function LoadConfig()
                         BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
                         BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SI" or "NO")
                         BtnCalibMelee.Text = "  👊 Calibrado COMBATE [Y: -" ..
-                        SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                            SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
                         BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA [Y: -" ..
-                        SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                            SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
                         BtnCalibFruit.Text = "  🍎 Calibrado FRUTA [Y: -" ..
-                        SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                            SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
                         BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                         BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                         if SmartCalib_Fruit_Y > 3 then BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80) end
