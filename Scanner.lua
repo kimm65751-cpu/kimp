@@ -1519,17 +1519,17 @@ local function dumpTable(tbl, indent, maxDepth)
     local s = "{\n"
     local seenKeys = {}
     for k, v in pairs(tbl) do
-        if type(k) == "Instance" then k = k:GetFullName() end
+        if typeof(k) == "Instance" then k = k:GetFullName() end
         
-        if type(v) == "table" and not seenKeys[v] then
+        if typeof(v) == "table" and not seenKeys[v] then
             seenKeys[v] = true
             s = s .. indent .. "  " .. tostring(k) .. " = " .. dumpTable(v, indent .. "  ", maxDepth - 1) .. ",\n"
-        elseif type(v) == "function" then
+        elseif typeof(v) == "function" then
             s = s .. indent .. "  " .. tostring(k) .. " = [function],\n"
-        elseif type(v) == "userdata" then
-            s = s .. indent .. "  " .. tostring(k) .. " = [userdata],\n"
-        elseif type(v) == "Instance" then
-            s = s .. indent .. "  " .. tostring(k) .. " = [Instance:"..v.ClassName.."],\n"
+        elseif typeof(v) == "Instance" then
+            s = s .. indent .. "  " .. tostring(k) .. " = [Instance: " .. v.ClassName .. "],\n"
+        elseif type(v) == "userdata" or typeof(v) == "userdata" then
+            s = s .. indent .. "  " .. tostring(k) .. " = [userdata: " .. typeof(v) .. "],\n"
         else
             s = s .. indent .. "  " .. tostring(k) .. " = " .. tostring(v) .. ",\n"
         end
@@ -1560,6 +1560,12 @@ end
 BtnSpyDamage.MouseButton1Click:Connect(function()
     if _G.SpyingCombat then
         _G.SpyingCombat = false
+        if _G.ClientEventHooks then
+            for _, conn in ipairs(_G.ClientEventHooks) do
+                conn:Disconnect()
+            end
+            _G.ClientEventHooks = nil
+        end
         AnalistaLog.Text = "  ⛔ Spy de Combate DETENIDO."
         return
     end
@@ -1587,6 +1593,24 @@ BtnSpyDamage.MouseButton1Click:Connect(function()
                 return _G.OldNamecallCombat(self, ...)
             end)
         end
+        
+        -- Hookear de vuelta la respuesta del servidor (Daño Validado / Recibido)
+        if not _G.ClientEventHooks then
+            _G.ClientEventHooks = {}
+            for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                if v:IsA("RemoteEvent") and (v.Name:find("Combat") or v.Name:find("Hit") or v.Name:find("Damage") or v.Name:find("M1") or v.Name:find("Effect")) then
+                    table.insert(_G.ClientEventHooks, v.OnClientEvent:Connect(function(...)
+                        if not _G.SpyingCombat then return end
+                        print("[SPY DAÑO IN (DEL SERVER)]: " .. v.Name)
+                        local args = {...}
+                        local dumpStr = dumpTable(args, "  ")
+                        print(dumpStr)
+                        saveLogToFile("DAÑO_RECIBIDO", v.Name, dumpStr)
+                    end))
+                end
+            end
+        end
+        
     end)
 end)
 
@@ -1610,15 +1634,19 @@ BtnSpyNPC.MouseButton1Click:Connect(function()
                 local method = getnamecallmethod()
                 if not checkcaller() and (method == "InvokeServer" or method == "FireServer") and typeof(self) == "Instance" then
                     local name = tostring(self.Name)
-                    if not name:find("Mouse") and not name:find("Camera") and not name:find("Move") then
-                        local nl = name:lower()
-                        if nl:find("npc") or nl:find("merchant") or nl:find("item") or nl:find("exchange") or nl:find("trade") or nl:find("reward") or nl:find("buy") then
-                            print(string.format("[SPY NPC %s]: %s", method, name))
-                            local args = {...}
-                            local dumpStr = dumpTable(args, "  ")
-                            print(dumpStr)
-                            saveLogToFile("NPC_" .. method:upper(), name, dumpStr)
-                        end
+                    local nl = name:lower()
+                    
+                    -- Blacklist de remotes spam por movimiento, mouse, o combate (que ya escaneamos por separado)
+                    local isSpam = nl:find("mouse") or nl:find("camera") or nl:find("move") or nl:find("walk") or nl:find("jump")
+                                or nl:find("combat") or nl:find("hit") or nl:find("damage") or nl:find("m1") or nl:find("step")
+                                or nl:find("update") or nl:find("hover") or nl:find("ping")
+                                
+                    if not isSpam then
+                        print(string.format("[SPY NETWORK %s]: %s", method, name))
+                        local args = {...}
+                        local dumpStr = dumpTable(args, "  ")
+                        print(dumpStr)
+                        saveLogToFile("TRAFICO_" .. method:upper(), name, dumpStr)
                     end
                 end
                 return _G.OldNamecallNPCHook(self, ...)
