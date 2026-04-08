@@ -1551,8 +1551,29 @@ BtnFruitScan.MouseButton1Click:Connect(function()
                         local args = {...}
                         local rname = tostring(v.Name)
                         if not rname:find("Sync") and not rname:find("Ping") then
+                            local function SerializeData(obj, d)
+                                d = d or 0
+                                if d > 2 then return "{...}" end
+                                if type(obj) == "table" then
+                                    local s = "{"
+                                    for k, v in pairs(obj) do
+                                        s = s .. tostring(k) .. "=" .. SerializeData(v, d + 1) .. ", "
+                                    end
+                                    return s .. "}"
+                                elseif typeof(obj) == "Vector3" then
+                                    return "V3(" .. math.floor(obj.X) .. "," .. math.floor(obj.Y) .. "," .. math.floor(obj.Z) .. ")"
+                                elseif typeof(obj) == "CFrame" then
+                                    return "CF(" .. math.floor(obj.Position.X) .. "," .. math.floor(obj.Position.Y) .. "," .. math.floor(obj.Position.Z) .. ")"
+                                elseif typeof(obj) == "Instance" then
+                                    return "Inst[" .. tostring(obj.ClassName) .. "]: " .. tostring(obj.Name)
+                                end
+                                return tostring(obj)
+                            end
+                            
                             local argStr = ""
-                            for i, arg in ipairs(args) do argStr = argStr..tostring(arg).."," end
+                            for i, arg in ipairs(args) do 
+                                argStr = argStr .. SerializeData(arg) .. " | " 
+                            end
                             LogFruitEvent("🍓 [S->C] " .. rname .. " | Data: " .. argStr)
                         end
                     end))
