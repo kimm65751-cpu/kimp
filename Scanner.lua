@@ -33,7 +33,7 @@ local LastRealDamageTime = os.clock()
 local GhostProtocolEnabled = false
 local GhostBlocksDisabled = 0
 local VIM = game:GetService("VirtualInputManager")
-local BlinkStepValue = 45  -- Studs por paso en vuelo (default, ajustable en UI)
+local BlinkStepValue = 45 -- Studs por paso en vuelo (default, ajustable en UI)
 local ArenaAnchor = nil
 local ArenaRadius = 25
 local ArenaStatusLabel = nil
@@ -312,22 +312,22 @@ end
 local FarmPage = MakeScrollPage("Farm")
 
 SectionLabel(FarmPage, "COMBATE", 1)
-local BtnToggle    = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
-BtnToggle.TextSize = 15
-BtnToggle.Font     = Enum.Font.GothamBold
-local BtnHeight    = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
-local BtnMagnet    = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
-local BtnSkill     = ToggleButton(FarmPage, "🔥 Auto Skill (Teclas)", 5)
-_G.AutoSkillKeys = {"Z", "X", "C", "V"}
-local SkillKeysBox = Instance.new("TextBox", FarmPage)
-SkillKeysBox.Size = UDim2.new(0.95, 0, 0, 32)
-SkillKeysBox.BackgroundColor3 = C.bg
-SkillKeysBox.TextColor3 = C.text
-SkillKeysBox.PlaceholderText = "Escribe teclas (Ej: Z, X, C)"
-SkillKeysBox.Text = "Z, X, C, V"
-SkillKeysBox.Font = Enum.Font.Gotham
-SkillKeysBox.TextSize = 12
-SkillKeysBox.LayoutOrder = 5.5
+local BtnToggle                                     = ToggleButton(FarmPage, "► Iniciar Auto-Farm", 2, C.red)
+BtnToggle.TextSize                                  = 15
+BtnToggle.Font                                      = Enum.Font.GothamBold
+local BtnHeight                                     = ToggleButton(FarmPage, "Posición: ☁️ Arriba", 3)
+local BtnMagnet                                     = ToggleButton(FarmPage, "🧲 Imán de Mobs", 4)
+local BtnSkill                                      = ToggleButton(FarmPage, "🔥 Auto Skill (Teclas)", 5)
+_G.AutoSkillKeys                                    = { "Z", "X", "C", "V" }
+local SkillKeysBox                                  = Instance.new("TextBox", FarmPage)
+SkillKeysBox.Size                                   = UDim2.new(0.95, 0, 0, 32)
+SkillKeysBox.BackgroundColor3                       = C.bg
+SkillKeysBox.TextColor3                             = C.text
+SkillKeysBox.PlaceholderText                        = "Escribe teclas (Ej: Z, X, C)"
+SkillKeysBox.Text                                   = "Z, X, C, V"
+SkillKeysBox.Font                                   = Enum.Font.Gotham
+SkillKeysBox.TextSize                               = 12
+SkillKeysBox.LayoutOrder                            = 5.5
 Instance.new("UICorner", SkillKeysBox).CornerRadius = UDim.new(0, 4)
 
 SkillKeysBox.FocusLost:Connect(function()
@@ -337,7 +337,7 @@ SkillKeysBox.FocusLost:Connect(function()
     end
     if #_G.AutoSkillKeys == 0 then
         SkillKeysBox.Text = "Z, X, C, V"
-        _G.AutoSkillKeys = {"Z", "X", "C", "V"}
+        _G.AutoSkillKeys = { "Z", "X", "C", "V" }
     else
         SkillKeysBox.Text = table.concat(_G.AutoSkillKeys, ", ")
     end
@@ -346,9 +346,9 @@ SkillKeysBox.FocusLost:Connect(function()
     end
     SaveConfig()
 end)
-local BtnBoss      = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
-local BtnBlink     = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
-local BtnGhost     = ToggleButton(FarmPage, "👻 Ghost Protocol (Mazmorra): OFF", 8, C.card)
+local BtnBoss  = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
+local BtnBlink = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
+local BtnGhost = ToggleButton(FarmPage, "👻 Ghost Protocol (Mazmorra): OFF", 8, C.card)
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
 PanicLabel.Size = UDim2.new(0.95, 0, 0, 16)
@@ -447,7 +447,7 @@ BtnClearMem.MouseButton1Click:Connect(function()
     MemStatusLabel.Text = "  📍 Sin punto guardado"
     BtnClearMem.BackgroundColor3 = C.card
     BtnClearMem.Text = "  ✅ Punto borrado"
-    
+
     -- También limpiamos el ancla de combate por si acaso
     ArenaAnchor = nil
     if ArenaStatusLabel then ArenaStatusLabel.Text = "  ⭕ Ancla Arena: OFF (Presiona P)" end
@@ -733,9 +733,12 @@ local uiList = Instance.new("UIListLayout", WeaponSelectFrame)
 uiList.Padding = UDim.new(0, 4)
 uiList.SortOrder = Enum.SortOrder.LayoutOrder
 
-local BtnUseMelee = ToggleButton(WeaponSelectFrame, "👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SÍ" or "NO"), 1, SmartUseMelee and C.accentOn or C.card)
-local BtnUseSword = ToggleButton(WeaponSelectFrame, "⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SÍ" or "NO"), 2, SmartUseSword and C.accentOn or C.card)
-local BtnUseFruit = ToggleButton(WeaponSelectFrame, "🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SÍ" or "NO"), 3, SmartUseFruit and C.accentOn or C.card)
+local BtnUseMelee = ToggleButton(WeaponSelectFrame, "👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SÍ" or "NO"), 1,
+    SmartUseMelee and C.accentOn or C.card)
+local BtnUseSword = ToggleButton(WeaponSelectFrame, "⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SÍ" or "NO"), 2,
+    SmartUseSword and C.accentOn or C.card)
+local BtnUseFruit = ToggleButton(WeaponSelectFrame, "🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SÍ" or "NO"), 3,
+    SmartUseFruit and C.accentOn or C.card)
 
 BtnUseMelee.MouseButton1Click:Connect(function()
     SmartUseMelee = not SmartUseMelee
@@ -758,9 +761,12 @@ BtnUseFruit.MouseButton1Click:Connect(function()
     SaveConfig()
 end)
 
-local BtnCalibMelee = ToggleButton(CalibPage, "👊 Calibrar Combate [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]", 4, C.card)
-local BtnCalibSword = ToggleButton(CalibPage, "⚔️ Calibrar Espada [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]", 5, C.card)
-local BtnCalibFruit = ToggleButton(CalibPage, "🍎 Calibrar Fruta [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]", 6, C.card)
+local BtnCalibMelee = ToggleButton(CalibPage,
+    "👊 Calibrar Combate [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]", 4, C.card)
+local BtnCalibSword = ToggleButton(CalibPage,
+    "⚔️ Calibrar Espada [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]", 5, C.card)
+local BtnCalibFruit = ToggleButton(CalibPage,
+    "🍎 Calibrar Fruta [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]", 6, C.card)
 
 local function startCalib(mode, btn, text)
     CurrentlyCalibrating = mode
@@ -801,10 +807,10 @@ local function ProcessCalibrationObj(obj)
                             local objY = pos.Y
                             local diffX = pos.X - hrp.Position.X
                             local diffZ = pos.Z - hrp.Position.Z
-                            
+
                             local botY = objY - (size.Y / 2)
                             local distAbajo = math.floor(math.abs(charY - botY))
-                            local distHorizontal = math.floor(math.sqrt(diffX^2 + diffZ^2))
+                            local distHorizontal = math.floor(math.sqrt(diffX ^ 2 + diffZ ^ 2))
 
                             if distAbajo < 3 then distAbajo = 3 end
                             if distHorizontal < 4 then distHorizontal = 4 end
@@ -843,26 +849,34 @@ task.spawn(function()
             local timeLeft = CalibrationEndTime - os.clock()
             local btn = nil
             local icon = ""
-            if CurrentlyCalibrating == "Melee" then btn = BtnCalibMelee; icon = "👊"
-            elseif CurrentlyCalibrating == "Sword" then btn = BtnCalibSword; icon = "⚔️"
-            elseif CurrentlyCalibrating == "Fruit" then btn = BtnCalibFruit; icon = "🍎" end
+            if CurrentlyCalibrating == "Melee" then
+                btn = BtnCalibMelee; icon = "👊"
+            elseif CurrentlyCalibrating == "Sword" then
+                btn = BtnCalibSword; icon = "⚔️"
+            elseif CurrentlyCalibrating == "Fruit" then
+                btn = BtnCalibFruit; icon = "🍎"
+            end
 
             if btn then
                 if timeLeft > 0 then
-                    btn.Text = string.format("  %s Midiendo radar... (%.1fs) [Y: -%d | Z: %d]", icon, timeLeft, TempCalibMaxY, TempCalibMaxZ)
+                    btn.Text = string.format("  %s Midiendo radar... (%.1fs) [Y: -%d | Z: %d]", icon, timeLeft,
+                        TempCalibMaxY, TempCalibMaxZ)
                 else
                     if CurrentlyCalibrating == "Melee" then
                         SmartCalib_Melee_Y = TempCalibMaxY
                         SmartCalib_Melee_Z = TempCalibMaxZ
-                        btn.Text = "  👊 Calibrado COMBATE [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                        btn.Text = "  👊 Calibrado COMBATE [Y: -" ..
+                        SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
                     elseif CurrentlyCalibrating == "Sword" then
                         SmartCalib_Sword_Y = TempCalibMaxY
                         SmartCalib_Sword_Z = TempCalibMaxZ
-                        btn.Text = "  ⚔️ Calibrado ESPADA [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                        btn.Text = "  ⚔️ Calibrado ESPADA [Y: -" ..
+                        SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
                     elseif CurrentlyCalibrating == "Fruit" then
                         SmartCalib_Fruit_Y = TempCalibMaxY
                         SmartCalib_Fruit_Z = TempCalibMaxZ
-                        btn.Text = "  🍎 Calibrado FRUTA [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                        btn.Text = "  🍎 Calibrado FRUTA [Y: -" ..
+                        SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
                     end
                     btn.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                     CurrentlyCalibrating = "None"
@@ -1482,405 +1496,164 @@ task.delay(2, RefreshRouteFileList)
 -- =========================================================================================
 local AnalistaPage = MakeScrollPage("Analizador")
 
-SectionLabel(AnalistaPage, "ESCÁNER EN VIVO: DAÑO Y NPC", 1)
+SectionLabel(AnalistaPage, "MEGA ANALIZADOR EN VIVO", 1)
 
-local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
-AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
-AnalistaInfo.BackgroundTransparency = 1
-AnalistaInfo.TextColor3 = C.muted
-AnalistaInfo.Font = Enum.Font.GothamMedium
-AnalistaInfo.TextSize = 11
-AnalistaInfo.Text = "  Espía la comunicación exacta entre cliente y servidor.\n  Captura cómo se calcula el daño y qué piden los NPC."
-AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
-AnalistaInfo.TextWrapped = true
-AnalistaInfo.LayoutOrder = 2
-
-local BtnSpyDamage = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.fromRGB(150, 40, 40))
-local BtnSpyNPC = ToggleButton(AnalistaPage, "[SPY] Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
-local BtnSpoofNPC = ToggleButton(AnalistaPage, "[HACK] Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
-local BtnModuleSpy = ToggleButton(AnalistaPage, "🔍 Extraer Datos y Módulos al Archivo", 5.5, Color3.fromRGB(140, 40, 180))
-local BtnHackDamage = ToggleButton(AnalistaPage, "☠️ [HACK] Interferir Daño (Matar Instante)", 6, Color3.fromRGB(180, 20, 20))
-local BtnGodMode = ToggleButton(AnalistaPage, "🛡️ [HACK] God Mode (Bloquear Daño a TI)", 7, Color3.fromRGB(20, 80, 180))
-
-local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
-AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
-AnalistaLog.BackgroundTransparency = 1
-AnalistaLog.TextColor3 = Color3.fromRGB(120, 255, 120)
-AnalistaLog.Font = Enum.Font.Code
-AnalistaLog.TextSize = 12
-AnalistaLog.Text = "  Status: Esperando..."
-AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
-AnalistaLog.LayoutOrder = 6
-
+-- Helper: serializa cualquier tabla con profundidad configurable
 local function dumpTable(tbl, indent, maxDepth)
     if not indent then indent = "  " end
-    if not maxDepth then maxDepth = 6 end
-    
+    if not maxDepth then maxDepth = 5 end
     if type(tbl) ~= "table" then return tostring(tbl) end
-    if maxDepth <= 0 then return "{ ... max depth ... }" end
-
+    if maxDepth <= 0 then return "{ ... }" end
     local s = "{\n"
-    local seenKeys = {}
+    local seen = {}
     for k, v in pairs(tbl) do
-        if typeof(k) == "Instance" then k = k:GetFullName() end
-        
-        if typeof(v) == "table" and not seenKeys[v] then
-            seenKeys[v] = true
-            s = s .. indent .. "  " .. tostring(k) .. " = " .. dumpTable(v, indent .. "  ", maxDepth - 1) .. ",\n"
-        elseif typeof(v) == "function" then
-            s = s .. indent .. "  " .. tostring(k) .. " = [function],\n"
-        elseif typeof(v) == "Instance" then
-            s = s .. indent .. "  " .. tostring(k) .. " = [Instance: " .. v.ClassName .. "],\n"
+        local ks = (typeof(k) == "Instance") and k:GetFullName() or tostring(k)
+        local vs
+        if typeof(v) == "Instance" then
+            vs = "[Instance: " .. v.ClassName .. " | " .. tostring(v.Name) .. "]"
+        elseif type(v) == "table" and not seen[v] then
+            seen[v] = true
+            vs = dumpTable(v, indent .. "  ", maxDepth - 1)
+        elseif type(v) == "function" or typeof(v) == "function" then
+            vs = "[function]"
         elseif type(v) == "userdata" or typeof(v) == "userdata" then
-            s = s .. indent .. "  " .. tostring(k) .. " = [userdata: " .. typeof(v) .. "],\n"
+            vs = "[" .. typeof(v) .. "]"
         else
-            s = s .. indent .. "  " .. tostring(k) .. " = " .. tostring(v) .. ",\n"
+            vs = tostring(v)
         end
+        s = s .. indent .. "  " .. ks .. " = " .. vs .. ",\n"
     end
-    s = s .. indent .. "}"
-    return s
+    return s .. indent .. "}"
 end
 
+-- Helper: escribe al archivo (append)
+local LOGFILE = "Captured_Data_Analyst.txt"
 local function saveLogToFile(category, name, dataStr)
     pcall(function()
         if not writefile then return end
-        local filename = "Captured_Data_Analyst.txt"
-        local timestamp = tostring(os.date("%Y-%m-%d %H:%M:%S"))
-        local entry = "=========================\n" ..
-                      "[" .. timestamp .. "] " .. category .. ": " .. name .. "\n" ..
-                      dataStr .. "\n\n"
-        
-        if isfile and readfile and isfile(filename) then
-            local old = readfile(filename)
-            writefile(filename, old .. entry)
+        local ts = tostring(os.date("%Y-%m-%d %H:%M:%S"))
+        local entry = "=========================\n[" .. ts .. "] " .. category .. ": " .. tostring(name) .. "\n" .. tostring(dataStr) .. "\n\n"
+        if isfile and readfile and isfile(LOGFILE) then
+            writefile(LOGFILE, readfile(LOGFILE) .. entry)
         else
-            writefile(filename, entry)
+            writefile(LOGFILE, entry)
         end
     end)
 end
 
--- SPY Combat:
-BtnSpyDamage.MouseButton1Click:Connect(function()
-    if _G.SpyingCombat then
-        _G.SpyingCombat = false
-        if _G.ClientEventHooks then
-            for _, conn in ipairs(_G.ClientEventHooks) do
-                conn:Disconnect()
-            end
-            _G.ClientEventHooks = nil
-        end
-        AnalistaLog.Text = "  ⛔ Spy de Combate DETENIDO."
-        return
-    end
-    
-    _G.SpyingCombat = true
-    AnalistaLog.Text = "  [!] Interceptando llamadas de ataque... (ABRE F9)"
-    print("------- INICIANDO SPY DE COMBATE -------")
-    
-    pcall(function()
-        if not _G.OldNamecallCombat then
-            _G.OldNamecallCombat = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.SpyingCombat then return _G.OldNamecallCombat(self, ...) end
-                
-                local method = getnamecallmethod()
-                if not checkcaller() and method == "FireServer" and typeof(self) == "Instance" then
-                    local name = tostring(self.Name)
-                    if name:find("Combat") or name:find("Hit") or name:find("Damage") or name:find("M1") then
-                        print("[SPY DAÑO OUT]: " .. name)
-                        local args = {...}
-                        local dumpStr = dumpTable(args, "  ")
-                        print(dumpStr)
-                        saveLogToFile("DAÑO", name, dumpStr)
-                    end
-                end
-                return _G.OldNamecallCombat(self, ...)
-            end)
-        end
-        
-        -- Hookear de vuelta la respuesta del servidor (Daño Validado / Recibido)
-        if not _G.ClientEventHooks then
-            _G.ClientEventHooks = {}
-            for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                if v:IsA("RemoteEvent") and (v.Name:find("Combat") or v.Name:find("Hit") or v.Name:find("Damage") or v.Name:find("M1") or v.Name:find("Effect")) then
-                    table.insert(_G.ClientEventHooks, v.OnClientEvent:Connect(function(...)
-                        if not _G.SpyingCombat then return end
-                        print("[SPY DAÑO IN (DEL SERVER)]: " .. v.Name)
-                        local args = {...}
-                        local dumpStr = dumpTable(args, "  ")
-                        print(dumpStr)
-                        saveLogToFile("DAÑO_RECIBIDO", v.Name, dumpStr)
-                    end))
-                end
-            end
-        end
-        
-    end)
-end)
+-- ================================================================
+-- UN SOLO BOTÓN — MEGA ANALIZADOR EN VIVO → TODO AL .TXT
+-- ================================================================
+local BtnMega = ToggleButton(AnalistaPage, "🔴  INICIAR MEGA ANALIZADOR  (todo al .txt)", 2, Color3.fromRGB(200, 20, 20))
+BtnMega.LayoutOrder = 2
 
--- SPY NPC:
-BtnSpyNPC.MouseButton1Click:Connect(function()
-    if _G.SpyingNPC then
-        _G.SpyingNPC = false
-        if _G.ClientEventNPCHooks then
-            for _, conn in ipairs(_G.ClientEventNPCHooks) do
-                conn:Disconnect()
-            end
-            _G.ClientEventNPCHooks = nil
+local MegaLog = Instance.new("TextLabel", AnalistaPage)
+MegaLog.Size = UDim2.new(0.95, 0, 0, 35)
+MegaLog.BackgroundTransparency = 1
+MegaLog.TextColor3 = Color3.fromRGB(80, 255, 120)
+MegaLog.Font = Enum.Font.Code
+MegaLog.TextSize = 11
+MegaLog.TextWrapped = true
+MegaLog.TextXAlignment = Enum.TextXAlignment.Left
+MegaLog.LayoutOrder = 3
+MegaLog.Text = "  ⬛ DETENIDO — Presiona para capturar TODO al .txt"
+
+BtnMega.MouseButton1Click:Connect(function()
+    if _G.MegaActivo then
+        _G.MegaActivo = false
+        if _G.MegaConns then
+            for _, c in ipairs(_G.MegaConns) do pcall(function() c:Disconnect() end) end
+            _G.MegaConns = nil
         end
-        AnalistaLog.Text = "  ⛔ Spy de NPC DETENIDO."
+        MegaLog.Text = "  ⬛ DETENIDO — archivo: " .. LOGFILE
         return
     end
-    
-    _G.SpyingNPC = true
-    AnalistaLog.Text = "  [!] Habla con un NPC y abre el F9..."
-    print("------- INICIANDO SPY DE NPCs -------")
-    
+
+    _G.MegaActivo = true
+    _G.MegaConns = {}
+    MegaLog.Text = "  🔴 ACTIVO — capturando TODO al .txt..."
+
     pcall(function()
-        if not _G.OldNamecallNPCHook then
-            _G.OldNamecallNPCHook = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.SpyingNPC then return _G.OldNamecallNPCHook(self, ...) end
-                
+        if writefile then
+            writefile(LOGFILE,
+                "======================================================\n" ..
+                "  MEGA ANALIZADOR — " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n" ..
+                "  FireServer | InvokeServer+RESPUESTA | OnClientEvent | Modulos | Health\n" ..
+                "======================================================\n\n")
+        end
+    end)
+
+    pcall(function()
+        -- HOOK 1: TODO FireServer + InvokeServer (sin filtro, sin checkcaller)
+        if not _G.MegaHookNC then
+            _G.MegaHookNC = hookmetamethod(game, "__namecall", function(self, ...)
                 local method = getnamecallmethod()
-                -- SIN FILTRO: capturamos absolutamente todo FireServer e InvokeServer
-                if (method == "InvokeServer" or method == "FireServer") and typeof(self) == "Instance" then
+                if not _G.MegaActivo then
+                    return _G.MegaHookNC(self, ...)
+                end
+                if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
                     local name = tostring(self.Name)
-                    local args = {...}
-                    local dumpStr = dumpTable(args, "  ")
-                    
+                    local dump = dumpTable({...}, "  ")
                     if method == "InvokeServer" then
-                        print(string.format("[NPC_INVOKE_OUT]: %s", name))
-                        print(dumpStr)
-                        saveLogToFile("NPC_INVOKE_OUT", name, dumpStr)
-                        
-                        -- Capturamos la RESPUESTA exacta del servidor
-                        local response = table.pack(_G.OldNamecallNPCHook(self, ...))
-                        local respDump = dumpTable(response, "  ")
-                        print(string.format("[NPC_INVOKE_RESPUESTA]: %s", name))
-                        print(respDump)
-                        saveLogToFile("NPC_INVOKE_RESPUESTA", name, respDump)
-                        return table.unpack(response, 1, response.n)
+                        saveLogToFile("INVOKE_CLIENTE->SERVER", name, dump)
+                        local resp = table.pack(_G.MegaHookNC(self, ...))
+                        saveLogToFile("INVOKE_SERVER->CLIENTE [RESPUESTA]", name, dumpTable(resp, "  "))
+                        return table.unpack(resp, 1, resp.n)
                     else
-                        print(string.format("[NPC_FIRE]: %s", name))
-                        print(dumpStr)
-                        saveLogToFile("NPC_FIRE", name, dumpStr)
+                        saveLogToFile("FIRE_CLIENTE->SERVER", name, dump)
                     end
                 end
-                return _G.OldNamecallNPCHook(self, ...)
+                return _G.MegaHookNC(self, ...)
             end)
         end
-        
-        -- Interceptar eventos de vuelta (OnClientEvent) para diálogos, recompensas y UI
-        if not _G.ClientEventNPCHooks then
-            _G.ClientEventNPCHooks = {}
-            for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                if v:IsA("RemoteEvent") then
-                    local vn = v.Name:lower()
-                    local isSpam = vn:find("mouse") or vn:find("camera") or vn:find("move") or vn:find("walk") or vn:find("jump")
-                                or vn:find("combat") or vn:find("hit") or vn:find("damage") or vn:find("m1") or vn:find("step")
-                                or vn:find("update") or vn:find("hover") or vn:find("ping")
-                    if not isSpam then
-                        table.insert(_G.ClientEventNPCHooks, v.OnClientEvent:Connect(function(...)
-                            if not _G.SpyingNPC then return end
-                            print("[SPY TRAFICO IN (DEL SERVER)]: " .. v.Name)
-                            local args = {...}
-                            local dumpStr = dumpTable(args, "  ")
-                            print(dumpStr)
-                            saveLogToFile("TRAFICO_RECIBIDO", v.Name, dumpStr)
-                        end))
-                    end
-                end
+
+        -- HOOK 2: OnClientEvent en TODOS los RemoteEvents sin excepción
+        for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                local conn = v.OnClientEvent:Connect(function(...)
+                    if not _G.MegaActivo then return end
+                    saveLogToFile("SERVER->CLIENTE [Event]", v.Name, dumpTable({...}, "  "))
+                end)
+                table.insert(_G.MegaConns, conn)
             end
         end
-        
-    end)
-end)
 
--- SPOOF INV (HACK NPC):
-BtnSpoofNPC.MouseButton1Click:Connect(function()
-    if _G.SpoofingNPC then
-        _G.SpoofingNPC = false
-        AnalistaLog.Text = "  ⛔ Spoof de Inventario DETENIDO."
-        return
-    end
-    
-    _G.SpoofingNPC = true
-    AnalistaLog.Text = "  [!] Spoof activado: El juego creerá que tienes los items."
-    print("------- INICIANDO SPOOF DE INVENTARIO -------")
-    
-    pcall(function()
-        if not _G.OldNamecallInv7 then
-            _G.OldNamecallInv7 = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.SpoofingNPC then return _G.OldNamecallInv7(self, ...) end
-                
-                local method = getnamecallmethod()
-                if not checkcaller() and method == "InvokeServer" and typeof(self) == "Instance" then
-                    local name = tostring(self.Name)
-                    local nl = name:lower()
-                    
-                    if nl:find("check") or nl:find("has") or nl:find("requirement") then
-                        print("[SPOOF] Falsificando respuesta VERDADERA a: " .. name)
-                        return true
-                    end
-                    
-                    if name == "GetItems" or name == "GetStorageData" or name == "GetInventory" then
-                        print("[SPOOF] Advertencia: El NPC intentó leer el inventario completo mediante " .. name)
-                    end
-                end
-                return _G.OldNamecallInv7(self, ...)
-            end)
-        end
-    end)
-end)
-
--- SPY MODULES AND CONSTANTS
-BtnModuleSpy.MouseButton1Click:Connect(function()
-    AnalistaLog.Text = "  [!] Volcando módulos al archivo (Puede dar lag)..."
-    task.spawn(function()
-        pcall(function()
-            if getloadedmodules then
-                local modules = getloadedmodules()
-                local count = 0
-                for _, mod in ipairs(modules) do
-                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
-                        local nl = mod.Name:lower()
-                        if nl:find("data") or nl:find("inventory") or nl:find("item") or nl:find("config") or nl:find("setting") or nl:find("weapon") or nl:find("npc") or nl:find("shop") or nl:find("quest") then
-                            local success, result = pcall(require, mod)
-                            if success and type(result) == "table" then
-                                local dumpStr = dumpTable(result, "  ", 4)
-                                saveLogToFile("MODULE_DATA", mod.Name, dumpStr)
-                                count = count + 1
-                            end
-                        end
-                    end
-                end
-                AnalistaLog.Text = "  ✅ " .. count .. " módulos volcados a Captured_Data_Analyst.txt"
-            else
-                AnalistaLog.Text = "  ❌ Exploit no soporta getloadedmodules()"
-            end
-        end)
-    end)
-end)
-
--- ================================================================
--- HACK: Interferir Daño - hookea __newindex en los Humanoids enemigos
--- Cuando el servidor intenta bajarles vida, nosotros la ponemos a 0
--- ================================================================
-BtnHackDamage.MouseButton1Click:Connect(function()
-    if _G.HackingDamage then
-        _G.HackingDamage = false
-        -- Restaurar todas las conexiones guardadas
-        if _G.DamageHookConnections then
-            for _, conn in ipairs(_G.DamageHookConnections) do
-                pcall(function() conn:Disconnect() end)
-            end
-            _G.DamageHookConnections = nil
-        end
-        AnalistaLog.Text = "  ⛔ Hack de Daño DETENIDO."
-        return
-    end
-    _G.HackingDamage = true
-    _G.DamageHookConnections = {}
-    AnalistaLog.Text = "  [!] Hack de Daño ACTIVO - Eliminando NPCs..."
-    print("------- INICIANDO HACK DE DAÑO -------")
-
-    pcall(function()
-        -- Método 1: hookmetamethod __newindex - intercepta cuando el servidor escribe Health en el Humanoid
-        if not _G.OldNewIndexDamage then
-            _G.OldNewIndexDamage = hookmetamethod(game, "__newindex", function(self, key, value)
-                if not _G.HackingDamage then
-                    return _G.OldNewIndexDamage(self, key, value)
-                end
-                -- Si el servidor intenta modificar la salud de un Humanoid enemigo, la ponemos a 0
-                if key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
+        -- HOOK 3: __newindex — intercepta TODA escritura de Health (daño en vivo)
+        if not _G.MegaHookNI then
+            _G.MegaHookNI = hookmetamethod(game, "__newindex", function(self, key, value)
+                if _G.MegaActivo and key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
                     local char = self.Parent
-                    if char and char ~= game.Players.LocalPlayer.Character then
-                        -- Es un NPC enemigo, forzamos salud a 0
-                        print("[HACK DAÑO] Interceptado Health write en: " .. tostring(char.Name) .. " -> Forzando 0")
-                        return _G.OldNewIndexDamage(self, key, 0)
-                    end
+                    local charName = char and tostring(char.Name) or "?"
+                    local lp = game.Players and game.Players.LocalPlayer
+                    local who = (lp and char == lp.Character) and "JUGADOR" or "NPC"
+                    saveLogToFile("HEALTH_WRITE [" .. who .. "]", charName,
+                        "  Antes=" .. tostring(self.Health) .. "  Nuevo=" .. tostring(value))
                 end
-                return _G.OldNewIndexDamage(self, key, value)
+                return _G.MegaHookNI(self, key, value)
             end)
         end
 
-        -- Método 2: hookfunction en módulos de daño cargados
-        if getloadedmodules then
-            for _, mod in ipairs(getloadedmodules()) do
-                if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
-                    local nl = mod.Name:lower()
-                    if nl:find("damage") or nl:find("combat") or nl:find("hit") then
+        -- HOOK 4: Volcar TODOS los módulos internos al archivo
+        task.spawn(function()
+            if getloadedmodules then
+                for _, mod in ipairs(getloadedmodules()) do
+                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
                         local ok, result = pcall(require, mod)
                         if ok and type(result) == "table" then
-                            for fname, fval in pairs(result) do
-                                if type(fval) == "function" then
-                                    pcall(function()
-                                        local oldFn = fval
-                                        hookfunction(oldFn, function(...)
-                                            if not _G.HackingDamage then return oldFn(...) end
-                                            local args = {...}
-                                            -- Si el primer arg es un Humanoid enemigo, multiplicamos el daño x999
-                                            if args[1] and typeof(args[1]) == "Instance" and args[1].ClassName == "Humanoid" then
-                                                if args[1].Parent ~= game.Players.LocalPlayer.Character then
-                                                    if type(args[2]) == "number" then
-                                                        args[2] = args[1].MaxHealth * 999
-                                                        print("[HACK] Multiplicando daño a: " .. args[1].Parent.Name)
-                                                    end
-                                                end
-                                            end
-                                            return oldFn(table.unpack(args))
-                                        end)
-                                    end)
-                                end
-                            end
+                            saveLogToFile("MODULO", mod.Name, dumpTable(result, "  ", 3))
                         end
                     end
                 end
             end
-        end
-        print("[HACK DAÑO] Sistema activo - __newindex hookeado y módulos intervenidos")
-    end)
-end)
-
--- ================================================================
--- GOD MODE: Intercepta cuando el servidor intenta dañar AL JUGADOR
--- ================================================================
-BtnGodMode.MouseButton1Click:Connect(function()
-    if _G.GodModeActive then
-        _G.GodModeActive = false
-        AnalistaLog.Text = "  ⛔ God Mode DESACTIVADO."
-        return
-    end
-    _G.GodModeActive = true
-    AnalistaLog.Text = "  [!] GOD MODE ACTIVO - Tu vida no baja."
-    print("------- GOD MODE ACTIVADO -------")
-
-    pcall(function()
-        if not _G.OldNewIndexGod then
-            _G.OldNewIndexGod = hookmetamethod(game, "__newindex", function(self, key, value)
-                if not _G.GodModeActive then
-                    return _G.OldNewIndexGod(self, key, value)
-                end
-                -- Si el servidor intenta bajarle la vida al personaje LOCAL, la bloqueamos
-                if key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
-                    local char = self.Parent
-                    local lp = game.Players.LocalPlayer
-                    if char and lp and char == lp.Character then
-                        local currentHP = self.Health
-                        if type(value) == "number" and value < currentHP then
-                            print("[GOD MODE] Bloqueado: Server intentó bajar vida " .. currentHP .. " -> " .. value)
-                            return -- No dejamos que baje la vida
-                        end
-                    end
-                end
-                return _G.OldNewIndexGod(self, key, value)
-            end)
-        end
+        end)
     end)
 end)
 
 
 -- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
 -- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
+
+
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
@@ -2077,7 +1850,7 @@ function GetNearestMob()
             local tHrp = mob:FindFirstChild("HumanoidRootPart")
             if tHrp then
                 local dist = (hrp.Position - tHrp.Position).Magnitude
-                
+
                 -- RESTRICCIÓN DE ISLA / ÁREA LOCAL (Para que no cruce el océano buscando otro Boss/Mob)
                 local isValidDistance = true
                 if #ScannedTargetNames == 0 then
@@ -2227,11 +2000,14 @@ task.spawn(function()
                         local function strictMatch(t)
                             local n = t.Name:lower()
                             if reqType == "Sword" then
-                                return (n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru")) ~= nil
+                                return (n:match("katana") or n:match("sword") or n:match("blade") or n:match("saber") or n:match("cutlass") or n:match("yoru")) ~=
+                                nil
                             elseif reqType == "Fruit" then
-                                return (n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito")) ~= nil
+                                return (n:match("fruit") or n:match("devil") or n:match("mera") or n:match("gura") or n:match("ito")) ~=
+                                nil
                             elseif reqType == "Melee" then
-                                return (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black")) ~= nil
+                                return (n:match("combat") or n:match("melee") or n:match("fist") or n:match("style") or n:match("kick") or n:match("taijutsu") or n:match("black")) ~=
+                                nil
                             end
                             return false
                         end
@@ -2403,7 +2179,7 @@ task.spawn(function()
                         StatusLabel.Text = "Cazando: " .. mob.Name
                         local hrp = char.HumanoidRootPart
                         -- Usar FindFirstChild (no WaitForChild) — el mob ya fue validado en GetNearestMob
-                                        local mobHrp = mob:FindFirstChild("HumanoidRootPart")
+                        local mobHrp = mob:FindFirstChild("HumanoidRootPart")
 
                         if mobHrp then
                             GlobalMagnetTarget = mobHrp.Position
@@ -2498,11 +2274,13 @@ task.spawn(function()
                                         local mobPos = tHrp.Position
 
                                         -- Distancia horizontal actual entre jugador y mob
-                                        local actualHorizVec = Vector3.new(hrp.Position.X - mobPos.X, 0, hrp.Position.Z - mobPos.Z)
+                                        local actualHorizVec = Vector3.new(hrp.Position.X - mobPos.X, 0,
+                                            hrp.Position.Z - mobPos.Z)
                                         local actualHorizDist = actualHorizVec.Magnitude
 
                                         -- Dirección horizontal desde el MOB hacia el JUGADOR
-                                        local toPlayerFlat = actualHorizDist > 0.5 and actualHorizVec.Unit or Vector3.new(0, 0, 1)
+                                        local toPlayerFlat = actualHorizDist > 0.5 and actualHorizVec.Unit or
+                                        Vector3.new(0, 0, 1)
 
                                         local myTargetPos
 
@@ -2523,9 +2301,11 @@ task.spawn(function()
                                                 myTargetPos = Vector3.new(mobPos.X, mobPos.Y + currentOffsetY, mobPos.Z)
                                             elseif currentFarmMode == "Abajo" then
                                                 if actualHorizDist <= targetHoriz then
-                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - currentOffsetY, hrp.Position.Z)
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - currentOffsetY,
+                                                        hrp.Position.Z)
                                                 else
-                                                    myTargetPos = mobPos + Vector3.new(0, -currentOffsetY, 0) + toPlayerFlat * targetHoriz
+                                                    myTargetPos = mobPos + Vector3.new(0, -currentOffsetY, 0) +
+                                                    toPlayerFlat * targetHoriz
                                                 end
                                             elseif currentFarmMode == "Mazmorra" then
                                                 -- ESTÁTICO: quedarse donde está, solo apuntar al boss
@@ -2540,9 +2320,11 @@ task.spawn(function()
                                                 myTargetPos = Vector3.new(mobPos.X, mobPos.Y + math.abs(OfsY), mobPos.Z)
                                             elseif currentFarmMode == "Abajo" then
                                                 if actualHorizDist <= targetHoriz then
-                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - math.abs(OfsY), hrp.Position.Z)
+                                                    myTargetPos = Vector3.new(hrp.Position.X, mobPos.Y - math.abs(OfsY),
+                                                        hrp.Position.Z)
                                                 else
-                                                    myTargetPos = mobPos + Vector3.new(0, -math.abs(OfsY), 0) + toPlayerFlat * targetHoriz
+                                                    myTargetPos = mobPos + Vector3.new(0, -math.abs(OfsY), 0) +
+                                                    toPlayerFlat * targetHoriz
                                                 end
                                             elseif currentFarmMode == "Mazmorra" then
                                                 -- ESTÁTICO: quedarse donde está, solo apuntar al boss
@@ -2586,19 +2368,21 @@ task.spawn(function()
                                                 local safeY = math.max(hrp.Position.Y, mobPos.Y + 1.5)
                                                 local finalX = hrp.Position.X
                                                 local finalZ = hrp.Position.Z
-                                                
+
                                                 if ArenaAnchor then
                                                     local currentFlat = Vector3.new(finalX, 0, finalZ)
                                                     local anchorFlat = Vector3.new(ArenaAnchor.X, 0, ArenaAnchor.Z)
                                                     local d = (currentFlat - anchorFlat).Magnitude
                                                     if d > ArenaRadius then
-                                                        local clamped = anchorFlat + (currentFlat - anchorFlat).Unit * ArenaRadius
+                                                        local clamped = anchorFlat +
+                                                        (currentFlat - anchorFlat).Unit * ArenaRadius
                                                         finalX = clamped.X
                                                         finalZ = clamped.Z
                                                     end
                                                 end
-                                                
-                                                hrp.CFrame = CFrame.lookAt(Vector3.new(finalX, safeY, finalZ), mobPos, Vector3.new(0, 1, 0))
+
+                                                hrp.CFrame = CFrame.lookAt(Vector3.new(finalX, safeY, finalZ), mobPos,
+                                                    Vector3.new(0, 1, 0))
                                             else
                                                 local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                                 if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
@@ -2641,7 +2425,7 @@ task.spawn(function()
                                                 pcall(function()
                                                     hrp.CFrame = CFrame.lookAt(hrp.Position, mobPos, Vector3.new(0, 1, 0))
 
-                                                    local scanKeys = _G.AutoSkillKeys or {"Z", "X", "C", "V"}
+                                                    local scanKeys = _G.AutoSkillKeys or { "Z", "X", "C", "V" }
                                                     for _, keyStr in ipairs(scanKeys) do
                                                         local ok, keyCode = pcall(function() return Enum.KeyCode[keyStr] end)
                                                         if ok and keyCode then
@@ -2737,8 +2521,9 @@ uis.InputBegan:Connect(function(input, processed)
             else
                 ArenaAnchor = char.HumanoidRootPart.Position
                 StatusLabel.Text = "⚔️ Ancla Activada (Radio: " .. ArenaRadius .. " studs)"
-                if ArenaStatusLabel then 
-                    ArenaStatusLabel.Text = "  ⭕ Ancla Arena: ON (" .. math.floor(ArenaAnchor.X) .. ", " .. math.floor(ArenaAnchor.Z) .. ")" 
+                if ArenaStatusLabel then
+                    ArenaStatusLabel.Text = "  ⭕ Ancla Arena: ON (" ..
+                    math.floor(ArenaAnchor.X) .. ", " .. math.floor(ArenaAnchor.Z) .. ")"
                 end
             end
         end
@@ -2933,7 +2718,8 @@ local function LoadConfig()
                         BtnMagnet.BackgroundColor3 = C.accentOn; BtnMagnet.Text = "  🧲 Imán: ACTIVO"
                     end
                     if AutoSkillEnabled then
-                        BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skills: ON (" .. table.concat(_G.AutoSkillKeys or {"Z","X","C","V"}, ", ") .. ")"
+                        BtnSkill.BackgroundColor3 = C.accentOn; BtnSkill.Text = "  🔥 Skills: ON (" ..
+                        table.concat(_G.AutoSkillKeys or { "Z", "X", "C", "V" }, ", ") .. ")"
                     end
                     if TargetBosses == "SoloBoss" then
                         BtnBoss.BackgroundColor3 = Color3.fromRGB(130, 80, 180); BtnBoss.Text = "  👹 Solo Boss"
@@ -2945,40 +2731,43 @@ local function LoadConfig()
                     SliderFill.Size = UDim2.new(math.clamp(PanicThreshold, 0.01, 1), 0, 1, 0)
                     ReturnHealthLabel.Text = "  💚 Vida para Volver — " .. math.floor(ReturnHealthThreshold * 100) .. "%"
                     ReturnSliderFill.Size = UDim2.new(math.clamp(ReturnHealthThreshold, 0.01, 1), 0, 1, 0)
-                                    -- Restaurar UI de Smart Combat
-                                    pcall(function()
-                                        if SmartCombatEnabled then
-                                            BtnSmartHitRun.BackgroundColor3 = C.accentOn
-                                            BtnSmartHitRun.Text = "  🧠 Smart Farm: ON"
-                                            BtnSmartHitRun.TextColor3 = Color3.new(1, 1, 1)
-                                        end
-                                        BtnUseMelee.BackgroundColor3 = SmartUseMelee and Color3.fromRGB(180, 80, 50) or C.card
-                                        BtnUseMelee.Text = "  👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SI" or "NO")
-                                        BtnUseSword.BackgroundColor3 = SmartUseSword and Color3.fromRGB(40, 150, 200) or C.card
-                                        BtnUseSword.Text = "  ⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SI" or "NO")
-                                        BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
-                                        BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SI" or "NO")
-                                        BtnCalibMelee.Text = "  👊 Calibrado COMBATE [Y: -" .. SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
-                                        BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA [Y: -" .. SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
-                                        BtnCalibFruit.Text = "  🍎 Calibrado FRUTA [Y: -" .. SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
-                                        BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
-                                        BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
-                                        if SmartCalib_Fruit_Y > 3 then BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80) end
-                                        if BlinkAttackEnabled then
-                                            BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
-                                            BtnBlink.BackgroundColor3 = C.accentOn
-                                        end
-                                        if data.MemoryPoint and type(data.MemoryPoint) == "table" then
-                                            MemoryPoint = Vector3.new(
-                                                data.MemoryPoint.X or 0,
-                                                data.MemoryPoint.Y or 0,
-                                                data.MemoryPoint.Z or 0)
-                                            MemStatusLabel.Text = "  📍 Punto: " ..
-                                                math.floor(MemoryPoint.X) .. ", " ..
-                                                math.floor(MemoryPoint.Y) .. ", " ..
-                                                math.floor(MemoryPoint.Z)
-                                        end
-                                    end)
+                    -- Restaurar UI de Smart Combat
+                    pcall(function()
+                        if SmartCombatEnabled then
+                            BtnSmartHitRun.BackgroundColor3 = C.accentOn
+                            BtnSmartHitRun.Text = "  🧠 Smart Farm: ON"
+                            BtnSmartHitRun.TextColor3 = Color3.new(1, 1, 1)
+                        end
+                        BtnUseMelee.BackgroundColor3 = SmartUseMelee and Color3.fromRGB(180, 80, 50) or C.card
+                        BtnUseMelee.Text = "  👊 Rotar Combate (Melee): " .. (SmartUseMelee and "SI" or "NO")
+                        BtnUseSword.BackgroundColor3 = SmartUseSword and Color3.fromRGB(40, 150, 200) or C.card
+                        BtnUseSword.Text = "  ⚔️ Rotar Espada (Sword): " .. (SmartUseSword and "SI" or "NO")
+                        BtnUseFruit.BackgroundColor3 = SmartUseFruit and Color3.fromRGB(150, 40, 200) or C.card
+                        BtnUseFruit.Text = "  🍎 Rotar Fruta (Fruit): " .. (SmartUseFruit and "SI" or "NO")
+                        BtnCalibMelee.Text = "  👊 Calibrado COMBATE [Y: -" ..
+                        SmartCalib_Melee_Y .. " | Z: " .. SmartCalib_Melee_Z .. "]"
+                        BtnCalibSword.Text = "  ⚔️ Calibrado ESPADA [Y: -" ..
+                        SmartCalib_Sword_Y .. " | Z: " .. SmartCalib_Sword_Z .. "]"
+                        BtnCalibFruit.Text = "  🍎 Calibrado FRUTA [Y: -" ..
+                        SmartCalib_Fruit_Y .. " | Z: " .. SmartCalib_Fruit_Z .. "]"
+                        BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                        BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
+                        if SmartCalib_Fruit_Y > 3 then BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80) end
+                        if BlinkAttackEnabled then
+                            BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
+                            BtnBlink.BackgroundColor3 = C.accentOn
+                        end
+                        if data.MemoryPoint and type(data.MemoryPoint) == "table" then
+                            MemoryPoint = Vector3.new(
+                                data.MemoryPoint.X or 0,
+                                data.MemoryPoint.Y or 0,
+                                data.MemoryPoint.Z or 0)
+                            MemStatusLabel.Text = "  📍 Punto: " ..
+                                math.floor(MemoryPoint.X) .. ", " ..
+                                math.floor(MemoryPoint.Y) .. ", " ..
+                                math.floor(MemoryPoint.Z)
+                        end
+                    end)
                 end
             end)
         end
@@ -3219,7 +3008,7 @@ task.spawn(function()
                             if hrpLand then
                                 local rayParams = RaycastParams.new()
                                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                                rayParams.FilterDescendantsInstances = {charLand}
+                                rayParams.FilterDescendantsInstances = { charLand }
                                 -- Raycast hacia abajo para encontrar el suelo
                                 local rayResult = Workspace:Raycast(hrpLand.Position, Vector3.new(0, -300, 0), rayParams)
                                 if rayResult then
@@ -3264,164 +3053,164 @@ task.spawn(function()
                         -- Ya estamos en la isla correcta, boss muerto o fuera de rango
                         targetStep.DeadTime = os.time()
                     else
-                    -- ================== FASE 2: Navegación Viajera ==================
-                    -- Solo viajamos si confirmamos que el boss está en OTRA isla
-                    local nearestPortal = nil
-                    local shortestDist = math.huge
-                    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        -- ================== FASE 2: Navegación Viajera ==================
+                        -- Solo viajamos si confirmamos que el boss está en OTRA isla
+                        local nearestPortal = nil
+                        local shortestDist = math.huge
+                        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 
-                    if hrp then
-                        for _, obj in pairs(workspace:GetDescendants()) do
-                            if obj:IsA("ProximityPrompt") and (obj.ActionText:lower():match("map") or obj.Name:lower():match("portal") or obj.ActionText:lower():match("teleport")) then
-                                local pPart = obj.Parent
-                                if pPart and pPart:IsA("BasePart") then
-                                    local dist = (pPart.Position - hrp.Position).Magnitude
-                                    if dist < shortestDist then
-                                        shortestDist = dist
-                                        nearestPortal = obj
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    if nearestPortal and nearestPortal.Parent then
-                        -- Volamos suavemente con NoClip hasta el Portal
-                        _G.GhostProtocolEnabled = true
-                        GhostProtocolEnabled = true  -- sincronizar con variable local del Ghost loop
-                        local targetCF = nearestPortal.Parent.CFrame * CFrame.new(0, 3, 0)
-
-                        while hrp and (hrp.Position - targetCF.Position).Magnitude > 6 and _G.AutoHuntActive do
-                            task.wait()
-                            hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                            if hrp then
-                                local flyDist = (hrp.Position - targetCF.Position).Magnitude
-                                local flyStep = math.clamp(50 / flyDist, 0, 1) -- 50 studs de velocidad suave
-                                LP.Character:PivotTo(hrp.CFrame:Lerp(targetCF, flyStep))
-                                if hrp:FindFirstChildOfClass("BodyVelocity") then
-                                    hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
-                                end
-                            end
-                        end
-
-                        task.wait(0.5)
-                        -- Al estar físicamente en el Portal, accionamos el Prompt para abrir la UI como una persona real
-                        -- Quitamos la duración de mantener pulsado ('E') para accionar instantáneamente
-                        if nearestPortal:IsA("ProximityPrompt") then
-                            local oldHold = nearestPortal.HoldDuration
-                            nearestPortal.HoldDuration = 0
-                            task.wait(0.1)
-                            pcall(function() fireproximityprompt(nearestPortal) end)
-                            task.wait(0.1)
-                            nearestPortal.HoldDuration = oldHold
-                        else
-                            pcall(function() fireproximityprompt(nearestPortal) end)
-                        end
-                        task.wait(1.5) -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
-
-                        -- Simulamos el clic a la UI dándole a la Isla seleccionada (Validado desde el portal)
-                        local rs = game:GetService("ReplicatedStorage")
-                        pcall(function()
-                            if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
-                                rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
-                            end
-                        end)
-                    else
-                        -- Fallback si el creador esconde el portal pero estamos en la isla (muy raro)
-                        local rs = game:GetService("ReplicatedStorage")
-                        pcall(function()
-                            if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
-                                rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
-                            end
-                        end)
-                    end
-                    task.wait(3) -- Esperamos pantalla de carga
-
-                    -- Forzamos ocultación de un submenú "Cancelar" o "X" por si la UI se queda bug visualmente al viajar
-                    pcall(function()
-                        local playerGui = LP.PlayerGui
-                        for _, btn in pairs(playerGui:GetDescendants()) do
-                            if btn:IsA("TextButton") or btn:IsA("ImageButton") then
-                                local btnText = (btn:IsA("TextButton") and btn.Text:lower()) or btn.Name:lower()
-                                if btnText:match("cancel") or btnText:match("close") or btnText:match("cerrar") or btnText == "x" then
-                                    local parent = btn
-                                    while parent and parent.ClassName ~= "ScreenGui" do
-                                        if type(parent) == "userdata" and parent:IsA("Frame") then parent.Visible = false end
-                                        parent = parent.Parent
-                                    end
-                                end
-                            end
-                        end
-                    end)
-
-                    -- Espera OBLIGATORIA de 5 SEGUNDOS al lado del portal recién llegados a la nueva isla
-                    task.wait(5)
-
-                    -- Re-Chequeo tras espera por si recién spawnearon los modelos
-                    local postAlive = false
-                    local postBossModel = nil
-                    for _, m in pairs(GetMobCache()) do
-                        if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
-                            postAlive = true
-                            if m:FindFirstChild("HumanoidRootPart") then postBossModel = m end
-                            break
-                        end
-                    end
-
-                    if postAlive and postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
-                        -- ========= FASE 3: Acercamiento Segmentado (post-viaje) =========
-                        -- Volar en tramos de ~80 studs con pausa de 2s en el piso entre cada uno
-                        local hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                        if hrpA then
-                            local bossPos = postBossModel.HumanoidRootPart.Position
-                            local totalDist = (hrpA.Position - bossPos).Magnitude
-                            local segmentSize = 80
-
-                            while totalDist > 35 and _G.AutoHuntActive do
-                                local dir = (bossPos - hrpA.Position).Unit
-                                local hopLen = math.min(segmentSize, totalDist - 25)
-                                local nextPt = hrpA.Position + dir * hopLen
-                                local dest = CFrame.new(nextPt + Vector3.new(0, 8, 0))
-
-                                -- Vuelo corto con NoClip
-                                _G.GhostProtocolEnabled = true
-                                GhostProtocolEnabled = true
-                                while hrpA and (hrpA.Position - dest.Position).Magnitude > 6 and _G.AutoHuntActive do
-                                    task.wait()
-                                    hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                                    pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
-                                    if hrpA then
-                                        local fd = (hrpA.Position - dest.Position).Magnitude
-                                        local fs = math.clamp(40 / fd, 0, 1)
-                                        LP.Character:PivotTo(hrpA.CFrame:Lerp(dest, fs))
-                                        if hrpA:FindFirstChildOfClass("BodyVelocity") then
-                                            hrpA:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                        if hrp then
+                            for _, obj in pairs(workspace:GetDescendants()) do
+                                if obj:IsA("ProximityPrompt") and (obj.ActionText:lower():match("map") or obj.Name:lower():match("portal") or obj.ActionText:lower():match("teleport")) then
+                                    local pPart = obj.Parent
+                                    if pPart and pPart:IsA("BasePart") then
+                                        local dist = (pPart.Position - hrp.Position).Magnitude
+                                        if dist < shortestDist then
+                                            shortestDist = dist
+                                            nearestPortal = obj
                                         end
                                     end
                                 end
+                            end
+                        end
 
-                                -- Aterrizar y pausar 2 segundos (simular humano)
+                        if nearestPortal and nearestPortal.Parent then
+                            -- Volamos suavemente con NoClip hasta el Portal
+                            _G.GhostProtocolEnabled = true
+                            GhostProtocolEnabled = true -- sincronizar con variable local del Ghost loop
+                            local targetCF = nearestPortal.Parent.CFrame * CFrame.new(0, 3, 0)
+
+                            while hrp and (hrp.Position - targetCF.Position).Magnitude > 6 and _G.AutoHuntActive do
+                                task.wait()
+                                hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    local flyDist = (hrp.Position - targetCF.Position).Magnitude
+                                    local flyStep = math.clamp(50 / flyDist, 0, 1) -- 50 studs de velocidad suave
+                                    LP.Character:PivotTo(hrp.CFrame:Lerp(targetCF, flyStep))
+                                    if hrp:FindFirstChildOfClass("BodyVelocity") then
+                                        hrp:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                                    end
+                                end
+                            end
+
+                            task.wait(0.5)
+                            -- Al estar físicamente en el Portal, accionamos el Prompt para abrir la UI como una persona real
+                            -- Quitamos la duración de mantener pulsado ('E') para accionar instantáneamente
+                            if nearestPortal:IsA("ProximityPrompt") then
+                                local oldHold = nearestPortal.HoldDuration
+                                nearestPortal.HoldDuration = 0
+                                task.wait(0.1)
+                                pcall(function() fireproximityprompt(nearestPortal) end)
+                                task.wait(0.1)
+                                nearestPortal.HoldDuration = oldHold
+                            else
+                                pcall(function() fireproximityprompt(nearestPortal) end)
+                            end
+                            task.wait(1.5) -- Esperamos que la ventana visual de las islas cargue en nuestra pantalla
+
+                            -- Simulamos el clic a la UI dándole a la Isla seleccionada (Validado desde el portal)
+                            local rs = game:GetService("ReplicatedStorage")
+                            pcall(function()
+                                if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
+                                    rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                                end
+                            end)
+                        else
+                            -- Fallback si el creador esconde el portal pero estamos en la isla (muy raro)
+                            local rs = game:GetService("ReplicatedStorage")
+                            pcall(function()
+                                if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("TeleportToPortal") then
+                                    rs.Remotes.TeleportToPortal:FireServer(targetStep.Island)
+                                end
+                            end)
+                        end
+                        task.wait(3) -- Esperamos pantalla de carga
+
+                        -- Forzamos ocultación de un submenú "Cancelar" o "X" por si la UI se queda bug visualmente al viajar
+                        pcall(function()
+                            local playerGui = LP.PlayerGui
+                            for _, btn in pairs(playerGui:GetDescendants()) do
+                                if btn:IsA("TextButton") or btn:IsA("ImageButton") then
+                                    local btnText = (btn:IsA("TextButton") and btn.Text:lower()) or btn.Name:lower()
+                                    if btnText:match("cancel") or btnText:match("close") or btnText:match("cerrar") or btnText == "x" then
+                                        local parent = btn
+                                        while parent and parent.ClassName ~= "ScreenGui" do
+                                            if type(parent) == "userdata" and parent:IsA("Frame") then parent.Visible = false end
+                                            parent = parent.Parent
+                                        end
+                                    end
+                                end
+                            end
+                        end)
+
+                        -- Espera OBLIGATORIA de 5 SEGUNDOS al lado del portal recién llegados a la nueva isla
+                        task.wait(5)
+
+                        -- Re-Chequeo tras espera por si recién spawnearon los modelos
+                        local postAlive = false
+                        local postBossModel = nil
+                        for _, m in pairs(GetMobCache()) do
+                            if m.Name == targetStep.Boss and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                                postAlive = true
+                                if m:FindFirstChild("HumanoidRootPart") then postBossModel = m end
+                                break
+                            end
+                        end
+
+                        if postAlive and postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
+                            -- ========= FASE 3: Acercamiento Segmentado (post-viaje) =========
+                            -- Volar en tramos de ~80 studs con pausa de 2s en el piso entre cada uno
+                            local hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                            if hrpA then
+                                local bossPos = postBossModel.HumanoidRootPart.Position
+                                local totalDist = (hrpA.Position - bossPos).Magnitude
+                                local segmentSize = 80
+
+                                while totalDist > 35 and _G.AutoHuntActive do
+                                    local dir = (bossPos - hrpA.Position).Unit
+                                    local hopLen = math.min(segmentSize, totalDist - 25)
+                                    local nextPt = hrpA.Position + dir * hopLen
+                                    local dest = CFrame.new(nextPt + Vector3.new(0, 8, 0))
+
+                                    -- Vuelo corto con NoClip
+                                    _G.GhostProtocolEnabled = true
+                                    GhostProtocolEnabled = true
+                                    while hrpA and (hrpA.Position - dest.Position).Magnitude > 6 and _G.AutoHuntActive do
+                                        task.wait()
+                                        hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                                        pcall(function() workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid end)
+                                        if hrpA then
+                                            local fd = (hrpA.Position - dest.Position).Magnitude
+                                            local fs = math.clamp(40 / fd, 0, 1)
+                                            LP.Character:PivotTo(hrpA.CFrame:Lerp(dest, fs))
+                                            if hrpA:FindFirstChildOfClass("BodyVelocity") then
+                                                hrpA:FindFirstChildOfClass("BodyVelocity").Velocity = Vector3.new(0, 0, 0)
+                                            end
+                                        end
+                                    end
+
+                                    -- Aterrizar y pausar 2 segundos (simular humano)
+                                    _G.GhostProtocolEnabled = false
+                                    GhostProtocolEnabled = false
+                                    task.wait(2)
+
+                                    -- Recalcular distancia con posición live del boss
+                                    hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                                    if not hrpA then break end
+                                    pcall(function()
+                                        if postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
+                                            bossPos = postBossModel.HumanoidRootPart.Position
+                                        end
+                                    end)
+                                    totalDist = (hrpA.Position - bossPos).Magnitude
+                                end
                                 _G.GhostProtocolEnabled = false
                                 GhostProtocolEnabled = false
-                                task.wait(2)
-
-                                -- Recalcular distancia con posición live del boss
-                                hrpA = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-                                if not hrpA then break end
-                                pcall(function()
-                                    if postBossModel and postBossModel:FindFirstChild("HumanoidRootPart") then
-                                        bossPos = postBossModel.HumanoidRootPart.Position
-                                    end
-                                end)
-                                totalDist = (hrpA.Position - bossPos).Magnitude
                             end
-                            _G.GhostProtocolEnabled = false
-                            GhostProtocolEnabled = false
+                        elseif not postAlive then
+                            -- Si NO está después de viajar, otra persona en el servidor lo mató antes
+                            targetStep.DeadTime = os.time()
                         end
-                    elseif not postAlive then
-                        -- Si NO está después de viajar, otra persona en el servidor lo mató antes
-                        targetStep.DeadTime = os.time()
-                    end
                     end
                 end
             end
