@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM88"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1499,6 +1499,8 @@ local BtnSpyDamage = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o"
 local BtnSpyNPC = ToggleButton(AnalistaPage, "[SPY] Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
 local BtnSpoofNPC = ToggleButton(AnalistaPage, "[HACK] Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
 local BtnModuleSpy = ToggleButton(AnalistaPage, "🔍 Extraer Datos y Módulos al Archivo", 5.5, Color3.fromRGB(140, 40, 180))
+local BtnHackDamage = ToggleButton(AnalistaPage, "☠️ [HACK] Interferir Daño (Matar Instante)", 6, Color3.fromRGB(180, 20, 20))
+local BtnGodMode = ToggleButton(AnalistaPage, "🛡️ [HACK] God Mode (Bloquear Daño a TI)", 7, Color3.fromRGB(20, 80, 180))
 
 local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
 AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
@@ -1639,21 +1641,28 @@ BtnSpyNPC.MouseButton1Click:Connect(function()
                 if not _G.SpyingNPC then return _G.OldNamecallNPCHook(self, ...) end
                 
                 local method = getnamecallmethod()
-                if not checkcaller() and (method == "InvokeServer" or method == "FireServer") and typeof(self) == "Instance" then
+                -- SIN FILTRO: capturamos absolutamente todo FireServer e InvokeServer
+                if (method == "InvokeServer" or method == "FireServer") and typeof(self) == "Instance" then
                     local name = tostring(self.Name)
-                    local nl = name:lower()
+                    local args = {...}
+                    local dumpStr = dumpTable(args, "  ")
                     
-                    -- Blacklist de remotes spam por movimiento, mouse, o combate (que ya escaneamos por separado)
-                    local isSpam = nl:find("mouse") or nl:find("camera") or nl:find("move") or nl:find("walk") or nl:find("jump")
-                                or nl:find("combat") or nl:find("hit") or nl:find("damage") or nl:find("m1") or nl:find("step")
-                                or nl:find("update") or nl:find("hover") or nl:find("ping")
-                                
-                    if not isSpam then
-                        print(string.format("[SPY NETWORK %s]: %s", method, name))
-                        local args = {...}
-                        local dumpStr = dumpTable(args, "  ")
+                    if method == "InvokeServer" then
+                        print(string.format("[NPC_INVOKE_OUT]: %s", name))
                         print(dumpStr)
-                        saveLogToFile("TRAFICO_" .. method:upper(), name, dumpStr)
+                        saveLogToFile("NPC_INVOKE_OUT", name, dumpStr)
+                        
+                        -- Capturamos la RESPUESTA exacta del servidor
+                        local response = table.pack(_G.OldNamecallNPCHook(self, ...))
+                        local respDump = dumpTable(response, "  ")
+                        print(string.format("[NPC_INVOKE_RESPUESTA]: %s", name))
+                        print(respDump)
+                        saveLogToFile("NPC_INVOKE_RESPUESTA", name, respDump)
+                        return table.unpack(response, 1, response.n)
+                    else
+                        print(string.format("[NPC_FIRE]: %s", name))
+                        print(dumpStr)
+                        saveLogToFile("NPC_FIRE", name, dumpStr)
                     end
                 end
                 return _G.OldNamecallNPCHook(self, ...)
@@ -1749,6 +1758,123 @@ BtnModuleSpy.MouseButton1Click:Connect(function()
                 AnalistaLog.Text = "  ❌ Exploit no soporta getloadedmodules()"
             end
         end)
+    end)
+end)
+
+-- ================================================================
+-- HACK: Interferir Daño - hookea __newindex en los Humanoids enemigos
+-- Cuando el servidor intenta bajarles vida, nosotros la ponemos a 0
+-- ================================================================
+BtnHackDamage.MouseButton1Click:Connect(function()
+    if _G.HackingDamage then
+        _G.HackingDamage = false
+        -- Restaurar todas las conexiones guardadas
+        if _G.DamageHookConnections then
+            for _, conn in ipairs(_G.DamageHookConnections) do
+                pcall(function() conn:Disconnect() end)
+            end
+            _G.DamageHookConnections = nil
+        end
+        AnalistaLog.Text = "  ⛔ Hack de Daño DETENIDO."
+        return
+    end
+    _G.HackingDamage = true
+    _G.DamageHookConnections = {}
+    AnalistaLog.Text = "  [!] Hack de Daño ACTIVO - Eliminando NPCs..."
+    print("------- INICIANDO HACK DE DAÑO -------")
+
+    pcall(function()
+        -- Método 1: hookmetamethod __newindex - intercepta cuando el servidor escribe Health en el Humanoid
+        if not _G.OldNewIndexDamage then
+            _G.OldNewIndexDamage = hookmetamethod(game, "__newindex", function(self, key, value)
+                if not _G.HackingDamage then
+                    return _G.OldNewIndexDamage(self, key, value)
+                end
+                -- Si el servidor intenta modificar la salud de un Humanoid enemigo, la ponemos a 0
+                if key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
+                    local char = self.Parent
+                    if char and char ~= game.Players.LocalPlayer.Character then
+                        -- Es un NPC enemigo, forzamos salud a 0
+                        print("[HACK DAÑO] Interceptado Health write en: " .. tostring(char.Name) .. " -> Forzando 0")
+                        return _G.OldNewIndexDamage(self, key, 0)
+                    end
+                end
+                return _G.OldNewIndexDamage(self, key, value)
+            end)
+        end
+
+        -- Método 2: hookfunction en módulos de daño cargados
+        if getloadedmodules then
+            for _, mod in ipairs(getloadedmodules()) do
+                if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                    local nl = mod.Name:lower()
+                    if nl:find("damage") or nl:find("combat") or nl:find("hit") then
+                        local ok, result = pcall(require, mod)
+                        if ok and type(result) == "table" then
+                            for fname, fval in pairs(result) do
+                                if type(fval) == "function" then
+                                    pcall(function()
+                                        local oldFn = fval
+                                        hookfunction(oldFn, function(...)
+                                            if not _G.HackingDamage then return oldFn(...) end
+                                            local args = {...}
+                                            -- Si el primer arg es un Humanoid enemigo, multiplicamos el daño x999
+                                            if args[1] and typeof(args[1]) == "Instance" and args[1].ClassName == "Humanoid" then
+                                                if args[1].Parent ~= game.Players.LocalPlayer.Character then
+                                                    if type(args[2]) == "number" then
+                                                        args[2] = args[1].MaxHealth * 999
+                                                        print("[HACK] Multiplicando daño a: " .. args[1].Parent.Name)
+                                                    end
+                                                end
+                                            end
+                                            return oldFn(table.unpack(args))
+                                        end)
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        print("[HACK DAÑO] Sistema activo - __newindex hookeado y módulos intervenidos")
+    end)
+end)
+
+-- ================================================================
+-- GOD MODE: Intercepta cuando el servidor intenta dañar AL JUGADOR
+-- ================================================================
+BtnGodMode.MouseButton1Click:Connect(function()
+    if _G.GodModeActive then
+        _G.GodModeActive = false
+        AnalistaLog.Text = "  ⛔ God Mode DESACTIVADO."
+        return
+    end
+    _G.GodModeActive = true
+    AnalistaLog.Text = "  [!] GOD MODE ACTIVO - Tu vida no baja."
+    print("------- GOD MODE ACTIVADO -------")
+
+    pcall(function()
+        if not _G.OldNewIndexGod then
+            _G.OldNewIndexGod = hookmetamethod(game, "__newindex", function(self, key, value)
+                if not _G.GodModeActive then
+                    return _G.OldNewIndexGod(self, key, value)
+                end
+                -- Si el servidor intenta bajarle la vida al personaje LOCAL, la bloqueamos
+                if key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
+                    local char = self.Parent
+                    local lp = game.Players.LocalPlayer
+                    if char and lp and char == lp.Character then
+                        local currentHP = self.Health
+                        if type(value) == "number" and value < currentHP then
+                            print("[GOD MODE] Bloqueado: Server intentó bajar vida " .. currentHP .. " -> " .. value)
+                            return -- No dejamos que baje la vida
+                        end
+                    end
+                end
+                return _G.OldNewIndexGod(self, key, value)
+            end)
+        end
     end)
 end)
 
