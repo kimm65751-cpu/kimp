@@ -1492,747 +1492,102 @@ task.delay(2, RefreshRouteFileList)
 
 -- =======================================================================================
 -- =========================================================================================
--- ========== TAB 6: ANALIZADOR MITM Y SPOOF NPC ==========
+-- ========== TAB 6: INVISIBILITY FRUIT ANALYZER ==========
 -- =========================================================================================
 local AnalistaPage = MakeScrollPage("Analizador")
 
-SectionLabel(AnalistaPage, "MEGA ANALIZADOR EN VIVO", 1)
+SectionLabel(AnalistaPage, "HERRAMIENTAS DE FRUTAS Y MOVILIDAD", 1)
 
--- Helper: serializa cualquier tabla con profundidad configurable
-local function dumpTable(tbl, indent, maxDepth)
-    if not indent then indent = "  " end
-    if not maxDepth then maxDepth = 5 end
-    if type(tbl) ~= "table" then return tostring(tbl) end
-    if maxDepth <= 0 then return "{ ... }" end
-    local s = "{\n"
-    local seen = {}
-    for k, v in pairs(tbl) do
-        local ks = (typeof(k) == "Instance") and k:GetFullName() or tostring(k)
-        local vs
-        if typeof(v) == "Instance" then
-            vs = "[Instance: " .. v.ClassName .. " | " .. tostring(v.Name) .. "]"
-        elseif type(v) == "table" and not seen[v] then
-            seen[v] = true
-            vs = dumpTable(v, indent .. "  ", maxDepth - 1)
-        elseif type(v) == "function" or typeof(v) == "function" then
-            vs = "[function]"
-        elseif type(v) == "userdata" or typeof(v) == "userdata" then
-            vs = "[" .. typeof(v) .. "]"
-        else
-            vs = tostring(v)
-        end
-        s = s .. indent .. "  " .. ks .. " = " .. vs .. ",\n"
-    end
-    return s .. indent .. "}"
-end
+local FruitLog = Instance.new("TextLabel", AnalistaPage)
+FruitLog.Size = UDim2.new(0.95, 0, 0, 80)
+FruitLog.BackgroundTransparency = 1
+FruitLog.TextColor3 = Color3.fromRGB(150, 200, 150)
+FruitLog.TextXAlignment = Enum.TextXAlignment.Left
+FruitLog.TextYAlignment = Enum.TextYAlignment.Top
+FruitLog.Font = Enum.Font.Code
+FruitLog.TextSize = 12
+FruitLog.TextWrapped = true
+FruitLog.LayoutOrder = 2
+FruitLog.Text = "  [LOG] Esperando acción..."
 
--- Helper: escribe al archivo (append)
-local LOGFILE = "Captured_Data_Analyst.txt"
-local function saveLogToFile(category, name, dataStr)
+-- Botón para probar DashRemote con 500 de distancia
+local BtnDashTest = ToggleButton(AnalistaPage, "🚀 Probar DashRemote (Distancia: 500)", 3, Color3.fromRGB(80, 150, 200))
+BtnDashTest.MouseButton1Click:Connect(function()
     pcall(function()
-        if not writefile then return end
-        local ts = tostring(os.date("%Y-%m-%d %H:%M:%S"))
-        local entry = "=========================\n[" ..
-        ts .. "] " .. category .. ": " .. tostring(name) .. "\n" .. tostring(dataStr) .. "\n\n"
-        if isfile and readfile and isfile(LOGFILE) then
-            writefile(LOGFILE, readfile(LOGFILE) .. entry)
+        local dashRemote = ReplicatedStorage:FindFirstChild("DashRemote", true)
+        if dashRemote and typeof(dashRemote) == "Instance" and dashRemote:IsA("RemoteEvent") then
+            dashRemote:FireServer(Vector3.new(0, 1, 0), 500)
+            FruitLog.Text = "  [Dash] 'DashRemote' enviado con éxito. MIRA TU POSICIÓN."
         else
-            writefile(LOGFILE, entry)
+            FruitLog.Text = "  [Dash] Error: RemoteEvent 'DashRemote' no encontrado."
         end
     end)
-end
+end)
 
--- ================================================================
--- UN SOLO BOTÓN — MEGA ANALIZADOR EN VIVO → TODO AL .TXT
--- ================================================================
-local BtnMega = ToggleButton(AnalistaPage, "🔴  INICIAR MEGA ANALIZADOR  (todo al .txt)", 2, Color3.fromRGB(200, 20, 20))
-BtnMega.LayoutOrder = 2
+-- Botón para Iniciar Scanner de Fruta Invisible
+local BtnFruitScan = ToggleButton(AnalistaPage, "🔍 Analizar Fruta de Invisibilidad", 4, Color3.fromRGB(150, 80, 200))
+_G.FruitScaning = false
 
-local MegaLog = Instance.new("TextLabel", AnalistaPage)
-MegaLog.Size = UDim2.new(0.95, 0, 0, 35)
-MegaLog.BackgroundTransparency = 1
-MegaLog.TextColor3 = Color3.fromRGB(80, 255, 120)
-MegaLog.Font = Enum.Font.Code
-MegaLog.TextSize = 11
-MegaLog.TextWrapped = true
-MegaLog.TextXAlignment = Enum.TextXAlignment.Left
-MegaLog.LayoutOrder = 3
-MegaLog.Text = "  ⬛ DETENIDO — Presiona para capturar TODO al .txt"
-
-BtnMega.MouseButton1Click:Connect(function()
-    if _G.MegaActivo then
-        _G.MegaActivo = false
-        if _G.MegaConns then
-            for _, c in ipairs(_G.MegaConns) do pcall(function() c:Disconnect() end) end
-            _G.MegaConns = nil
+BtnFruitScan.MouseButton1Click:Connect(function()
+    _G.FruitScaning = not _G.FruitScaning
+    BtnFruitScan.Text = _G.FruitScaning and "⏹️ Detener Análisis de Fruta" or "🔍 Analizar Fruta de Invisibilidad"
+    BtnFruitScan.BackgroundColor3 = _G.FruitScaning and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(150, 80, 200)
+    
+    if _G.FruitScaning then
+        FruitLog.Text = "  [Scanner Activo] Utiliza la Invisibilidad en el juego para interceptar el tráfico. Revisa F9 o este Log..."
+        
+        local function LogFruitEvent(msg)
+            FruitLog.Text = msg
+            print(msg)
+            if writefile then
+                pcall(function()
+                    local exists = ""
+                    if readfile then pcall(function() exists = readfile("FruitScans.txt") end) end
+                    writefile("FruitScans.txt", exists .. "\n" .. msg)
+                end)
+            end
         end
-        MegaLog.Text = "  ⬛ DETENIDO — archivo: " .. LOGFILE
-        return
-    end
 
-    _G.MegaActivo = true
-    _G.MegaConns = {}
-    MegaLog.Text = "  🔴 ACTIVO — capturando TODO al .txt..."
+        LogFruitEvent("--- INICIO DE ESCANEO DE FRUTA ---")
 
-    pcall(function()
-        if writefile then
-            writefile(LOGFILE,
-                "======================================================\n" ..
-                "  MEGA ANALIZADOR — " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n" ..
-                "  FireServer | InvokeServer+RESPUESTA | OnClientEvent | Modulos | Health\n" ..
-                "======================================================\n\n")
-        end
-    end)
-
-    pcall(function()
-        -- HOOK 1: TODO FireServer + InvokeServer (sin filtro, sin checkcaller)
-        if not _G.MegaHookNC then
-            _G.MegaHookNC = hookmetamethod(game, "__namecall", function(self, ...)
+        if not _G.FruitHookNC then
+            _G.FruitHookNC = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.FruitScaning then return _G.FruitHookNC(self, ...) end
                 local method = getnamecallmethod()
-                if not _G.MegaActivo then
-                    return _G.MegaHookNC(self, ...)
-                end
                 if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
                     local name = tostring(self.Name)
-                    local dump = dumpTable({ ... }, "  ")
-                    if method == "InvokeServer" then
-                        saveLogToFile("INVOKE_CLIENTE->SERVER", name, dump)
-                        local resp = table.pack(_G.MegaHookNC(self, ...))
-                        saveLogToFile("INVOKE_SERVER->CLIENTE [RESPUESTA]", name, dumpTable(resp, "  "))
-                        return table.unpack(resp, 1, resp.n)
-                    else
-                        saveLogToFile("FIRE_CLIENTE->SERVER", name, dump)
+                    if not name:find("Mouse") and not name:find("Step") and not name:find("Act") and not name:find("Ping") and not name:find("Camera") then
+                        local args = {...}
+                        local argStr = "[ARGS]: "
+                        for i,v in ipairs(args) do argStr = argStr .. tostring(i).. "="..tostring(v)..", " end
+                        LogFruitEvent("🍉 [C->S] " .. name .. " | " .. argStr)
                     end
                 end
-                return _G.MegaHookNC(self, ...)
+                return _G.FruitHookNC(self, ...)
             end)
         end
-
-        -- HOOK 2: OnClientEvent en TODOS los RemoteEvents sin excepción
-        for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-            if v:IsA("RemoteEvent") then
-                local conn = v.OnClientEvent:Connect(function(...)
-                    if not _G.MegaActivo then return end
-                    saveLogToFile("SERVER->CLIENTE [Event]", v.Name, dumpTable({ ... }, "  "))
-                end)
-                table.insert(_G.MegaConns, conn)
-            end
-        end
-
-        -- HOOK 3: __newindex — intercepta TODA escritura de Health (daño en vivo)
-        if not _G.MegaHookNI then
-            _G.MegaHookNI = hookmetamethod(game, "__newindex", function(self, key, value)
-                if _G.MegaActivo and key == "Health" and typeof(self) == "Instance" and self.ClassName == "Humanoid" then
-                    local char = self.Parent
-                    local charName = char and tostring(char.Name) or "?"
-                    local lp = game.Players and game.Players.LocalPlayer
-                    local who = (lp and char == lp.Character) and "JUGADOR" or "NPC"
-                    saveLogToFile("HEALTH_WRITE [" .. who .. "]", charName,
-                        "  Antes=" .. tostring(self.Health) .. "  Nuevo=" .. tostring(value))
-                end
-                return _G.MegaHookNI(self, key, value)
-            end)
-        end
-
-        -- HOOK 4: Volcar TODOS los módulos internos al archivo
-        task.spawn(function()
-            if getloadedmodules then
-                for _, mod in ipairs(getloadedmodules()) do
-                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
-                        local ok, result = pcall(require, mod)
-                        if ok and type(result) == "table" then
-                            saveLogToFile("MODULO", mod.Name, dumpTable(result, "  ", 3))
-                        end
-                    end
-                end
-            end
-        end)
-    end)
-end)
-
--- ================================================================
--- BYPASS QUEST NPC — Intercepta UpdateInventory y fuerza items
--- ================================================================
-SectionLabel(AnalistaPage, "BYPASS NPC / QUEST", 10)
-
-local BtnBypassNPC = ToggleButton(AnalistaPage, "🟣  BYPASS QUEST NPC  (Transcendent Being)", 11,
-    Color3.fromRGB(120, 20, 180))
-BtnBypassNPC.LayoutOrder = 11
-
-local BypassLog = Instance.new("TextLabel", AnalistaPage)
-BypassLog.Size = UDim2.new(0.95, 0, 0, 45)
-BypassLog.BackgroundTransparency = 1
-BypassLog.TextColor3 = Color3.fromRGB(200, 150, 255)
-BypassLog.Font = Enum.Font.Code
-BypassLog.TextSize = 10
-BypassLog.TextWrapped = true
-BypassLog.TextXAlignment = Enum.TextXAlignment.Left
-BypassLog.LayoutOrder = 12
-BypassLog.Text = "  ⬛ DESACTIVADO"
-
--- Items exactos que pide la quest "Transcendent Being"
-local QUEST_ITEMS_NEEDED = {
-    ["Evolution Fragment"] = 5,
-    ["Transcendent Core"]  = 10,
-    ["Divinity Essence"]   = 20,
-    ["Fusion Ring"]        = 30,
-    ["Chrysalis Sigil"]    = 100,
-}
-
-BtnBypassNPC.MouseButton1Click:Connect(function()
-    if _G.BypassNPCActivo then
-        _G.BypassNPCActivo = false
-        -- Desconectar el hook de UpdateInventory
-        if _G.BypassInvConn then
-            pcall(function() _G.BypassInvConn:Disconnect() end)
-            _G.BypassInvConn = nil
-        end
-        BypassLog.Text = "  ⬛ DESACTIVADO"
-        return
-    end
-
-    _G.BypassNPCActivo = true
-    BypassLog.Text = "  🟣 ACTIVO — Habla con el NPC de la quest ahora"
-
-    pcall(function()
-        -- ==============================================================
-        -- MÉTODO 1: Interceptar UpdateInventory y parchear los items
-        --   Antes de que el módulo Handler procese el inventario,
-        --   inyectamos los items de la quest con cantidades suficientes
-        -- ==============================================================
-        local RS = game:GetService("ReplicatedStorage")
-        local invRemote = nil
-        for _, v in pairs(RS:GetDescendants()) do
-            if v:IsA("RemoteEvent") and v.Name == "UpdateInventory" then
-                invRemote = v
-                break
-            end
-        end
-
-        if invRemote then
-            _G.BypassInvConn = invRemote.OnClientEvent:Connect(function(invData)
-                if not _G.BypassNPCActivo then return end
-                -- invData es la tabla del inventario que el server mandó
-                -- La parcheamos ANTES de que el módulo local la lea
-                if type(invData) == "table" then
-                    for _, slot in pairs(invData) do
-                        if type(slot) == "table" and slot.name then
-                            local needed = QUEST_ITEMS_NEEDED[slot.name]
-                            if needed then
-                                slot.quantity = needed
-                            end
-                        end
-                    end
-                end
-                -- No bloqueamos el evento — lo dejamos pasar ya modificado
-                -- El módulo Handler recibirá el inventario parcheado
-            end)
-            BypassLog.Text = "  🟣 Hook UpdateInventory OK — Habla con el NPC"
-        else
-            BypassLog.Text = "  ⚠️ UpdateInventory no encontrado — usando hook global"
-        end
-
-        -- ==============================================================
-        -- MÉTODO 2: Hook __namecall para interceptar InvokeServer del NPC
-        --   Si el NPC manda InvokeServer con validación, forzamos true
-        -- ==============================================================
-        if not _G.BypassHookNC then
-            _G.BypassHookNC = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.BypassNPCActivo then
-                    return _G.BypassHookNC(self, ...)
-                end
-                local method = getnamecallmethod()
-                if method == "InvokeServer" and typeof(self) == "Instance" then
-                    local name = tostring(self.Name):lower()
-                    -- Si el remote parece ser una validación de quest o inventario
-                    if name:find("quest") or name:find("check") or name:find("has")
-                        or name:find("requirement") or name:find("claim") or name:find("complete")
-                        or name:find("npc") or name:find("interact") or name:find("redeem")
-                        or name:find("transcendent") or name:find("fragment") then
-                        -- Ejecutar y capturar la respuesta real
-                        local realResp = table.pack(_G.BypassHookNC(self, ...))
-                        -- Si la respuesta es false o tiene un campo de éxito, forzamos true
-                        if realResp.n >= 1 then
-                            local first = realResp[1]
-                            if type(first) == "boolean" and not first then
-                                BypassLog.Text = "  ✅ InvokeServer interceptado: " ..
-                                tostring(self.Name) .. " → forzado TRUE"
-                                return true
-                            elseif type(first) == "table" then
-                                if first.success == false then first.success = true end
-                                if first.hasItems == false then first.hasItems = true end
-                                if first.canClaim == false then first.canClaim = true end
-                                BypassLog.Text = "  ✅ Tabla interceptada: " .. tostring(self.Name) .. " → parcheada"
-                                return first
-                            end
-                        end
-                        return table.unpack(realResp, 1, realResp.n)
-                    end
-                end
-                return _G.BypassHookNC(self, ...)
-            end)
-        end
-
-        -- ==============================================================
-        -- MÉTODO 3: Parchear directamente el módulo Handler en memoria
-        --   Handler.GetAll() probablemente retorna el inventario local
-        --   Hackeamos esa función para inyectar los items de la quest
-        -- ==============================================================
-        task.spawn(function()
-            if getloadedmodules then
-                for _, mod in ipairs(getloadedmodules()) do
-                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
-                        local n = mod.Name:lower()
-                        if n == "handler" or n == "inventory" or n == "inventoryhandler"
-                            or n == "playerdata" or n == "questhandler" or n == "itemhandler" then
-                            local ok, result = pcall(require, mod)
-                            if ok and type(result) == "table" then
-                                -- Intentar parchear GetInventory / GetAll / GetItems
-                                for fname, fval in pairs(result) do
-                                    if type(fval) == "function" then
-                                        local fl = tostring(fname):lower()
-                                        if fl:find("get") or fl:find("inventory") or fl:find("item") or fl:find("all") then
-                                            pcall(function()
-                                                local origFn = fval
-                                                hookfunction(origFn, function(...)
-                                                    if not _G.BypassNPCActivo then return origFn(...) end
-                                                    local data = table.pack(origFn(...))
-                                                    -- Si retorna una tabla con items, inyectamos los de la quest
-                                                    if data.n >= 1 and type(data[1]) == "table" then
-                                                        for _, slot in pairs(data[1]) do
-                                                            if type(slot) == "table" and slot.name then
-                                                                local needed = QUEST_ITEMS_NEEDED[slot.name]
-                                                                if needed then slot.quantity = needed end
-                                                            end
-                                                        end
-                                                    end
-                                                    return table.unpack(data, 1, data.n)
-                                                end)
-                                            end)
-                                        end
-                                    end
-                                end
-                                BypassLog.Text = "  🟣 Módulo " .. mod.Name .. " parcheado en memoria"
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end)
-end)
-
--- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
--- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
-
--- ================================================================
--- FORENSE NPC — Rastreo completo de por qué no funciona el bypass
--- ================================================================
-SectionLabel(AnalistaPage, "FORENSE NPC — ¿POR QUÉ FALLA?", 20)
-
-local BtnForenseNPC = ToggleButton(AnalistaPage, "🔬  FORENSE NPC  (crea reporte completo .txt)", 21,
-    Color3.fromRGB(20, 120, 180))
-BtnForenseNPC.LayoutOrder = 21
-
-local ForenseLog = Instance.new("TextLabel", AnalistaPage)
-ForenseLog.Size = UDim2.new(0.95, 0, 0, 50)
-ForenseLog.BackgroundTransparency = 1
-ForenseLog.TextColor3 = Color3.fromRGB(100, 200, 255)
-ForenseLog.Font = Enum.Font.Code
-ForenseLog.TextSize = 10
-ForenseLog.TextWrapped = true
-ForenseLog.TextXAlignment = Enum.TextXAlignment.Left
-ForenseLog.LayoutOrder = 22
-ForenseLog.Text = "  ⬛ DETENIDO — Activa y habla con el NPC de la quest"
-
-local FORENSE_FILE = "NPC_Forensic_Report.txt"
-local _ForenseStep = 0
-
-local function flog(seccion, detalle)
-    pcall(function()
-        if not writefile then return end
-        _ForenseStep = _ForenseStep + 1
-        local ts = tostring(os.date("%H:%M:%S"))
-        local linea = string.format("[%s] PASO%02d [%s]\n%s\n\n", ts, _ForenseStep, seccion, tostring(detalle))
-        if isfile and readfile and isfile(FORENSE_FILE) then
-            writefile(FORENSE_FILE, readfile(FORENSE_FILE) .. linea)
-        else
-            writefile(FORENSE_FILE, linea)
-        end
-        ForenseLog.Text = "  🔬 [" .. ts .. "] " .. seccion .. " (paso " .. _ForenseStep .. ")"
-    end)
-end
-
-BtnForenseNPC.MouseButton1Click:Connect(function()
-    if _G.ForenseActivo then
-        _G.ForenseActivo = false
-        if _G.ForenseConns then
-            for _, c in ipairs(_G.ForenseConns) do pcall(function() c:Disconnect() end) end
-            _G.ForenseConns = nil
-        end
-        ForenseLog.Text = "  ⬛ DETENIDO — reporte en: " .. FORENSE_FILE
-        return
-    end
-
-    _G.ForenseActivo = true
-    _G.ForenseConns = {}
-    _ForenseStep = 0
-
-    -- Crear archivo nuevo con encabezado
-    pcall(function()
-        if writefile then
-            writefile(FORENSE_FILE,
-                "================================================================\n" ..
-                "  REPORTE FORENSE NPC — " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n" ..
-                "  Quest: Transcendent Being\n" ..
-                "  Objetivo: encontrar dónde y por qué falla el bypass\n" ..
-                "  Secciones: REMOTES | RESPUESTAS | MODULOS | BYPASS_ESTADO | ERROR\n" ..
-                "================================================================\n\n")
-        end
-    end)
-
-    ForenseLog.Text = "  🔬 ACTIVO — habla con el NPC ahora"
-
-    pcall(function()
-        local RS = game:GetService("ReplicatedStorage")
-
-        -- ============================================================
-        -- PASO A: Inventariar TODOS los remotes disponibles en el juego
-        -- ============================================================
-        task.spawn(function()
-            local remotelist = {}
-            for _, v in pairs(RS:GetDescendants()) do
-                if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                    table.insert(remotelist, string.format("  [%s] %s → ruta: %s", v.ClassName, v.Name, v:GetFullName()))
-                end
-            end
-            flog("INVENTARIO_REMOTES", table.concat(remotelist, "\n"))
-        end)
-
-        -- ============================================================
-        -- PASO B: Hook __namecall — captura TODA llamada al servidor
-        --   con contexto completo: nombre, args, respuesta, si hubo
-        --   bypass activo o no, y si el resultado fue bloqueado
-        -- ============================================================
-        if not _G.ForenseHookNC then
-            _G.ForenseHookNC = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.ForenseActivo then
-                    return _G.ForenseHookNC(self, ...)
-                end
-                local method = getnamecallmethod()
-                if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
-                    local rname = tostring(self.Name)
-                    local args = { ... }
-                    local argsStr = "  Remote: " .. rname ..
-                        "\n  Método: " .. method ..
-                        "\n  Args enviados: " .. dumpTable(args, "  ") ..
-                        "\n  Bypass activo: " .. tostring(_G.BypassNPCActivo and "SI" or "NO")
-
-                    if method == "InvokeServer" then
-                        flog("INVOKE_SALIDA [CLIENTE→SERVER]", argsStr)
-                        local capturedSelf = self
-                        local capturedArgs = args
-                        local ok, resp = pcall(function()
-                            return table.pack(_G.ForenseHookNC(capturedSelf, table.unpack(capturedArgs)))
-                        end)
-                        if ok then
-                            local respStr = dumpTable(resp, "  ")
-                            local bloqueado = "NO"
-                            -- Detectar si la respuesta indica fallo/bloqueo
-                            if resp[1] == false then
-                                bloqueado = "SI — el servidor devolvió false"
-                            elseif type(resp[1]) == "table" then
-                                if resp[1].success == false then
-                                    bloqueado = "SI — resp.success = false"
-                                elseif resp[1].canClaim == false then
-                                    bloqueado = "SI — resp.canClaim = false"
-                                elseif resp[1].hasItems == false then
-                                    bloqueado = "SI — resp.hasItems = false"
-                                elseif resp[1].error then
-                                    bloqueado = "SI — resp.error = " .. tostring(resp[1].error)
-                                end
-                            end
-                            flog("INVOKE_RESPUESTA [SERVER→CLIENTE]",
-                                "  Remote: " .. rname ..
-                                "\n  Respuesta completa:\n" .. respStr ..
-                                "\n  ¿BLOQUEADO?: " .. bloqueado)
-                            return table.unpack(resp, 1, resp.n)
-                        else
-                            flog("INVOKE_ERROR [EXCEPCION]",
-                                "  Remote: " .. rname ..
-                                "\n  Error Lua al ejecutar: " .. tostring(resp))
-                            return _G.ForenseHookNC(self, ...)
-                        end
-                    else
-                        flog("FIRE_SALIDA [CLIENTE→SERVER]", argsStr)
-                    end
-                end
-                return _G.ForenseHookNC(self, ...)
-            end)
-        end
-
-        -- ============================================================
-        -- PASO C: Escuchar TODOS los OnClientEvent para ver qué
-        --   responde el servidor exactamente + detectar ShowNotification
-        --   con datos de quest para registrar qué items pidió
-        -- ============================================================
-        for _, v in pairs(RS:GetDescendants()) do
-            if v:IsA("RemoteEvent") then
-                local vname = v.Name
-                local conn = v.OnClientEvent:Connect(function(...)
-                    if not _G.ForenseActivo then return end
-                    local args = { ... }
-                    local dump = dumpTable(args, "  ")
-
-                    -- Detección especial: ShowNotification con datos de quest
-                    if vname == "ShowNotification" then
-                        local tipo = tostring(args[1])
-                        local datos = args[2]
-                        if tipo == "Quest" and type(datos) == "table" then
-                            flog("QUEST_NOTIFICACION [SERVIDOR DICE]",
-                                "  Tipo: " .. tipo ..
-                                "\n  Mensaje: " .. tostring(datos.message or "?") ..
-                                "\n  ⚠️  ANÁLISIS: El servidor validó los items y los rechazó." ..
-                                "\n  CONCLUSIÓN: La validación es 100% server-side." ..
-                                "\n  El bypass de UpdateInventory NO alcanzó al servidor." ..
-                                "\n  Los items reales en el datastore del server son insuficientes.")
-                        else
-                            flog("SERVER_EVENT: " .. vname, dump)
-                        end
-
-                        -- Detección: UpdateInventory — ver qué inventario mandó el server
-                    elseif vname == "UpdateInventory" then
-                        local itemStr = "  Inventario recibido del servidor:\n"
-                        if type(args[1]) == "table" then
-                            for _, slot in pairs(args[1]) do
-                                if type(slot) == "table" and slot.name then
-                                    itemStr = itemStr .. string.format("    - %s: %s\n",
-                                        tostring(slot.name), tostring(slot.quantity))
-                                end
-                            end
-                        end
-                        flog("INVENTARIO_RECIBIDO [SERVER→CLIENTE]", itemStr)
-                    else
-                        flog("SERVER_EVENT: " .. vname, dump)
-                    end
-                end)
-                table.insert(_G.ForenseConns, conn)
-            end
-        end
-
-        -- ============================================================
-        -- PASO D: Rastrear módulos cargados que hagan validación
-        --   Buscar en Handler, QuestHandler, NPCHandler el código que
-        --   bloqueó el intento y registrar sus funciones
-        -- ============================================================
-        task.spawn(function()
-            if getloadedmodules then
-                for _, mod in ipairs(getloadedmodules()) do
-                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
-                        local n = mod.Name:lower()
-                        -- Módulos relevantes para quest/npc/inventory
-                        local esRelevante = n:find("quest") or n:find("npc") or n:find("handler")
-                            or n:find("inventory") or n:find("item") or n:find("shop")
-                            or n:find("requirement") or n:find("transcendent") or n:find("reward")
-                            or n:find("claim") or n:find("check") or n:find("validation")
-                        if esRelevante then
-                            local ok, result = pcall(require, mod)
-                            if ok and type(result) == "table" then
-                                local fnList = {}
-                                for fname, fval in pairs(result) do
-                                    if type(fval) == "function" then
-                                        table.insert(fnList, "    función: " .. tostring(fname))
-                                    elseif type(fval) == "table" then
-                                        table.insert(fnList,
-                                            "    tabla: " .. tostring(fname) .. " = " .. dumpTable(fval, "      ", 2))
-                                    else
-                                        table.insert(fnList, "    valor: " .. tostring(fname) .. " = " .. tostring(fval))
-                                    end
-                                end
-                                flog("MODULO_RELEVANTE: " .. mod.Name,
-                                    "  Ruta: " .. mod:GetFullName() ..
-                                    "\n  Exportaciones:\n" .. table.concat(fnList, "\n"))
-
-                                -- Parchear funciones de validación y loggear si se ejecutan
-                                for fname, fval in pairs(result) do
-                                    if type(fval) == "function" then
-                                        local fl = tostring(fname):lower()
-                                        if fl:find("check") or fl:find("has") or fl:find("valid")
-                                            or fl:find("quest") or fl:find("require") or fl:find("claim") then
-                                            pcall(function()
-                                                local origFn = fval
-                                                hookfunction(origFn, function(...)
-                                                    if not _G.ForenseActivo then return origFn(...) end
-                                                    flog("FUNCION_INTERCEPTADA: " .. mod.Name .. "." .. fname,
-                                                        "  Args:\n" .. dumpTable({ ... }, "  "))
-                                                    local res = table.pack(origFn(...))
-                                                    flog("FUNCION_RESULTADO: " .. mod.Name .. "." .. fname,
-                                                        "  Retorno:\n" .. dumpTable(res, "  ") ..
-                                                        "\n  ¿Retornó false/nil?: " .. tostring(
-                                                            res[1] == false or
-                                                            res[1] == nil and "SI — AQUÍ ESTÁ EL BLOQUEO" or "no"))
-                                                    return table.unpack(res, 1, res.n)
-                                                end)
-                                            end)
-                                        end
-                                    end
-                                end
-                            else
-                                flog("MODULO_ERROR: " .. mod.Name,
-                                    "  No se pudo hacer require: " .. tostring(result))
-                            end
-                        end
-                    end
-                end
-                flog("MODULOS_SCAN_COMPLETO", "  Todos los módulos relevantes fueron escaneados y hookeados.")
-            else
-                flog("MODULOS_ERROR", "  getloadedmodules() no disponible en este executor.")
-            end
-        end)
-
-        -- ============================================================
-        -- PASO E: Diagnóstico del estado del bypass 30seg después
-        --   Crea un resumen automático de qué funcionó y qué falló
-        -- ============================================================
-        task.delay(30, function()
-            if not _G.ForenseActivo then return end
-            local estadoBypass = _G.BypassNPCActivo and "ACTIVO" or "INACTIVO"
-            local hookNC = _G.BypassHookNC and "INSTALADO" or "NO instalado"
-            local hookNI = _G.MegaHookNI and "INSTALADO" or "NO instalado"
-            local hookInv = _G.BypassInvConn and "CONECTADO" or "NO conectado"
-            flog("DIAGNOSTICO_AUTOMATICO [30seg]",
-                "  — Estado del Bypass NPC: " .. estadoBypass ..
-                "\n  — Hook __namecall (InvokeServer): " .. hookNC ..
-                "\n  — Hook __newindex (Health): " .. hookNI ..
-                "\n  — Hook UpdateInventory: " .. hookInv ..
-                "\n  — Pasos capturados hasta ahora: " .. tostring(_ForenseStep) ..
-                "\n\n  INTERPRETACIÓN AUTOMÁTICA:" ..
-                "\n  Si ShowNotification apareció con 'Missing:' → servidor valida server-side." ..
-                "\n  Si INVOKE_RESPUESTA tiene false → el remote existe pero rechaza." ..
-                "\n  Si no hubo INVOKE_SALIDA al hablar con el NPC → usa FireServer (sin retorno)." ..
-                "\n  Si no hubo nada → el NPC no envía al servidor (lógica local pura).")
-        end)
-    end)
-end)
-
--- ================================================================
--- VULNERABILITY INJECTION — Pruebas de Underflow y Bypass en Remotes
--- ================================================================
-SectionLabel(AnalistaPage, "ATAQUE SERVER-SIDE (MITM)", 30)
-
-local BtnAtaque = ToggleButton(AnalistaPage, "💣 INYECCIÓN VULNERABLE (Fuzzing)", 31, Color3.fromRGB(200, 50, 20))
-BtnAtaque.LayoutOrder = 31
-
-local AtaqueLog = Instance.new("TextLabel", AnalistaPage)
-AtaqueLog.Size = UDim2.new(0.95, 0, 0, 50)
-AtaqueLog.BackgroundTransparency = 1
-AtaqueLog.TextColor3 = Color3.fromRGB(255, 100, 100)
-AtaqueLog.Font = Enum.Font.Code
-AtaqueLog.TextSize = 10
-AtaqueLog.TextWrapped = true
-AtaqueLog.TextXAlignment = Enum.TextXAlignment.Left
-AtaqueLog.LayoutOrder = 32
-AtaqueLog.Text = "  ⬛ DETENIDO — Ejecutará payload al servidor"
-
-local ATK_FILE = "Attack_Vulnerability_Report.txt"
-local ataqueStep = 0
-
-local function logAtk(msg)
-    pcall(function()
-        if not writefile then return end
-        ataqueStep = ataqueStep + 1
-        local act = ""
-        if isfile and readfile and isfile(ATK_FILE) then
-            pcall(function() act = readfile(ATK_FILE) end)
-        end
-        local prefix = "[" .. string.format("%02d", ataqueStep) .. "] "
-        writefile(ATK_FILE, act .. prefix .. msg .. "\n")
-    end)
-end
-
-BtnAtaque.MouseButton1Click:Connect(function()
-    if _G.AtaqueActivo then
-        _G.AtaqueActivo = false
-        AtaqueLog.Text = "  ⬛ ATAQUE DETENIDO"
-        return
-    end
-    _G.AtaqueActivo = true
-    ataqueStep = 0
-    AtaqueLog.Text = "  💣 ATACANDO Remotes (Underflow/NaN)..."
-
-    pcall(function()
-        if writefile then
-            writefile(ATK_FILE, "=== REPORTE DE ATAQUE DE VULNERABILIDAD/FUZZING ===\n" ..
-                "Fecha: " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n\n")
-        end
-    end)
-
-    task.spawn(function()
-        local RS = game:GetService("ReplicatedStorage")
-
-        local function FireIf(name, ...)
-            local r = RS:FindFirstChild(name, true)
-            local argsT = { ... }
-            local argsStr = dumpTable(argsT, "")
-
-            if r and r:IsA("RemoteEvent") then
-                logAtk("🔥 EVENTO => [" .. name .. "]\n  Payload: " .. argsStr)
-                r:FireServer(...)
-            elseif r and r:IsA("RemoteFunction") then
-                logAtk("🔥 INVOKE => [" .. name .. "]\n  Payload: " .. argsStr)
-                task.spawn(function()
-                    local ok, res = pcall(function() return r:InvokeServer(unpack(argsT)) end)
-                    if ok then
-                        logAtk("✅ RESPUESTA (" .. name .. "):\n  " .. dumpTable(res, "  "))
-                    else
-                        logAtk("❌ ERROR/RECHAZO (" .. name .. "):\n  " .. tostring(res))
-                    end
-                end)
-            else
-                logAtk("⚠️ Remote NO encontrado: [" .. name .. "]")
-            end
-        end
-
-        -- Payload 1: Underflow Allocation
-        logAtk("--- 1. PROBANDO INYECCIÓN UNDERFLOW (Bypass validación con negativos) ---")
-        FireIf("StorageStoreItem", "Chrysalis Sigil", -29)
-        FireIf("StorageRetrieveItem", "Chrysalis Sigil", -29)
-        FireIf("PurchaseItem", "Chrysalis Sigil", -999)
-        FireIf("ExchangeItem", "Evolution Fragment", -1)
-
-        task.wait(1)
-        if not _G.AtaqueActivo then return end
-
-        -- Payload 2: Poisoning NaN (No Es Un Número) / Infinite
-        logAtk("--- 2. PROBANDO CORRUPCIÓN NaN / math.huge ---")
-        FireIf("StorageRetrieveItem", "Transcendent Core", 0 / 0)
-        FireIf("StorageStoreItem", "Transcendent Core", 0 / 0)
-        FireIf("ExchangeItem", "Transcendent Core", 0 / 0)
-
-        task.wait(1)
-        if not _G.AtaqueActivo then return end
-
-        logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA DE MOVILIDAD Y PORTALES ---")
-        -- Explotación del Dash/Jump para bypass de Anti-Cheat:
-        -- Como el server no revalida, mandamos un vector de distancia enorme
-        FireIf("DashRemote", Vector3.new(0, 1, 0), 9999) 
-        -- Portal Pre-check Bypass: saltamos el UI de CheckPortal y forzamos TP
-        FireIf("TeleportToPortal", "Dungeon")
         
-        -- Explotaciones de Bosses directos sin GUI
-        FireIf("RequestSummonBoss")
-        FireIf("RequestDungeonPortal")
-        FireIf("RequestSpawnStrongestBoss")
-        FireIf("RequestSpawnAnosBoss")
-        FireIf("AllocateStat", "Damage", math.huge)
-
-        task.wait(3)
-        logAtk("--- FINAL DE EJECUCIÓN (Verifica Data o kicks por AntiCheat) ---")
-        AtaqueLog.Text = "  🛑 ATAQUE FINALIZADO. Revisa: Attack_Vulnerability_Report.txt"
-        _G.AtaqueActivo = false
-    end)
+        if not _G.FruitOnClientConnections then
+            _G.FruitOnClientConnections = {}
+            for _,v in ipairs(ReplicatedStorage:GetDescendants()) do
+                if v:IsA("RemoteEvent") then
+                    table.insert(_G.FruitOnClientConnections, v.OnClientEvent:Connect(function(...)
+                        if not _G.FruitScaning then return end
+                        local args = {...}
+                        local rname = tostring(v.Name)
+                        if not rname:find("Sync") and not rname:find("Ping") then
+                            local argStr = ""
+                            for i, arg in ipairs(args) do argStr = argStr..tostring(arg).."," end
+                            LogFruitEvent("🍓 [S->C] " .. rname .. " | Data: " .. argStr)
+                        end
+                    end))
+                end
+            end
+        end
+    else
+        FruitLog.Text = "  [Scanner Detenido] Análisis apagado. Revisa F9 o .txt"
+    end
 end)
-
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
 -- ==============================================================================
