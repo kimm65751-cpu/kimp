@@ -1495,8 +1495,8 @@ AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
 
-local BtnSpyDaño = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.romGB(150, 40, 40))
-local BtnSpyNPC = ToggleButton(AnalistaPage, "🝥 Ver Peticiones a NPCs", 4, Color3.romGB(40, 150, 40))
+local BtnSpyDamage = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.fromRGB(150, 40, 40))
+local BtnSpyNPC = ToggleButton(AnalistaPage, "🝥 Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
 local BtnSpoofNPC = ToggleButton(AnalistaPage, "🍭 Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
 
 local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
@@ -1518,7 +1518,7 @@ local function dumpTable(tbl, indent, maxDepth)
 
     local s = "{\n"
     local seenKeys = {}
-    for0k, v in pairs(tbl) do
+    for k, v in pairs(tbl) do
         if type(k) == "Instance" then k = k:GetFullName() end
         
         if type(v) == "table" and not seenKeys[v] then
@@ -1539,7 +1539,7 @@ local function dumpTable(tbl, indent, maxDepth)
 end
 
 -- SPY Combat:
-BtnSpyDaqm.MouseButton1Click:Connect(function()
+BtnSpyDamage.MouseButton1Click:Connect(function()
     if _G.SpyingCombat then
         _G.SpyingCombat = false
         AnalistaLog.Text = "  ⛔ Spy de Combate DETENIDO."
@@ -1558,7 +1558,7 @@ BtnSpyDaqm.MouseButton1Click:Connect(function()
                 local method5 = getnamecallmethod()
                 local args5 = {...}
                 
-                if not checkcaller(, and method5 == "FireServer" then
+                if not checkcaller() and method5 == "FireServer" then
                     local name5 = tostring(self5.Name)
                     if name5:find("Combat") or name5:find("Hit") or name5:find("Damage") or name5:find("M1") then
                         print("[SPY DAÑO OUT]: " .. name5)
