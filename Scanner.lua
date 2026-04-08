@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEa"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1496,8 +1496,8 @@ AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
 
 local BtnSpyDamage = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.fromRGB(150, 40, 40))
-local BtnSpyNPC = ToggleButton(AnalistaPage, "🝥 Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
-local BtnSpoofNPC = ToggleButton(AnalistaPage, "🍭 Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
+local BtnSpyNPC = ToggleButton(AnalistaPage, "[SPY] Ver Peticiones a NPCs", 4, Color3.fromRGB(40, 150, 40))
+local BtnSpoofNPC = ToggleButton(AnalistaPage, "[HACK] Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
 
 local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
 AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
@@ -1552,21 +1552,19 @@ BtnSpyDamage.MouseButton1Click:Connect(function()
     
     pcall(function()
         if not _G.OldNamecallCombat then
-            _G.OldNamecallCombat = hookmetamethod(game, "__namecall", function(self5, ...)
-                if not _G.SpyingCombat then return _G.OldNamecallCombat(self5, ...) end
+            _G.OldNamecallCombat = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.SpyingCombat then return _G.OldNamecallCombat(self, ...) end
                 
-                local method5 = getnamecallmethod()
-                local args5 = {...}
-                
-                if not checkcaller() and method5 == "FireServer" then
-                    local name5 = tostring(self5.Name)
-                    if name5:find("Combat") or name5:find("Hit") or name5:find("Damage") or name5:find("M1") then
-                        print("[SPY DAÑO OUT]: " .. name5)
-                        local resultStr = dumpTable(args5, "  ")
-                        print(resultStr)
+                local method = getnamecallmethod()
+                if not checkcaller() and method == "FireServer" and typeof(self) == "Instance" then
+                    local name = tostring(self.Name)
+                    if name:find("Combat") or name:find("Hit") or name:find("Damage") or name:find("M1") then
+                        print("[SPY DAÑO OUT]: " .. name)
+                        local args = {...}
+                        print(dumpTable(args, "  "))
                     end
                 end
-                return _G.OldNamecallCombat(self5, ...)
+                return _G.OldNamecallCombat(self, ...)
             end)
         end
     end)
@@ -1586,37 +1584,22 @@ BtnSpyNPC.MouseButton1Click:Connect(function()
     
     pcall(function()
         if not _G.OldNamecallNPCHook then
-            _G.OldNamecallNPCHook = hookmetamethod(game, "__namecall", function(self6, ...)
-                if not _G.SpyingNPC then return _G.OldNamecallNPCHook(self6, ...) end
+            _G.OldNamecallNPCHook = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.SpyingNPC then return _G.OldNamecallNPCHook(self, ...) end
                 
-                local method6 = getnamecallmethod()
-                local args6 = {...}
-                
-                if not checkcaller() and (method6 == "InvokeServer" or method6 == "FireServer") then
-                    local name6 = tostring(self6.Name)
-                    -- Ignorar remotes genéricos ruidosos
-                    if not name6:find("Mouse") and not name6:find("Camera") and not name6:find("Move") then
-                        -- Enfoque en Merchants, dialogos o items
-                        if name6:lower():find("npc") or name6:lower():find("merchant") or name6:lower():find("item") or name6:lower():find("exchange") or name6:lower():find("trade") or name6:lower():find("reward") or name6:lower():find("buy") then
-                            print(string.format("[SPY NPC %s]: %s", method6, name6))
-                            local resultStr6 = dumpTable(args6, "  ")
-                            print(resultStr6)
-                        task.spawn(function()
-                                -- Try to also record the response if Invoke
-                                if method6 == "InvokeServer" and not _G.SpyingNPC_BlockRentry then
-                                    _G.SpyingNPC_BlockRentry = true
-                                    local s, response = pcall(function() return self6:InvokeServer(unpack(args6)) end)
-                                    if s then
-                                        print("[RETORNO ES -> ] " .. tostring(self6.Name))
-                                        print(dumpTable(response, "  "))
-                                    end
-                                    _G.SpyingNPC_BlockRentry = false
-                                end
-                            end)
+                local method = getnamecallmethod()
+                if not checkcaller() and (method == "InvokeServer" or method == "FireServer") and typeof(self) == "Instance" then
+                    local name = tostring(self.Name)
+                    if not name:find("Mouse") and not name:find("Camera") and not name:find("Move") then
+                        local nl = name:lower()
+                        if nl:find("npc") or nl:find("merchant") or nl:find("item") or nl:find("exchange") or nl:find("trade") or nl:find("reward") or nl:find("buy") then
+                            print(string.format("[SPY NPC %s]: %s", method, name))
+                            local args = {...}
+                            print(dumpTable(args, "  "))
                         end
                     end
                 end
-                return _G.OldNamecallNPCHook(self6, ...)
+                return _G.OldNamecallNPCHook(self, ...)
             end)
         end
     end)
@@ -1636,28 +1619,24 @@ BtnSpoofNPC.MouseButton1Click:Connect(function()
     
     pcall(function()
         if not _G.OldNamecallInv7 then
-            _G.OldNamecallInv7 = hookmetamethod(game, "__namecall", function(self7, ...)
-                if not _G.SpoofingNPC then return _G.OldNamecallInv7(self7, ...) end
+            _G.OldNamecallInv7 = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.SpoofingNPC then return _G.OldNamecallInv7(self, ...) end
                 
-                local method7 = getnamecallmethod()
-                if not checkcaller() and method7 == "InvokeServer" then
-                    local name7 = tostring(self7.Name)
+                local method = getnamecallmethod()
+                if not checkcaller() and method == "InvokeServer" and typeof(self) == "Instance" then
+                    local name = tostring(self.Name)
+                    local nl = name:lower()
                     
-                    -- Si el cliente pregunta si tenemos algun requirement al abrir el NPC:
-                    if name7:lower():find("check") or name7:lower():find("has") or name7:lower():find("requirement") then
-                        print("[SPOOF] Falsificando respuesta VERDADERA a: " .. name7)
-                        -- Falsificamos la respuesta diciendo que SI cumplimos requisitos
+                    if nl:find("check") or nl:find("has") or nl:find("requirement") then
+                        print("[SPOOF] Falsificando respuesta VERDADERA a: " .. name)
                         return true
                     end
                     
-                    -- Si el NPC requiere leer tu inventario de una tabla y verifica los items que te faltan
-                    if name7 == "GetItems" or name7 == "GetStorageData" or name7 == "GetInventory" then
-                        print("[SPOOF] Advertencia: El NPC intentó leer el inventario completo mediante " .. name7)
-                        -- Si pudieramos hookear la respuesta de la tabla, lo hariamos aqui,
-                        -- pero eso requiere leer lo que el server responde (y hookmetamethod solo recibe lo que envia “hacia afuera”)
+                    if name == "GetItems" or name == "GetStorageData" or name == "GetInventory" then
+                        print("[SPOOF] Advertencia: El NPC intentó leer el inventario completo mediante " .. name)
                     end
                 end
-                return _G.OldNamecallInv7(self7, ...)
+                return _G.OldNamecallInv7(self, ...)
             end)
         end
     end)
