@@ -13,7 +13,6 @@ local LP = Players.LocalPlayer
 local AutoFarm = false
 local FarmMode = "Arriba" -- "Arriba", "Detras", "Abajo"
 local OfsY, OfsZ = 10, 0
-local BlinkAttackEnabled = false
 
 local MobMagnetEnabled = false
 local AutoSkillEnabled = false
@@ -33,7 +32,6 @@ local LastRealDamageTime = os.clock()
 local GhostProtocolEnabled = false
 local GhostBlocksDisabled = 0
 local VIM = game:GetService("VirtualInputManager")
-local BlinkStepValue = 45 -- Studs por paso en vuelo (default, ajustable en UI)
 local ArenaAnchor = nil
 local ArenaRadius = 25
 local ArenaStatusLabel = nil
@@ -112,7 +110,6 @@ local function SaveConfig()
             AutoSkillEnabled = AutoSkillEnabled,
             TargetBosses = TargetBosses,
             FarmMode = FarmMode,
-            BlinkAttackEnabled = BlinkAttackEnabled,
             SmartCombatEnabled = SmartCombatEnabled,
             SmartUseSword = SmartUseSword,
             SmartUseFruit = SmartUseFruit,
@@ -347,7 +344,6 @@ SkillKeysBox.FocusLost:Connect(function()
     SaveConfig()
 end)
 local BtnBoss  = ToggleButton(FarmPage, "🎯 Cazar Bosses: Normal", 6)
-local BtnBlink = ToggleButton(FarmPage, "⚡ Blink Fx (Sniper 45 studs)", 7, C.card)
 local BtnGhost = ToggleButton(FarmPage, "👻 Ghost Protocol (Mazmorra): OFF", 8, C.card)
 SectionLabel(FarmPage, "DEFENSA", 11)
 local PanicLabel = Instance.new("TextLabel", FarmPage)
@@ -457,20 +453,6 @@ BtnClearMem.MouseButton1Click:Connect(function()
         BtnClearMem.BackgroundColor3 = C.red
         BtnClearMem.Text = "  🗑️ Borrar Punto Guardado"
     end)
-end)
-
--- BlinkStepValue ya inicializado al tope del script (= 45 por defecto)
-local blinkOptions = { 45, 25, 15, 5 }
-local currentBlinkIdx = 1
-
-local BtnBlinkSpeed = ToggleButton(MemPage, "⚡ Velocidad de Regreso: 45 Studs", 6, C.card)
-BtnBlinkSpeed.MouseButton1Click:Connect(function()
-    currentBlinkIdx = currentBlinkIdx + 1
-    if currentBlinkIdx > #blinkOptions then
-        currentBlinkIdx = 1
-    end
-    BlinkStepValue = blinkOptions[currentBlinkIdx]
-    BtnBlinkSpeed.Text = "⚡ Velocidad de Regreso: " .. BlinkStepValue .. " Studs"
 end)
 
 -- =======================================================================================
@@ -1550,20 +1532,13 @@ BtnFruitScan.MouseButton1Click:Connect(function()
 
         LogFruitEvent("--- INICIO DE ESCANEO DE FRUTA ---")
 
-        if not _G.FruitHookNC then
-            _G.FruitHookNC = hookmetamethod(game, "__namecall", function(self, ...)
-                if not _G.FruitScaning then return _G.FruitHookNC(self, ...) end
-                local method = getnamecallmethod()
-                if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
-                    local name = tostring(self.Name)
-                    if not name:find("Mouse") and not name:find("Step") and not name:find("Act") and not name:find("Ping") and not name:find("Camera") then
-                        local args = {...}
-                        local argStr = "[ARGS]: "
-                        for i,v in ipairs(args) do argStr = argStr .. tostring(i).. "="..tostring(v)..", " end
-                        LogFruitEvent("🍉 [C->S] " .. name .. " | " .. argStr)
-                    end
+        if not _G.FruitPassiveToolConn then
+            local uis_tool = game:GetService("UserInputService")
+            _G.FruitPassiveToolConn = uis_tool.InputBegan:Connect(function(input, gpe)
+                if not gpe and input.UserInputType == Enum.UserInputType.MouseButton1 and _G.FruitScaning then
+                    local t = char and char:FindFirstChildOfClass("Tool")
+                    if t then LogFruitEvent("🍉 [Tool] Activando: " .. t.Name) end
                 end
-                return _G.FruitHookNC(self, ...)
             end)
         end
         
@@ -2291,11 +2266,6 @@ task.spawn(function()
 
                                         pcall(function()
                                             local rootCF = TargetCF
-                                            if BlinkAttackEnabled then
-                                                rootCF = TargetCF *
-                                                    CFrame.new(0, FarmMode == "Abajo" and 0 or 5,
-                                                        FarmMode == "Abajo" and -12 or 45)
-                                            end
                                             if currentFarmMode == "Mazmorra" then
                                                 -- En Mazmorra: FORZAR Y minimo. Clamp X/Z si hay ArenaAnchor.
                                                 local safeY = math.max(hrp.Position.Y, mobPos.Y + 1.5)
@@ -2319,7 +2289,7 @@ task.spawn(function()
                                             else
                                                 local flyDist = (hrp.Position - rootCF.Position).Magnitude
                                                 if (TargetBosses == "SoloBoss" or #ScannedTargetNames > 0 or flyDist > 100) and flyDist > 15 then
-                                                    local flyStep = math.clamp(BlinkStepValue / flyDist, 0, 1)
+                                                    local flyStep = math.clamp(45 / flyDist, 0, 1)
                                                     char:PivotTo(hrp.CFrame:Lerp(rootCF, flyStep))
                                                 else
                                                     char:PivotTo(rootCF)
@@ -2335,21 +2305,11 @@ task.spawn(function()
                                             end
                                         end)
 
-                                        local actualLoc = BlinkAttackEnabled and
-                                            (TargetCF * CFrame.new(0, FarmMode == "Abajo" and 0 or 5, FarmMode == "Abajo" and -12 or 45)) or
-                                            TargetCF
-                                        local distFinal = (hrp.Position - actualLoc.Position).Magnitude
+                                        local distFinal = (hrp.Position - TargetCF.Position).Magnitude
                                         if distFinal <= 20 then
                                             pcall(function()
-                                                if BlinkAttackEnabled then
-                                                    char:PivotTo(TargetCF)
-                                                    CombatRemote:FireServer()
-                                                    if tool then tool:Activate() end
-                                                    char:PivotTo(actualLoc)
-                                                else
-                                                    CombatRemote:FireServer()
-                                                    if tool then tool:Activate() end
-                                                end
+                                                CombatRemote:FireServer()
+                                                if tool then tool:Activate() end
                                             end)
 
                                             -- Aimbot: re-apuntar HRP directo al mob en 3D antes de lanzar skills
@@ -2516,20 +2476,6 @@ end)
 -- ==============================================================================
 local uis_local = game:GetService("UserInputService")
 
-BtnBlink.MouseButton1Click:Connect(function()
-    BlinkAttackEnabled = not BlinkAttackEnabled
-    if BlinkAttackEnabled then
-        BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
-        BtnBlink.BackgroundColor3 = C.accentOn
-        BtnBlink.TextColor3 = Color3.new(1, 1, 1)
-    else
-        BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): OFF"
-        BtnBlink.BackgroundColor3 = C.card
-        BtnBlink.TextColor3 = C.text
-    end
-    SaveConfig()
-end)
-
 BtnHeight.MouseButton1Click:Connect(function()
     if FarmMode == "Arriba" then
         FarmMode = "Abajo"
@@ -2617,7 +2563,6 @@ local function LoadConfig()
                     if data.AutoSkillEnabled ~= nil then AutoSkillEnabled = data.AutoSkillEnabled end
                     if data.TargetBosses ~= nil then TargetBosses = data.TargetBosses end
                     if data.FarmMode ~= nil then FarmMode = data.FarmMode end
-                    if data.BlinkAttackEnabled ~= nil then BlinkAttackEnabled = data.BlinkAttackEnabled end
 
                     if data.SmartCombatEnabled ~= nil then SmartCombatEnabled = data.SmartCombatEnabled end
                     if data.SmartUseSword ~= nil then SmartUseSword = data.SmartUseSword end
@@ -2686,10 +2631,6 @@ local function LoadConfig()
                         BtnCalibMelee.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                         BtnCalibSword.BackgroundColor3 = Color3.fromRGB(30, 150, 80)
                         if SmartCalib_Fruit_Y > 3 then BtnCalibFruit.BackgroundColor3 = Color3.fromRGB(30, 150, 80) end
-                        if BlinkAttackEnabled then
-                            BtnBlink.Text = "  ⚡ Blink Fx (Sniper 45s): ON"
-                            BtnBlink.BackgroundColor3 = C.accentOn
-                        end
                         if data.MemoryPoint and type(data.MemoryPoint) == "table" then
                             MemoryPoint = Vector3.new(
                                 data.MemoryPoint.X or 0,
@@ -2760,7 +2701,7 @@ task.spawn(function()
                         if distToTarget > 15 then
                             StatusLabel.Text = "🔫 Volando a Objetivo... (" .. math.floor(distToTarget) .. "m)"
                             local dir = (targetPoint - hrpW.Position).Unit
-                            local stepSize = math.min(BlinkStepValue or 45, distToTarget)
+                            local stepSize = math.min(45, distToTarget)
                             -- Auto-Ruta: SIEMPRE volar por encima (+15), nunca bajo tierra
                             local flyHeight = _G.AutoHuntActive and 15 or math.abs(OfsY)
                             local nextPos = hrpW.Position + dir * stepSize + Vector3.new(0, flyHeight, 0)
@@ -2792,7 +2733,7 @@ task.spawn(function()
                             else
                                 StatusLabel.Text = "🏃 Volviendo a Marca... (" .. math.floor(distToMem) .. "m)"
                                 local dir = (targetPoint - hrpW.Position).Unit
-                                local stepSize = math.min(BlinkStepValue or 45, distToMem)
+                                local stepSize = math.min(45, distToMem)
                                 local nextPos = hrpW.Position + dir * stepSize
                                 pcall(function() char:PivotTo(CFrame.lookAt(nextPos, nextPos + dir)) end)
                                 pcall(function()
