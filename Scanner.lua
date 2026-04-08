@@ -1641,7 +1641,7 @@ BtnSpoofNPC.MouseButton1Click:Connect(function()
                 
                 local method7 = getnamecallmethod()
                 if not checkcaller() and method7 == "InvokeServer" then
-                    local name7 = tostring(self7.regalosName)
+                    local name7 = tostring(self7.Name)
                     
                     -- Si el cliente pregunta si tenemos algun requirement al abrir el NPC:
                     if name7:lower():find("check") or name7:lower():find("has") or name7:lower():find("requirement") then
@@ -1653,7 +1653,6 @@ BtnSpoofNPC.MouseButton1Click:Connect(function()
                     -- Si el NPC requiere leer tu inventario de una tabla y verifica los items que te faltan
                     if name7 == "GetItems" or name7 == "GetStorageData" or name7 == "GetInventory" then
                         print("[SPOOF] Advertencia: El NPC intentó leer el inventario completo mediante " .. name7)
-                        sync_temps = true
                         -- Si pudieramos hookear la respuesta de la tabla, lo hariamos aqui,
                         -- pero eso requiere leer lo que el server responde (y hookmetamethod solo recibe lo que envia “hacia afuera”)
                     end
