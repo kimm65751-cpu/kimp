@@ -1477,11 +1477,12 @@ end)
 task.delay(2, RefreshRouteFileList)
 
 -- =======================================================================================
--- ========== TAB 6: ANALIZADOR (FORENSE DE ISLAS, MAPAS Y JEFES) ==========
--- =======================================================================================
-local AnalistaPage = MakeScrollPage("Analizador")
+-- =========================================================================================
+-- ========== TAB 6: ANALIZADOR MITM Y SPOOF NPC ==========
+-- =========================================================================================
+local AnalistaPage = MakeScrollPage("Analizador MITM")
 
-SectionLabel(AnalistaPage, "ESCÁNER P2W Y VULNERABILIDADES", 1)
+SectionLabel(AnalistaPage, "ESCÁNER EN VIVO: DAÑO Y NPC", 1)
 
 local AnalistaInfo = Instance.new("TextLabel", AnalistaPage)
 AnalistaInfo.Size = UDim2.new(0.95, 0, 0, 45)
@@ -1489,412 +1490,180 @@ AnalistaInfo.BackgroundTransparency = 1
 AnalistaInfo.TextColor3 = C.muted
 AnalistaInfo.Font = Enum.Font.GothamMedium
 AnalistaInfo.TextSize = 11
-AnalistaInfo.Text =
-"  Extrae todas las configuraciones de Tienda (ShopConfig),\n  Gamepasses, Conqueror Haki, remotes y multiplicadores.\n  Guarda los datos profundos en un archivo txt."
+AnalistaInfo.Text = "  Espía la comunicación exacta entre cliente y servidor.\n  Captura cómo se calcula el daño y qué piden los NPC."
 AnalistaInfo.TextXAlignment = Enum.TextXAlignment.Left
 AnalistaInfo.TextWrapped = true
 AnalistaInfo.LayoutOrder = 2
 
-local BtnAnalista = ToggleButton(AnalistaPage, "🧪 Ejecutar Escaneo Profundo (.txt)", 3, Color3.fromRGB(40, 20, 60))
+local BtnSpyDaño = ToggleButton(AnalistaPage, "⚠️ Ver Tráfico de Dap�o", 3, Color3.romGB(150, 40, 40))
+local BtnSpyNPC = ToggleButton(AnalistaPage, "🝥 Ver Peticiones a NPCs", 4, Color3.romGB(40, 150, 40))
+local BtnSpoofNPC = ToggleButton(AnalistaPage, "🍭 Fingir que tengo items (Hackear NPC)", 5, Color3.fromRGB(180, 140, 20))
+
 local AnalistaLog = Instance.new("TextLabel", AnalistaPage)
 AnalistaLog.Size = UDim2.new(0.95, 0, 0, 20)
 AnalistaLog.BackgroundTransparency = 1
 AnalistaLog.TextColor3 = Color3.fromRGB(120, 255, 120)
 AnalistaLog.Font = Enum.Font.Code
 AnalistaLog.TextSize = 12
-AnalistaLog.Text = "  Esperando Instrucción..."
+AnalistaLog.Text = "  Status: Esperando..."
 AnalistaLog.TextXAlignment = Enum.TextXAlignment.Left
-AnalistaLog.LayoutOrder = 4
+AnalistaLog.LayoutOrder = 6
 
-BtnAnalista.MouseButton1Click:Connect(function()
-    BtnAnalista.Text = "🧪 Escaneando Economia..."
-    AnalistaLog.Text = "  [1/5] Buscando modulos ShopConfig..."
+local function dumpTable(tbl, indent, maxDepth)
+    if not indent then indent = "  " end
+    if not maxDepth then maxDepth = 6 end
+    
+    if type(tbl) ~= "table" then return tostring(tbl) end
+    if maxDepth <= 0 then return "{ ... max depth ... }" end
 
-    task.spawn(function()
-        local t = {}
-
-        table.insert(t, "==================================================")
-        table.insert(t, " REPORTE P2W FORENSE - AURA KILL V4.0")
-        table.insert(t, " FECHA: " .. os.date())
-        table.insert(t, " ISLA ACTUAL: " .. tostring(_G.CurrentIslandContext or "?"))
-        table.insert(t, "==================================================\n")
-
-        local RS  = game:GetService("ReplicatedStorage")
-        local LP2 = game:GetService("Players").LocalPlayer
-
-        -- Serializador profundo (depth 0, limite 6, deteccion circular)
-        local visited = {}
-        local function SerializeDeep(val, name, depth)
-            depth = depth or 0
-            if depth > 6 then return string.rep("  ", depth) .. tostring(name or "") .. " = [MAX_DEPTH]" end
-            local pad = string.rep("  ", depth)
-            local header = pad .. (name ~= nil and (tostring(name) .. " = ") or "")
-            if type(val) == "table" then
-                if visited[val] then return header .. "[CIRCULAR]" end
-                visited[val] = true
-                local lines2 = { header .. "{" }
-                for k, v in pairs(val) do
-                    local child = SerializeDeep(v, k, depth + 1)
-                    if child and child ~= "" then table.insert(lines2, child .. ",") end
-                end
-                table.insert(lines2, pad .. "}")
-                visited[val] = nil
-                return table.concat(lines2, "\n")
-            elseif type(val) == "string" then
-                return header .. string.format("%q", val)
-            elseif type(val) == "number" or type(val) == "boolean" then
-                return header .. tostring(val)
-            elseif type(val) == "function" then
-                return header .. "[function]"
-            else
-                return header .. tostring(val)
-            end
-        end
-
-        -- [1] DUMP DE MODULOS (serializador arreglado, depth desde 0)
-        table.insert(t, "> [1] CONFIGURACIONES DE TIENDA (REQUIRE DUMP PROFUNDO):")
-        local modCount = 0
-        local modNames = { "shopconfig","conquerorhaki","gamepass","multiplier","itemconfig","productconfig" }
-        for _, obj in ipairs(RS:GetDescendants()) do
-            local ln = obj.Name:lower()
-            if obj:IsA("ModuleScript") then
-                local match = false
-                for _, pat in ipairs(modNames) do if ln:match(pat) then match = true; break end end
-                if match then
-                    modCount = modCount + 1
-                    AnalistaLog.Text = "  [1/5] Require() -> " .. obj.Name
-                    task.wait()
-                    table.insert(t, "\n  [MOD] " .. obj:GetFullName())
-                    visited = {}
-                    local s, req = pcall(function() return require(obj) end)
-                    if s and type(req) == "table" then
-                        table.insert(t, "  [OK] DATOS EXTRAIDOS:")
-                        local dump = SerializeDeep(req, nil, 2)
-                        for line in dump:gmatch("[^\r\n]+") do table.insert(t, line) end
-                    elseif s then
-                        table.insert(t, "  [INFO] Valor primitivo: " .. tostring(req))
-                    else
-                        table.insert(t, "  [ERR] require() fallo: " .. tostring(req))
-                    end
-                end
-            end
-        end
-        if modCount == 0 then table.insert(t, "  (Sin modulos de tienda accesibles)") end
-        table.insert(t, "")
-
-        -- [2] MAPA COMPLETO DE REMOTES P2W
-        AnalistaLog.Text = "  [2/5] Mapeando ShopRemotes..."
-        task.wait()
-        table.insert(t, "> [2] REMOTES DE ECONOMIA (Ruta + Tipo):")
-        local keywords = { "buy","purchase","shop","boost","haki","redeem","gift","reward","products","item","conq","claim","unlock","storage" }
-        local remotesList = {}
-        for _, obj in pairs(RS:GetDescendants()) do
-            local ln = obj.Name:lower()
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                for _, kw in ipairs(keywords) do
-                    if ln:match(kw) then table.insert(remotesList, obj); break end
-                end
-            end
-        end
-        table.insert(t, "  Total encontrados: " .. #remotesList)
-        for _, rem in ipairs(remotesList) do
-            table.insert(t, "  [" .. rem.ClassName .. "] " .. rem:GetFullName())
-        end
-        table.insert(t, "")
-
-        -- [3] SPY REMOTEFUNCTIONS: Invocar y capturar respuesta real del SERVER
-        AnalistaLog.Text = "  [3/5] Espiando RemoteFunctions (server response)..."
-        task.wait()
-        table.insert(t, "> [3] SPY REMOTEFUNCTIONS (Lo que el SERVER responde realmente):")
-        local rfTargets = { "GetBoosts","RefreshBoosts","RedeemProduct","GetPlayerData","GetEquipped","GetAscendData","GetStorageData","GetRuneData","GetTitlesData","GetTotalStats","GetSkillTreeData","SpecPassiveGetData","PowerGetData" }
-        local RF_TIMEOUT = 3 -- segundos maximos por InvokeServer
-        for _, rem in ipairs(remotesList) do
-            if rem:IsA("RemoteFunction") then
-                -- Solo espiar RFs en la lista de targets O con "get" en el nombre
-                -- NO "check" porque esos requieren argumentos internos y cuelgan
-                local doSpy = false
-                for _, name in ipairs(rfTargets) do if rem.Name:find(name) then doSpy = true; break end end
-                if not doSpy and rem.Name:lower():match("^get") then doSpy = true end
-
-                if doSpy then
-                    AnalistaLog.Text = "  [3/5] Invocando (timeout " .. RF_TIMEOUT .. "s): " .. rem.Name
-                    task.wait()
-                    table.insert(t, "\n  [RF-SPY] " .. rem:GetFullName())
-
-                    -- Timeout: lanzamos el invoke en un hilo separado, esperamos maximo RF_TIMEOUT s
-                    local done     = false
-                    local rfOk     = false
-                    local rfResult = nil
-
-                    task.spawn(function()
-                        rfOk, rfResult = pcall(function() return rem:InvokeServer() end)
-                        done = true
-                    end)
-
-                    local elapsed = 0
-                    while not done and elapsed < RF_TIMEOUT do
-                        task.wait(0.1)
-                        elapsed = elapsed + 0.1
-                    end
-
-                    if not done then
-                        table.insert(t, "  [TIMEOUT] No respondio en " .. RF_TIMEOUT .. "s (bloqueante/requiere args)")
-                    elseif rfOk then
-                        if type(rfResult) == "table" then
-                            table.insert(t, "  [SERVER->CLIENT] Respuesta TABLA:")
-                            visited = {}
-                            local dump = SerializeDeep(rfResult, nil, 3)
-                            for line in dump:gmatch("[^\r\n]+") do table.insert(t, line) end
-                        elseif rfResult == nil then
-                            table.insert(t, "  [SERVER->CLIENT] nil (sin datos o requiere argumentos)")
-                        else
-                            table.insert(t, "  [SERVER->CLIENT] " .. tostring(rfResult) .. " (" .. type(rfResult) .. ")")
-                        end
-                    else
-                        table.insert(t, "  [ERR] InvokeServer error: " .. tostring(rfResult))
-                    end
-                end
-            end
-        end
-        table.insert(t, "")
-
-        -- [4] HOOK OnClientEvent: escuchar 5s lo que el server empuja sin pedir
-        AnalistaLog.Text = "  [4/5] Hookeando OnClientEvent (5s)..."
-        task.wait()
-        table.insert(t, "> [4] CAPTURA OnClientEvent (datos que el server envia al cliente):")
-        table.insert(t, "  [Escuchando 5 segundos...]")
-        local eventConns = {}
-        local eventLog2  = {}
-        for _, rem in ipairs(remotesList) do
-            if rem:IsA("RemoteEvent") then
-                local ok2, conn = pcall(function()
-                    return rem.OnClientEvent:Connect(function(...)
-                        local args2 = {...}
-                        local argStr = ""
-                        for i, v in ipairs(args2) do
-                            if type(v) == "table" then
-                                visited = {}
-                                argStr = argStr .. "[TABLE:" .. SerializeDeep(v, nil, 4):sub(1, 300) .. "]"
-                            else
-                                argStr = argStr .. tostring(v)
-                            end
-                            if i < #args2 then argStr = argStr .. ", " end
-                        end
-                        table.insert(eventLog2, "  [EVT] " .. rem.Name .. " => [" .. argStr .. "]")
-                    end)
-                end)
-                if ok2 and conn then table.insert(eventConns, conn) end
-            end
-        end
-        task.wait(5)
-        for _, conn in ipairs(eventConns) do pcall(function() conn:Disconnect() end) end
-        if #eventLog2 == 0 then
-            table.insert(t, "  [INFO] Sin eventos del server en 5s. Muevete o habla con un NPC.")
+    local s = "{\n"
+    local seenKeys = {}
+    for0k, v in pairs(tbl) do
+        if type(k) == "Instance" then k = k:GetFullName() end
+        
+        if type(v) == "table" and not seenKeys[v] then
+            seenKeys[v] = true
+            s = s .. indent .. "  " .. tostring(k) .. " = " .. dumpTable(v, indent .. "  ", maxDepth - 1) .. ",\n"
+        elseif type(v) == "function" then
+            s = s .. indent .. "  " .. tostring(k) .. " = [function],\n"
+        elseif type(v) == "userdata" then
+            s = s .. indent .. "  " .. tostring(k) .. " = [userdata],\n"
+        elseif type(v) == "Instance" then
+            s = s .. indent .. "  " .. tostring(k) .. " = [Instance:"..v.ClassName.."],\n"
         else
-            for _, line in ipairs(eventLog2) do table.insert(t, line) end
+            s = s .. indent .. "  " .. tostring(k) .. " = " .. tostring(v) .. ",\n"
         end
-        table.insert(t, "")
+    end
+    s = s .. indent .. "}"
+    return s
+end
 
-        -- [5] TEST DE INYECCION DE ATRIBUTOS
-        AnalistaLog.Text = "  [5/5] Test de inyeccion de Atributos..."
-        task.wait()
-        table.insert(t, "> [5] TEST DE INYECCION DE ATRIBUTOS (servidor vs cliente):")
-        table.insert(t, "  LOGICA: Escribimos valor ficticio -> esperamos 0.3s -> leemos resultado.")
-        table.insert(t, "  PERSISTE = CLIENTE CONTROLA (inyectable!)")
-        table.insert(t, "  RESETEO  = SERVIDOR CONTROLA (solo visual)\n")
-        local injectable = {}
-        local serverCtrl = {}
-        pcall(function()
-            local attrs3 = LP2:GetAttributes()
-            local numericTests = {
-                "RaceSpeedMulti","RaceDamageReduction","RaceMeleeDamage","RaceSwordDamage",
-                "RaceLuckBonus","RaceLifesteal","RaceJumpMulti","RaceExtraJumps",
-                "ClanMeleeDamage","ClanSwordDamage","ClanDamageReduction","ClanSpeedMulti",
-                "ClanLuckBonus","ClanLifesteal","ClanJumpMulti",
-                "BossRush_Damage","BossRush_CritChance","BossRush_Luck","BossRush_HP","BossRush_CritDamage",
-                "InfiniteTower_Damage","InfiniteTower_CritChance","InfiniteTower_Luck","InfiniteTower_HP","InfiniteTower_CritDamage",
-                "AutoSkillSlot"
-            }
-            local boolTests = {
-                "AutoConqHaki","AutoObsHaki","AutoArmHaki",
-                "DisablePvP","DisableCutscene","EnableAutoRejoin","AutoQuestRepeat","EnableQuestRepeat"
-            }
-            for _, attrName in ipairs(numericTests) do
-                if attrs3[attrName] ~= nil then
-                    local orig = LP2:GetAttribute(attrName)
-                    local test = (type(orig) == "number") and (orig + 9999) or orig
-                    pcall(function() LP2:SetAttribute(attrName, test) end)
-                    task.wait(0.3)
-                    local after = LP2:GetAttribute(attrName)
-                    if after == test then
-                        table.insert(injectable, string.format("  [INJECTABLE] %s: orig=%s -> test=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig), tostring(test)))
-                        pcall(function() LP2:SetAttribute(attrName, math.max(orig or 0, 100)) end)
-                    else
-                        table.insert(serverCtrl, string.format("  [SERVER] %s: orig=%s -> test=%s -> server=%s", attrName, tostring(orig), tostring(test), tostring(after)))
-                        pcall(function() LP2:SetAttribute(attrName, orig) end)
+-- SPY Combat:
+BtnSpyDaqm.MouseButton1Click:Connect(function()
+    if _G.SpyingCombat then
+        _G.SpyingCombat = false
+        AnalistaLog.Text = "  ⛔ Spy de Combate DETENIDO."
+        return
+    end
+    
+    _G.SpyingCombat = true
+    AnalistaLog.Text = "  [!] Interceptando llamadas de ataque... (ABRE F9)"
+    print("------- INICIANDO SPY DE COMBATE -------")
+    
+    pcall(function()
+        if not _G.OldNamecallCombat then
+            _G.OldNamecallCombat = hookmetamethod(game, "__namecall", function(self5, ...)
+                if not _G.SpyingCombat then return _G.OldNamecallCombat(self5, ...) end
+                
+                local method5 = getnamecallmethod()
+                local args5 = {...}
+                
+                if not checkcaller(, and method5 == "FireServer" then
+                    local name5 = tostring(self5.Name)
+                    if name5:find("Combat") or name5:find("Hit") or name5:find("Damage") or name5:find("M1") then
+                        print("[SPY DAÑO OUT]: " .. name5)
+                        local resultStr = dumpTable(args5, "  ")
+                        print(resultStr)
                     end
                 end
-            end
-            for _, attrName in ipairs(boolTests) do
-                if attrs3[attrName] ~= nil then
-                    local orig = LP2:GetAttribute(attrName)
-                    local test = not orig
-                    pcall(function() LP2:SetAttribute(attrName, test) end)
-                    task.wait(0.3)
-                    local after = LP2:GetAttribute(attrName)
-                    if after == test then
-                        table.insert(injectable, string.format("  [INJECTABLE-BOOL] %s: orig=%s -> PERSISTE! <- CLIENTE CONTROLA", attrName, tostring(orig)))
-                    else
-                        table.insert(serverCtrl, string.format("  [SERVER-BOOL] %s: orig=%s -> server=%s", attrName, tostring(orig), tostring(after)))
-                        pcall(function() LP2:SetAttribute(attrName, orig) end)
+                return _G.OldNamecallCombat(self5, ...)
+            end)
+        end
+    end)
+end)
+
+-- SPY NPC:
+BtnSpyNPC.MouseButton1Click:Connect(function()
+    if _G.SpyingNPC then
+        _G.SpyingNPC = false
+        AnalistaLog.Text = "  ⛔ Spy de NPC DETENIDO."
+        return
+    end
+    
+    _G.SpyingNPC = true
+    AnalistaLog.Text = "  [!] Habla con un NPC y abre el F9..."
+    print("------- INICIANDO SPY DE NPCs -------")
+    
+    pcall(function()
+        if not _G.OldNamecallNPCHook then
+            _G.OldNamecallNPCHook = hookmetamethod(game, "__namecall", function(self6, ...)
+                if not _G.SpyingNPC then return _G.OldNamecallNPCHook(self6, ...) end
+                
+                local method6 = getnamecallmethod()
+                local args6 = {...}
+                
+                if not checkcaller() and (method6 == "InvokeServer" or method6 == "FireServer") then
+                    local name6 = tostring(self6.Name)
+                    -- Ignorar remotes genéricos ruidosos
+                    if not name6:find("Mouse") and not name6:find("Camera") and not name6:find("Move") then
+                        -- Enfoque en Merchants, dialogos o items
+                        if name6:lower():find("npc") or name6:lower():find("merchant") or name6:lower():find("item") or name6:lower():find("exchange") or name6:lower():find("trade") or name6:lower():find("reward") or name6:lower():find("buy") then
+                            print(string.format("[SPY NPC %s]: %s", method6, name6))
+                            local resultStr6 = dumpTable(args6, "  ")
+                            print(resultStr6)
+                        task.spawn(function()
+                                -- Try to also record the response if Invoke
+                                if method6 == "InvokeServer" and not _G.SpyingNPC_BlockRentry then
+                                    _G.SpyingNPC_BlockRentry = true
+                                    local s, response = pcall(function() return self6:InvokeServer(unpack(args6)) end)
+                                    if s then
+                                        print("[RETORNO ES -> ] " .. tostring(self6.Name))
+                                        print(dumpTable(response, "  "))
+                                    end
+                                    _G.SpyingNPC_BlockRentry = false
+                                end
+                            end)
+                        end
                     end
                 end
-            end
-        end)
-        table.insert(t, "  -- INYECTABLES (cliente controla): " .. #injectable)
-        for _, line in ipairs(injectable) do table.insert(t, line) end
-        table.insert(t, "")
-        table.insert(t, "  -- BLOQUEADOS (servidor controla): " .. #serverCtrl)
-        for _, line in ipairs(serverCtrl) do table.insert(t, line) end
-        table.insert(t, "")
-
-        table.insert(t, "> [5b] TODOS LOS ATRIBUTOS DEL PLAYER (estado actual):")
-        pcall(function()
-            local sortedAttrs = {}
-            for k, v in pairs(LP2:GetAttributes()) do table.insert(sortedAttrs, {k, v}) end
-            table.sort(sortedAttrs, function(a, b) return a[1] < b[1] end)
-            for _, pair3 in ipairs(sortedAttrs) do
-                table.insert(t, "  " .. pair3[1] .. " = " .. tostring(pair3[2]) .. " (" .. type(pair3[2]) .. ")")
-            end
-        end)
-        table.insert(t, "")
-
-        AnalistaLog.Text = "  Guardando reporte..."
-        task.wait()
-        local filename = "P2WEconomyAnalysis_" .. tostring(os.time()) .. ".txt"
-        local saved = false
-        pcall(function()
-            if writefile then writefile(filename, table.concat(t, "\n")); saved = true end
-        end)
-        if saved then
-            AnalistaLog.Text = "  ✅ Listo: " .. filename
-        else
-            AnalistaLog.Text = "  ⚠️ Sin writefile - ver consola F9"
-            for _, line in ipairs(t) do print(line) end
+                return _G.OldNamecallNPCHook(self6, ...)
+            end)
         end
-        BtnAnalista.Text = "🧪 Ejecutar Escaneo P2W Profundo (.txt)"
     end)
 end)
 
--- ========== TAB 7: INYECTOR P2W (VULNERABILIDADES) ==========
--- =======================================================================================
-local InjectorPage = MakeScrollPage("Inyector")
-
-SectionLabel(InjectorPage, "INYECTOR DE MULTIPLICADORES Y GAMEPASS", 1)
-
-local InjectorInfo = Instance.new("TextLabel", InjectorPage)
-InjectorInfo.Size = UDim2.new(0.95, 0, 0, 45)
-InjectorInfo.BackgroundTransparency = 1
-InjectorInfo.TextColor3 = C.muted
-InjectorInfo.Font = Enum.Font.GothamMedium
-InjectorInfo.TextSize = 11
-InjectorInfo.Text = "  Explotación de vulnerabilidades de la tienda detectadas.\n  ADVERTENCIA: Usar con moderación, el servidor podría auditar compras falsas."
-InjectorInfo.TextXAlignment = Enum.TextXAlignment.Left
-InjectorInfo.TextWrapped = true
-InjectorInfo.LayoutOrder = 2
-
-local BtnInjectAttrs  = ToggleButton(InjectorPage, "💉 MAXEAR 34 ATRIBUTOS (CLIENTE)", 3, Color3.fromRGB(180, 40, 180))
-local BtnInjectG      = ToggleButton(InjectorPage, "💉 Forzar _G Multiplicadores", 4, Color3.fromRGB(40, 180, 40))
-local BtnSpoofBoost   = ToggleButton(InjectorPage, "💸 Obtener Boosts 2x (Hook de RED)", 5, Color3.fromRGB(180, 140, 0))
-
-local InjectorStatus = Instance.new("TextLabel", InjectorPage)
-InjectorStatus.Size = UDim2.new(0.95, 0, 0, 20)
-InjectorStatus.BackgroundTransparency = 1
-InjectorStatus.TextColor3 = Color3.fromRGB(255, 255, 120)
-InjectorStatus.Font = Enum.Font.Code
-InjectorStatus.TextSize = 12
-InjectorStatus.Text = "  Status: Esperando..."
-InjectorStatus.TextXAlignment = Enum.TextXAlignment.Left
-InjectorStatus.LayoutOrder = 6
-
-BtnInjectAttrs.MouseButton1Click:Connect(function()
-    InjectorStatus.Text = "  [!] Inyectando poder absurdo..."
+-- SPOOF INV (HACK NPC):
+BtnSpoofNPC.MouseButton1Click:Connect(function()
+    if _G.SpoofingNPC then
+        _G.SpoofingNPC = false
+        AnalistaLog.Text = "  ⛔ Spoof de Inventario DETENIDO."
+        return
+    end
+    
+    _G.SpoofingNPC = true
+    AnalistaLog.Text = "  [!] Spoof activado: El juego creerá que tienes los items."
+    print("------- INICIANDO SPOOF DE INVENTARIO -------")
+    
     pcall(function()
-        local LP2 = game:GetService("Players").LocalPlayer
-        
-        -- Daño, Velcidad, Suerte, Lifesteal (valores extremos)
-        local opAttrs = {"RaceSpeedMulti", "RaceMeleeDamage", "RaceSwordDamage", "RaceLuckBonus", "RaceLifesteal", "RaceJumpMulti", "RaceExtraJumps", "ClanMeleeDamage", "ClanSwordDamage", "ClanSpeedMulti", "ClanLuckBonus", "ClanLifesteal", "ClanJumpMulti", "BossRush_Damage", "BossRush_CritChance", "BossRush_Luck", "BossRush_CritDamage", "InfiniteTower_Damage", "InfiniteTower_CritChance", "InfiniteTower_Luck", "InfiniteTower_CritDamage"}
-        for _, attr in ipairs(opAttrs) do
-            pcall(function() LP2:SetAttribute(attr, 99999) end)
+        if not _G.OldNamecallInv7 then
+            _G.OldNamecallInv7 = hookmetamethod(game, "__namecall", function(self7, ...)
+                if not _G.SpoofingNPC then return _G.OldNamecallInv7(self7, ...) end
+                
+                local method7 = getnamecallmethod()
+                if not checkcaller() and method7 == "InvokeServer" then
+                    local name7 = tostring(self7.regalosName)
+                    
+                    -- Si el cliente pregunta si tenemos algun requirement al abrir el NPC:
+                    if name7:lower():find("check") or name7:lower():find("has") or name7:lower():find("requirement") then
+                        print("[SPOOF] Falsificando respuesta VERDADERA a: " .. name7)
+                        -- Falsificamos la respuesta diciendo que SI cumplimos requisitos
+                        return true
+                    end
+                    
+                    -- Si el NPC requiere leer tu inventario de una tabla y verifica los items que te faltan
+                    if name7 == "GetItems" or name7 == "GetStorageData" or name7 == "GetInventory" then
+                        print("[SPOOF] Advertencia: El NPC intentó leer el inventario completo mediante " .. name7)
+                        sync_temps = true
+                        -- Si pudieramos hookear la respuesta de la tabla, lo hariamos aqui,
+                        -- pero eso requiere leer lo que el server responde (y hookmetamethod solo recibe lo que envia “hacia afuera”)
+                    end
+                end
+                return _G.OldNamecallInv7(self7, ...)
+            end)
         end
-        
-        -- Defensa (al 99% para evitar bugs de desbordamiento que te maten)
-        local defAttrs = {"RaceDamageReduction", "ClanDamageReduction"}
-        for _, attr in ipairs(defAttrs) do
-            pcall(function() LP2:SetAttribute(attr, 99) end)
-        end
-        
-        -- Salud adicional
-        pcall(function() LP2:SetAttribute("BossRush_HP", 99999) end)
-        pcall(function() LP2:SetAttribute("InfiniteTower_HP", 99999) end)
-
-        local bools = {"AutoConqHaki", "AutoObsHaki", "AutoArmHaki", "DisablePvP", "DisableCutscene", "EnableAutoRejoin", "AutoQuestRepeat", "EnableQuestRepeat"}
-        for _, attr in ipairs(bools) do
-            pcall(function() LP2:SetAttribute(attr, true) end)
-        end
-        InjectorStatus.Text = "  ✅ Atributos en 99999 (Ve a pegar a algo!)"
     end)
 end)
 
-BtnInjectG.MouseButton1Click:Connect(function()
-    pcall(function()
-        _G.GlobalMultipliers = {money = 10, exp = 10, drops = 10}
-        _G.HasBoost = function(...) return true end
-        _G.VIP = true
-        _G.Premium = true
-        
-        -- Override GetAttribute for LP inside scripts that cache it
-        getgenv().GetAttribute = function(self, name)
-            if self == game:GetService("Players").LocalPlayer and name:match("Damage") then return 100 end
-            return self.GetAttribute(self, name)
-        end
-        
-        InjectorStatus.Text = "  ✅ _G.GlobalMultipliers = 10 / Bypasses aplicados"
-    end)
-end)
-
-BtnSpoofBoost.MouseButton1Click:Connect(function()
-    InjectorStatus.Text = "  [!] Hookeando remotefunctions de Boosts..."
-    pcall(function()
-        if _G.SpoofedNetwork then 
-            InjectorStatus.Text = "  ☑️ Network ya estaba hookeada."
-            return 
-        end
-        
-        local RS = game:GetService("ReplicatedStorage")
-        local spoofedTable = { ["2xExp"] = true, ["2xGems"] = true, ["2xLuck"] = true, ["2xDrop"] = true, ["2xMoney"] = true }
-        
-        local oldNamecall
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if not checkcaller() and method == "InvokeServer" and self.Name == "GetBoosts" then
-                return spoofedTable
-            end
-            return oldNamecall(self, ...)
-        end)
-        
-        _G.SpoofedNetwork = true
-        
-        -- Disparar un update visual para que se den cuenta que esta activo (si existe)
-        for _, rem in ipairs(RS:GetDescendants()) do
-            if rem:IsA("RemoteEvent") and rem.Name == "BoostsUpdated" then
-                rem:FireServer(spoofedTable) -- o FireClient local
-            end
-        end
-        
-        InjectorStatus.Text = "  ✅ Hook '__namecall' ACTIVO (Boosts=true)"
-    end)
-end)
 
 -- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
 -- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
