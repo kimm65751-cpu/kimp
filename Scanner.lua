@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARMlole"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -2212,13 +2212,18 @@ BtnAtaque.MouseButton1Click:Connect(function()
         task.wait(1)
         if not _G.AtaqueActivo then return end
 
-        -- Payload 3: Direct Bypass / Bypass Recompensa
-        logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA (Huérfanos / Admin bypass) ---")
-        FireIf("NPCReward", "QuestNPC9")
-        FireIf("QuestComplete", "Transcendent Being")
-        -- [PELIGROSO: ESTOS DISPARAN EL ANTI-CHEAT]
-        -- FireIf("AdminExecute", { Command = "GiveItem", Args = { "Chrysalis Sigil", 29 } })
-        -- FireIf("AddCurrency", "Gems", math.huge)
+        logAtk("--- 3. PROBANDO EXPLOTACIÓN DIRECTA DE MOVILIDAD Y PORTALES ---")
+        -- Explotación del Dash/Jump para bypass de Anti-Cheat:
+        -- Como el server no revalida, mandamos un vector de distancia enorme
+        FireIf("DashRemote", Vector3.new(0, 1, 0), 9999) 
+        -- Portal Pre-check Bypass: saltamos el UI de CheckPortal y forzamos TP
+        FireIf("TeleportToPortal", "Dungeon")
+        
+        -- Explotaciones de Bosses directos sin GUI
+        FireIf("RequestSummonBoss")
+        FireIf("RequestDungeonPortal")
+        FireIf("RequestSpawnStrongestBoss")
+        FireIf("RequestSpawnAnosBoss")
         FireIf("AllocateStat", "Damage", math.huge)
 
         task.wait(3)
