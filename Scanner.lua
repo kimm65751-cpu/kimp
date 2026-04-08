@@ -164,7 +164,7 @@ local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "⚔️  SAILOR PIECE — AUTO FARM"
+Title.Text = "⚔️  SAILOR PIECE — AUTO FARMEO"
 Title.TextColor3 = C.title
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 15
@@ -1822,8 +1822,293 @@ end)
 -- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
 -- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
 
+-- ================================================================
+-- FORENSE NPC — Rastreo completo de por qué no funciona el bypass
+-- ================================================================
+SectionLabel(AnalistaPage, "FORENSE NPC — ¿POR QUÉ FALLA?", 20)
 
+local BtnForenseNPC = ToggleButton(AnalistaPage, "🔬  FORENSE NPC  (crea reporte completo .txt)", 21, Color3.fromRGB(20, 120, 180))
+BtnForenseNPC.LayoutOrder = 21
 
+local ForenseLog = Instance.new("TextLabel", AnalistaPage)
+ForenseLog.Size = UDim2.new(0.95, 0, 0, 50)
+ForenseLog.BackgroundTransparency = 1
+ForenseLog.TextColor3 = Color3.fromRGB(100, 200, 255)
+ForenseLog.Font = Enum.Font.Code
+ForenseLog.TextSize = 10
+ForenseLog.TextWrapped = true
+ForenseLog.TextXAlignment = Enum.TextXAlignment.Left
+ForenseLog.LayoutOrder = 22
+ForenseLog.Text = "  ⬛ DETENIDO — Activa y habla con el NPC de la quest"
+
+local FORENSE_FILE = "NPC_Forensic_Report.txt"
+local _ForenseStep = 0
+
+local function flog(seccion, detalle)
+    pcall(function()
+        if not writefile then return end
+        _ForenseStep = _ForenseStep + 1
+        local ts = tostring(os.date("%H:%M:%S"))
+        local linea = string.format("[%s] PASO%02d [%s]\n%s\n\n", ts, _ForenseStep, seccion, tostring(detalle))
+        if isfile and readfile and isfile(FORENSE_FILE) then
+            writefile(FORENSE_FILE, readfile(FORENSE_FILE) .. linea)
+        else
+            writefile(FORENSE_FILE, linea)
+        end
+        ForenseLog.Text = "  🔬 [" .. ts .. "] " .. seccion .. " (paso " .. _ForenseStep .. ")"
+    end)
+end
+
+BtnForenseNPC.MouseButton1Click:Connect(function()
+    if _G.ForenseActivo then
+        _G.ForenseActivo = false
+        if _G.ForenseConns then
+            for _, c in ipairs(_G.ForenseConns) do pcall(function() c:Disconnect() end) end
+            _G.ForenseConns = nil
+        end
+        ForenseLog.Text = "  ⬛ DETENIDO — reporte en: " .. FORENSE_FILE
+        return
+    end
+
+    _G.ForenseActivo = true
+    _G.ForenseConns = {}
+    _ForenseStep = 0
+
+    -- Crear archivo nuevo con encabezado
+    pcall(function()
+        if writefile then
+            writefile(FORENSE_FILE,
+                "================================================================\n" ..
+                "  REPORTE FORENSE NPC — " .. tostring(os.date("%Y-%m-%d %H:%M:%S")) .. "\n" ..
+                "  Quest: Transcendent Being\n" ..
+                "  Objetivo: encontrar dónde y por qué falla el bypass\n" ..
+                "  Secciones: REMOTES | RESPUESTAS | MODULOS | BYPASS_ESTADO | ERROR\n" ..
+                "================================================================\n\n")
+        end
+    end)
+
+    ForenseLog.Text = "  🔬 ACTIVO — habla con el NPC ahora"
+
+    pcall(function()
+        local RS = game:GetService("ReplicatedStorage")
+
+        -- ============================================================
+        -- PASO A: Inventariar TODOS los remotes disponibles en el juego
+        -- ============================================================
+        task.spawn(function()
+            local remotelist = {}
+            for _, v in pairs(RS:GetDescendants()) do
+                if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+                    table.insert(remotelist, string.format("  [%s] %s → ruta: %s", v.ClassName, v.Name, v:GetFullName()))
+                end
+            end
+            flog("INVENTARIO_REMOTES", table.concat(remotelist, "\n"))
+        end)
+
+        -- ============================================================
+        -- PASO B: Hook __namecall — captura TODA llamada al servidor
+        --   con contexto completo: nombre, args, respuesta, si hubo
+        --   bypass activo o no, y si el resultado fue bloqueado
+        -- ============================================================
+        if not _G.ForenseHookNC then
+            _G.ForenseHookNC = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.ForenseActivo then
+                    return _G.ForenseHookNC(self, ...)
+                end
+                local method = getnamecallmethod()
+                if (method == "FireServer" or method == "InvokeServer") and typeof(self) == "Instance" then
+                    local rname = tostring(self.Name)
+                    local args = {...}
+                    local argsStr = "  Remote: " .. rname ..
+                        "\n  Método: " .. method ..
+                        "\n  Args enviados: " .. dumpTable(args, "  ") ..
+                        "\n  Bypass activo: " .. tostring(_G.BypassNPCActivo and "SI" or "NO")
+
+                    if method == "InvokeServer" then
+                        flog("INVOKE_SALIDA [CLIENTE→SERVER]", argsStr)
+                        local capturedSelf = self
+                        local capturedArgs = args
+                        local ok, resp = pcall(function()
+                            return table.pack(_G.ForenseHookNC(capturedSelf, table.unpack(capturedArgs)))
+                        end)
+                        if ok then
+                            local respStr = dumpTable(resp, "  ")
+                            local bloqueado = "NO"
+                            -- Detectar si la respuesta indica fallo/bloqueo
+                            if resp[1] == false then
+                                bloqueado = "SI — el servidor devolvió false"
+                            elseif type(resp[1]) == "table" then
+                                if resp[1].success == false then
+                                    bloqueado = "SI — resp.success = false"
+                                elseif resp[1].canClaim == false then
+                                    bloqueado = "SI — resp.canClaim = false"
+                                elseif resp[1].hasItems == false then
+                                    bloqueado = "SI — resp.hasItems = false"
+                                elseif resp[1].error then
+                                    bloqueado = "SI — resp.error = " .. tostring(resp[1].error)
+                                end
+                            end
+                            flog("INVOKE_RESPUESTA [SERVER→CLIENTE]",
+                                "  Remote: " .. rname ..
+                                "\n  Respuesta completa:\n" .. respStr ..
+                                "\n  ¿BLOQUEADO?: " .. bloqueado)
+                            return table.unpack(resp, 1, resp.n)
+                        else
+                            flog("INVOKE_ERROR [EXCEPCION]",
+                                "  Remote: " .. rname ..
+                                "\n  Error Lua al ejecutar: " .. tostring(resp))
+                            return _G.ForenseHookNC(self, ...)
+                        end
+                    else
+                        flog("FIRE_SALIDA [CLIENTE→SERVER]", argsStr)
+                    end
+                end
+                return _G.ForenseHookNC(self, ...)
+            end)
+        end
+
+        -- ============================================================
+        -- PASO C: Escuchar TODOS los OnClientEvent para ver qué
+        --   responde el servidor exactamente + detectar ShowNotification
+        --   con datos de quest para registrar qué items pidió
+        -- ============================================================
+        for _, v in pairs(RS:GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                local vname = v.Name
+                local conn = v.OnClientEvent:Connect(function(...)
+                    if not _G.ForenseActivo then return end
+                    local args = {...}
+                    local dump = dumpTable(args, "  ")
+
+                    -- Detección especial: ShowNotification con datos de quest
+                    if vname == "ShowNotification" then
+                        local tipo = tostring(args[1])
+                        local datos = args[2]
+                        if tipo == "Quest" and type(datos) == "table" then
+                            flog("QUEST_NOTIFICACION [SERVIDOR DICE]",
+                                "  Tipo: " .. tipo ..
+                                "\n  Mensaje: " .. tostring(datos.message or "?") ..
+                                "\n  ⚠️  ANÁLISIS: El servidor validó los items y los rechazó." ..
+                                "\n  CONCLUSIÓN: La validación es 100% server-side." ..
+                                "\n  El bypass de UpdateInventory NO alcanzó al servidor." ..
+                                "\n  Los items reales en el datastore del server son insuficientes.")
+                        else
+                            flog("SERVER_EVENT: " .. vname, dump)
+                        end
+
+                    -- Detección: UpdateInventory — ver qué inventario mandó el server
+                    elseif vname == "UpdateInventory" then
+                        local itemStr = "  Inventario recibido del servidor:\n"
+                        if type(args[1]) == "table" then
+                            for _, slot in pairs(args[1]) do
+                                if type(slot) == "table" and slot.name then
+                                    itemStr = itemStr .. string.format("    - %s: %s\n",
+                                        tostring(slot.name), tostring(slot.quantity))
+                                end
+                            end
+                        end
+                        flog("INVENTARIO_RECIBIDO [SERVER→CLIENTE]", itemStr)
+
+                    else
+                        flog("SERVER_EVENT: " .. vname, dump)
+                    end
+                end)
+                table.insert(_G.ForenseConns, conn)
+            end
+        end
+
+        -- ============================================================
+        -- PASO D: Rastrear módulos cargados que hagan validación
+        --   Buscar en Handler, QuestHandler, NPCHandler el código que
+        --   bloqueó el intento y registrar sus funciones
+        -- ============================================================
+        task.spawn(function()
+            if getloadedmodules then
+                for _, mod in ipairs(getloadedmodules()) do
+                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                        local n = mod.Name:lower()
+                        -- Módulos relevantes para quest/npc/inventory
+                        local esRelevante = n:find("quest") or n:find("npc") or n:find("handler")
+                            or n:find("inventory") or n:find("item") or n:find("shop")
+                            or n:find("requirement") or n:find("transcendent") or n:find("reward")
+                            or n:find("claim") or n:find("check") or n:find("validation")
+                        if esRelevante then
+                            local ok, result = pcall(require, mod)
+                            if ok and type(result) == "table" then
+                                local fnList = {}
+                                for fname, fval in pairs(result) do
+                                    if type(fval) == "function" then
+                                        table.insert(fnList, "    función: " .. tostring(fname))
+                                    elseif type(fval) == "table" then
+                                        table.insert(fnList, "    tabla: " .. tostring(fname) .. " = " .. dumpTable(fval, "      ", 2))
+                                    else
+                                        table.insert(fnList, "    valor: " .. tostring(fname) .. " = " .. tostring(fval))
+                                    end
+                                end
+                                flog("MODULO_RELEVANTE: " .. mod.Name,
+                                    "  Ruta: " .. mod:GetFullName() ..
+                                    "\n  Exportaciones:\n" .. table.concat(fnList, "\n"))
+
+                                -- Parchear funciones de validación y loggear si se ejecutan
+                                for fname, fval in pairs(result) do
+                                    if type(fval) == "function" then
+                                        local fl = tostring(fname):lower()
+                                        if fl:find("check") or fl:find("has") or fl:find("valid")
+                                            or fl:find("quest") or fl:find("require") or fl:find("claim") then
+                                            pcall(function()
+                                                local origFn = fval
+                                                hookfunction(origFn, function(...)
+                                                    if not _G.ForenseActivo then return origFn(...) end
+                                                    flog("FUNCION_INTERCEPTADA: " .. mod.Name .. "." .. fname,
+                                                        "  Args:\n" .. dumpTable({...}, "  "))
+                                                    local res = table.pack(origFn(...))
+                                                    flog("FUNCION_RESULTADO: " .. mod.Name .. "." .. fname,
+                                                        "  Retorno:\n" .. dumpTable(res, "  ") ..
+                                                        "\n  ¿Retornó false/nil?: " .. tostring(
+                                                            res[1] == false or res[1] == nil and "SI — AQUÍ ESTÁ EL BLOQUEO" or "no"))
+                                                    return table.unpack(res, 1, res.n)
+                                                end)
+                                            end)
+                                        end
+                                    end
+                                end
+                            else
+                                flog("MODULO_ERROR: " .. mod.Name,
+                                    "  No se pudo hacer require: " .. tostring(result))
+                            end
+                        end
+                    end
+                end
+                flog("MODULOS_SCAN_COMPLETO", "  Todos los módulos relevantes fueron escaneados y hookeados.")
+            else
+                flog("MODULOS_ERROR", "  getloadedmodules() no disponible en este executor.")
+            end
+        end)
+
+        -- ============================================================
+        -- PASO E: Diagnóstico del estado del bypass 30seg después
+        --   Crea un resumen automático de qué funcionó y qué falló
+        -- ============================================================
+        task.delay(30, function()
+            if not _G.ForenseActivo then return end
+            local estadoBypass = _G.BypassNPCActivo and "ACTIVO" or "INACTIVO"
+            local hookNC = _G.BypassHookNC and "INSTALADO" or "NO instalado"
+            local hookNI = _G.MegaHookNI and "INSTALADO" or "NO instalado"
+            local hookInv = _G.BypassInvConn and "CONECTADO" or "NO conectado"
+            flog("DIAGNOSTICO_AUTOMATICO [30seg]",
+                "  — Estado del Bypass NPC: " .. estadoBypass ..
+                "\n  — Hook __namecall (InvokeServer): " .. hookNC ..
+                "\n  — Hook __newindex (Health): " .. hookNI ..
+                "\n  — Hook UpdateInventory: " .. hookInv ..
+                "\n  — Pasos capturados hasta ahora: " .. tostring(_ForenseStep) ..
+                "\n\n  INTERPRETACIÓN AUTOMÁTICA:" ..
+                "\n  Si ShowNotification apareció con 'Missing:' → servidor valida server-side." ..
+                "\n  Si INVOKE_RESPUESTA tiene false → el remote existe pero rechaza." ..
+                "\n  Si no hubo INVOKE_SALIDA al hablar con el NPC → usa FireServer (sin retorno)." ..
+                "\n  Si no hubo nada → el NPC no envía al servidor (lógica local pura).")
+        end)
+    end)
+end)
 
 -- ==============================================================================
 -- PESTAÑA DE CÓDIGOS (NUEVA UI)
