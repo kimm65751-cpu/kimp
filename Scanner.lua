@@ -1649,9 +1649,179 @@ BtnMega.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- ================================================================
+-- BYPASS QUEST NPC — Intercepta UpdateInventory y fuerza items
+-- ================================================================
+SectionLabel(AnalistaPage, "BYPASS NPC / QUEST", 10)
+
+local BtnBypassNPC = ToggleButton(AnalistaPage, "🟣  BYPASS QUEST NPC  (Transcendent Being)", 11, Color3.fromRGB(120, 20, 180))
+BtnBypassNPC.LayoutOrder = 11
+
+local BypassLog = Instance.new("TextLabel", AnalistaPage)
+BypassLog.Size = UDim2.new(0.95, 0, 0, 45)
+BypassLog.BackgroundTransparency = 1
+BypassLog.TextColor3 = Color3.fromRGB(200, 150, 255)
+BypassLog.Font = Enum.Font.Code
+BypassLog.TextSize = 10
+BypassLog.TextWrapped = true
+BypassLog.TextXAlignment = Enum.TextXAlignment.Left
+BypassLog.LayoutOrder = 12
+BypassLog.Text = "  ⬛ DESACTIVADO"
+
+-- Items exactos que pide la quest "Transcendent Being"
+local QUEST_ITEMS_NEEDED = {
+    ["Evolution Fragment"]  = 5,
+    ["Transcendent Core"]   = 10,
+    ["Divinity Essence"]    = 20,
+    ["Fusion Ring"]         = 30,
+    ["Chrysalis Sigil"]     = 100,
+}
+
+BtnBypassNPC.MouseButton1Click:Connect(function()
+    if _G.BypassNPCActivo then
+        _G.BypassNPCActivo = false
+        -- Desconectar el hook de UpdateInventory
+        if _G.BypassInvConn then
+            pcall(function() _G.BypassInvConn:Disconnect() end)
+            _G.BypassInvConn = nil
+        end
+        BypassLog.Text = "  ⬛ DESACTIVADO"
+        return
+    end
+
+    _G.BypassNPCActivo = true
+    BypassLog.Text = "  🟣 ACTIVO — Habla con el NPC de la quest ahora"
+
+    pcall(function()
+        -- ==============================================================
+        -- MÉTODO 1: Interceptar UpdateInventory y parchear los items
+        --   Antes de que el módulo Handler procese el inventario,
+        --   inyectamos los items de la quest con cantidades suficientes
+        -- ==============================================================
+        local RS = game:GetService("ReplicatedStorage")
+        local invRemote = nil
+        for _, v in pairs(RS:GetDescendants()) do
+            if v:IsA("RemoteEvent") and v.Name == "UpdateInventory" then
+                invRemote = v
+                break
+            end
+        end
+
+        if invRemote then
+            _G.BypassInvConn = invRemote.OnClientEvent:Connect(function(invData)
+                if not _G.BypassNPCActivo then return end
+                -- invData es la tabla del inventario que el server mandó
+                -- La parcheamos ANTES de que el módulo local la lea
+                if type(invData) == "table" then
+                    for _, slot in pairs(invData) do
+                        if type(slot) == "table" and slot.name then
+                            local needed = QUEST_ITEMS_NEEDED[slot.name]
+                            if needed then
+                                slot.quantity = needed
+                            end
+                        end
+                    end
+                end
+                -- No bloqueamos el evento — lo dejamos pasar ya modificado
+                -- El módulo Handler recibirá el inventario parcheado
+            end)
+            BypassLog.Text = "  🟣 Hook UpdateInventory OK — Habla con el NPC"
+        else
+            BypassLog.Text = "  ⚠️ UpdateInventory no encontrado — usando hook global"
+        end
+
+        -- ==============================================================
+        -- MÉTODO 2: Hook __namecall para interceptar InvokeServer del NPC
+        --   Si el NPC manda InvokeServer con validación, forzamos true
+        -- ==============================================================
+        if not _G.BypassHookNC then
+            _G.BypassHookNC = hookmetamethod(game, "__namecall", function(self, ...)
+                if not _G.BypassNPCActivo then
+                    return _G.BypassHookNC(self, ...)
+                end
+                local method = getnamecallmethod()
+                if method == "InvokeServer" and typeof(self) == "Instance" then
+                    local name = tostring(self.Name):lower()
+                    -- Si el remote parece ser una validación de quest o inventario
+                    if name:find("quest") or name:find("check") or name:find("has")
+                        or name:find("requirement") or name:find("claim") or name:find("complete")
+                        or name:find("npc") or name:find("interact") or name:find("redeem")
+                        or name:find("transcendent") or name:find("fragment") then
+                        -- Ejecutar y capturar la respuesta real
+                        local realResp = table.pack(_G.BypassHookNC(self, ...))
+                        -- Si la respuesta es false o tiene un campo de éxito, forzamos true
+                        if realResp.n >= 1 then
+                            local first = realResp[1]
+                            if type(first) == "boolean" and not first then
+                                BypassLog.Text = "  ✅ InvokeServer interceptado: " .. tostring(self.Name) .. " → forzado TRUE"
+                                return true
+                            elseif type(first) == "table" then
+                                if first.success == false then first.success = true end
+                                if first.hasItems == false then first.hasItems = true end
+                                if first.canClaim == false then first.canClaim = true end
+                                BypassLog.Text = "  ✅ Tabla interceptada: " .. tostring(self.Name) .. " → parcheada"
+                                return first
+                            end
+                        end
+                        return table.unpack(realResp, 1, realResp.n)
+                    end
+                end
+                return _G.BypassHookNC(self, ...)
+            end)
+        end
+
+        -- ==============================================================
+        -- MÉTODO 3: Parchear directamente el módulo Handler en memoria
+        --   Handler.GetAll() probablemente retorna el inventario local
+        --   Hackeamos esa función para inyectar los items de la quest
+        -- ==============================================================
+        task.spawn(function()
+            if getloadedmodules then
+                for _, mod in ipairs(getloadedmodules()) do
+                    if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                        local n = mod.Name:lower()
+                        if n == "handler" or n == "inventory" or n == "inventoryhandler"
+                            or n == "playerdata" or n == "questhandler" or n == "itemhandler" then
+                            local ok, result = pcall(require, mod)
+                            if ok and type(result) == "table" then
+                                -- Intentar parchear GetInventory / GetAll / GetItems
+                                for fname, fval in pairs(result) do
+                                    if type(fval) == "function" then
+                                        local fl = tostring(fname):lower()
+                                        if fl:find("get") or fl:find("inventory") or fl:find("item") or fl:find("all") then
+                                            pcall(function()
+                                                local origFn = fval
+                                                hookfunction(origFn, function(...)
+                                                    if not _G.BypassNPCActivo then return origFn(...) end
+                                                    local data = table.pack(origFn(...))
+                                                    -- Si retorna una tabla con items, inyectamos los de la quest
+                                                    if data.n >= 1 and type(data[1]) == "table" then
+                                                        for _, slot in pairs(data[1]) do
+                                                            if type(slot) == "table" and slot.name then
+                                                                local needed = QUEST_ITEMS_NEEDED[slot.name]
+                                                                if needed then slot.quantity = needed end
+                                                            end
+                                                        end
+                                                    end
+                                                    return table.unpack(data, 1, data.n)
+                                                end)
+                                            end)
+                                        end
+                                    end
+                                end
+                                BypassLog.Text = "  🟣 Módulo " .. mod.Name .. " parcheado en memoria"
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+end)
 
 -- ========== HOTKEY: Tecla * para Toggle GUI, K para Toggle Farm ==========
 -- (La conexión de K se registra más abajo, después de definir ToggleAutoFarm)
+
 
 
 
