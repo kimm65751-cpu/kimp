@@ -291,8 +291,8 @@ local function StartListening()
                 if scanning then
                     local method = getnamecallmethod()
                     if method == "FireServer" or method == "InvokeServer" then
+                        local args = {...}
                         pcall(function()
-                            local args = {...}
                             local argStr = ""
                             for i, a in ipairs(args) do
                                 argStr = argStr .. Ser(a) .. " | "
@@ -320,8 +320,8 @@ local function StartListening()
                     if scanning then
                         local method = getnamecallmethod()
                         if method == "FireServer" or method == "InvokeServer" then
+                            local args = {...}
                             pcall(function()
-                                local args = {...}
                                 local argStr = ""
                                 for i, a in ipairs(args) do
                                     argStr = argStr .. Ser(a) .. " | "
