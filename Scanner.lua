@@ -292,15 +292,17 @@ local function StartListening()
                     local method = getnamecallmethod()
                     if method == "FireServer" or method == "InvokeServer" then
                         local args = {...}
-                        pcall(function()
-                            local argStr = ""
-                            for i, a in ipairs(args) do
-                                argStr = argStr .. Ser(a) .. " | "
-                            end
-                            local pos = GetPlayerPos()
-                            local rName = "?"
-                            pcall(function() rName = self.Name or self:GetFullName() end)
-                            Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                        task.spawn(function()
+                            pcall(function()
+                                local argStr = ""
+                                for i, a in ipairs(args) do
+                                    argStr = argStr .. Ser(a) .. " | "
+                                end
+                                local pos = GetPlayerPos()
+                                local rName = "?"
+                                pcall(function() rName = self.Name or self:GetFullName() end)
+                                Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                            end)
                         end)
                     end
                 end
@@ -321,15 +323,17 @@ local function StartListening()
                         local method = getnamecallmethod()
                         if method == "FireServer" or method == "InvokeServer" then
                             local args = {...}
-                            pcall(function()
-                                local argStr = ""
-                                for i, a in ipairs(args) do
-                                    argStr = argStr .. Ser(a) .. " | "
-                                end
-                                local pos = GetPlayerPos()
-                                local rName = "?"
-                                pcall(function() rName = self.Name or self:GetFullName() end)
-                                Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                            task.spawn(function()
+                                pcall(function()
+                                    local argStr = ""
+                                    for i, a in ipairs(args) do
+                                        argStr = argStr .. Ser(a) .. " | "
+                                    end
+                                    local pos = GetPlayerPos()
+                                    local rName = "?"
+                                    pcall(function() rName = self.Name or self:GetFullName() end)
+                                    Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                                end)
                             end)
                         end
                     end
@@ -537,7 +541,7 @@ local Title = Instance.new("TextLabel", Header)
 Title.Size = UDim2.new(1,-80,1,0)
 Title.Position = UDim2.new(0,12,0,0)
 Title.BackgroundTransparency = 1
-Title.Text = "🔬 Job Scanner v1.0"
+Title.Text = "🔬 Job Scanner v1.2"
 Title.TextColor3 = C.text
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
