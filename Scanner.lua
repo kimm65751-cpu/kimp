@@ -1,6 +1,6 @@
 --[[
 ╔══════════════════════════════════════════════════════════════╗
-║  BLOXBURG JOB SCANNER v1.1 — Pasivo, No Intrusivo          ║
+║  BLOXBURG JOB SCANNER v1.0 — Pasivo, No Intrusivo          ║
 ║  Toggle GUI: Tecla K | Minimizar con botón                  ║
 ║  Guarda todo en: BloxburgJobScan.txt                        ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -36,14 +36,26 @@ local POS_INTERVAL = 3 -- Solo loguear posición cada 3 seg
 local lastPosValue = ""
 
 local function IsNoise(cat, msg)
-    -- Filtrar activeScheduleLesson spam
-    if cat == "S→C" and msg:find("activeScheduleLesson") then
-        local now = tick()
-        if now - lastScheduleLog < SCHEDULE_INTERVAL then
-            return true -- Silenciar
+    if cat == "S→C" or cat == "S→C_NEW" then
+        -- 1. activeScheduleLesson spam (1 cada 30s)
+        if msg:find("activeScheduleLesson") then
+            local now = tick()
+            if now - lastScheduleLog < 30 then return true end
+            lastScheduleLog = now
+            return false
         end
-        lastScheduleLog = now
-        return false -- Dejar pasar 1 cada 10s
+        -- 2. Vehicle Springs/Speed telemetry
+        if msg:find("Springs=") or msg:find("SpeedDelta=") then return true end
+        -- 3. Wall/Plot construction de otros
+        if msg:find("WallLength=") and msg:find("WallCFrame=") then return true end
+        -- 4. Empty object streaming
+        if msg:find("| {O={}, } |") or msg:match("| {O={[^}]*Spruce Tree") then return true end
+        -- 5. Sound events de otros
+        if msg:find("Sound=GroundSound") or msg:find("Sound=DriveSound") or msg:find("Sound=JumpSound") then return true end
+        -- 6. Walls vacías
+        if msg:find("| {Walls={}, } |") then return true end
+        -- 7. Empty payload puro (solo si no tiene nada útil)
+        if msg:match("| {} |$") then return false end -- Mantener: pueden ser confirmaciones de trabajo
     end
     return false
 end
@@ -267,7 +279,68 @@ local function StartListening()
     end
     Log("NET", "Conectado a " .. #connPool .. " RemoteEvents pasivos")
 
-    -- 2) Monitorear posición SOLO cada 3 segundos (anti-spam)
+    -- 2) HOOK __namecall para interceptar FireServer/InvokeServer (C→S)
+    local oldNamecall = nil
+    pcall(function()
+        local mt = getrawmetatable(game)
+        if mt then
+            local oldNC = mt.__namecall
+            oldNamecall = oldNC
+            if setreadonly then setreadonly(mt, false) end
+            mt.__namecall = newcclosure(function(self, ...)
+                if scanning then
+                    local method = getnamecallmethod()
+                    if method == "FireServer" or method == "InvokeServer" then
+                        pcall(function()
+                            local args = {...}
+                            local argStr = ""
+                            for i, a in ipairs(args) do
+                                argStr = argStr .. Ser(a) .. " | "
+                            end
+                            local pos = GetPlayerPos()
+                            local rName = "?"
+                            pcall(function() rName = self.Name or self:GetFullName() end)
+                            Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                        end)
+                    end
+                end
+                return oldNC(self, ...)
+            end)
+            if setreadonly then setreadonly(mt, true) end
+            Log("HOOK", "__namecall hook activo — capturando FireServer/InvokeServer")
+        else
+            Log("HOOK", "⚠ No se pudo hookear __namecall (sin getrawmetatable)")
+        end
+    end)
+    if not oldNamecall then
+        Log("HOOK", "⚠ Intentando hookear con hookmetamethod...")
+        pcall(function()
+            if hookmetamethod then
+                oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                    if scanning then
+                        local method = getnamecallmethod()
+                        if method == "FireServer" or method == "InvokeServer" then
+                            pcall(function()
+                                local args = {...}
+                                local argStr = ""
+                                for i, a in ipairs(args) do
+                                    argStr = argStr .. Ser(a) .. " | "
+                                end
+                                local pos = GetPlayerPos()
+                                local rName = "?"
+                                pcall(function() rName = self.Name or self:GetFullName() end)
+                                Log("C→S", method .. " " .. rName .. " @ pos=" .. pos .. " | " .. argStr)
+                            end)
+                        end
+                    end
+                    return oldNamecall(self, ...)
+                end)
+                Log("HOOK", "hookmetamethod activo — capturando FireServer/InvokeServer")
+            end
+        end)
+    end
+
+    -- 3) Monitorear posición SOLO cada 3 segundos (anti-spam)
     local posTimer = 0
     local posConn = RunService.Heartbeat:Connect(function(dt)
         if not scanning then return end
@@ -276,12 +349,10 @@ local function StartListening()
             posTimer = 0
             local pos = GetPlayerPos()
             local tool = GetEquippedTool()
-            -- Solo loguear si cambió posición significativamente
             if pos ~= lastPosValue then
                 Log("POS", "Posición → " .. pos .. " tool=" .. tool)
                 lastPosValue = pos
             end
-            -- Detectar cambio de herramienta
             if tool ~= lastTool then
                 Log("TOOL", "Herramienta: " .. lastTool .. " → " .. tool .. " @ " .. pos)
                 lastTool = tool
@@ -290,7 +361,7 @@ local function StartListening()
     end)
     table.insert(connPool, posConn)
 
-    -- 3) Monitorear cambios en el personaje (tools, backpack)
+    -- 4) Monitorear cambios en el personaje (tools, backpack)
     local function watchChar(char)
         if not char then return end
         local addConn = char.ChildAdded:Connect(function(child)
@@ -316,7 +387,7 @@ local function StartListening()
     end)
     table.insert(connPool, charConn)
 
-    -- 4) Monitorear Backpack
+    -- 5) Monitorear Backpack
     local bpConn = LP.Backpack.ChildAdded:Connect(function(child)
         if not scanning then return end
         if child:IsA("Tool") then
@@ -325,7 +396,78 @@ local function StartListening()
     end)
     table.insert(connPool, bpConn)
 
-    -- 5) Monitorear nuevos RemoteEvents creados dinámicamente
+    -- 6) Monitorear PlayerGui para cambios de UI de trabajo
+    pcall(function()
+        local pg = LP:WaitForChild("PlayerGui", 2)
+        if pg then
+            local guiConn = pg.DescendantAdded:Connect(function(desc)
+                if not scanning then return end
+                pcall(function()
+                    local name = desc.Name:lower()
+                    -- Detectar UI de trabajo
+                    if name:find("job") or name:find("work") or name:find("task")
+                       or name:find("objective") or name:find("skill")
+                       or name:find("promote") or name:find("level")
+                       or name:find("pay") or name:find("salary") then
+                        Log("GUI_JOB", "UI apareció: " .. desc:GetFullName() .. " [" .. desc.ClassName .. "]")
+                        if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+                            Log("GUI_JOB", "  Text=" .. tostring(desc.Text))
+                        end
+                    end
+                end)
+            end)
+            table.insert(connPool, guiConn)
+            Log("GUI", "Monitoreando PlayerGui para UI de trabajo")
+        end
+    end)
+
+    -- 7) Monitorear valores (IntValue, NumberValue, StringValue) bajo el jugador
+    pcall(function()
+        local function watchValue(val)
+            if val:IsA("ValueBase") then
+                local vConn = val.Changed:Connect(function(newVal)
+                    if not scanning then return end
+                    Log("VALUE", val:GetFullName() .. " = " .. tostring(newVal) .. " @ " .. GetPlayerPos())
+                end)
+                table.insert(connPool, vConn)
+            end
+        end
+        -- Buscar valores existentes bajo el jugador
+        for _, desc in ipairs(LP:GetDescendants()) do
+            pcall(function() watchValue(desc) end)
+        end
+        -- Detectar nuevos valores
+        local valConn = LP.DescendantAdded:Connect(function(desc)
+            if not scanning then return end
+            pcall(function()
+                if desc:IsA("ValueBase") then
+                    Log("NEW_VAL", "Nuevo valor: " .. desc:GetFullName() .. " = " .. tostring(desc.Value))
+                    watchValue(desc)
+                end
+            end)
+        end)
+        table.insert(connPool, valConn)
+        Log("VAL", "Monitoreando valores (IntValue/etc) bajo Player")
+    end)
+
+    -- 8) Monitorear atributos del jugador y personaje
+    pcall(function()
+        local attrConn = LP.AttributeChanged:Connect(function(attr)
+            if not scanning then return end
+            Log("ATTR", "Player." .. attr .. " = " .. tostring(LP:GetAttribute(attr)) .. " @ " .. GetPlayerPos())
+        end)
+        table.insert(connPool, attrConn)
+        if LP.Character then
+            local charAttr = LP.Character.AttributeChanged:Connect(function(attr)
+                if not scanning then return end
+                Log("ATTR", "Char." .. attr .. " = " .. tostring(LP.Character:GetAttribute(attr)) .. " @ " .. GetPlayerPos())
+            end)
+            table.insert(connPool, charAttr)
+        end
+        Log("ATTR", "Monitoreando atributos de Player y Character")
+    end)
+
+    -- 9) Monitorear nuevos RemoteEvents creados dinámicamente
     local newRemConn = RS.DescendantAdded:Connect(function(desc)
         if not scanning then return end
         if desc:IsA("RemoteEvent") then
@@ -395,7 +537,7 @@ local Title = Instance.new("TextLabel", Header)
 Title.Size = UDim2.new(1,-80,1,0)
 Title.Position = UDim2.new(0,12,0,0)
 Title.BackgroundTransparency = 1
-Title.Text = "🔬 Job Scanner v1.1"
+Title.Text = "🔬 Job Scanner v1.0"
 Title.TextColor3 = C.text
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
