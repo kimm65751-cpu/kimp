@@ -1,6 +1,6 @@
 --[[
 ╔══════════════════════════════════════════════════════════════╗
-║  BLOXBURG JOB SCANNER v1.0 — Pasivo, No Intrusivo          ║
+║  BLOXBURG JOB SCANNER v1.1 — Pasivo, No Intrusivo          ║
 ║  Toggle GUI: Tecla K | Minimizar con botón                  ║
 ║  Guarda todo en: BloxburgJobScan.txt                        ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -395,7 +395,7 @@ local Title = Instance.new("TextLabel", Header)
 Title.Size = UDim2.new(1,-80,1,0)
 Title.Position = UDim2.new(0,12,0,0)
 Title.BackgroundTransparency = 1
-Title.Text = "🔬 Job Scanner v1.0"
+Title.Text = "🔬 Job Scanner v1.1"
 Title.TextColor3 = C.text
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
