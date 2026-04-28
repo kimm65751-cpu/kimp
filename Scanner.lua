@@ -19,24 +19,45 @@ SG.ResetOnSpawn = false
 -- ═══ ESTADO ═══
 local scanning = false
 local guiVisible = true
-local logLines = {}
+local guiLogLines = {} -- Solo para GUI (últimas 60)
 local logCount = 0
+local totalEvents = 0
 local connPool = {}
 local lastPos = nil
 local lastTool = ""
 local scanStart = 0
 local FILE = "BloxburgJobScan_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
 
+-- ═══ FILTRO DE RUIDO ═══
+local lastScheduleLog = 0
+local SCHEDULE_INTERVAL = 10 -- Solo loguear schedule cada 10 seg
+local lastPosLog = 0
+local POS_INTERVAL = 3 -- Solo loguear posición cada 3 seg
+local lastPosValue = ""
+
+local function IsNoise(cat, msg)
+    -- Filtrar activeScheduleLesson spam
+    if cat == "S→C" and msg:find("activeScheduleLesson") then
+        local now = tick()
+        if now - lastScheduleLog < SCHEDULE_INTERVAL then
+            return true -- Silenciar
+        end
+        lastScheduleLog = now
+        return false -- Dejar pasar 1 cada 10s
+    end
+    return false
+end
+
 -- ═══ SERIALIZACIÓN RECURSIVA ═══
 local function Ser(obj, d)
     d = d or 0
-    if d > 3 then return "{...}" end
+    if d > 4 then return "{...}" end
     if type(obj) == "table" then
         local s = "{"
         local c = 0
         for k, v in pairs(obj) do
             c = c + 1
-            if c > 15 then s = s .. "..+" .. (c) .. "more, "; break end
+            if c > 20 then s = s .. "..+" .. (c) .. "more, "; break end
             s = s .. tostring(k) .. "=" .. Ser(v, d+1) .. ", "
         end
         return s .. "}"
@@ -53,28 +74,65 @@ local function Ser(obj, d)
     return tostring(obj)
 end
 
--- ═══ LOG Y GUARDADO ═══
+-- ═══ LOG Y GUARDADO (SIN LÍMITE) ═══
+local writeBuffer = ""
+local bufferCount = 0
+
 local function Log(cat, msg)
+    -- Filtrar ruido
+    if IsNoise(cat, msg) then
+        totalEvents = totalEvents + 1
+        return
+    end
+    
     logCount = logCount + 1
+    totalEvents = totalEvents + 1
     local ts = os.date("%H:%M:%S")
     local elapsed = scanning and string.format("%.1f", tick() - scanStart) or "0"
     local line = "[" .. ts .. " +" .. elapsed .. "s] [" .. cat .. "] " .. msg
-    table.insert(logLines, line)
-    -- Mantener solo últimas 500 líneas en memoria
-    if #logLines > 500 then table.remove(logLines, 1) end
-    -- Guardar a archivo cada 5 líneas
-    if logCount % 5 == 0 and writefile then
+    
+    -- Acumular en buffer de escritura
+    writeBuffer = writeBuffer .. line .. "\n"
+    bufferCount = bufferCount + 1
+    
+    -- Escribir al archivo cada 10 líneas (append real)
+    if bufferCount >= 10 and appendfile then
         pcall(function()
-            local all = table.concat(logLines, "\n")
-            writefile(FILE, all)
+            appendfile(FILE, writeBuffer)
         end)
+        writeBuffer = ""
+        bufferCount = 0
+    elseif bufferCount >= 10 and writefile then
+        -- Fallback: si no hay appendfile, usar writefile con acumulación
+        pcall(function()
+            local existing = ""
+            if isfile and isfile(FILE) then
+                existing = readfile(FILE)
+            end
+            writefile(FILE, existing .. writeBuffer)
+        end)
+        writeBuffer = ""
+        bufferCount = 0
     end
+    
     print(line)
 end
 
 local function SaveNow()
-    if writefile then
-        pcall(function() writefile(FILE, table.concat(logLines, "\n")) end)
+    if writeBuffer ~= "" then
+        if appendfile then
+            pcall(function() appendfile(FILE, writeBuffer) end)
+        elseif writefile then
+            pcall(function()
+                local existing = ""
+                if isfile and isfile(FILE) then
+                    existing = readfile(FILE)
+                end
+                writefile(FILE, existing .. writeBuffer)
+            end)
+        end
+        writeBuffer = ""
+        bufferCount = 0
     end
 end
 
@@ -193,7 +251,6 @@ local function StartListening()
     for _, obj in ipairs(RS:GetDescendants()) do
         if obj:IsA("RemoteEvent") then
             local rName = obj.Name
-            local rPath = obj:GetFullName()
             local conn = obj.OnClientEvent:Connect(function(...)
                 if not scanning then return end
                 local args = {...}
@@ -210,32 +267,28 @@ local function StartListening()
     end
     Log("NET", "Conectado a " .. #connPool .. " RemoteEvents pasivos")
 
-    -- 2) Monitorear posición del jugador (cada 2 segundos)
-    local posConn = RunService.Heartbeat:Connect(function()
-        if not scanning then return end
-        local pos = GetPlayerPos()
-        if pos ~= lastPos then
-            lastPos = pos
-            Log("POS", "Movimiento → " .. pos)
-        end
-    end)
-    -- Reducir frecuencia del log de posición
+    -- 2) Monitorear posición SOLO cada 3 segundos (anti-spam)
     local posTimer = 0
-    local posConn2 = RunService.Heartbeat:Connect(function(dt)
+    local posConn = RunService.Heartbeat:Connect(function(dt)
         if not scanning then return end
         posTimer = posTimer + dt
-        if posTimer >= 2 then
+        if posTimer >= POS_INTERVAL then
             posTimer = 0
             local pos = GetPlayerPos()
             local tool = GetEquippedTool()
+            -- Solo loguear si cambió posición significativamente
+            if pos ~= lastPosValue then
+                Log("POS", "Posición → " .. pos .. " tool=" .. tool)
+                lastPosValue = pos
+            end
+            -- Detectar cambio de herramienta
             if tool ~= lastTool then
-                Log("TOOL", "Herramienta cambió: " .. lastTool .. " → " .. tool .. " @ " .. pos)
+                Log("TOOL", "Herramienta: " .. lastTool .. " → " .. tool .. " @ " .. pos)
                 lastTool = tool
             end
         end
     end)
     table.insert(connPool, posConn)
-    table.insert(connPool, posConn2)
 
     -- 3) Monitorear cambios en el personaje (tools, backpack)
     local function watchChar(char)
@@ -490,20 +543,30 @@ BtnLive.MouseButton1Click:Connect(function()
     if scanning then
         scanStart = tick()
         lastPos = GetPlayerPos()
+        lastPosValue = lastPos
         lastTool = GetEquippedTool()
+        logCount = 0
+        totalEvents = 0
         StartListening()
         BtnLive.Text = "⏹ Detener Captura"
         BtnLive.BackgroundColor3 = C.red
         StatusLbl.Text = "🔴 CAPTURANDO — Ve a trabajar!"
         StatusLbl.TextColor3 = C.red
         Log("LIVE", "══ CAPTURA INICIADA ══ Pos:" .. lastPos .. " Tool:" .. lastTool)
+        -- Contador en vivo en status
+        task.spawn(function()
+            while scanning do
+                StatusLbl.Text = "🔴 Capturando: " .. logCount .. " guardados | " .. totalEvents .. " total (" .. (totalEvents - logCount) .. " filtrados)"
+                task.wait(1)
+            end
+        end)
     else
         StopListening()
         BtnLive.Text = "▶ Iniciar Captura en Vivo"
         BtnLive.BackgroundColor3 = C.green
-        StatusLbl.Text = "⏹ Captura detenida. Archivo: " .. FILE
+        StatusLbl.Text = "⏹ " .. logCount .. " eventos guardados. Archivo: " .. FILE
         StatusLbl.TextColor3 = C.muted
-        Log("LIVE", "══ CAPTURA DETENIDA ══ Total: " .. logCount .. " eventos")
+        Log("LIVE", "══ CAPTURA DETENIDA ══ Guardados: " .. logCount .. " | Total: " .. totalEvents .. " | Filtrados: " .. (totalEvents - logCount))
         SaveNow()
     end
 end)
