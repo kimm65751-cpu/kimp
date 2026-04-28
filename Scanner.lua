@@ -1,338 +1,554 @@
-local success_load, err_load = pcall(function()
--- ==============================================================================
--- 🧠 OMNI-SCANNER PRO V2.1 - FALLAS ATENUADAS (ANTI-CRASH) Y PORTAPAPELES
--- ==============================================================================
+--[[
+╔══════════════════════════════════════════════════════════════╗
+║  BLOXBURG JOB SCANNER v1.0 — Pasivo, No Intrusivo          ║
+║  Toggle GUI: Tecla K | Minimizar con botón                  ║
+║  Guarda todo en: BloxburgJobScan.txt                        ║
+╚══════════════════════════════════════════════════════════════╝
+]]
+
+-- ═══ SERVICIOS ═══
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RS = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
+local SG = Instance.new("ScreenGui", game:GetService("CoreGui"))
+SG.Name = "JobScanner"
+SG.ResetOnSpawn = false
 
--- ==============================================================================
--- Utilidades Base
--- ==============================================================================
-local function getNextFileName(base)
-    local i = 1
-    while true do
-        local name = base .. "_" .. i .. ".txt"
-        local exists = false
-        pcall(function() exists = isfile and isfile(name) end)
-        if not exists then return name end
-        i = i + 1
-    end
-end
+-- ═══ ESTADO ═══
+local scanning = false
+local guiVisible = true
+local logLines = {}
+local logCount = 0
+local connPool = {}
+local lastPos = nil
+local lastTool = ""
+local scanStart = 0
+local FILE = "BloxburgJobScan_" .. os.date("%Y%m%d_%H%M%S") .. ".txt"
 
-local logs = {}
-local function log(text, indent)
-    local prefix = string.rep("  ", indent or 0)
-    table.insert(logs, prefix .. text)
-end
-
--- Exportador con fallbacks (Clipboard si writefile falla)
-local function export(baseName)
-    local fn = getNextFileName(baseName)
-    local content = table.concat(logs, "\n")
-    
-    local fileSaved = false
-    pcall(function()
-        if writefile then
-            writefile(fn, content)
-            fileSaved = true
+-- ═══ SERIALIZACIÓN RECURSIVA ═══
+local function Ser(obj, d)
+    d = d or 0
+    if d > 3 then return "{...}" end
+    if type(obj) == "table" then
+        local s = "{"
+        local c = 0
+        for k, v in pairs(obj) do
+            c = c + 1
+            if c > 15 then s = s .. "..+" .. (c) .. "more, "; break end
+            s = s .. tostring(k) .. "=" .. Ser(v, d+1) .. ", "
         end
-    end)
-    
-    -- Si no pudo crear archivo, al menos lo pega en el portapapeles
-    if not fileSaved then
+        return s .. "}"
+    elseif typeof(obj) == "Vector3" then
+        return "V3(" .. math.floor(obj.X) .. "," .. math.floor(obj.Y) .. "," .. math.floor(obj.Z) .. ")"
+    elseif typeof(obj) == "CFrame" then
+        local p = obj.Position
+        return "CF(" .. math.floor(p.X) .. "," .. math.floor(p.Y) .. "," .. math.floor(p.Z) .. ")"
+    elseif typeof(obj) == "Instance" then
+        return "Inst[" .. obj.ClassName .. "]:" .. obj:GetFullName()
+    elseif typeof(obj) == "EnumItem" then
+        return tostring(obj)
+    end
+    return tostring(obj)
+end
+
+-- ═══ LOG Y GUARDADO ═══
+local function Log(cat, msg)
+    logCount = logCount + 1
+    local ts = os.date("%H:%M:%S")
+    local elapsed = scanning and string.format("%.1f", tick() - scanStart) or "0"
+    local line = "[" .. ts .. " +" .. elapsed .. "s] [" .. cat .. "] " .. msg
+    table.insert(logLines, line)
+    -- Mantener solo últimas 500 líneas en memoria
+    if #logLines > 500 then table.remove(logLines, 1) end
+    -- Guardar a archivo cada 5 líneas
+    if logCount % 5 == 0 and writefile then
         pcall(function()
-            if setclipboard then
-                setclipboard(content)
-            end
+            local all = table.concat(logLines, "\n")
+            writefile(FILE, all)
         end)
     end
-    
-    logs = {}
-    return fn, fileSaved
+    print(line)
 end
 
--- ==============================================================================
--- GUI Ultra Segura (Mismo sistema que V9.4)
--- ==============================================================================
-local TargetGui = LP:WaitForChild("PlayerGui", 5)
-
-for _, v in pairs(TargetGui:GetChildren()) do 
-    if v.Name == "OmniScannerPro" then pcall(function() v:Destroy() end) end 
+local function SaveNow()
+    if writefile then
+        pcall(function() writefile(FILE, table.concat(logLines, "\n")) end)
+    end
 end
 
-local SG = Instance.new("ScreenGui")
-SG.Name = "OmniScannerPro"
-SG.ResetOnSpawn = false
-SG.Parent = TargetGui
+-- ═══ FUNCIONES DE ANÁLISIS ═══
+local function GetPlayerPos()
+    local ch = LP.Character
+    if ch and ch:FindFirstChild("HumanoidRootPart") then
+        local p = ch.HumanoidRootPart.Position
+        return math.floor(p.X) .. "," .. math.floor(p.Y) .. "," .. math.floor(p.Z)
+    end
+    return "?"
+end
 
-local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 500, 0, 480)
-MF.Position = UDim2.new(0.35, 0, 0.15, 0)
-MF.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-MF.BorderSizePixel = 2
-MF.BorderColor3 = Color3.fromRGB(0, 255, 120)
-MF.Active = true
-MF.Draggable = true
+local function GetEquippedTool()
+    local ch = LP.Character
+    if ch then
+        for _, c in ipairs(ch:GetChildren()) do
+            if c:IsA("Tool") then return c.Name end
+        end
+    end
+    return "none"
+end
 
-local Title = Instance.new("TextLabel", MF)
-Title.Size = UDim2.new(1, 0, 0, 26)
-Title.BackgroundColor3 = Color3.fromRGB(10, 50, 30)
-Title.Text = " 🧠 OMNI-SCANNER PRO V2.1 (ANTI-CRASH)"
-Title.TextColor3 = Color3.fromRGB(150, 255, 200)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local LogFrame = Instance.new("ScrollingFrame", MF)
-LogFrame.Size = UDim2.new(1, -10, 0, 260)
-LogFrame.Position = UDim2.new(0, 5, 0, 30)
-LogFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-LogFrame.ScrollBarThickness = 4
-LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Instance.new("UIListLayout", LogFrame).SortOrder = Enum.SortOrder.LayoutOrder
-
-local lc = 0
-local function guiLog(t, c)
+local function ScanModuleData(mod, path, depth)
+    if depth > 2 then return end
     pcall(function()
-        lc = lc + 1
-        local m = Instance.new("TextLabel", LogFrame)
-        m.Size = UDim2.new(1, 0, 0, 14)
-        m.BackgroundTransparency = 1
-        m.Text = "["..os.date("%X").."] "..t
-        m.TextXAlignment = Enum.TextXAlignment.Left
-        m.TextColor3 = c or Color3.fromRGB(200, 200, 200)
-        m.Font = Enum.Font.Code
-        m.TextSize = 11
-        m.TextWrapped = true
-        m.AutomaticSize = Enum.AutomaticSize.Y
-        m.LayoutOrder = lc
-        LogFrame.CanvasPosition = Vector2.new(0, 99999)
+        local data = require(mod)
+        if type(data) == "table" then
+            for k, v in pairs(data) do
+                local t = type(v)
+                if t == "function" then
+                    Log("MODULE", path .. "." .. tostring(k) .. " = [function]")
+                elseif t == "table" then
+                    local count = 0
+                    for _ in pairs(v) do count = count + 1 end
+                    Log("MODULE", path .. "." .. tostring(k) .. " = [table:" .. count .. " keys]")
+                else
+                    Log("MODULE", path .. "." .. tostring(k) .. " = " .. Ser(v))
+                end
+            end
+        end
     end)
 end
 
-local function MkBtn(txt, py)
-    local b = Instance.new("TextButton", MF)
-    b.Size = UDim2.new(0.92, 0, 0, 30)
-    b.Position = UDim2.new(0.04, 0, 0, py)
-    b.BackgroundColor3 = Color3.fromRGB(35, 45, 40)
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.GothamSemibold
-    b.TextSize = 11
+-- ═══ ESCANEO DE ESTRUCTURA INICIAL ═══
+local function ScanStructure()
+    Log("SCAN", "══ INICIO: Estructura de ReplicatedStorage ══")
+    Log("SCAN", "Posición inicial: " .. GetPlayerPos())
+
+    -- DataService endpoints
+    local ds = RS:FindFirstChild("Modules") and RS.Modules:FindFirstChild("DataService")
+    if ds then
+        Log("STRUCT", "DataService encontrado: " .. ds:GetFullName())
+        local remotes = {}
+        for _, child in ipairs(ds:GetDescendants()) do
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") or child:IsA("BindableEvent") then
+                table.insert(remotes, {name=child.Name, class=child.ClassName, path=child:GetFullName()})
+            end
+        end
+        Log("STRUCT", "DataService tiene " .. #remotes .. " endpoints de red")
+        for i, r in ipairs(remotes) do
+            if i <= 30 then
+                Log("ENDPOINT", r.class .. " → " .. r.path)
+            end
+        end
+        if #remotes > 30 then
+            Log("ENDPOINT", "... y " .. (#remotes - 30) .. " más")
+        end
+    end
+
+    -- Buscar RemoteEvents sueltos
+    Log("STRUCT", "══ RemoteEvents en raíz de RS ══")
+    for _, child in ipairs(RS:GetChildren()) do
+        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+            Log("REMOTE", child.ClassName .. ": " .. child.Name)
+        end
+    end
+
+    -- Escanear módulos clave
+    local targets = {"JobData", "ObjectivesShared", "EventService", "InteractionData",
+                     "ItemService", "StaminaService", "SkillData", "QuestService"}
+    local mods = RS:FindFirstChild("Modules")
+    if mods then
+        for _, tName in ipairs(targets) do
+            local m = mods:FindFirstChild(tName, true)
+            if m and m:IsA("ModuleScript") then
+                Log("SCAN", "── Escaneando módulo: " .. tName .. " ──")
+                ScanModuleData(m, tName, 0)
+            end
+        end
+    end
+
+    -- _Data subfolder
+    local dataFolder = mods and mods:FindFirstChild("_Data")
+    if dataFolder then
+        for _, tName in ipairs({"JobData", "SkillData"}) do
+            local m = dataFolder:FindFirstChild(tName)
+            if m and m:IsA("ModuleScript") then
+                Log("SCAN", "── Escaneando _Data." .. tName .. " ──")
+                ScanModuleData(m, "_Data." .. tName, 0)
+            end
+        end
+    end
+
+    SaveNow()
+    Log("SCAN", "══ FIN estructura inicial ══")
+end
+
+-- ═══ CONECTAR LISTENERS PASIVOS ═══
+local function StartListening()
+    -- Limpiar conexiones previas
+    for _, c in ipairs(connPool) do pcall(function() c:Disconnect() end) end
+    connPool = {}
+
+    -- 1) Escuchar TODOS los RemoteEvents en ReplicatedStorage
+    for _, obj in ipairs(RS:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            local rName = obj.Name
+            local rPath = obj:GetFullName()
+            local conn = obj.OnClientEvent:Connect(function(...)
+                if not scanning then return end
+                local args = {...}
+                local argStr = ""
+                for i, a in ipairs(args) do
+                    argStr = argStr .. Ser(a) .. " | "
+                end
+                local pos = GetPlayerPos()
+                local tool = GetEquippedTool()
+                Log("S→C", rName .. " @ pos=" .. pos .. " tool=" .. tool .. " | " .. argStr)
+            end)
+            table.insert(connPool, conn)
+        end
+    end
+    Log("NET", "Conectado a " .. #connPool .. " RemoteEvents pasivos")
+
+    -- 2) Monitorear posición del jugador (cada 2 segundos)
+    local posConn = RunService.Heartbeat:Connect(function()
+        if not scanning then return end
+        local pos = GetPlayerPos()
+        if pos ~= lastPos then
+            lastPos = pos
+            Log("POS", "Movimiento → " .. pos)
+        end
+    end)
+    -- Reducir frecuencia del log de posición
+    local posTimer = 0
+    local posConn2 = RunService.Heartbeat:Connect(function(dt)
+        if not scanning then return end
+        posTimer = posTimer + dt
+        if posTimer >= 2 then
+            posTimer = 0
+            local pos = GetPlayerPos()
+            local tool = GetEquippedTool()
+            if tool ~= lastTool then
+                Log("TOOL", "Herramienta cambió: " .. lastTool .. " → " .. tool .. " @ " .. pos)
+                lastTool = tool
+            end
+        end
+    end)
+    table.insert(connPool, posConn)
+    table.insert(connPool, posConn2)
+
+    -- 3) Monitorear cambios en el personaje (tools, backpack)
+    local function watchChar(char)
+        if not char then return end
+        local addConn = char.ChildAdded:Connect(function(child)
+            if not scanning then return end
+            if child:IsA("Tool") then
+                Log("EQUIP", "Tool equipada: " .. child.Name .. " @ " .. GetPlayerPos())
+            end
+        end)
+        local remConn = char.ChildRemoved:Connect(function(child)
+            if not scanning then return end
+            if child:IsA("Tool") then
+                Log("UNEQUIP", "Tool desequipada: " .. child.Name .. " @ " .. GetPlayerPos())
+            end
+        end)
+        table.insert(connPool, addConn)
+        table.insert(connPool, remConn)
+    end
+    if LP.Character then watchChar(LP.Character) end
+    local charConn = LP.CharacterAdded:Connect(function(c)
+        task.wait(0.5)
+        watchChar(c)
+        Log("CHAR", "Personaje respawneado @ " .. GetPlayerPos())
+    end)
+    table.insert(connPool, charConn)
+
+    -- 4) Monitorear Backpack
+    local bpConn = LP.Backpack.ChildAdded:Connect(function(child)
+        if not scanning then return end
+        if child:IsA("Tool") then
+            Log("BACKPACK", "Nueva tool en mochila: " .. child.Name)
+        end
+    end)
+    table.insert(connPool, bpConn)
+
+    -- 5) Monitorear nuevos RemoteEvents creados dinámicamente
+    local newRemConn = RS.DescendantAdded:Connect(function(desc)
+        if not scanning then return end
+        if desc:IsA("RemoteEvent") then
+            Log("NEW_RE", "Nuevo RemoteEvent creado: " .. desc:GetFullName())
+            local c = desc.OnClientEvent:Connect(function(...)
+                if not scanning then return end
+                local args = {...}
+                local argStr = ""
+                for i, a in ipairs(args) do argStr = argStr .. Ser(a) .. " | " end
+                Log("S→C_NEW", desc.Name .. " | " .. argStr)
+            end)
+            table.insert(connPool, c)
+        end
+    end)
+    table.insert(connPool, newRemConn)
+end
+
+local function StopListening()
+    for _, c in ipairs(connPool) do pcall(function() c:Disconnect() end) end
+    connPool = {}
+    SaveNow()
+    Log("NET", "Todas las conexiones desconectadas. Archivo guardado.")
+end
+
+-- ═══ GUI MINIMALISTA ═══
+local C = {bg = Color3.fromRGB(10,10,15), card = Color3.fromRGB(20,22,30),
+           accent = Color3.fromRGB(60,130,255), green = Color3.fromRGB(40,200,100),
+           red = Color3.fromRGB(220,60,60), text = Color3.fromRGB(220,225,240),
+           muted = Color3.fromRGB(100,110,130)}
+
+-- Mini botón flotante (siempre visible)
+local MiniBtn = Instance.new("TextButton", SG)
+MiniBtn.Size = UDim2.new(0,36,0,36)
+MiniBtn.Position = UDim2.new(0,8,0.5,-18)
+MiniBtn.BackgroundColor3 = C.accent
+MiniBtn.Text = "🔍"
+MiniBtn.TextSize = 18
+MiniBtn.Font = Enum.Font.GothamBold
+MiniBtn.TextColor3 = C.text
+MiniBtn.BorderSizePixel = 0
+MiniBtn.ZIndex = 10
+local miniCorner = Instance.new("UICorner", MiniBtn)
+miniCorner.CornerRadius = UDim.new(0,18)
+
+-- Panel principal
+local Panel = Instance.new("Frame", SG)
+Panel.Size = UDim2.new(0,320,0,360)
+Panel.Position = UDim2.new(0,50,0.5,-180)
+Panel.BackgroundColor3 = C.bg
+Panel.BorderSizePixel = 0
+Panel.Visible = true
+local panelCorner = Instance.new("UICorner", Panel)
+panelCorner.CornerRadius = UDim.new(0,10)
+local panelStroke = Instance.new("UIStroke", Panel)
+panelStroke.Color = C.accent
+panelStroke.Thickness = 1.5
+
+-- Header
+local Header = Instance.new("Frame", Panel)
+Header.Size = UDim2.new(1,0,0,40)
+Header.BackgroundColor3 = C.card
+Header.BorderSizePixel = 0
+local hCorner = Instance.new("UICorner", Header)
+hCorner.CornerRadius = UDim.new(0,10)
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1,-80,1,0)
+Title.Position = UDim2.new(0,12,0,0)
+Title.BackgroundTransparency = 1
+Title.Text = "🔬 Job Scanner v1.0"
+Title.TextColor3 = C.text
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Botón minimizar
+local MinBtn = Instance.new("TextButton", Header)
+MinBtn.Size = UDim2.new(0,30,0,30)
+MinBtn.Position = UDim2.new(1,-70,0,5)
+MinBtn.BackgroundColor3 = Color3.fromRGB(50,50,60)
+MinBtn.Text = "—"
+MinBtn.TextColor3 = C.muted
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 16
+MinBtn.BorderSizePixel = 0
+local minC = Instance.new("UICorner", MinBtn)
+minC.CornerRadius = UDim.new(0,6)
+
+-- Botón cerrar
+local CloseBtn = Instance.new("TextButton", Header)
+CloseBtn.Size = UDim2.new(0,30,0,30)
+CloseBtn.Position = UDim2.new(1,-36,0,5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(60,30,30)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = C.red
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.BorderSizePixel = 0
+local clC = Instance.new("UICorner", CloseBtn)
+clC.CornerRadius = UDim.new(0,6)
+
+-- Status
+local StatusLbl = Instance.new("TextLabel", Panel)
+StatusLbl.Size = UDim2.new(0.92,0,0,20)
+StatusLbl.Position = UDim2.new(0.04,0,0,46)
+StatusLbl.BackgroundTransparency = 1
+StatusLbl.Text = "⏹ Detenido"
+StatusLbl.TextColor3 = C.muted
+StatusLbl.Font = Enum.Font.GothamBold
+StatusLbl.TextSize = 12
+StatusLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Botón ANALIZAR
+local function MakeBtn(parent, txt, yOff, col)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(0.92,0,0,34)
+    b.Position = UDim2.new(0.04,0,0,yOff)
+    b.BackgroundColor3 = col
     b.Text = txt
+    b.TextColor3 = Color3.fromRGB(255,255,255)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 13
+    b.BorderSizePixel = 0
+    local bc = Instance.new("UICorner", b)
+    bc.CornerRadius = UDim.new(0,8)
     return b
 end
 
-local btnConfigs = MkBtn("📦 1. EXTRAER CONFIGURACIONES (Armas, Mobs, Islas...)", 300)
-local btnMindMap = MkBtn("🕸️ 2. MAPA MENTAL JERÁRQUICO (Rutas de Conexión)", 340)
-local btnDecomp  = MkBtn("⚙️ 3. MAPEAR FUNCIONES INTERNAS DEL JUEGO", 380)
+local BtnScan = MakeBtn(Panel, "📡 Escanear Estructura", 72, C.accent)
+local BtnLive = MakeBtn(Panel, "▶ Iniciar Captura en Vivo", 112, C.green)
+local BtnSave = MakeBtn(Panel, "💾 Guardar Ahora", 152, Color3.fromRGB(80,80,100))
 
--- ==============================================================================
--- MOTOR DE EXTRACCIÓN PROFUNDA ENCAPSULADO
--- ==============================================================================
-local function DeepDumpTable(tbl, name, maxDepth, currentDepth, visited)
-    currentDepth = currentDepth or 0
-    visited = visited or {}
-    
-    if currentDepth > maxDepth then return end
-    if type(tbl) ~= "table" then return end
-    if visited[tbl] then return end
-    visited[tbl] = true
+-- Log display
+local LogFrame = Instance.new("ScrollingFrame", Panel)
+LogFrame.Size = UDim2.new(0.92,0,0,155)
+LogFrame.Position = UDim2.new(0.04,0,0,194)
+LogFrame.BackgroundColor3 = Color3.fromRGB(8,8,12)
+LogFrame.BorderSizePixel = 0
+LogFrame.ScrollBarThickness = 4
+LogFrame.ScrollBarImageColor3 = C.accent
+LogFrame.CanvasSize = UDim2.new(0,0,0,0)
+LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local lfC = Instance.new("UICorner", LogFrame)
+lfC.CornerRadius = UDim.new(0,6)
 
-    for k, v in pairs(tbl) do
-        local displayKey = tostring(k)
-        local valType = type(v)
-        
-        if valType == "table" then
-            log("[" .. displayKey .. "] (Table) {", currentDepth)
-            pcall(function() DeepDumpTable(v, displayKey, maxDepth, currentDepth + 1, visited) end)
-            log("}", currentDepth)
-        elseif valType == "string" then
-            log("[" .. displayKey .. "] = '" .. v .. "'", currentDepth)
-        elseif valType == "number" or valType == "boolean" then
-            log("[" .. displayKey .. "] = " .. tostring(v), currentDepth)
-        else
-            log("[" .. displayKey .. "] = " .. valType, currentDepth)
-        end
+local LogLayout = Instance.new("UIListLayout", LogFrame)
+LogLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LogLayout.Padding = UDim.new(0,1)
+
+local logOrder = 0
+local function AddLogLine(text)
+    logOrder = logOrder + 1
+    local lbl = Instance.new("TextLabel", LogFrame)
+    lbl.Size = UDim2.new(1,-8,0,14)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = C.muted
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 10
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextWrapped = true
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
+    lbl.LayoutOrder = logOrder
+    -- Limitar a 60 líneas visibles
+    local kids = LogFrame:GetChildren()
+    local labels = {}
+    for _, k in ipairs(kids) do if k:IsA("TextLabel") then table.insert(labels, k) end end
+    if #labels > 60 then labels[1]:Destroy() end
+    LogFrame.CanvasPosition = Vector2.new(0, 99999)
+end
+
+-- Sobreescribir Log para también mostrar en GUI
+local origLog = Log
+Log = function(cat, msg)
+    origLog(cat, msg)
+    pcall(function()
+        local short = "[" .. cat .. "] " .. msg
+        if #short > 120 then short = short:sub(1,117) .. "..." end
+        AddLogLine(short)
+    end)
+end
+
+-- ═══ EVENTOS DE GUI ═══
+MinBtn.MouseButton1Click:Connect(function()
+    Panel.Visible = false
+    guiVisible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    if scanning then StopListening() scanning = false end
+    SG:Destroy()
+end)
+
+MiniBtn.MouseButton1Click:Connect(function()
+    Panel.Visible = not Panel.Visible
+    guiVisible = Panel.Visible
+end)
+
+BtnScan.MouseButton1Click:Connect(function()
+    BtnScan.Text = "⏳ Escaneando..."
+    BtnScan.BackgroundColor3 = C.muted
+    StatusLbl.Text = "🔬 Analizando estructura..."
+    StatusLbl.TextColor3 = C.accent
+    task.spawn(function()
+        ScanStructure()
+        BtnScan.Text = "✅ Estructura Escaneada"
+        BtnScan.BackgroundColor3 = Color3.fromRGB(30,100,60)
+        StatusLbl.Text = "✅ Estructura lista. Inicia captura en vivo."
+        StatusLbl.TextColor3 = C.green
+    end)
+end)
+
+BtnLive.MouseButton1Click:Connect(function()
+    scanning = not scanning
+    if scanning then
+        scanStart = tick()
+        lastPos = GetPlayerPos()
+        lastTool = GetEquippedTool()
+        StartListening()
+        BtnLive.Text = "⏹ Detener Captura"
+        BtnLive.BackgroundColor3 = C.red
+        StatusLbl.Text = "🔴 CAPTURANDO — Ve a trabajar!"
+        StatusLbl.TextColor3 = C.red
+        Log("LIVE", "══ CAPTURA INICIADA ══ Pos:" .. lastPos .. " Tool:" .. lastTool)
+    else
+        StopListening()
+        BtnLive.Text = "▶ Iniciar Captura en Vivo"
+        BtnLive.BackgroundColor3 = C.green
+        StatusLbl.Text = "⏹ Captura detenida. Archivo: " .. FILE
+        StatusLbl.TextColor3 = C.muted
+        Log("LIVE", "══ CAPTURA DETENIDA ══ Total: " .. logCount .. " eventos")
+        SaveNow()
     end
-end
-
--- ==============================================================================
--- ACCIONES (Con control de agotamiento de script "Anti-Lag")
--- ==============================================================================
-btnConfigs.MouseButton1Click:Connect(function()
-    guiLog("Iniciando Extractor de Módulos... Esto tardará unos segundos.", Color3.fromRGB(0, 255, 255))
-    
-    task.spawn(function()
-        local ok_scan, err_scan = pcall(function()
-            log("--- REPORTE DE CONFIGURACIONES (RPG) ---")
-            local modulesFound, dataFound = 0, 0
-            local rpgKeys = {
-                "mob", "boss", "weapon", "config", "data", "pet", "quest", "level", "npc", "city", 
-                "map", "skill", "item", "gem", "race", "setting", "stat", "event", "island", "isla", 
-                "fly", "vuelo", "speed", "jump", "salto", "reroll", "roll", "gacha", "fragment", 
-                "shard", "money", "coin", "sword", "accessory", "melee", "key", "llave", "seal", 
-                "drop", "moon slayer", "moon", "slayer", "power"
-            }
-
-            for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-                if obj:IsA("ModuleScript") then
-                    modulesFound = modulesFound + 1
-                    local isImportant = false
-                    local lName = obj.Name:lower()
-                    
-                    for _, k in ipairs(rpgKeys) do
-                        if lName:find(k) then isImportant = true; break end
-                    end
-                    
-                    if isImportant then
-                        local ok_req, result = pcall(function() return require(obj) end)
-                        if ok_req and type(result) == "table" then
-                            log("\n[📌] DATOS EN MÓDULO PÚBLICO: " .. obj:GetFullName())
-                            DeepDumpTable(result, obj.Name, 3) 
-                            dataFound = dataFound + 1
-                        end
-                    end
-                    if modulesFound % 25 == 0 then task.wait(0.05) end -- ANTICRASH VITAl
-                end
-            end
-            
-            -- Física local también
-            log("\n--- LÍMITES FÍSICOS ---")
-            if LP.Character and LP.Character:FindFirstChild("Humanoid") then
-                local hum = LP.Character.Humanoid
-                log("WalkSpeed: " .. tostring(hum.WalkSpeed))
-                log("JumpPower: " .. tostring(hum.JumpPower))
-            else
-                log("Avatar no encontrado al momento del escaneo.")
-            end
-
-            local fn, saved = export("OmniConfigData")
-            
-            if saved then
-                guiLog("✅ Datos extraídos! Creado archivo: " .. fn, Color3.fromRGB(0, 255, 0))
-            else
-                guiLog("⚠️ Escaneo ok, pero NO SE PUDO CREAR EL .TXT. Se copió todo a tu portapapeles (CONTROL+V)", Color3.fromRGB(255, 200, 0))
-            end
-        end)
-        
-        if not ok_scan then
-            guiLog("❌ Error durante el escaneo: " .. tostring(err_scan), Color3.fromRGB(255, 0, 0))
-        end
-    end)
 end)
 
-btnMindMap.MouseButton1Click:Connect(function()
-    guiLog("Mapeando el universo del juego... (Evitando crash)", Color3.fromRGB(200, 100, 255))
-    task.spawn(function()
-        local function mapHierarchy(parent, depth)
-            if depth > 4 then return end
-            local count = 0
-            for _, v in pairs(parent:GetChildren()) do
-                if v:IsA("Folder") or v:IsA("ModuleScript") or v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                    log((v:IsA("Folder") and "📂" or (v:IsA("ModuleScript") and "⚙️" or "📡")) .. " " .. v.Name, depth)
-                    pcall(function() mapHierarchy(v, depth + 1) end)
-                    
-                    count = count + 1
-                    if count % 20 == 0 then task.wait(0.01) end
-                end
-            end
-        end
-
-        local ok_map, err_map = pcall(function()
-            log("--- ENDPOINTS DISPONIBLES ---")
-            for _, rem in pairs(ReplicatedStorage:GetDescendants()) do
-                if rem:IsA("RemoteEvent") or rem:IsA("RemoteFunction") then
-                    log("📡 " .. rem:GetFullName())
-                    if rem.Parent and rem.Parent:IsA("ModuleScript") then
-                        log("  ╰─🔗 Modulo Vinculado: " .. rem.Parent.Name)
-                    end
-                end
-            end
-
-            log("\n--- ÁRBOL DE COMPONENTES ---")
-            mapHierarchy(ReplicatedStorage, 0)
-            
-            local fn, saved = export("OmniMindMap")
-            if saved then
-                guiLog("✅ Mapa mental absoluto creado: " .. fn, Color3.fromRGB(0, 255, 0))
-            else
-                guiLog("⚠️ Guardado en Portapapeles. 'writefile' no habilitado.", Color3.fromRGB(255, 200, 0))
-            end
-        end)
-
-        if not ok_map then
-            guiLog("❌ Error en Mapa Mental: " .. tostring(err_map), Color3.fromRGB(255, 0, 0))
-        end
-    end)
+BtnSave.MouseButton1Click:Connect(function()
+    SaveNow()
+    BtnSave.Text = "✅ Guardado!"
+    StatusLbl.Text = "💾 " .. FILE
+    task.delay(2, function() BtnSave.Text = "💾 Guardar Ahora" end)
 end)
 
-btnDecomp.MouseButton1Click:Connect(function()
-    guiLog("Analizando código fuente disponible...", Color3.fromRGB(255, 100, 100))
-    task.spawn(function()
-        local ok_dc, err_dc = pcall(function()
-            local analyzedCount = 0
-            for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-                if obj:IsA("ModuleScript") or obj:IsA("LocalScript") then
-                    log("\n[+] SCRIPT/MÓDULO: " .. obj:GetFullName())
-                    
-                    -- Intento estricto de descompilacion si está permitida
-                    local sourceObtained = false
-                    if type(decompile) == "function" then
-                        local ok_d, src = pcall(function() return decompile(obj) end)
-                        if ok_d and type(src) == "string" and #src > 10 then
-                            log("<< INICIO CÓDIGO >>")
-                            log(src)
-                            log("<< FIN CÓDIGO >>")
-                            sourceObtained = true
-                        end
-                    end
-                    
-                    if not sourceObtained then
-                        local ok_req, res = pcall(function() return require(obj) end)
-                        if ok_req and type(res) == "table" then
-                            for k, func in pairs(res) do
-                                if type(func) == "function" then
-                                    log("  ╰─ Función localizada: " .. tostring(k))
-                                end
-                            end
-                        else
-                            log("  ╰─ Código protegido (Sin acceso).")
-                        end
-                    end
-                    
-                    analyzedCount = analyzedCount + 1
-                    if analyzedCount % 10 == 0 then task.wait(0.05) end
-                end
-            end
-            
-            local fn, saved = export("OmniDecompiledCode")
-            if saved then
-                guiLog("✅ Rutinas del juego volcadas a: " .. fn, Color3.fromRGB(0, 255, 0))
-            else
-                guiLog("⚠️ Archivo no creado, pero se COPIÓ TODO al portapapeles.", Color3.fromRGB(255, 200, 0))
-            end
-        end)
-        if not ok_dc then
-            guiLog("❌ Error en Extractor de Código: " .. tostring(err_dc), Color3.fromRGB(255, 0, 0))
-        end
-    end)
+-- ═══ TOGGLE CON TECLA K ═══
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.K then
+        Panel.Visible = not Panel.Visible
+        guiVisible = Panel.Visible
+    end
 end)
 
-guiLog("🧠 V2.1 Cargado — Todo encapsulado con Anti-Crash.", Color3.fromRGB(0, 255, 0))
-guiLog("OJO: Si 'writefile' no existe, usará tu portapapeles.", Color3.fromRGB(200, 200, 0))
+-- ═══ HACER GUI ARRASTRABLE ═══
+local dragging, dragInput, dragStart, startPos
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Panel.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+Header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        Panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                    startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
-end) -- FIN PCALL MAESTRO
-if not success_load then
-    local sg = Instance.new("ScreenGui")
-    sg.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    local tl = Instance.new("TextLabel", sg)
-    tl.Size = UDim2.new(1,0,1,0)
-    tl.BackgroundColor3 = Color3.new(0.5, 0, 0)
-    tl.TextColor3 = Color3.new(1,1,1)
-    tl.Font = Enum.Font.Code
-    tl.TextScaled = true
-    tl.Text = "ERROR CRÍTICO AL CARGAR OMNISCANNER:\n" .. tostring(err_load)
-end
+-- ═══ INICIO ═══
+Log("INIT", "Job Scanner cargado. Presiona K para toggle. Archivo: " .. FILE)
+Log("INIT", "1) Presiona 'Escanear Estructura' primero")
+Log("INIT", "2) Luego 'Iniciar Captura en Vivo'")
+Log("INIT", "3) Ve a cada trabajo y completa 1 tarea")
