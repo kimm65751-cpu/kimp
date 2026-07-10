@@ -1,237 +1,137 @@
 -- ==========================================
--- 🚀 Bloxburg Multi-Job AutoFarm + Elf Radar
--- ==========================================
--- Creado en base a intercepciones pasivas C->S
--- Trabajos: Panadero, Pescador, Peluquero, Repartidor
+-- SCANNER PARA ANALIZAR TIMERS OFUSCADOS
 -- ==========================================
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
 
-local LocalPlayer = Players.LocalPlayer
-local DataService = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("DataService")
-
--- El RemoteEvent multiplexado (ID 876751419)
-local MainEvent = DataService:FindFirstChild("876751419") or ReplicatedStorage:FindFirstChild("876751419", true)
-
-local getEvent = function()
-    return MainEvent
-end
-
--- Variables de Estado
-local _G = _G or {}
-_G.AutoFarmRunning = false
-_G.CurrentJob = nil
-
-local function StartJob(jobName)
-    local remote = getEvent()
-    if remote then
-        -- Enviar código para "Empezar Turno"
-        remote:InvokeServer({Job = jobName})
-        print("[AutoFarm] Empezando trabajo: " .. jobName)
-        task.wait(1.5)
-    end
-end
-
--- ==========================================
--- MÓDULOS DE TRABAJO
--- ==========================================
-
-local Jobs = {
-    -- 🍕 1. PANADERO (Baker)
-    PizzaPlanetBaker = function()
-        -- Teleport a la estación que atrapamos en el scan: pos=-31, 4, -56
-        local targetCFrame = CFrame.new(-31, 4, -56)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
-        end
-        
-        StartJob("PizzaPlanetBaker")
-        
-        -- Loop de trabajo
-        while _G.AutoFarmRunning and _G.CurrentJob == "PizzaPlanetBaker" do
-            -- Según nuestro scan, manda {Order={...}, Workstation=...}
-            -- Para un AutoFarm seguro, interceptaremos el evento del servidor para auto-completar el pedido en tiempo real,
-            -- o simplemente re-enviamos el payload de la masa.
-            local remote = getEvent()
-            if remote then
-                -- SIMULACIÓN DE PAYLOAD DE PANADERO (Ejemplo genérico, se ajustará con el pedido)
-                -- remote:FireServer({Workstation=..., Order={1=true, 2=true}})
-                print("[AutoFarm] Preparando Pizza...")
-            end
-            task.wait(2)
-        end
-    end,
-
-    -- 🎣 2. PESCADOR (Fisherman)
-    HutFisherman = function()
-        -- Teleport a la zona de pesca detectada: pos=-353, -11, -106
-        local targetCFrame = CFrame.new(-353, -11, -106)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
-        end
-        
-        StartJob("HutFisherman")
-        
-        while _G.AutoFarmRunning and _G.CurrentJob == "HutFisherman" do
-            local remote = getEvent()
-            if remote then
-                print("[AutoFarm] Lanzando caña...")
-                remote:FireServer({State=true, Pos=Vector3.new(-353, -11, -106)})
-                task.wait(3.5) -- Esperar a que pique
-                print("[AutoFarm] Pescando...")
-                remote:InvokeServer({}) -- Minijuego / Acción
-                task.wait(1)
-                remote:FireServer({State=false})
-            end
-            task.wait(1)
-        end
-    end,
-
-    -- 💇‍♀️ 3. PELUQUERO (Hairdresser)
-    StylezHairdresser = function()
-        local targetCFrame = CFrame.new(-67, 4, -324)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
-        end
-        
-        StartJob("StylezHairdresser")
-        
-        -- Estación detectada
-        local workstation = workspace.Environment.Locations.City.StylezHairStudio.Interior.HairdresserWorkstations:FindFirstChild("Workstation")
-        
-        while _G.AutoFarmRunning and _G.CurrentJob == "StylezHairdresser" do
-            local remote = getEvent()
-            if remote and workstation then
-                print("[AutoFarm] Cortando cabello...")
-                remote:FireServer({Workstation = workstation})
-            end
-            task.wait(3)
-        end
-    end,
-}
-
--- ==========================================
--- RADAR DE DUENDES (ELF ESP)
--- ==========================================
-local function ScanForElves()
-    local count = 0
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and (obj.Name:find("Elf") or obj.Name:find("Duende")) then
-            count = count + 1
-            print("[RADAR] 🌟 DUENDE ENCONTRADO EN: ", tostring(obj:GetPivot().Position))
-            
-            -- Crear ESP
-            if not obj:FindFirstChild("ElfESP") then
-                local bg = Instance.new("BillboardGui")
-                bg.Name = "ElfESP"
-                bg.AlwaysOnTop = true
-                bg.Size = UDim2.new(0, 200, 0, 50)
-                bg.ExtentsOffset = Vector3.new(0, 3, 0)
-                
-                local txt = Instance.new("TextLabel")
-                txt.Size = UDim2.new(1, 0, 1, 0)
-                txt.BackgroundTransparency = 1
-                txt.Text = "🚨 DUENDE AQUI 🚨"
-                txt.TextColor3 = Color3.new(1, 0, 0)
-                txt.TextStrokeTransparency = 0
-                txt.TextScaled = true
-                txt.Parent = bg
-                bg.Parent = obj
-            end
-        end
-    end
-    print("[RADAR] Búsqueda completada. Duendes encontrados: " .. count)
-    return count
-end
-
--- ==========================================
--- INTERFAZ DE USUARIO SIMPLE (GUI)
--- ==========================================
+-- 1. Crear la GUI del Scanner
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BloxburgHacks"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game.CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Name = "ScannerPro"
+ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 300)
-MainFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(1, -420, 0, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-Title.Text = " Bloxburg AutoFarm + Elf"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Font = Enum.Font.GothamBold
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = " 🕵️ Scanner Activo - Esperando Script..."
 Title.TextSize = 16
+Title.Font = Enum.Font.Code
 Title.Parent = MainFrame
 
--- Funciones UI
-local function createButton(yPos, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    btn.Text = text
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.Gotham
-    btn.Parent = MainFrame
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -10, 1, -70)
+Scroll.Position = UDim2.new(0, 5, 0, 35)
+Scroll.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.UIListLayout = Instance.new("UIListLayout", Scroll)
+Scroll.Parent = MainFrame
+
+local SaveBtn = Instance.new("TextButton")
+SaveBtn.Size = UDim2.new(1, -10, 0, 25)
+SaveBtn.Position = UDim2.new(0, 5, 1, -30)
+SaveBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+SaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveBtn.Text = "Guardar Log en TXT (workspace)"
+SaveBtn.Font = Enum.Font.Code
+SaveBtn.TextSize = 14
+SaveBtn.Parent = MainFrame
+
+-- 2. Sistema de Logs
+local Logs = {}
+
+local function AddLog(mensaje)
+    table.insert(Logs, os.date("%X") .. " - " .. mensaje)
     
-    btn.MouseButton1Click:Connect(callback)
-    return btn
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(1, 0, 0, 20)
+    txt.BackgroundTransparency = 1
+    txt.TextColor3 = Color3.fromRGB(0, 255, 100)
+    txt.Text = os.date("%X") .. " | " .. mensaje
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextSize = 12
+    txt.Font = Enum.Font.Code
+    txt.Parent = Scroll
+    
+    Scroll.CanvasSize = UDim2.new(0, 0, 0, #Scroll:GetChildren() * 20)
+    Scroll.CanvasPosition = Vector2.new(0, Scroll.CanvasSize.Y.Offset)
 end
 
--- Botones
-createButton(50, "🎣 Iniciar Pescador", function()
-    if _G.AutoFarmRunning then _G.AutoFarmRunning = false task.wait(0.5) end
-    _G.AutoFarmRunning = true
-    _G.CurrentJob = "HutFisherman"
-    task.spawn(Jobs.HutFisherman)
-end)
-
-createButton(95, "💇‍♀️ Iniciar Peluquero", function()
-    if _G.AutoFarmRunning then _G.AutoFarmRunning = false task.wait(0.5) end
-    _G.AutoFarmRunning = true
-    _G.CurrentJob = "StylezHairdresser"
-    task.spawn(Jobs.StylezHairdresser)
-end)
-
-createButton(140, "🍕 Iniciar Panadero (WIP)", function()
-    if _G.AutoFarmRunning then _G.AutoFarmRunning = false task.wait(0.5) end
-    _G.AutoFarmRunning = true
-    _G.CurrentJob = "PizzaPlanetBaker"
-    task.spawn(Jobs.PizzaPlanetBaker)
-end)
-
-createButton(185, "🛑 DETENER TODO", function()
-    _G.AutoFarmRunning = false
-    _G.CurrentJob = nil
-    print("[AutoFarm] Detenido.")
-end)
-
-createButton(230, "🧝‍♂️ ESCANEAR DUENDES", function()
-    local c = ScanForElves()
-    if c == 0 then
-        -- Si no encuentra duendes con nombres obvios, escanea Interactables
-        for _, obj in ipairs(workspace.Environment:GetDescendants()) do
-            if obj:IsA("StringValue") and obj.Name == "InteractionTag" and obj.Value == "ValidElfAction" then
-                print("[RADAR] 🌟 DUENDE INTERACTUABLE EN: ", tostring(obj.Parent:GetPivot().Position))
-            end
-        end
+-- Botón para guardar a archivo TXT
+SaveBtn.MouseButton1Click:Connect(function()
+    if writefile then
+        local content = table.concat(Logs, "\n")
+        local filename = "ScannerLogs_Evomon_" .. tostring(os.time()) .. ".txt"
+        writefile(filename, content)
+        SaveBtn.Text = "¡Guardado como " .. filename .. "!"
+        task.wait(2)
+        SaveBtn.Text = "Guardar Log en TXT (workspace)"
+    else
+        SaveBtn.Text = "Tu ejecutor no soporta writefile"
     end
 end)
 
--- Sistema Anti-AFK (Previene desconexiones de 20 minutos)
-local VirtualUser = game:GetService("VirtualUser")
-LocalPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+AddLog("Scanner Iniciado. Ejecuta el script de NasiRendang ahora.")
+
+-- ==========================================
+-- 3. HOOKS (LOS ESPÍAS)
+-- ==========================================
+
+-- Espiar si el script pide la hora local (os.time)
+local oldTime
+oldTime = hookfunction(os.time, function(...)
+    if checkcaller() then 
+        AddLog("[TIEMPO] El script ha consultado os.time()")
+    end
+    return oldTime(...)
 end)
 
-print("✅ Bloxburg AutoFarm UI Cargada.")
+local oldTick
+oldTick = hookfunction(tick, function(...)
+    if checkcaller() then 
+        AddLog("[TIEMPO] El script ha consultado tick()")
+    end
+    return oldTick(...)
+end)
+
+-- Espiar si programa una expulsión a futuro (task.delay)
+local oldDelay
+oldDelay = hookfunction(task.delay, function(t, func, ...)
+    if checkcaller() and type(t) == "number" then
+        if t > 10 then -- Si retrasa una acción por más de 10 segundos, es sospechoso
+            AddLog("[DELAY] Acción retrasada por " .. tostring(t) .. " segundos.")
+        end
+    end
+    return oldDelay(t, func, ...)
+end)
+
+-- Espiar cambios en la GUI (Busca el texto del temporizador)
+local oldNewIndex
+oldNewIndex = hookmetamethod(game, "__newindex", function(self, index, value)
+    if checkcaller() then
+        if index == "Text" and type(value) == "string" then
+            -- Filtramos si el texto tiene formato de tiempo "MM:SS" o palabras clave
+            if string.match(value, "%d+:%d+") or string.match(string.lower(value), "trial") or string.match(string.lower(value), "time") then
+                AddLog("[GUI TIMER] Texto detectado: " .. value)
+            end
+        end
+    end
+    return oldNewIndex(self, index, value)
+end)
+
+-- Espiar si intenta kickearte
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    if (method == "Kick" or method == "kick") and self == game:GetService("Players").LocalPlayer then
+        AddLog("[ALERTA] ¡El script intentó expulsarte! (KICK BLOQUEADO)")
+        return nil -- Bloqueamos el kick para que sigas en el juego
+    end
+    return oldNamecall(self, ...)
+end)
