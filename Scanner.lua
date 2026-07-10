@@ -1,97 +1,72 @@
--- EVOMON SCANNER v5 - Estrategia nueva: acumula en RAM, escribe una sola vez
-local svc = game:GetService
-local Players = svc("Players")
-local CoreGui = svc("CoreGui")
-
+local Players = game:GetService("Players")
+local CoreGui  = game:GetService("CoreGui")
 local LP = Players.LocalPlayer
-if not LP then
-    LP = Players.PlayerAdded:Wait()
-end
 
--- =====================================================
--- BUFFER EN RAM - se llena primero, luego se escribe
--- =====================================================
-local buffer = {}
-local function add(s)
-    table.insert(buffer, tostring(s))
-    print(">>SCAN>> " .. tostring(s))
-end
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "ScanV5"
+gui.ResetOnSpawn = false
+local ok = pcall(function() gui.Parent = CoreGui end)
+if not ok then gui.Parent = LP:WaitForChild("PlayerGui") end
 
--- =====================================================
--- GUI MINIMA
--- =====================================================
-local gui
-pcall(function()
-    gui = Instance.new("ScreenGui", CoreGui)
-    gui.Name = "ScanV5"
-    gui.ResetOnSpawn = false
-end)
-if not gui or not gui.Parent then
-    gui = Instance.new("ScreenGui", LP:WaitForChild("PlayerGui"))
-    gui.Name = "ScanV5"
-    gui.ResetOnSpawn = false
-end
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,300,0,120)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,300,0,110)
 frame.Position = UDim2.new(0.5,-150,0,5)
 frame.BackgroundColor3 = Color3.fromRGB(10,10,15)
 frame.BorderSizePixel = 0
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+frame.Parent = gui
+Instance.new("UICorner",frame).CornerRadius = UDim.new(0,8)
 
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1,0,0,30)
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1,0,0,28)
 status.BackgroundTransparency = 1
 status.Text = "SCAN V5 - presiona el boton"
 status.TextColor3 = Color3.fromRGB(180,220,255)
 status.Font = Enum.Font.GothamBold
 status.TextSize = 11
-status.TextWrapped = true
+status.Parent = frame
 
-local btn = Instance.new("TextButton", frame)
+local btn = Instance.new("TextButton")
 btn.Size = UDim2.new(1,-10,0,34)
-btn.Position = UDim2.new(0,5,0,32)
+btn.Position = UDim2.new(0,5,0,30)
 btn.BackgroundColor3 = Color3.fromRGB(41,128,185)
-btn.Text = "ESCANEAR Y GUARDAR EvomonQA_ScanData.txt"
+btn.Text = "ESCANEAR TODO Y GUARDAR .TXT"
 btn.TextColor3 = Color3.fromRGB(255,255,255)
 btn.Font = Enum.Font.GothamBold
-btn.TextSize = 11
-btn.TextWrapped = true
+btn.TextSize = 12
 btn.BorderSizePixel = 0
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+btn.Parent = frame
+Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
 
-local result = Instance.new("TextLabel", frame)
-result.Size = UDim2.new(1,-10,0,40)
-result.Position = UDim2.new(0,5,0,72)
-result.BackgroundTransparency = 1
-result.Text = "Esperando..."
-result.TextColor3 = Color3.fromRGB(200,200,200)
-result.Font = Enum.Font.Code
-result.TextSize = 9
-result.TextWrapped = true
-result.TextXAlignment = Enum.TextXAlignment.Left
+local res = Instance.new("TextLabel")
+res.Size = UDim2.new(1,-10,0,36)
+res.Position = UDim2.new(0,5,0,68)
+res.BackgroundTransparency = 1
+res.Text = "Esperando..."
+res.TextColor3 = Color3.fromRGB(200,200,200)
+res.Font = Enum.Font.Code
+res.TextSize = 9
+res.TextWrapped = true
+res.TextXAlignment = Enum.TextXAlignment.Left
+res.Parent = frame
 
--- =====================================================
--- SCAN + WRITE AL CLICK
--- =====================================================
 btn.MouseButton1Click:Connect(function()
     btn.Text = "Escaneando..."
     btn.BackgroundColor3 = Color3.fromRGB(100,100,100)
-    status.Text = "Recolectando datos..."
-    buffer = {}
 
     task.spawn(function()
-        add("=== EVOMON SCAN " .. os.date("%Y-%m-%d %H:%M:%S") .. " ===")
+        local lines = {}
+        local function add(s) table.insert(lines, tostring(s)) print(tostring(s)) end
 
-        -- Jugadores
-        add("[PLAYERS]")
+        add("=== SCAN " .. os.date("%H:%M:%S") .. " ===")
+
         local pnames = {}
+        add("[JUGADORES]")
         for _, p in ipairs(Players:GetPlayers()) do
             pnames[p.Name] = true
             add("P|" .. p.Name)
         end
 
-        -- NPCs
         add("[NPCS]")
         local nc = 0
         for _, o in ipairs(workspace:GetDescendants()) do
@@ -111,113 +86,67 @@ btn.MouseButton1Click:Connect(function()
         end
         add("NPC_TOTAL=" .. nc)
 
-        -- Botones GUI
-        add("[BUTTONS]")
+        add("[BOTONES]")
         local pg = LP:FindFirstChildOfClass("PlayerGui")
         if pg then
-            local bc = 0
             for _, o in ipairs(pg:GetDescendants()) do
                 if o:IsA("TextButton") or o:IsA("ImageButton") then
-                    local v = o.Visible and "V" or "H"
-                    local t = ""
-                    if o:IsA("TextButton") then t = o.Text end
-                    add("BTN|" .. v .. "|" .. o.Name .. "|" .. t)
-                    bc = bc + 1
+                    local t = o:IsA("TextButton") and o.Text or ""
+                    add("BTN|" .. (o.Visible and"V"or"H") .. "|" .. o.Name .. "|" .. t)
                 end
             end
-            add("BTN_TOTAL=" .. bc)
         end
 
-        -- RemoteEvents
         add("[REMOTES]")
-        local kw = {"battle","catch","escape","flee","pity","summon",
-                    "monster","capture","operate","enter","settle","wild"}
-        local rc = 0
+        local kw = {"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","wild"}
         for _, o in ipairs(game:GetDescendants()) do
             if o:IsA("RemoteEvent") or o:IsA("RemoteFunction") then
                 local n = string.lower(o.Name)
                 for _, k in ipairs(kw) do
-                    if string.find(n, k) then
-                        add("REM|" .. o.ClassName .. "|" .. o.Name .. "|" .. o:GetFullName())
-                        rc = rc + 1
+                    if string.find(n,k) then
+                        add("REM|" .. o.Name .. "|" .. o:GetFullName())
                         break
                     end
                 end
             end
         end
-        add("REM_TOTAL=" .. rc)
 
-        -- ProximityPrompts
-        add("[PROXPROMPTS]")
-        local pc = 0
+        add("[PROXIMITYPROMPTS]")
         for _, o in ipairs(workspace:GetDescendants()) do
             if o:IsA("ProximityPrompt") then
-                add("PP|" .. o.ActionText .. "|" .. tostring(o.Enabled) .. "|" .. o:GetFullName())
-                pc = pc + 1
+                add("PP|" .. o.ActionText .. "|" .. o:GetFullName())
             end
         end
-        add("PP_TOTAL=" .. pc)
 
-        -- Valores jugador
         add("[PLAYERVALS]")
         local function sv(f, pre)
             for _, v in ipairs(f:GetChildren()) do
-                if v:IsA("ValueBase") then
-                    add("VAL|" .. pre .. v.Name .. "=" .. tostring(v.Value))
-                elseif v:IsA("Folder") then
-                    sv(v, pre .. v.Name .. "/")
-                end
+                if v:IsA("ValueBase") then add("VAL|"..pre..v.Name.."="..tostring(v.Value))
+                elseif v:IsA("Folder") then sv(v, pre..v.Name.."/") end
             end
         end
         sv(LP, "")
 
-        add("[END]")
+        add("=== FIN ===")
 
-        -- =====================================================
-        -- ESCRIBIR ARCHIVO - un solo writefile con todo el buffer
-        -- =====================================================
-        local content = table.concat(buffer, "\n")
-        local fname = "EvomonQA_ScanData.txt"
+        local content = table.concat(lines, "\n")
         local saved = false
-        local method = "ninguno"
 
-        -- Intento 1: writefile directo
-        if not saved and writefile then
-            local ok = pcall(writefile, fname, content)
-            if ok then saved = true method = "writefile" end
+        if writefile then
+            local s = pcall(writefile, "EvomonQA_ScanData.txt", content)
+            if s then saved = true res.Text = "OK: EvomonQA_ScanData.txt" end
         end
-
-        -- Intento 2: writefile con ruta alternativa
-        if not saved and writefile then
-            local ok = pcall(writefile, "workspace/" .. fname, content)
-            if ok then saved = true method = "writefile+path" end
-        end
-
-        -- Intento 3: appendfile linea por linea sobre el LiveReport existente
         if not saved and appendfile then
-            local ok = pcall(function()
-                appendfile("EvomonQA_LiveReport.txt", "\n\n" .. content)
-            end)
-            if ok then
-                saved = true
-                fname = "EvomonQA_LiveReport.txt (al final)"
-                method = "appendfile->LiveReport"
-            end
+            local s = pcall(appendfile, "EvomonQA_LiveReport.txt", "\n\n"..content)
+            if s then saved = true res.Text = "OK: appendado en LiveReport.txt" end
+        end
+        if not saved then
+            res.Text = "No se pudo guardar.\n" .. nc .. " NPCs en consola (print)"
+            res.TextColor3 = Color3.fromRGB(255,100,100)
         end
 
-        -- Resultado
-        if saved then
-            result.Text = "✔ Guardado en: " .. fname .. "\nMetodo: " .. method
-            result.TextColor3 = Color3.fromRGB(100,255,100)
-            btn.Text = "LISTO: " .. method
-            btn.BackgroundColor3 = Color3.fromRGB(39,174,96)
-        else
-            result.Text = "✘ No se pudo guardar.\nRevisa Output del executor.\n" .. #buffer .. " lineas en consola."
-            result.TextColor3 = Color3.fromRGB(255,100,100)
-            btn.Text = "Sin acceso a archivos"
-            btn.BackgroundColor3 = Color3.fromRGB(192,57,43)
-        end
-
-        status.Text = #buffer .. " lineas | " .. nc .. " NPCs | " .. rc .. " Remotes | " .. pc .. " PPs"
+        btn.Text = saved and "LISTO" or "SIN ACCESO A ARCHIVOS"
+        btn.BackgroundColor3 = saved and Color3.fromRGB(39,174,96) or Color3.fromRGB(192,57,43)
+        status.Text = nc .. " NPCs | " .. #lines .. " lineas"
     end)
 end)
