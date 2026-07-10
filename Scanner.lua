@@ -1,37 +1,54 @@
 -- ==========================================
--- SCANNER PARA ANALIZAR TIMERS OFUSCADOS
+-- SCANNER V3 (100% GUI PROTEGIDA)
 -- ==========================================
-
 local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
 
--- 1. Crear la GUI del Scanner
+-- Limpiar la GUI anterior si existe
+if CoreGui:FindFirstChild("ScannerPro") then
+    CoreGui.ScannerPro:Destroy()
+end
+
+-- 1. CREACIÓN DE LA INTERFAZ
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ScannerPro"
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
-MainFrame.Position = UDim2.new(1, -420, 0, 20)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Size = UDim2.new(0, 450, 0, 350)
+MainFrame.Position = UDim2.new(1, -470, 0, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.BackgroundTransparency = 1
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = " 🕵️ Scanner Activo - Esperando Script..."
+Title.Text = " 🕵️ Scanner Pro Activoxx    "
 Title.TextSize = 16
 Title.Font = Enum.Font.Code
-Title.Parent = MainFrame
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
 
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, -10, 1, -70)
 Scroll.Position = UDim2.new(0, 5, 0, 35)
-Scroll.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Scroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Scroll.BorderSizePixel = 0
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Para que baje automáticamente
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-Scroll.UIListLayout = Instance.new("UIListLayout", Scroll)
+Scroll.ScrollBarThickness = 6
 Scroll.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 2)
+UIListLayout.Parent = Scroll
 
 local SaveBtn = Instance.new("TextButton")
 SaveBtn.Size = UDim2.new(1, -10, 0, 25)
@@ -43,95 +60,104 @@ SaveBtn.Font = Enum.Font.Code
 SaveBtn.TextSize = 14
 SaveBtn.Parent = MainFrame
 
--- 2. Sistema de Logs
+-- 2. SISTEMA DE MENSAJES (LOGS)
 local Logs = {}
 
-local function AddLog(mensaje)
+local function AddLog(mensaje, color)
     table.insert(Logs, os.date("%X") .. " - " .. mensaje)
     
     local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, 0, 0, 20)
+    txt.Size = UDim2.new(1, 0, 0, 18)
     txt.BackgroundTransparency = 1
-    txt.TextColor3 = Color3.fromRGB(0, 255, 100)
-    txt.Text = os.date("%X") .. " | " .. mensaje
+    txt.TextColor3 = color or Color3.fromRGB(0, 255, 100)
+    txt.Text = " " .. os.date("%X") .. " | " .. mensaje
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.TextSize = 12
     txt.Font = Enum.Font.Code
     txt.Parent = Scroll
     
-    Scroll.CanvasSize = UDim2.new(0, 0, 0, #Scroll:GetChildren() * 20)
-    Scroll.CanvasPosition = Vector2.new(0, Scroll.CanvasSize.Y.Offset)
+    -- Bajar la barra de scroll automáticamente
+    task.spawn(function()
+        task.wait(0.1)
+        Scroll.CanvasPosition = Vector2.new(0, 999999)
+    end)
 end
 
--- Botón para guardar a archivo TXT
+-- Funcionalidad del botón de guardado
 SaveBtn.MouseButton1Click:Connect(function()
-    if writefile then
-        local content = table.concat(Logs, "\n")
-        local filename = "ScannerLogs_Evomon_" .. tostring(os.time()) .. ".txt"
-        writefile(filename, content)
-        SaveBtn.Text = "¡Guardado como " .. filename .. "!"
-        task.wait(2)
-        SaveBtn.Text = "Guardar Log en TXT (workspace)"
-    else
-        SaveBtn.Text = "Tu ejecutor no soporta writefile"
-    end
-end)
-
-AddLog("Scanner Iniciado. Ejecuta el script de NasiRendang ahora.")
-
--- ==========================================
--- 3. HOOKS (LOS ESPÍAS)
--- ==========================================
-
--- Espiar si el script pide la hora local (os.time)
-local oldTime
-oldTime = hookfunction(os.time, function(...)
-    if checkcaller() then 
-        AddLog("[TIEMPO] El script ha consultado os.time()")
-    end
-    return oldTime(...)
-end)
-
-local oldTick
-oldTick = hookfunction(tick, function(...)
-    if checkcaller() then 
-        AddLog("[TIEMPO] El script ha consultado tick()")
-    end
-    return oldTick(...)
-end)
-
--- Espiar si programa una expulsión a futuro (task.delay)
-local oldDelay
-oldDelay = hookfunction(task.delay, function(t, func, ...)
-    if checkcaller() and type(t) == "number" then
-        if t > 10 then -- Si retrasa una acción por más de 10 segundos, es sospechoso
-            AddLog("[DELAY] Acción retrasada por " .. tostring(t) .. " segundos.")
+    pcall(function()
+        if writefile then
+            local content = table.concat(Logs, "\n")
+            local filename = "ScannerLogs_Evomon_" .. tostring(os.time()) .. ".txt"
+            writefile(filename, content)
+            SaveBtn.Text = "¡Guardado como " .. filename .. "!"
+            task.wait(2)
+            SaveBtn.Text = "Guardar Log en TXT (workspace)"
+        else
+            SaveBtn.Text = "Tu ejecutor no soporta writefile"
         end
-    end
-    return oldDelay(t, func, ...)
+    end)
 end)
 
--- Espiar cambios en la GUI (Busca el texto del temporizador)
-local oldNewIndex
-oldNewIndex = hookmetamethod(game, "__newindex", function(self, index, value)
-    if checkcaller() then
-        if index == "Text" and type(value) == "string" then
-            -- Filtramos si el texto tiene formato de tiempo "MM:SS" o palabras clave
-            if string.match(value, "%d+:%d+") or string.match(string.lower(value), "trial") or string.match(string.lower(value), "time") then
-                AddLog("[GUI TIMER] Texto detectado: " .. value)
+AddLog("Scanner Iniciado. Esperando a NasiRendang...", Color3.fromRGB(255, 255, 255))
+
+-- ==========================================
+-- 3. LOS ESPÍAS (HOOKS PROTEGIDOS)
+-- ==========================================
+
+-- A) Buscador activo del texto "Trial:"
+task.spawn(function()
+    while task.wait(2) do
+        pcall(function()
+            for _, obj in pairs(game:GetDescendants()) do
+                if obj:IsA("TextLabel") and obj.Text then
+                    if string.find(string.lower(obj.Text), "trial:") then
+                        AddLog("[GUI] Timer capturado: " .. obj.Text, Color3.fromRGB(255, 255, 0))
+                    end
+                end
             end
-        end
+        end)
     end
-    return oldNewIndex(self, index, value)
 end)
 
--- Espiar si intenta kickearte
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if (method == "Kick" or method == "kick") and self == game:GetService("Players").LocalPlayer then
-        AddLog("[ALERTA] ¡El script intentó expulsarte! (KICK BLOQUEADO)")
-        return nil -- Bloqueamos el kick para que sigas en el juego
-    end
-    return oldNamecall(self, ...)
+-- B) Espiar las consultas de tiempo del script
+pcall(function()
+    local oldTime
+    oldTime = hookfunction(os.time, function(...)
+        if checkcaller() then AddLog("[TIEMPO] Consultó os.time()", Color3.fromRGB(0, 200, 255)) end
+        return oldTime(...)
+    end)
+    AddLog("Espía de os.time: ONLINE", Color3.fromRGB(100, 255, 100))
+end)
+
+pcall(function()
+    local oldTick
+    oldTick = hookfunction(tick, function(...)
+        if checkcaller() then AddLog("[TIEMPO] Consultó tick()", Color3.fromRGB(0, 200, 255)) end
+        return oldTick(...)
+    end)
+    AddLog("Espía de tick: ONLINE", Color3.fromRGB(100, 255, 100))
+end)
+
+pcall(function()
+    local oldClock
+    oldClock = hookfunction(os.clock, function(...)
+        if checkcaller() then AddLog("[TIEMPO] Consultó os.clock()", Color3.fromRGB(0, 200, 255)) end
+        return oldClock(...)
+    end)
+    AddLog("Espía de os.clock: ONLINE", Color3.fromRGB(100, 255, 100))
+end)
+
+-- C) Evitar la expulsión (Anti-Kick)
+pcall(function()
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if (method == "Kick" or method == "kick") and self == game:GetService("Players").LocalPlayer then
+            AddLog("[ALERTA] ¡El script intentó expulsarte! (Bloqueado)", Color3.fromRGB(255, 50, 50))
+            return nil
+        end
+        return oldNamecall(self, ...)
+    end)
+    AddLog("Protección Anti-Kick: ONLINE", Color3.fromRGB(100, 255, 100))
 end)
