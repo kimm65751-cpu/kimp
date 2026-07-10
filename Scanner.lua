@@ -1,152 +1,132 @@
 local Players = game:GetService("Players")
-local CoreGui  = game:GetService("CoreGui")
-local LP = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "ScanV5"
-gui.ResetOnSpawn = false
-local ok = pcall(function() gui.Parent = CoreGui end)
-if not ok then gui.Parent = LP:WaitForChild("PlayerGui") end
+-- GUI - EXACTA COPIA DEL V2 QUE FUNCIONA
+local SG = Instance.new("ScreenGui")
+SG.Name = "EvoScanV5"
+SG.ResetOnSpawn = false
+if pcall(function() SG.Parent = CoreGui end) then else SG.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,300,0,110)
-frame.Position = UDim2.new(0.5,-150,0,5)
-frame.BackgroundColor3 = Color3.fromRGB(10,10,15)
-frame.BorderSizePixel = 0
-frame.Parent = gui
-Instance.new("UICorner",frame).CornerRadius = UDim.new(0,8)
+local F = Instance.new("Frame")
+F.Size = UDim2.new(0, 300, 0, 100)
+F.Position = UDim2.new(0.5, -150, 0, 5)
+F.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+F.BorderSizePixel = 0
+F.Parent = SG
+Instance.new("UICorner", F).CornerRadius = UDim.new(0, 8)
 
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1,0,0,28)
-status.BackgroundTransparency = 1
-status.Text = "SCAN V5 - presiona el boton"
-status.TextColor3 = Color3.fromRGB(180,220,255)
-status.Font = Enum.Font.GothamBold
-status.TextSize = 11
-status.Parent = frame
+local T = Instance.new("TextLabel")
+T.Size = UDim2.new(1, 0, 0, 25)
+T.BackgroundTransparency = 1
+T.Text = "EVOMON SCANNER V5"
+T.TextColor3 = Color3.fromRGB(100, 200, 255)
+T.Font = Enum.Font.GothamBold
+T.TextSize = 12
+T.Parent = F
 
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(1,-10,0,34)
-btn.Position = UDim2.new(0,5,0,30)
-btn.BackgroundColor3 = Color3.fromRGB(41,128,185)
-btn.Text = "ESCANEAR TODO Y GUARDAR .TXT"
-btn.TextColor3 = Color3.fromRGB(255,255,255)
-btn.Font = Enum.Font.GothamBold
-btn.TextSize = 12
-btn.BorderSizePixel = 0
-btn.Parent = frame
-Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
+local B = Instance.new("TextButton")
+B.Size = UDim2.new(1, -10, 0, 34)
+B.Position = UDim2.new(0, 5, 0, 27)
+B.BackgroundColor3 = Color3.fromRGB(41, 128, 185)
+B.Text = "ESCANEAR TODO"
+B.TextColor3 = Color3.fromRGB(255, 255, 255)
+B.Font = Enum.Font.GothamBold
+B.TextSize = 12
+B.BorderSizePixel = 0
+B.Parent = F
+Instance.new("UICorner", B).CornerRadius = UDim.new(0, 6)
 
-local res = Instance.new("TextLabel")
-res.Size = UDim2.new(1,-10,0,36)
-res.Position = UDim2.new(0,5,0,68)
-res.BackgroundTransparency = 1
-res.Text = "Esperando..."
-res.TextColor3 = Color3.fromRGB(200,200,200)
-res.Font = Enum.Font.Code
-res.TextSize = 9
-res.TextWrapped = true
-res.TextXAlignment = Enum.TextXAlignment.Left
-res.Parent = frame
+local R = Instance.new("TextLabel")
+R.Size = UDim2.new(1, -8, 0, 28)
+R.Position = UDim2.new(0, 4, 0, 65)
+R.BackgroundTransparency = 1
+R.Text = "Presiona el boton..."
+R.TextColor3 = Color3.fromRGB(200, 200, 200)
+R.Font = Enum.Font.Code
+R.TextSize = 9
+R.TextWrapped = true
+R.TextXAlignment = Enum.TextXAlignment.Left
+R.Parent = F
 
-btn.MouseButton1Click:Connect(function()
-    btn.Text = "Escaneando..."
-    btn.BackgroundColor3 = Color3.fromRGB(100,100,100)
+-- FILE WRITE - igual al v2
+local FILE = "EvomonQA_LiveReport.txt"
+local function wLog(msg)
+    local line = "[SCAN][" .. os.date("%H:%M:%S") .. "] " .. msg
+    print(line)
+    if appendfile then
+        pcall(function() appendfile(FILE, line .. "\n") end)
+    elseif writefile and isfile then
+        pcall(function()
+            local cur = isfile(FILE) and readfile(FILE) or ""
+            writefile(FILE, cur .. line .. "\n")
+        end)
+    end
+end
 
+B.MouseButton1Click:Connect(function()
+    B.Text = "Escaneando..."
+    B.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
     task.spawn(function()
-        local lines = {}
-        local function add(s) table.insert(lines, tostring(s)) print(tostring(s)) end
+        wLog("=== INICIO SCAN ===")
 
-        add("=== SCAN " .. os.date("%H:%M:%S") .. " ===")
-
-        local pnames = {}
-        add("[JUGADORES]")
+        local pn = {}
         for _, p in ipairs(Players:GetPlayers()) do
-            pnames[p.Name] = true
-            add("P|" .. p.Name)
+            pn[p.Name] = true
+            wLog("PLAYER|" .. p.Name)
         end
 
-        add("[NPCS]")
         local nc = 0
         for _, o in ipairs(workspace:GetDescendants()) do
-            if o:IsA("Model") and not pnames[o.Name] then
-                local hrp = o:FindFirstChild("HumanoidRootPart")
-                local hum = o:FindFirstChildOfClass("Humanoid")
-                if hrp and hum then
+            if o:IsA("Model") and not pn[o.Name] then
+                local h = o:FindFirstChild("HumanoidRootPart")
+                local m = o:FindFirstChildOfClass("Humanoid")
+                if h and m then
                     local d = -1
-                    local c = LP.Character
+                    local c = LocalPlayer.Character
                     if c and c:FindFirstChild("HumanoidRootPart") then
-                        d = math.floor((hrp.Position - c.HumanoidRootPart.Position).Magnitude)
+                        d = math.floor((h.Position - c.HumanoidRootPart.Position).Magnitude)
                     end
-                    add("NPC|" .. o.Name .. "|" .. d .. "st|" .. o:GetFullName())
+                    wLog("NPC|" .. o.Name .. "|" .. d .. "st|" .. o:GetFullName())
                     nc = nc + 1
                 end
             end
         end
-        add("NPC_TOTAL=" .. nc)
+        wLog("NPC_TOTAL=" .. nc)
 
-        add("[BOTONES]")
-        local pg = LP:FindFirstChildOfClass("PlayerGui")
+        local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
         if pg then
             for _, o in ipairs(pg:GetDescendants()) do
                 if o:IsA("TextButton") or o:IsA("ImageButton") then
                     local t = o:IsA("TextButton") and o.Text or ""
-                    add("BTN|" .. (o.Visible and"V"or"H") .. "|" .. o.Name .. "|" .. t)
+                    wLog("BTN|" .. (o.Visible and "V" or "H") .. "|" .. o.Name .. "|" .. t .. "|" .. o:GetFullName())
                 end
             end
         end
 
-        add("[REMOTES]")
-        local kw = {"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","wild"}
+        local kw = {"battle","catch","escape","flee","pity","summon","monster","capture","enter","settle","wild"}
         for _, o in ipairs(game:GetDescendants()) do
             if o:IsA("RemoteEvent") or o:IsA("RemoteFunction") then
                 local n = string.lower(o.Name)
                 for _, k in ipairs(kw) do
-                    if string.find(n,k) then
-                        add("REM|" .. o.Name .. "|" .. o:GetFullName())
+                    if string.find(n, k) then
+                        wLog("REM|" .. o.Name .. "|" .. o:GetFullName())
                         break
                     end
                 end
             end
         end
 
-        add("[PROXIMITYPROMPTS]")
         for _, o in ipairs(workspace:GetDescendants()) do
             if o:IsA("ProximityPrompt") then
-                add("PP|" .. o.ActionText .. "|" .. o:GetFullName())
+                wLog("PP|" .. o.ActionText .. "|" .. o:GetFullName())
             end
         end
 
-        add("[PLAYERVALS]")
-        local function sv(f, pre)
-            for _, v in ipairs(f:GetChildren()) do
-                if v:IsA("ValueBase") then add("VAL|"..pre..v.Name.."="..tostring(v.Value))
-                elseif v:IsA("Folder") then sv(v, pre..v.Name.."/") end
-            end
-        end
-        sv(LP, "")
-
-        add("=== FIN ===")
-
-        local content = table.concat(lines, "\n")
-        local saved = false
-
-        if writefile then
-            local s = pcall(writefile, "EvomonQA_ScanData.txt", content)
-            if s then saved = true res.Text = "OK: EvomonQA_ScanData.txt" end
-        end
-        if not saved and appendfile then
-            local s = pcall(appendfile, "EvomonQA_LiveReport.txt", "\n\n"..content)
-            if s then saved = true res.Text = "OK: appendado en LiveReport.txt" end
-        end
-        if not saved then
-            res.Text = "No se pudo guardar.\n" .. nc .. " NPCs en consola (print)"
-            res.TextColor3 = Color3.fromRGB(255,100,100)
-        end
-
-        btn.Text = saved and "LISTO" or "SIN ACCESO A ARCHIVOS"
-        btn.BackgroundColor3 = saved and Color3.fromRGB(39,174,96) or Color3.fromRGB(192,57,43)
-        status.Text = nc .. " NPCs | " .. #lines .. " lineas"
+        wLog("=== FIN SCAN ===")
+        B.Text = "LISTO -> " .. FILE
+        B.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+        R.Text = "Scan completo: " .. nc .. " NPCs\nBusca en: " .. FILE
+        R.TextColor3 = Color3.fromRGB(100, 255, 100)
     end)
 end)
