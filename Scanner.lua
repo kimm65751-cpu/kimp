@@ -6,22 +6,47 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 local fileName = "EvomonQA_LiveReport.txt"
-if writefile then
-    pcall(function() writefile(fileName, "=== EVOMON QA REPORT - INICIADO ===\n") end)
+
+-- Detectar qué método de escritura funciona
+local writeMethod = nil
+local function tryInit()
+    -- Método 1: writefile estándar
+    if writefile then
+        local ok = pcall(writefile, fileName, "=== EVOMON QA REPORT - INICIADO ===\n")
+        if ok then writeMethod = "writefile" return end
+    end
+    -- Método 2: io.open estándar de Lua
+    local f = io.open(fileName, "w")
+    if f then f:write("=== EVOMON QA REPORT - INICIADO ===\n") f:close() writeMethod = "io" return end
+    -- Método 3: ruta absoluta Android sdcard
+    if writefile then
+        local p = "/sdcard/" .. fileName
+        local ok = pcall(writefile, p, "=== EVOMON QA REPORT - INICIADO ===\n")
+        if ok then fileName = p writeMethod = "writefile_abs" return end
+    end
 end
+tryInit()
 
 local function writeLog(level, msg)
     local timeStr = os.date("%H:%M:%S")
     local fullMsg = string.format("[%s] [%s] %s", timeStr, level, msg)
     print("[EvomonQA] " .. fullMsg)
-    if appendfile then
-        pcall(function() appendfile(fileName, fullMsg .. "\n") end)
-    elseif writefile and isfile then
+    if writeMethod == "writefile" then
+        if appendfile then
+            pcall(function() appendfile(fileName, fullMsg .. "\n") end)
+        elseif writefile and isfile then
+            pcall(function()
+                local cur = isfile(fileName) and readfile(fileName) or ""
+                writefile(fileName, cur .. fullMsg .. "\n")
+            end)
+        end
+    elseif writeMethod == "io" or writeMethod == "writefile_abs" then
         pcall(function()
-            local current = ""
-            if isfile(fileName) then current = readfile(fileName) end
-            writefile(fileName, current .. fullMsg .. "\n")
+            local f = io.open(fileName, "a")
+            if f then f:write(fullMsg .. "\n") f:close() end
         end)
+    else
+        -- Sin método disponible, solo print
     end
 end
 
@@ -149,17 +174,24 @@ local function RunScanner()
     printUI("INFO", "ESCANEO FINALIZADO. (" .. n .. " objetos)")
 end
 
--- DEEP SCAN - NPCs, Botones GUI, RemoteEvents, ProximityPrompts
+-- DEEP SCAN - Acumula en tabla, un solo writefile al final para no crashear GUI
 local function RunDeepScan()
-    printUI("INFO", "=== DEEP SCAN INICIADO ===")
+    printUI("INFO", "=== DEEP SCAN INICIADO - datos van directo al .txt ===")
+    local buf = {}
+    local function b(s) table.insert(buf, tostring(s)) end
 
-    -- Jugadores para filtrar
+    b("=== DEEP SCAN " .. os.date("%H:%M:%S") .. " ===")
+
+    -- Jugadores
     local pn = {}
-    for _, p in ipairs(Players:GetPlayers()) do pn[p.Name] = true end
-    printUI("INFO", "[DEEP] Jugadores filtrados: " .. #Players:GetPlayers())
+    for _, p in ipairs(Players:GetPlayers()) do
+        pn[p.Name] = true
+        b("PLAYER|" .. p.Name)
+    end
+    printUI("INFO", "[DEEP] Jugadores: " .. #Players:GetPlayers())
 
-    -- NPCs con Humanoid
-    printUI("INFO", "[DEEP] Buscando NPCs...")
+    -- NPCs
+    b("[NPCS]")
     local nc = 0
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and not pn[obj.Name] then
@@ -171,11 +203,10 @@ local function RunDeepScan()
                 if c and c:FindFirstChild("HumanoidRootPart") then
                     d = math.floor((hrp.Position - c.HumanoidRootPart.Position).Magnitude)
                 end
-                printUI("INFO", "[NPC] " .. obj.Name .. " dist=" .. d .. " | " .. obj:GetFullName())
-                -- ProximityPrompts dentro del NPC
+                b("NPC|" .. obj.Name .. "|dist=" .. d .. "|" .. obj:GetFullName())
                 for _, pp in ipairs(obj:GetDescendants()) do
                     if pp:IsA("ProximityPrompt") then
-                        printUI("INFO", "  [PP] " .. pp.ActionText .. " | " .. pp:GetFullName())
+                        b("  PP|" .. pp.ActionText .. "|" .. pp:GetFullName())
                     end
                 end
                 nc += 1
@@ -183,10 +214,11 @@ local function RunDeepScan()
             end
         end
     end
-    printUI("INFO", "[NPC] Total: " .. nc)
+    b("NPC_TOTAL=" .. nc)
+    printUI("INFO", "[DEEP] NPCs encontrados: " .. nc)
 
-    -- Botones en PlayerGui
-    printUI("INFO", "[DEEP] Buscando Botones GUI...")
+    -- Botones
+    b("[BOTONES]")
     local bc = 0
     local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
     if pg then
@@ -194,45 +226,68 @@ local function RunDeepScan()
             if obj:IsA("TextButton") or obj:IsA("ImageButton") then
                 local vis = obj.Visible and "VIS" or "HID"
                 local txt = obj:IsA("TextButton") and obj.Text or "(img)"
-                printUI("INFO", "[BTN][" .. vis .. "] " .. obj.Name .. ' "' .. txt .. '" | ' .. obj:GetFullName())
+                b("BTN|" .. vis .. "|" .. obj.Name .. "|" .. txt .. "|" .. obj:GetFullName())
                 bc += 1
-                if bc % 30 == 0 then task.wait() end
+                if bc % 50 == 0 then task.wait() end
             end
         end
     end
-    printUI("INFO", "[BTN] Total: " .. bc)
+    b("BTN_TOTAL=" .. bc)
+    printUI("INFO", "[DEEP] Botones encontrados: " .. bc)
 
-    -- RemoteEvents relevantes
-    printUI("INFO", "[DEEP] Buscando RemoteEvents...")
+    -- RemoteEvents
+    b("[REMOTES]")
     local kw = {"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","wild","npc"}
     local rc = 0
-    for _, obj in ipairs(game:GetDescendants()) do
+    local oc = 0
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        oc += 1
+        if oc % 100 == 0 then task.wait() end
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
             local n = string.lower(obj.Name)
             for _, k in ipairs(kw) do
                 if string.find(n, k) then
-                    printUI("INFO", "[REM] " .. obj.Name .. " | " .. obj:GetFullName())
+                    b("REM|" .. obj.ClassName .. "|" .. obj.Name .. "|" .. obj:GetFullName())
                     rc += 1
                     break
                 end
             end
         end
-        if rc % 30 == 0 then task.wait() end
     end
-    printUI("INFO", "[REM] Total: " .. rc)
+    b("REM_TOTAL=" .. rc)
+    printUI("INFO", "[DEEP] Remotes encontrados: " .. rc)
 
-    -- ProximityPrompts globales
-    printUI("INFO", "[DEEP] Buscando ProximityPrompts...")
+    -- ProximityPrompts
+    b("[PROXPROMPTS]")
     local pc = 0
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") then
-            printUI("INFO", "[PP] " .. obj.ActionText .. " en=" .. tostring(obj.Enabled) .. " | " .. obj:GetFullName())
+            b("PP|" .. obj.ActionText .. "|en=" .. tostring(obj.Enabled) .. "|" .. obj:GetFullName())
             pc += 1
         end
     end
-    printUI("INFO", "[PP] Total: " .. pc)
+    b("PP_TOTAL=" .. pc)
+    printUI("INFO", "[DEEP] ProximityPrompts: " .. pc)
 
-    printUI("INFO", "=== DEEP SCAN FINALIZADO ===")
+    b("=== FIN DEEP SCAN ===")
+
+    -- UN SOLO writefile con todo el buffer
+    local content = table.concat(buf, "\n")
+    local saved = false
+    if writefile then
+        local ok = pcall(writefile, "EvoScanDeep.txt", content)
+        if ok then saved = true printUI("LIVE", "GUARDADO: EvoScanDeep.txt") end
+    end
+    if not saved and appendfile then
+        local ok = pcall(appendfile, fileName, "\n" .. content)
+        if ok then saved = true printUI("LIVE", "AGREGADO AL: " .. fileName) end
+    end
+    if not saved then
+        printUI("WARNING", "Sin acceso a archivos. Datos en consola (print).")
+        print(content)
+    end
+
+    printUI("INFO", "=== DEEP SCAN COMPLETO: " .. nc .. " NPCs, " .. bc .. " Btns, " .. rc .. " Remotes ===")
 end
 
 -- LIVE MONITOR (igual al original)
