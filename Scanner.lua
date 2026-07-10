@@ -1,203 +1,216 @@
 --========================================================--
 -- EVOMON QA SCANNER
--- Internal Roblox Studio QA Tool
--- Single File Version
+-- Roblox Studio Internal QA Plugin
+-- Single File GUI Version
 --========================================================--
 
-local plugin = plugin
+local toolbar = plugin:CreateToolbar("Evomon QA")
 
-local HttpService = game:GetService("HttpService")
-local ScriptEditorService = game:GetService("ScriptEditorService")
+
+local button = toolbar:CreateButton(
+	"Evomon QA",
+	"Abrir Scanner",
+	""
+)
+
 
 ------------------------------------------------------------
--- CONFIG
+-- VARIABLES
 ------------------------------------------------------------
 
-local Scanner = {}
+local Running = false
 
-Scanner.Results = {
-	Info = {},
-	Warnings = {},
-	Critical = {}
+local Data = {
+
+	Objects = 0,
+	Warnings = 0,
+	Critical = 0,
+	Modules = 0,
+	Remotes = 0,
+
+	Logs = {}
+
 }
 
-Scanner.ScannedObjects = 0
-Scanner.Running = false
 
 
 ------------------------------------------------------------
--- LOGGER
+-- REPORT LOGGER
 ------------------------------------------------------------
 
-function Scanner:Add(level,message)
+local function Log(level,text)
 
-	local data = os.date("%X").." | "..message
 
-	if level == "CRITICAL" then
-		table.insert(self.Results.Critical,data)
+	local line =
+		os.date("%X")
+		.." ["
+		..level
+		.."] "
+		..text
 
-	elseif level == "WARNING" then
-		table.insert(self.Results.Warnings,data)
 
-	else
-		table.insert(self.Results.Info,data)
+	table.insert(Data.Logs,line)
+
+
+	print(line)
+
+
+	if level=="WARNING" then
+		Data.Warnings +=1
 	end
 
-	print(level,data)
+
+	if level=="CRITICAL" then
+		Data.Critical +=1
+	end
 
 end
 
 
 
 ------------------------------------------------------------
--- OBJECT SCANNER
+-- SCANNER
 ------------------------------------------------------------
 
-function Scanner:ScanObject(obj)
-
-	self.ScannedObjects += 1
+local function ScanObject(obj)
 
 
-	local name = string.lower(obj.Name)
+	Data.Objects +=1
 
-
-	------------------------------------------------
-	-- REMOTES
-	------------------------------------------------
-
-	if obj:IsA("RemoteEvent") 
-	or obj:IsA("RemoteFunction") then
-
-
-		self:Add(
-			"INFO",
-			"Remote encontrado: "
-			..obj:GetFullName()
-		)
-
-	end
-
-
-
-	------------------------------------------------
-	-- MODULES
-	------------------------------------------------
 
 	if obj:IsA("ModuleScript") then
 
-		self:Add(
+		Data.Modules +=1
+
+		Log(
 			"INFO",
-			"Module encontrado: "
-			..obj:GetFullName()
+			"Module: "..obj:GetFullName()
 		)
 
 	end
 
 
 
-	------------------------------------------------
-	-- EVOMON DETECTION
-	------------------------------------------------
+	if obj:IsA("RemoteEvent")
+	or obj:IsA("RemoteFunction") then
 
-	local keywords = {
+		Data.Remotes +=1
 
-		"evomon",
-		"pokemon",
-		"monster",
-		"creature",
-		"evolution",
-		"capture",
-		"battle",
-		"combat",
-		"damage",
-		"inventory",
-		"item",
-		"quest",
-		"npc",
-		"spawn",
-		"teleport"
+		Log(
+			"INFO",
+			"Remote: "..obj:GetFullName()
+		)
 
-	}
+	end
 
 
-	for _,word in ipairs(keywords) do
 
-		if string.find(name,word) then
+	local name =
+		string.lower(obj.Name)
 
-			self:Add(
-				"INFO",
-				"Sistema relacionado detectado: "
-				..obj:GetFullName()
-				.." ["..word.."]"
-			)
 
+
+local keys={
+
+	"evomon",
+	"monster",
+	"creature",
+	"capture",
+	"battle",
+	"combat",
+	"inventory",
+	"item",
+	"evolution",
+	"spawn",
+	"npc",
+	"teleport"
+
+}
+
+
+
+for _,k in ipairs(keys) do
+
+
+	if string.find(name,k) then
+
+
+		Log(
+			"INFO",
+			"Sistema detectado: "
+			..obj:GetFullName()
+		)
+
+
+		break
+
+	end
+
+end
+
+
+
+end
+
+
+
+local function StartScan()
+
+
+	Data.Objects=0
+	Data.Warnings=0
+	Data.Critical=0
+	Data.Modules=0
+	Data.Remotes=0
+	Data.Logs={}
+
+
+
+	Running=true
+
+
+	Log(
+		"INFO",
+		"Inicio auditoría Evomon"
+	)
+
+
+
+local folders={
+
+	game.Workspace,
+	game.ReplicatedStorage,
+	game.ServerStorage,
+	game.ServerScriptService,
+	game.StarterGui,
+	game.StarterPlayer
+
+}
+
+
+
+for _,folder in ipairs(folders) do
+
+
+	if not Running then
+		break
+	end
+
+
+
+	for _,obj in ipairs(folder:GetDescendants()) do
+
+
+		if not Running then
 			break
 		end
 
-	end
 
 
-
-	------------------------------------------------
-	-- SCRIPTS
-	------------------------------------------------
-
-	if obj:IsA("Script")
-	or obj:IsA("LocalScript")
-	or obj:IsA("ModuleScript") then
+		ScanObject(obj)
 
 
-		local source
-
-		local success,err = pcall(function()
-
-			source = obj.Source
-
-		end)
-
-
-
-		if success and source then
-
-
-			if string.find(source,"while true do") then
-
-				self:Add(
-					"WARNING",
-					"Posible loop infinito: "
-					..obj:GetFullName()
-				)
-
-			end
-
-
-
-			if string.find(source,"wait%(") then
-
-				self:Add(
-					"INFO",
-					"Uso de wait detectado: "
-					..obj:GetFullName()
-				)
-
-			end
-
-
-
-			if string.find(source,"RemoteEvent")
-			and not string.find(source,"OnServerEvent") then
-
-
-				self:Add(
-					"WARNING",
-					"Remote posiblemente sin validación servidor: "
-					..obj:GetFullName()
-				)
-
-			end
-
-
-		end
+		task.wait()
 
 	end
 
@@ -206,256 +219,355 @@ end
 
 
 
-------------------------------------------------------------
--- FULL SCAN
-------------------------------------------------------------
-
-function Scanner:Start()
-
-	self.Running=true
-
-	self.Results={
-		Info={},
-		Warnings={},
-		Critical={}
-	}
+Running=false
 
 
-	self.ScannedObjects=0
+Log(
+	"INFO",
+	"Scan terminado"
+)
 
-
-	self:Add(
-		"INFO",
-		"===== INICIO SCAN EVOMON ====="
-	)
-
-
-
-	local services={
-
-		game.Workspace,
-		game.ReplicatedStorage,
-		game.ServerStorage,
-		game.ServerScriptService,
-		game.StarterGui,
-		game.StarterPlayer
-
-	}
-
-
-	for _,service in ipairs(services) do
-
-
-		if self.Running then
-
-
-			self:Add(
-				"INFO",
-				"Analizando "
-				..service.Name
-			)
-
-
-			for _,obj in ipairs(service:GetDescendants()) do
-
-
-				if not self.Running then
-					break
-				end
-
-
-				self:ScanObject(obj)
-
-				task.wait()
-
-			end
-
-		end
-
-	end
-
-
-
-	self:Add(
-		"INFO",
-		"SCAN TERMINADO"
-	)
-
-
-	self.Running=false
 
 end
 
 
 
 ------------------------------------------------------------
--- LIVE MONITOR
+-- REPORT
 ------------------------------------------------------------
 
-function Scanner:Live()
+local function ExportReport()
 
-	self:Add(
+
+local report =
+"EVOMON QA REPORT\n\n"
+
+
+.."Fecha: "
+..os.date()
+.."\n\n"
+
+
+.."OBJETOS:"
+..Data.Objects
+.."\n"
+
+
+.."MODULES:"
+..Data.Modules
+.."\n"
+
+
+.."REMOTES:"
+..Data.Remotes
+.."\n"
+
+
+.."WARNINGS:"
+..Data.Warnings
+.."\n"
+
+
+.."CRITICAL:"
+..Data.Critical
+.."\n\n"
+
+
+.."====================\n"
+
+
+
+for _,line in ipairs(Data.Logs) do
+
+	report =
+	report
+	..line
+	.."\n"
+
+end
+
+
+
+plugin:SetSetting(
+	"EvomonQA_Report",
+	report
+)
+
+
+
+print(report)
+
+
+end
+
+
+
+------------------------------------------------------------
+-- GUI
+------------------------------------------------------------
+
+
+local info = DockWidgetPluginGuiInfo.new(
+
+	Enum.InitialDockState.Float,
+
+	true,
+
+	false,
+
+	400,
+
+	500,
+
+	300,
+
+	300
+
+)
+
+
+
+local widget =
+plugin:CreateDockWidgetPluginGui(
+"EvomonQA",
+info
+)
+
+
+widget.Title =
+"Evomon QA Scanner"
+
+
+
+local frame =
+Instance.new("Frame")
+
+frame.Size =
+UDim2.new(1,0,1,0)
+
+frame.BackgroundColor3 =
+Color3.fromRGB(35,35,35)
+
+frame.Parent=widget
+
+
+
+local function CreateButton(text,y)
+
+
+local b =
+Instance.new("TextButton")
+
+
+b.Size =
+UDim2.new(
+0.8,
+0,
+0,
+45
+)
+
+
+b.Position =
+UDim2.new(
+0.1,
+0,
+0,
+y
+)
+
+
+
+b.Text=text
+
+
+b.TextSize=18
+
+
+b.Parent=frame
+
+
+return b
+
+
+end
+
+
+
+
+local title =
+Instance.new("TextLabel")
+
+
+title.Size =
+UDim2.new(
+1,
+0,
+0,
+50
+)
+
+
+title.Text =
+"EVOMON QA SCANNER"
+
+
+title.TextSize=24
+
+
+title.Parent=frame
+
+
+
+
+local status =
+Instance.new("TextLabel")
+
+
+status.Position =
+UDim2.new(0,0,0,60)
+
+
+status.Size =
+UDim2.new(1,0,0,100)
+
+
+status.TextSize=16
+
+
+status.TextColor3 =
+Color3.new(1,1,1)
+
+
+status.Parent=frame
+
+
+
+
+local scan =
+CreateButton(
+"SCAN GENERAL",
+180
+)
+
+
+local live =
+CreateButton(
+"LIVE MONITOR",
+240
+)
+
+
+local stop =
+CreateButton(
+"STOP",
+300
+)
+
+
+local export =
+CreateButton(
+"EXPORT REPORT",
+360
+)
+
+
+
+
+scan.MouseButton1Click:Connect(function()
+
+
+	task.spawn(StartScan)
+
+end)
+
+
+
+stop.MouseButton1Click:Connect(function()
+
+	Running=false
+
+	Log(
+		"WARNING",
+		"Scanner detenido"
+	)
+
+end)
+
+
+
+export.MouseButton1Click:Connect(function()
+
+	ExportReport()
+
+end)
+
+
+
+live.MouseButton1Click:Connect(function()
+
+
+	Log(
 		"INFO",
 		"LIVE MONITOR ACTIVADO"
 	)
 
 
-	game.DescendantAdded:Connect(function(obj)
 
-		self:Add(
-			"INFO",
-			"Nuevo objeto creado: "
-			..obj:GetFullName()
-		)
+game.DescendantAdded:Connect(function(obj)
 
-	end)
-
-end
-
-
-
-------------------------------------------------------------
--- REPORT TXT
-------------------------------------------------------------
-
-function Scanner:GenerateReport()
-
-
-	local text=""
-
-
-	text=text..
-	"EVOMON QA REPORT\n\n"
-
-
-	text=text..
-	"DATE: "
-	..os.date()
-	.."\n\n"
-
-
-
-	text=text..
-	"OBJECTS SCANNED: "
-	..Scanner.ScannedObjects
-	.."\n\n"
-
-
-
-	text=text..
-	"========== CRITICAL ==========\n"
-
-
-	for _,v in ipairs(Scanner.Results.Critical) do
-
-		text=text..v.."\n"
-
-	end
-
-
-
-	text=text..
-	"\n========== WARNINGS ==========\n"
-
-
-
-	for _,v in ipairs(Scanner.Results.Warnings) do
-
-		text=text..v.."\n"
-
-	end
-
-
-
-	text=text..
-	"\n========== INFO ==========\n"
-
-
-
-	for _,v in ipairs(Scanner.Results.Info) do
-
-		text=text..v.."\n"
-
-	end
-
-
-
-	local json =
-		HttpService:JSONEncode({
-			report=text
-		})
-
-
-	plugin:SetSetting(
-		"LastReport",
-		json
+	Log(
+		"INFO",
+		"Nuevo objeto: "
+		..obj:GetFullName()
 	)
 
+end)
 
-
-	print(
-		"REPORT GENERATED"
-	)
-
-
-	print(text)
-
-
-end
-
-
-
-------------------------------------------------------------
--- SIMPLE TOOLBAR
-------------------------------------------------------------
-
-
-local toolbar =
-	plugin:CreateToolbar(
-	"Evomon QA"
-	)
-
-
-local button =
-	toolbar:CreateButton(
-	"Scanner",
-	"Open QA Scanner",
-	""
-	)
-
-
-
-button.Click:Connect(function()
-
-
-	print(
-		"===================="
-	)
-
-	print(
-		"EVOMON QA SCANNER"
-	)
-
-	print(
-		"Use commands:"
-	)
-
-	print(
-		"Scanner:Start()"
-	)
-
-	print(
-		"Scanner:GenerateReport()"
-	)
 
 
 end)
 
 
 
-_G.EvomonQA = Scanner
+
+task.spawn(function()
+
+while true do
+
+
+	status.Text =
+	"Objetos: "
+	..Data.Objects
+	.."\nModules: "
+	..Data.Modules
+	.."\nRemotes: "
+	..Data.Remotes
+	.."\nWarnings: "
+	..Data.Warnings
+	.."\nCritical: "
+	..Data.Critical
+
+
+	task.wait(1)
+
+end
+
+
+end)
+
+
+
+
+button.Click:Connect(function()
+
+	widget.Enabled =
+	not widget.Enabled
+
+end)
+
 
 
 print(
-"EVOMON QA SCANNER LOADED"
+"Evomon QA Scanner cargado"
 )
