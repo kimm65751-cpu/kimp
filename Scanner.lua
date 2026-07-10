@@ -1,239 +1,118 @@
--- EVOMON SCANNER - Estructura IDENTICA al script original que SI funciona
--- Usa el mismo writeLog/appendfile que ya demostro funcionar
+local Players=game:GetService("Players")
+local CoreGui=game:GetService("CoreGui")
+local LP=Players.LocalPlayer or Players.PlayerAdded:Wait()
+local FILE="EvomonQA_LiveReport.txt"
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+if writefile then pcall(function()writefile(FILE,"=== SCAN "..os.date("%H:%M:%S").." ===\n")end)end
 
-local fileName = "EvomonQA_ScanData.txt"
-
--- IDENTICO AL ORIGINAL - esto es lo que funciona
-if writefile then pcall(function() writefile(fileName, "=== EVOMON SCANNER INICIADO: " .. os.date("%H:%M:%S") .. " ===\n") end) end
-
-local function writeLog(msg)
-    local fullMsg = "[" .. os.date("%H:%M:%S") .. "] " .. msg
-    print("[SCAN] " .. fullMsg)
-    if appendfile then
-        pcall(function() appendfile(fileName, fullMsg .. "\n") end)
-    elseif writefile and isfile then
-        pcall(function()
-            local current = isfile(fileName) and readfile(fileName) or ""
-            writefile(fileName, current .. fullMsg .. "\n")
-        end)
-    end
+local function w(m)
+    local l="["..os.date("%H:%M:%S").."] "..m
+    print(l)
+    if appendfile then pcall(function()appendfile(FILE,l.."\n")end)
+    elseif writefile and isfile then pcall(function()
+        writefile(FILE,(isfile(FILE)and readfile(FILE)or "")..l.."\n")
+    end)end
 end
 
--- GUI - igual que el original
-local SG = Instance.new("ScreenGui")
-SG.Name = "EvoScanGui"
-SG.ResetOnSpawn = false
-if pcall(function() SG.Parent = CoreGui end) then else SG.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+-- GUI
+local SG=Instance.new("ScreenGui")SG.Name="EScan"SG.ResetOnSpawn=false
+if pcall(function()SG.Parent=CoreGui end)then else SG.Parent=LP:WaitForChild("PlayerGui")end
+local F=Instance.new("Frame")F.Size=UDim2.new(0,240,0,50)F.Position=UDim2.new(0,10,0,10)
+F.BackgroundColor3=Color3.fromRGB(20,20,28)F.BorderSizePixel=0 F.Parent=SG
+Instance.new("UICorner",F).CornerRadius=UDim.new(0,6)
+local B=Instance.new("TextButton")B.Size=UDim2.new(1,-10,0,34)B.Position=UDim2.new(0,5,0,8)
+B.BackgroundColor3=Color3.fromRGB(41,128,185)B.Text="ESCANEAR TODO -> "..FILE
+B.TextColor3=Color3.fromRGB(255,255,255)B.Font=Enum.Font.GothamBold B.TextSize=11
+B.BorderSizePixel=0 B.Parent=F Instance.new("UICorner",B).CornerRadius=UDim.new(0,5)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 200)
-MainFrame.Position = UDim2.new(0, 10, 0.5, -100)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = SG
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+w("Script cargado OK")
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-Title.BackgroundTransparency = 0
-Title.Text = "EVOMON SCANNER -> " .. fileName
-Title.TextColor3 = Color3.fromRGB(100, 220, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 11
-Title.BorderSizePixel = 0
-Title.Parent = MainFrame
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 8)
+B.MouseButton1Click:Connect(function()
+    B.Text="Escaneando..."
+    B.BackgroundColor3=Color3.fromRGB(80,80,80)
 
-local BtnContainer = Instance.new("Frame")
-BtnContainer.Size = UDim2.new(1, -10, 1, -35)
-BtnContainer.Position = UDim2.new(0, 5, 0, 33)
-BtnContainer.BackgroundTransparency = 1
-BtnContainer.Parent = MainFrame
-local layout = Instance.new("UIListLayout", BtnContainer)
-layout.Padding = UDim.new(0, 4)
+    -- JUGADORES
+    local pn={}
+    w("==[JUGADORES]==")
+    pcall(function()for _,p in ipairs(Players:GetPlayers())do pn[p.Name]=true w("PLAYER|"..p.Name)end end)
 
-local StatusLbl = Instance.new("TextLabel")
-StatusLbl.Size = UDim2.new(1, 0, 0, 20)
-StatusLbl.BackgroundTransparency = 1
-StatusLbl.Text = "Listo. Presiona un boton."
-StatusLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLbl.Font = Enum.Font.Code
-StatusLbl.TextSize = 10
-StatusLbl.TextXAlignment = Enum.TextXAlignment.Left
-StatusLbl.Parent = BtnContainer
-
-local function mkBtn(txt, r, g, b)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(r, g, b)
-    btn.Text = txt
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
-    btn.Parent = BtnContainer
-    return btn
-end
-
-local BtnScanNPC    = mkBtn("1. ESCANEAR NPCs/EVOMONS", 41, 128, 185)
-local BtnScanBtns   = mkBtn("2. ESCANEAR BOTONES GUI", 142, 68, 173)
-local BtnScanRemote = mkBtn("3. ESCANEAR REMOTEEVENTS", 192, 57, 43)
-local BtnScanPP     = mkBtn("4. ESCANEAR PROXIMITYPROMPTS", 39, 174, 96)
-
-writeLog("Script cargado OK - archivo creado")
-
--- =====================================================
--- BOTON 1: NPCs
--- =====================================================
-BtnScanNPC.MouseButton1Click:Connect(function()
-    BtnScanNPC.Text = "Escaneando..."
-    StatusLbl.Text = "Buscando NPCs..."
-    writeLog("=== SCAN: NPCs EN WORKSPACE ===")
-
-    local playerNames = {}
+    -- NPCs
+    w("==[NPCs]==")
+    local nc=0
     pcall(function()
-        for _, p in ipairs(Players:GetPlayers()) do
-            playerNames[p.Name] = true
-            writeLog("JUGADOR_FILTRADO|" .. p.Name)
-        end
-    end)
-
-    local count = 0
-    pcall(function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and not playerNames[obj.Name] then
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                local hum = obj:FindFirstChildOfClass("Humanoid")
-                if hrp and hum then
-                    local dist = -1
-                    pcall(function()
-                        local c = LocalPlayer.Character
-                        if c and c:FindFirstChild("HumanoidRootPart") then
-                            dist = math.floor((hrp.Position - c.HumanoidRootPart.Position).Magnitude)
-                        end
-                    end)
-                    writeLog("NPC|" .. obj.Name .. "|dist=" .. dist .. "|path=" .. obj:GetFullName())
-                    count += 1
-                    task.wait(0)
+        for _,o in ipairs(workspace:GetDescendants())do
+            if o:IsA("Model")and not pn[o.Name]then
+                local h=o:FindFirstChild("HumanoidRootPart")
+                local hu=o:FindFirstChildOfClass("Humanoid")
+                if h and hu then
+                    local d=-1
+                    pcall(function()local c=LP.Character
+                        if c and c:FindFirstChild("HumanoidRootPart")then
+                            d=math.floor((h.Position-c.HumanoidRootPart.Position).Magnitude)end end)
+                    w("NPC|"..o.Name.."|dist="..d.."|"..o:GetFullName())
+                    nc+=1
                 end
             end
         end
     end)
+    w("TOTAL_NPC="..nc)
 
-    writeLog("TOTAL_NPCS=" .. count)
-    BtnScanNPC.Text = "1. ESCANEAR NPCs/EVOMONS"
-    BtnScanNPC.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
-    StatusLbl.Text = "NPCs escritos: " .. count .. " -> " .. fileName
-end)
-
--- =====================================================
--- BOTON 2: Botones GUI
--- =====================================================
-BtnScanBtns.MouseButton1Click:Connect(function()
-    BtnScanBtns.Text = "Escaneando..."
-    StatusLbl.Text = "Buscando botones..."
-    writeLog("=== SCAN: BOTONES EN PLAYERGUI ===")
-
+    -- BOTONES GUI
+    w("==[BOTONES GUI]==")
     pcall(function()
-        local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-        if pg then
-            local count = 0
-            for _, obj in ipairs(pg:GetDescendants()) do
-                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-                    local vis = obj.Visible and "VIS" or "HID"
-                    local txt = ""
-                    pcall(function() if obj:IsA("TextButton") then txt = obj.Text end end)
-                    writeLog("BTN|" .. vis .. "|" .. obj.Name .. "|" .. txt .. "|" .. obj:GetFullName())
-                    count += 1
-                    task.wait(0)
+        local pg=LP:FindFirstChildOfClass("PlayerGui")
+        if pg then local c=0
+            for _,o in ipairs(pg:GetDescendants())do
+                if o:IsA("TextButton")or o:IsA("ImageButton")then
+                    local v=o.Visible and"VIS"or"HID"
+                    local t=""pcall(function()if o:IsA("TextButton")then t=o.Text end end)
+                    w("BTN|"..v.."|"..o.Name.."|"..t.."|"..o:GetFullName())c+=1
                 end
             end
-            writeLog("TOTAL_BTNS=" .. count)
-            StatusLbl.Text = "Botones escritos: " .. count .. " -> " .. fileName
-        else
-            writeLog("ERROR: PlayerGui no encontrado")
-            StatusLbl.Text = "ERROR: Sin PlayerGui"
+            w("TOTAL_BTN="..c)
         end
     end)
 
-    BtnScanBtns.Text = "2. ESCANEAR BOTONES GUI"
-    BtnScanBtns.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
-end)
-
--- =====================================================
--- BOTON 3: RemoteEvents
--- =====================================================
-BtnScanRemote.MouseButton1Click:Connect(function()
-    BtnScanRemote.Text = "Escaneando..."
-    StatusLbl.Text = "Buscando RemoteEvents..."
-    writeLog("=== SCAN: REMOTEEVENTS EN RS ===")
-
+    -- REMOTES
+    w("==[REMOTEEVENTS]==")
     pcall(function()
-        local count = 0
-        local kw = {"battle","catch","escape","flee","pity","summon","monster",
-                    "capture","operate","enter","settle","result","wild","npc"}
-        for _, obj in ipairs(game:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local low = string.lower(obj.Name)
-                for _, k in ipairs(kw) do
-                    if string.find(low, k) then
-                        writeLog("REMOTE|" .. obj.ClassName .. "|" .. obj.Name .. "|" .. obj:GetFullName())
-                        count += 1
-                        task.wait(0)
-                        break
+        local kw={"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","result","wild","npc"}
+        local c=0
+        for _,o in ipairs(game:GetDescendants())do
+            if o:IsA("RemoteEvent")or o:IsA("RemoteFunction")then
+                local low=string.lower(o.Name)
+                for _,k in ipairs(kw)do
+                    if string.find(low,k)then
+                        w("REMOTE|"..o.ClassName.."|"..o.Name.."|"..o:GetFullName())c+=1 break
                     end
                 end
             end
         end
-        writeLog("TOTAL_REMOTES=" .. count)
-        StatusLbl.Text = "Remotes escritos: " .. count .. " -> " .. fileName
+        w("TOTAL_REMOTE="..c)
     end)
 
-    BtnScanRemote.Text = "3. ESCANEAR REMOTEEVENTS"
-    BtnScanRemote.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
-end)
+    -- PROXIMITYPROMPTS
+    w("==[PROXIMITYPROMPTS]==")
+    pcall(function()local c=0
+        for _,o in ipairs(workspace:GetDescendants())do
+            if o:IsA("ProximityPrompt")then
+                w("PP|"..o.ActionText.."|en="..tostring(o.Enabled).."|"..o:GetFullName())c+=1
+            end
+        end
+        w("TOTAL_PP="..c)
+    end)
 
--- =====================================================
--- BOTON 4: ProximityPrompts
--- =====================================================
-BtnScanPP.MouseButton1Click:Connect(function()
-    BtnScanPP.Text = "Escaneando..."
-    StatusLbl.Text = "Buscando ProximityPrompts..."
-    writeLog("=== SCAN: PROXIMITYPROMPTS ===")
-
+    -- VALORES JUGADOR
+    w("==[VALORES JUGADOR]==")
     pcall(function()
-        local count = 0
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                writeLog("PP|" .. obj.ActionText .. "|enabled=" .. tostring(obj.Enabled) .. "|" .. obj:GetFullName())
-                count += 1
-                task.wait(0)
-            end
-        end
-        -- Valores del jugador tambien
-        writeLog("=== SCAN: VALORES DEL JUGADOR ===")
-        local function scanVals(folder, prefix)
-            for _, v in ipairs(folder:GetChildren()) do
-                if v:IsA("ValueBase") then
-                    writeLog("VAL|" .. prefix .. v.Name .. "=" .. tostring(v.Value))
-                elseif v:IsA("Folder") then
-                    scanVals(v, prefix .. v.Name .. "/")
-                end
-            end
-        end
-        scanVals(LocalPlayer, "")
-        writeLog("TOTAL_PP=" .. count)
-        StatusLbl.Text = "PP escritos: " .. count .. " -> " .. fileName
+        local function sv(f,p)for _,v in ipairs(f:GetChildren())do
+            if v:IsA("ValueBase")then w("VAL|"..p..v.Name.."="..tostring(v.Value))
+            elseif v:IsA("Folder")then sv(v,p..v.Name.."/")end
+        end end
+        sv(LP,"")
     end)
 
-    BtnScanPP.Text = "4. ESCANEAR PROXIMITYPROMPTS"
-    BtnScanPP.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+    w("==FIN SCAN==")
+    B.Text="LISTO -> "..FILE
+    B.BackgroundColor3=Color3.fromRGB(39,174,96)
 end)
