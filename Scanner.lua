@@ -1,10 +1,11 @@
 -- ==========================================
--- SCANNER V6 + CONGELADOR (ULTRA STEALTH)
+-- SCANNER V9 - CENTINELA DE DATOS (MÁXIMA OBSERVACIÓN)
 -- ==========================================
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local LOG_FILE = "ScannerV6_Log.txt"
+local LOG_FILE = "ScannerV9_Centinela.txt"
 
 local function writeLog(msg)
     local timestamp = os.date("%H:%M:%S")
@@ -14,96 +15,88 @@ local function writeLog(msg)
     else print(formatMsg) end
 end
 
-if writefile then pcall(function() writefile(LOG_FILE, "=== INICIO V6 ULTRA STEALTH ===\n") end) end
+if writefile then pcall(function() writefile(LOG_FILE, "=== INICIO CENTINELA V9 ===\n") end) end
+writeLog("🛡️ Centinela activado. Escaneando lectura de datos y castigos...")
 
 -- ==========================================
--- INTERFAZ MINIMALISTA
+-- 1. DETECCIÓN DE LECTURA DE HWID (SERIAL DE PC)
 -- ==========================================
-if CoreGui:FindFirstChild("ScannerPro") then CoreGui.ScannerPro:Destroy() end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ScannerPro"
-if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end 
-ScreenGui.Parent = CoreGui
-
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 300, 0, 160) -- Más pequeña ahora
-MainFrame.Position = UDim2.new(1, -320, 0, 20)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = " 🕵️ 3Bypass V6 (Ultra Stealth)"
-Title.Font = Enum.Font.Code
-Title.TextSize = 16
-
-local LblTime = Instance.new("TextLabel", MainFrame)
-LblTime.Size = UDim2.new(1, -10, 0, 25)
-LblTime.Position = UDim2.new(0, 10, 0, 40)
-LblTime.BackgroundTransparency = 1
-LblTime.TextColor3 = Color3.fromRGB(0, 255, 100)
-LblTime.Text = "Consultas os.time: 0"
-LblTime.Font = Enum.Font.Code
-LblTime.TextSize = 14
-LblTime.TextXAlignment = Enum.TextXAlignment.Left
-
-local BtnFreeze = Instance.new("TextButton", MainFrame)
-BtnFreeze.Size = UDim2.new(1, -20, 0, 40)
-BtnFreeze.Position = UDim2.new(0, 10, 0, 90)
-BtnFreeze.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-BtnFreeze.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnFreeze.Text = "❄️ CONGELAR MINUTOS ❄️"
-BtnFreeze.Font = Enum.Font.Code
-BtnFreeze.TextSize = 16
-
--- ==========================================
--- LÓGICA DE BYPASS (SOLO OS.TIME)
--- ==========================================
-local timeFrozen = false
-local fTime = 0
-local callsTime = 0
-
-BtnFreeze.MouseButton1Click:Connect(function()
-    timeFrozen = not timeFrozen
-    if timeFrozen then
-        fTime = os.time()
-        BtnFreeze.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        BtnFreeze.Text = "🔴 MINUTOS CONGELADOS 🔴"
-        writeLog("❄️ TIEMPO CONGELADO ACTIVADO ❄️")
-    else
-        BtnFreeze.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        BtnFreeze.Text = "❄️ CONGELAR MINUTOS ❄️"
-        writeLog("▶️ TIEMPO DESCONGELADO")
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    LblTime.Text = "Consultas os.time: " .. callsTime
-end)
-
-task.spawn(function()
-    while task.wait(5) do
-        writeLog(string.format("Latido - os.time: %d", callsTime))
-    end
-end)
-
--- ==========================================
--- HOOK QUIRÚRGICO (INDETECTABLE)
--- ==========================================
-writeLog("⚙️ Iniciando Hook Quirúrgico...")
-
-pcall(function()
-    local oldTime
-    oldTime = hookfunction(os.time, newcclosure(function(...)
-        callsTime = callsTime + 1 
-        if timeFrozen then 
-            return fTime 
-        end
-        return oldTime(...)
+if gethwid then
+    local oldHwid
+    oldHwid = hookfunction(gethwid, newcclosure(function()
+        writeLog("🛑 [ALERTA MÁXIMA] El script acaba de leer tu HWID (Serial de tu PC). Podría estar intentando bloquear tu computadora.")
+        return oldHwid()
     end))
-    writeLog("✅ Hook a os.time (C-Closure) exitoso. tick y os.clock ignorados por seguridad.")
+end
+
+-- ==========================================
+-- 2. VIGILANCIA DE RED (ENVÍO DE DATOS)
+-- ==========================================
+local oldRequest = (request or http_request or syn and syn.request)
+if oldRequest then
+    hookfunction(oldRequest, newcclosure(function(reqData)
+        if type(reqData) == "table" and reqData.Url then
+            writeLog("🌐 [RED] Intentó enviar/recibir datos ocultos de: " .. tostring(reqData.Url))
+        end
+        return oldRequest(reqData)
+    end))
+end
+
+-- ==========================================
+-- 3. INTERCEPTOR DE ACCIONES (__namecall y __index)
+-- ==========================================
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+local oldIndex = mt.__index
+setreadonly(mt, false)
+
+-- Variables para no hacer spam en el log si lee tu ID 1000 veces
+local yaLeidoID, yaLeidoNombre = false, false
+
+mt.__index = newcclosure(function(self, key)
+    -- Si el ofuscador intenta leer tus datos personales:
+    if checkcaller() and self == LocalPlayer then
+        if key == "UserId" and not yaLeidoID then
+            yaLeidoID = true
+            writeLog("🔍 [RASTREO] El script acaba de leer tu UserId (ID de cuenta Roblox).")
+        elseif key == "Name" and not yaLeidoNombre then
+            yaLeidoNombre = true
+            writeLog("🔍 [RASTREO] El script acaba de leer tu Nombre de Usuario.")
+        end
+    end
+    return oldIndex(self, key)
 end)
 
-writeLog("🚀 Sistema Stealth Operativo. Ejecuta el trial.")
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    -- Castigo de Expulsión
+    if method == "Kick" or method == "kick" then
+        writeLog("⚠️ [CASTIGO] ¡Trial intentó EXPULSARTE! Razón enviada: " .. tostring(args[1]))
+        writeLog("   -> Kick bloqueado. Sigues en el juego.")
+        return coroutine.yield()
+    end
+    
+    -- Castigo de Teletransporte
+    if method == "Teleport" or method == "TeleportToPlaceInstance" then
+        writeLog("⚠️ [CASTIGO] Trial intentó teletransportarte. (ID: " .. tostring(args[1]) .. ")")
+        return coroutine.yield()
+    end
+
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- GUI Visual Minimalista
+local GUI = Instance.new("ScreenGui", CoreGui)
+local Alerta = Instance.new("TextLabel", GUI)
+Alerta.Size = UDim2.new(0, 300, 0, 30)
+Alerta.Position = UDim2.new(1, -320, 0, 20)
+Alerta.BackgroundColor3 = Color3.fromRGB(15, 10, 10)
+Alerta.TextColor3 = Color3.fromRGB(255, 150, 0)
+Alerta.Text = "🛡️ Centinela V9: Rastreando Datos"
+Alerta.Font = Enum.Font.Code
+Alerta.TextSize = 14
+
+writeLog("🚀 Todas las trampas instaladas. Juega y espera tranquilo a que se acabe el tiempo.")
