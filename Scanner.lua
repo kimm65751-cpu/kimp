@@ -1,5 +1,6 @@
 -- ==========================================
 -- SCANNER V4 + CONGELADOR + LOGGER (.txt)
+-- OPTIMIZADO PARA DELTA Y BYPASS DE OFUSCADORES
 -- ==========================================
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
@@ -13,22 +14,21 @@ local function writeLog(msg)
     local timestamp = os.date("%H:%M:%S")
     local formatMsg = string.format("[%s] %s\n", timestamp, tostring(msg))
     
-    -- Intenta escribir en el archivo (Requiere un ejecutor que soporte file system)
+    -- Manejo seguro para escritura de archivos en Delta
     if appendfile then
         pcall(function() appendfile(LOG_FILE, formatMsg) end)
     elseif writefile then 
-        -- Fallback si solo tiene writefile (menos óptimo pero funciona)
         pcall(function() writefile(LOG_FILE, formatMsg) end)
     else
-        print(formatMsg) -- Si el ejecutor no soporta archivos, usa la consola F9
+        print(formatMsg) 
     end
 end
 
--- Reiniciamos el archivo de log al ejecutar el script
+-- Limpiamos e iniciamos el archivo de texto
 if writefile then
-    pcall(function() writefile(LOG_FILE, "=== INICIO SCANNER V4 ===\n") end)
+    pcall(function() writefile(LOG_FILE, "=== INICIO DE SESION SCANNER V4 ===\n") end)
 end
-writeLog("✅ Interfaz Iniciada Exitosamente.")
+writeLog("✅ Interfaz y Logger Iniciados Exitosamente.")
 
 -- ==========================================
 -- 2. CREACIÓN DE INTERFAZ (GUI)
@@ -39,7 +39,6 @@ end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ScannerPro"
--- Protección básica para la GUI
 if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end 
 ScreenGui.Parent = CoreGui
 
@@ -52,7 +51,7 @@ local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = " 🕵️ Scanner & Bypass"
+Title.Text = " 🕵️ aa Scanner & Bypass V4"
 Title.Font = Enum.Font.Code
 Title.TextSize = 16
 
@@ -83,7 +82,7 @@ BtnFreeze.Font = Enum.Font.Code
 BtnFreeze.TextSize = 16
 
 -- ==========================================
--- 3. LÓGICA DE BYPASS Y OPTIMIZACIÓN
+-- 3. LÓGICA DE BYPASS Y MONITOREO
 -- ==========================================
 local timeFrozen = false
 local fTime, fTick, fClock = 0, 0, 0
@@ -105,76 +104,72 @@ BtnFreeze.MouseButton1Click:Connect(function()
     end
 end)
 
--- Actualización visual suave (ligada a los frames para evitar lag en UI)
+-- Actualización visual sin causar lag
 RunService.RenderStepped:Connect(function()
     LblTime.Text = "Consultas os.time: " .. callsTime
     LblTick.Text = "Consultas tick: " .. callsTick
     LblClock.Text = "Consultas os.clock: " .. callsClock
 end)
 
--- Monitoreo de fondo (Heartbeat para el .txt)
+-- Latido para verificar si el juego se congela (se guarda en el .txt)
 task.spawn(function()
     local lastCallsTick = 0
     while task.wait(1) do
-        -- Si tick sube más de 10,000 veces en 1 segundo, hay un bucle infinito bloqueando el juego.
         local tickDiff = callsTick - lastCallsTick
-        if tickDiff > 10000 then
-            writeLog("⚠️ ADVERTENCIA: Posible Bucle Infinito detectado (" .. tickDiff .. " llamadas a tick en 1 seg)")
+        if tickDiff > 5000 then
+            writeLog("⚠️ CRITICO: Posible Bucle Infinito detectado (" .. tickDiff .. " llamadas a tick en 1 seg). ¡El trial detectó manipulación!")
         end
         lastCallsTick = callsTick
-        
-        -- Guardar estado para saber cuándo se congela el juego
-        writeLog(string.format("Latido - Activo | os.time: %d | tick: %d | os.clock: %d", callsTime, callsTick, callsClock))
+        writeLog(string.format("Latido - os.time: %d | tick: %d | os.clock: %d", callsTime, callsTick, callsClock))
     end
 end)
 
 -- ==========================================
--- 4. HOOKS SEGUROS (ANTI-CRASH)
+-- 4. HOOKS INDETECTABLES (C-CLOSURES)
 -- ==========================================
-writeLog("⚙️ Iniciando Hooks...")
+writeLog("⚙️ Iniciando Hooks indetectables...")
 
 pcall(function()
     local oldTime
-    oldTime = hookfunction(os.time, function(...)
+    -- newcclosure evita que el ofuscador vea que alteramos la función original
+    oldTime = hookfunction(os.time, newcclosure(function(...)
         if checkcaller() then 
             callsTime = callsTime + 1 
-            if timeFrozen then return fTime end -- os.time no crashea si es exacto
+            if timeFrozen then return fTime end 
         end
         return oldTime(...)
-    end)
-    writeLog("✅ Hook a os.time exitoso.")
+    end))
+    writeLog("✅ Hook a os.time (C-Closure) exitoso.")
 end)
 
 pcall(function()
     local oldTick
-    oldTick = hookfunction(tick, function(...)
+    oldTick = hookfunction(tick, newcclosure(function(...)
         if checkcaller() then 
             callsTick = callsTick + 1 
             if timeFrozen then 
-                -- Micro-spoofing: Evita división por cero y anti-tampers
-                fTick = fTick + 0.000001
+                fTick = fTick + 0.000001 -- Avance milimétrico para no romper matemáticas
                 return fTick 
             end
         end
         return oldTick(...)
-    end)
-    writeLog("✅ Hook a tick exitoso.")
+    end))
+    writeLog("✅ Hook a tick (C-Closure) exitoso.")
 end)
 
 pcall(function()
     local oldClock
-    oldClock = hookfunction(os.clock, function(...)
+    oldClock = hookfunction(os.clock, newcclosure(function(...)
         if checkcaller() then 
             callsClock = callsClock + 1 
             if timeFrozen then 
-                -- Micro-spoofing: Evita romper las mates del ofuscador
-                fClock = fClock + 0.000001
+                fClock = fClock + 0.000001 -- Avance milimétrico
                 return fClock 
             end
         end
         return oldClock(...)
-    end)
-    writeLog("✅ Hook a os.clock exitoso.")
+    end))
+    writeLog("✅ Hook a os.clock (C-Closure) exitoso.")
 end)
 
 writeLog("🚀 Sistema 100% Operativo. Esperando al trial...")
