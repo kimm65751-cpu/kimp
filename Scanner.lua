@@ -1,223 +1,175 @@
--- EVOMON DEEP SCANNER - Con GUI y anti-crash total
+-- EVOMON SCANNER - Salida por Clipboard + GUI TextBox
 local Players = game:GetService("Players")
 local RS      = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local LP      = Players.LocalPlayer
 
--- =====================================================
--- GUI BASICA (siempre visible)
--- =====================================================
 pcall(function()
     local old = CoreGui:FindFirstChild("EvoScanner")
     if old then old:Destroy() end
 end)
 
+-- =====================================================
+-- GUI
+-- =====================================================
 local SG = Instance.new("ScreenGui")
 SG.Name = "EvoScanner"
 SG.ResetOnSpawn = false
 pcall(function() SG.Parent = CoreGui end)
 if not SG.Parent or SG.Parent ~= CoreGui then
-    pcall(function() SG.Parent = LP:WaitForChild("PlayerGui", 5) end)
+    pcall(function() SG.Parent = LP:WaitForChild("PlayerGui",5) end)
 end
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 500, 0, 400)
-Frame.Position = UDim2.new(0.5, -250, 0.5, -200)
-Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Frame.Size     = UDim2.new(0, 520, 0, 460)
+Frame.Position = UDim2.new(0.5,-260,0.5,-230)
+Frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
 Frame.BorderSizePixel = 0
 Frame.Parent = SG
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner",Frame).CornerRadius = UDim.new(0,8)
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-Title.Text = "EVOMON SCANNER"
-Title.TextColor3 = Color3.fromRGB(100, 220, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
-Title.BorderSizePixel = 0
-Title.Parent = Frame
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 8)
+local TBar = Instance.new("Frame")
+TBar.Size = UDim2.new(1,0,0,32)
+TBar.BackgroundColor3 = Color3.fromRGB(25,25,40)
+TBar.BorderSizePixel = 0
+TBar.Parent = Frame
+Instance.new("UICorner",TBar).CornerRadius = UDim.new(0,8)
 
-local BtnScan = Instance.new("TextButton")
-BtnScan.Size = UDim2.new(1, -20, 0, 32)
-BtnScan.Position = UDim2.new(0, 10, 0, 38)
-BtnScan.BackgroundColor3 = Color3.fromRGB(41, 128, 185)
-BtnScan.Text = ">>> INICIAR ESCANEO <<<"
-BtnScan.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnScan.Font = Enum.Font.GothamBold
-BtnScan.TextSize = 13
-BtnScan.BorderSizePixel = 0
-BtnScan.Parent = Frame
-Instance.new("UICorner", BtnScan).CornerRadius = UDim.new(0, 6)
+local TLbl = Instance.new("TextLabel")
+TLbl.Size = UDim2.new(1,-10,1,0)
+TLbl.Position = UDim2.new(0,10,0,0)
+TLbl.BackgroundTransparency = 1
+TLbl.Text = "EVOMON SCANNER - Salida: Clipboard + Console"
+TLbl.TextColor3 = Color3.fromRGB(100,220,255)
+TLbl.Font = Enum.Font.GothamBold
+TLbl.TextSize = 13
+TLbl.TextXAlignment = Enum.TextXAlignment.Left
+TLbl.Parent = TBar
 
-local Log = Instance.new("ScrollingFrame")
-Log.Size = UDim2.new(1, -10, 1, -80)
-Log.Position = UDim2.new(0, 5, 0, 75)
-Log.BackgroundColor3 = Color3.fromRGB(10, 10, 13)
-Log.BorderSizePixel = 0
-Log.ScrollBarThickness = 3
-Log.Parent = Frame
-Instance.new("UIListLayout", Log).SortOrder = Enum.SortOrder.LayoutOrder
-
-local lineCount = 0
-local function addLine(txt, r, g, b)
-    lineCount += 1
-    local lbl = Instance.new("TextLabel")
-    lbl.LayoutOrder = lineCount
-    lbl.Size = UDim2.new(1, -4, 0, 14)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = txt
-    lbl.TextSize = 10
-    lbl.Font = Enum.Font.Code
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextColor3 = Color3.fromRGB(r or 200, g or 200, b or 200)
-    lbl.TextTruncate = Enum.TextTruncate.AtEnd
-    lbl.Parent = Log
-    Log.CanvasSize = UDim2.new(0, 0, 0, lineCount * 14 + 4)
-    Log.CanvasPosition = Vector2.new(0, lineCount * 14)
-    print("[SCAN] " .. txt)
+-- Botones
+local function mkBtn(txt, x, w2, r,g,b)
+    local b = Instance.new("TextButton")
+    b.Position = UDim2.new(0,x,0,35)
+    b.Size     = UDim2.new(0,w2,0,26)
+    b.BackgroundColor3 = Color3.fromRGB(r,g,b)
+    b.Text = txt
+    b.TextColor3 = Color3.fromRGB(255,255,255)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 11
+    b.BorderSizePixel = 0
+    b.Parent = Frame
+    Instance.new("UICorner",b).CornerRadius = UDim.new(0,5)
+    return b
 end
 
+local BtnScan    = mkBtn("ESCANEAR", 8, 150, 41,128,185)
+local BtnCopy    = mkBtn("COPIAR AL CLIPBOARD", 165, 180, 39,174,96)
+local BtnClear   = mkBtn("LIMPIAR", 352, 80, 80,80,80)
+local BtnClose   = mkBtn("X", 438, 74, 192,57,43)
+
+-- Area de texto (muestra todo el resultado)
+local TBox = Instance.new("TextBox")
+TBox.Size = UDim2.new(1,-10,1,-70)
+TBox.Position = UDim2.new(0,5,0,65)
+TBox.BackgroundColor3 = Color3.fromRGB(10,10,13)
+TBox.TextColor3 = Color3.fromRGB(200,255,200)
+TBox.Font = Enum.Font.Code
+TBox.TextSize = 10
+TBox.TextXAlignment = Enum.TextXAlignment.Left
+TBox.TextYAlignment = Enum.TextYAlignment.Top
+TBox.MultiLine = true
+TBox.ClearTextOnFocus = false
+TBox.Text = "Presiona ESCANEAR para comenzar.\nLos resultados apareceran aqui.\nTambien se intentara copiar al clipboard."
+TBox.BorderSizePixel = 0
+TBox.Parent = Frame
+Instance.new("UICorner",TBox).CornerRadius = UDim.new(0,5)
+
 -- =====================================================
--- ESCRITURA DE ARCHIVO (con fallback a solo print)
+-- ESCANEO
 -- =====================================================
-local fileLines = {}
+local scanData = {}
+
 local function rec(s)
-    table.insert(fileLines, s)
-end
-local function saveFile()
-    local content = table.concat(fileLines, "\n")
-    local saved = false
-    pcall(function()
-        if writefile then
-            writefile("EvomonQA_ScanData.txt", content)
-            saved = true
-        end
-    end)
-    if saved then
-        addLine("ARCHIVO GUARDADO: EvomonQA_ScanData.txt", 100, 255, 100)
-    else
-        addLine("writefile NO disponible - lee el output del executor", 255, 200, 80)
-        -- Imprimir todo en consola igual
-        print("======= SCAN DATA =======")
-        print(content)
-        print("=========================")
-    end
+    table.insert(scanData, s)
+    print("[SCAN] " .. s)
 end
 
--- =====================================================
--- ESCANEO PRINCIPAL
--- =====================================================
-BtnScan.MouseButton1Click:Connect(function()
+local function runScan()
+    scanData = {}
+    TBox.Text = "Escaneando..."
     BtnScan.Text = "Escaneando..."
-    BtnScan.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    fileLines = {}
-    lineCount = 0
-    for _, c in ipairs(Log:GetChildren()) do
-        if c:IsA("TextLabel") then c:Destroy() end
-    end
+    BtnScan.BackgroundColor3 = Color3.fromRGB(80,80,80)
 
     task.wait(0.1)
+
     rec("=== EVOMON DEEP SCAN === " .. os.date("%H:%M:%S"))
     rec("")
 
-    -- =====================================================
-    -- SECCION 1: NPCs en workspace (sin jugadores)
-    -- =====================================================
-    addLine("=== [1] BUSCANDO NPCS EN WORKSPACE ===", 100, 220, 255)
-    rec("[1] NPCs EN WORKSPACE CON HUMANOID")
-    
+    -- 1. NPCs en workspace
+    rec("[1] NPCs EN WORKSPACE (sin jugadores)")
     local playerNames = {}
     pcall(function()
-        for _, p in ipairs(Players:GetPlayers()) do
-            playerNames[p.Name] = true
-        end
+        for _,p in ipairs(Players:GetPlayers()) do playerNames[p.Name]=true end
     end)
-
     local npcCount = 0
     pcall(function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
+        for _,obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("Model") and not playerNames[obj.Name] then
                 local hrp = obj:FindFirstChild("HumanoidRootPart")
                 local hum = obj:FindFirstChildOfClass("Humanoid")
                 if hrp and hum then
-                    local char = LP.Character
                     local dist = -1
                     pcall(function()
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                            dist = math.floor((hrp.Position - char.HumanoidRootPart.Position).Magnitude)
+                        local c = LP.Character
+                        if c and c:FindFirstChild("HumanoidRootPart") then
+                            dist = math.floor((hrp.Position - c.HumanoidRootPart.Position).Magnitude)
                         end
                     end)
-                    local line = "NPC|" .. obj.Name .. "|dist=" .. dist .. "|" .. obj:GetFullName()
-                    rec(line)
-                    addLine(line, 150, 255, 150)
-                    npcCount += 1
-
-                    -- ProximityPrompts
+                    rec("NPC|" .. obj.Name .. "|dist=" .. dist .. "|" .. obj:GetFullName())
                     pcall(function()
-                        for _, pp in ipairs(obj:GetDescendants()) do
+                        for _,pp in ipairs(obj:GetDescendants()) do
                             if pp:IsA("ProximityPrompt") then
-                                local pl = "  PP|" .. pp.ActionText .. "|" .. pp:GetFullName()
-                                rec(pl)
-                                addLine(pl, 255, 200, 100)
+                                rec("  PP|"..pp.ActionText.."|"..pp:GetFullName())
                             end
                         end
                     end)
+                    npcCount += 1
                 end
             end
         end
     end)
     rec("TOTAL_NPCS=" .. npcCount)
-    addLine("Total NPCs: " .. npcCount, 100, 255, 100)
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 2: BOTONES EN PLAYERGUI
-    -- =====================================================
-    addLine("=== [2] BOTONES EN PLAYERGUI ===", 100, 220, 255)
-    rec("[2] BOTONES PLAYERGUI")
+    -- 2. Botones en PlayerGui
+    rec("[2] BOTONES EN PLAYERGUI")
     pcall(function()
         local pg = LP:FindFirstChildOfClass("PlayerGui")
         if pg then
-            for _, obj in ipairs(pg:GetDescendants()) do
+            for _,obj in ipairs(pg:GetDescendants()) do
                 if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-                    local vis = obj.Visible and "VISIBLE" or "hidden"
+                    local vis = obj.Visible and "VIS" or "HID"
                     local txt = ""
-                    pcall(function()
-                        if obj:IsA("TextButton") then txt = obj.Text end
-                    end)
-                    local line = "BTN|" .. vis .. "|" .. obj.Name .. "|\"" .. txt .. "\"|" .. obj:GetFullName()
-                    rec(line)
-                    if obj.Visible then
-                        addLine(line, 200, 200, 255)
-                    end
+                    pcall(function() if obj:IsA("TextButton") then txt=obj.Text end end)
+                    rec("BTN|"..vis.."|"..obj.Name.."|"..txt.."|"..obj:GetFullName())
                 end
             end
-        else
-            rec("ERROR: Sin PlayerGui")
-            addLine("ERROR: Sin PlayerGui", 255, 80, 80)
         end
     end)
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 3: REMOTEEVENTS EN RS
-    -- =====================================================
-    addLine("=== [3] REMOTEEVENTS RELEVANTES ===", 100, 220, 255)
-    rec("[3] REMOTEEVENTS EN RS")
+    -- 3. RemoteEvents
+    rec("[3] REMOTEEVENTS RS")
     pcall(function()
-        local kw = {"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","result","wild"}
-        for _, obj in ipairs(RS:GetDescendants()) do
+        local kw={"battle","catch","escape","flee","pity","summon","monster","capture","operate","enter","settle","result","wild"}
+        for _,obj in ipairs(RS:GetDescendants()) do
             if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
                 local low = string.lower(obj.Name)
-                for _, k in ipairs(kw) do
-                    if string.find(low, k) then
-                        local line = "REMOTE|" .. obj.ClassName .. "|" .. obj.Name .. "|" .. obj:GetFullName()
-                        rec(line)
-                        addLine(line, 255, 180, 100)
+                for _,k in ipairs(kw) do
+                    if string.find(low,k) then
+                        rec("REMOTE|"..obj.ClassName.."|"..obj.Name.."|"..obj:GetFullName())
                         break
                     end
                 end
@@ -227,62 +179,47 @@ BtnScan.MouseButton1Click:Connect(function()
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 4: PROXIMITYPROMPTS EN WORKSPACE
-    -- =====================================================
-    addLine("=== [4] PROXIMITYPROMPTS GLOBALES ===", 100, 220, 255)
-    rec("[4] PROXIMITYPROMPTS")
+    -- 4. ProximityPrompts globales
+    rec("[4] PROXIMITYPROMPTS GLOBALES")
     pcall(function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
+        for _,obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") then
-                local line = "PP|" .. obj.ActionText .. "|enabled=" .. tostring(obj.Enabled) .. "|" .. obj:GetFullName()
-                rec(line)
-                addLine(line, 255, 220, 100)
+                rec("PP|"..obj.ActionText.."|en="..tostring(obj.Enabled).."|"..obj:GetFullName())
             end
         end
     end)
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 5: VALORES DEL JUGADOR (pity, shiny, stats)
-    -- =====================================================
-    addLine("=== [5] DATOS DEL JUGADOR ===", 100, 220, 255)
+    -- 5. Valores del jugador
     rec("[5] PLAYER VALUES")
     pcall(function()
-        local function scanFolder(folder, prefix)
-            for _, v in ipairs(folder:GetChildren()) do
+        local function scanF(folder, prefix)
+            for _,v in ipairs(folder:GetChildren()) do
                 if v:IsA("ValueBase") then
-                    local line = "VAL|" .. prefix .. v.Name .. "=" .. tostring(v.Value)
-                    rec(line)
-                    addLine(line, 200, 255, 200)
-                elseif v:IsA("Folder") or v:IsA("Model") then
-                    scanFolder(v, prefix .. v.Name .. "/")
+                    rec("VAL|"..prefix..v.Name.."="..tostring(v.Value))
+                elseif v:IsA("Folder") or v:IsA("Configuration") then
+                    scanF(v, prefix..v.Name.."/")
                 end
             end
         end
-        scanFolder(LP, "")
+        scanF(LP,"")
     end)
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 6: TEXTLABELS ACTIVOS CON DATOS DE INTERES
-    -- =====================================================
-    addLine("=== [6] TEXTLABELS ACTIVOS (pity/shiny/catch) ===", 100, 220, 255)
+    -- 6. TextLabels con pity/shiny/catch
     rec("[6] TEXTLABELS ACTIVOS")
     pcall(function()
         local pg = LP:FindFirstChildOfClass("PlayerGui")
         if pg then
-            for _, obj in ipairs(pg:GetDescendants()) do
-                if (obj:IsA("TextLabel") or obj:IsA("TextBox")) and obj.Text ~= "" and obj.Text ~= " " then
+            for _,obj in ipairs(pg:GetDescendants()) do
+                if (obj:IsA("TextLabel") or obj:IsA("TextBox")) and obj.Text~="" then
                     local t = string.lower(obj.Text)
                     if string.find(t,"pity") or string.find(t,"shiny") or string.find(t,"prismatic")
-                    or string.find(t,"catch") or string.find(t,"captur") or string.find(t,"rate")
-                    or string.find(t,"escape") or string.find(t,"flee") or string.find(t,"ball") then
-                        local line = "LBL|" .. obj.Name .. "|\"" .. obj.Text .. "\"|" .. obj:GetFullName()
-                        rec(line)
-                        addLine(line, 255, 255, 150)
+                    or string.find(t,"catch") or string.find(t,"escape") or string.find(t,"ball")
+                    or string.find(t,"rate") or string.find(t,"flee") then
+                        rec("LBL|"..obj.Name.."|"..obj.Text.."|"..obj:GetFullName())
                     end
                 end
             end
@@ -291,65 +228,102 @@ BtnScan.MouseButton1Click:Connect(function()
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 7: ESTRUCTURA RS (carpetas)
-    -- =====================================================
-    addLine("=== [7] RS ESTRUCTURA ===", 100, 220, 255)
-    rec("[7] REPLICATEDSTORAGE ESTRUCTURA")
+    -- 7. RS estructura
+    rec("[7] RS ESTRUCTURA")
     pcall(function()
-        for _, child in ipairs(RS:GetChildren()) do
-            rec("RS/" .. child.Name .. " (" .. child.ClassName .. ")")
-            for _, sub in ipairs(child:GetChildren()) do
-                rec("  RS/" .. child.Name .. "/" .. sub.Name .. " (" .. sub.ClassName .. ")")
-            end
+        for _,c in ipairs(RS:GetChildren()) do
+            rec("RS/"..c.Name.."("..c.ClassName..")")
         end
     end)
     rec("")
     task.wait(0.05)
 
-    -- =====================================================
-    -- SECCION 8: RUNTIMECACHE
-    -- =====================================================
-    addLine("=== [8] RUNTIMECACHE ===", 100, 220, 255)
-    rec("[8] RUNTIMECACHE")
+    -- 8. RuntimeCache
+    rec("[8] RUNTIMECACHE MODELOS")
     pcall(function()
         local rc = workspace:FindFirstChild("RuntimeCache")
         if rc then
-            for _, child in ipairs(rc:GetChildren()) do
-                rec("RC/" .. child.Name)
-                for _, sub in ipairs(child:GetChildren()) do
-                    rec("  RC/" .. child.Name .. "/" .. sub.Name .. " (" .. sub.ClassName .. ")")
-                    if sub.Name == "CreatureModelCache" then
-                        local seen = {}
-                        for _, folder in ipairs(sub:GetChildren()) do
-                            for _, mdl in ipairs(folder:GetChildren()) do
-                                if mdl:IsA("Model") and not seen[mdl.Name] then
-                                    seen[mdl.Name] = true
-                                    local hasHRP = mdl:FindFirstChild("HumanoidRootPart") ~= nil
-                                    local hasHum = mdl:FindFirstChildOfClass("Humanoid") ~= nil
-                                    rec("    MODEL|" .. mdl.Name .. "|HRP=" .. tostring(hasHRP) .. "|Hum=" .. tostring(hasHum))
-                                    addLine("CACHE: " .. mdl.Name .. " HRP=" .. tostring(hasHRP), 180, 180, 255)
-                                end
+            local srv = rc:FindFirstChild("RuntimeCacheServer")
+            if srv then
+                local cc = srv:FindFirstChild("CreatureModelCache")
+                if cc then
+                    local seen={}
+                    for _,folder in ipairs(cc:GetChildren()) do
+                        for _,mdl in ipairs(folder:GetChildren()) do
+                            if mdl:IsA("Model") and not seen[mdl.Name] then
+                                seen[mdl.Name]=true
+                                local h1=mdl:FindFirstChild("HumanoidRootPart")~=nil
+                                local h2=mdl:FindFirstChildOfClass("Humanoid")~=nil
+                                rec("CACHE|"..mdl.Name.."|HRP="..tostring(h1).."|Hum="..tostring(h2).."|"..folder.Name)
                             end
                         end
                     end
                 end
             end
         else
-            rec("RuntimeCache NO existe")
-            addLine("RuntimeCache NO existe en workspace", 255, 80, 80)
+            rec("RuntimeCache NO encontrado")
         end
     end)
     rec("")
 
-    rec("=== FIN DEL SCAN ===")
-    addLine("=== FIN DEL SCAN ===", 100, 255, 100)
+    rec("=== FIN SCAN ===")
 
-    saveFile()
+    -- Mostrar en TextBox
+    local full = table.concat(scanData, "\n")
+    TBox.Text = full
 
-    BtnScan.Text = "SCAN COMPLETO - corre de nuevo en batalla"
-    BtnScan.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+    -- Intentar guardar archivo
+    local saved = false
+    pcall(function()
+        if writefile then writefile("EvomonQA_ScanData.txt", full) saved=true end
+    end)
+    pcall(function()
+        if not saved and WriteFile then WriteFile("EvomonQA_ScanData.txt", full) saved=true end
+    end)
+
+    -- Intentar clipboard
+    local clipped = false
+    pcall(function()
+        if setclipboard then setclipboard(full) clipped=true end
+    end)
+    pcall(function()
+        if not clipped and copyToClipboard then copyToClipboard(full) clipped=true end
+    end)
+
+    local status = ""
+    if saved then status = status .. " | ARCHIVO CREADO" end
+    if clipped then status = status .. " | COPIADO AL CLIPBOARD" end
+    if status == "" then status = " | LEE EL OUTPUT DE CONSOLA" end
+
+    BtnScan.Text = "LISTO" .. status
+    BtnScan.BackgroundColor3 = Color3.fromRGB(39,174,96)
+
+    -- Todo impreso en consola igual
+    print("====== EVOMON SCAN COMPLETO ======")
+    print(full)
+    print("==================================")
+end
+
+BtnScan.MouseButton1Click:Connect(function() task.spawn(runScan) end)
+
+BtnCopy.MouseButton1Click:Connect(function()
+    local full = table.concat(scanData,"\n")
+    if full == "" then TBox.Text = "Primero presiona ESCANEAR" return end
+    local ok = false
+    pcall(function() if setclipboard then setclipboard(full) ok=true end end)
+    if ok then
+        BtnCopy.Text = "COPIADO!"
+        task.delay(2, function() BtnCopy.Text = "COPIAR AL CLIPBOARD" end)
+    else
+        TBox.Text = "setclipboard no disponible.\nCopia el texto del area de abajo manualmente.\n\n" .. full
+    end
 end)
 
-addLine("Script listo. Presiona el boton azul para escanear.", 100, 200, 255)
-addLine("Corre DENTRO de Roblox con tu executor.", 255, 200, 80)
+BtnClear.MouseButton1Click:Connect(function()
+    scanData = {}
+    TBox.Text = ""
+end)
+
+BtnClose.MouseButton1Click:Connect(function()
+    SG:Destroy()
+end)
